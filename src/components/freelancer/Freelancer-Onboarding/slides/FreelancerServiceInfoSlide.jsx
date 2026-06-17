@@ -30,10 +30,10 @@ import {
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const EXPERIENCE_OPTIONS = [
-  { value: "entry", label: "Entry Level (0–1 years)" },
-  { value: "intermediate", label: "Intermediate (1–3 years)" },
-  { value: "experienced", label: "Experienced (3–5 years)" },
-  { value: "expert", label: "Expert (5–10 years)" },
+  { value: "entry", label: "Entry Level (0â€“1 years)" },
+  { value: "intermediate", label: "Intermediate (1â€“3 years)" },
+  { value: "experienced", label: "Experienced (3â€“5 years)" },
+  { value: "expert", label: "Expert (5â€“10 years)" },
   { value: "veteran", label: "Veteran (10+ years)" },
 ];
 
@@ -73,8 +73,8 @@ const CategoryMultiSelect = ({
   options = [],
   selected = [],
   onChange,
-  placeholder = "Select sub-categories",
-  searchPlaceholder = "Search sub-categories",
+  placeholder = "Search categories & skills...",
+  searchPlaceholder = "Search categories & skills...",
   isLoading = false,
   loadingMessage = "Loading...",
   emptyMessage = "No options available",
@@ -90,12 +90,19 @@ const CategoryMultiSelect = ({
   isToolsLoading = false,
   toolFetchError = "",
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isBrowseOpen, setIsBrowseOpen] = useState(false);
+  const [browseSearchQuery, setBrowseSearchQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [popupStyle, setPopupStyle] = useState(null);
+  const [allPreFetchedTools, setAllPreFetchedTools] = useState({});
+
   const containerRef = useRef(null);
   const popupRef = useRef(null);
   const searchInputRef = useRef(null);
+  const browseSearchInputRef = useRef(null);
+  const preFetchAbortRef = useRef(null);
+  const preFetchedOptionsKeyRef = useRef("");
 
   const normalizedSelected = useMemo(
     () =>
@@ -114,6 +121,7 @@ const CategoryMultiSelect = ({
     () => options.filter((option) => selectedSet.has(String(option.value))),
     [options, selectedSet],
   );
+
   const optionLabelByValue = useMemo(
     () =>
       new Map(
@@ -127,7 +135,6 @@ const CategoryMultiSelect = ({
     if (normalizedActive && selectedSet.has(normalizedActive)) {
       return normalizedActive;
     }
-
     return normalizedSelected[0] || "";
   }, [activeCategoryKey, normalizedSelected, selectedSet]);
 
@@ -142,10 +149,7 @@ const CategoryMultiSelect = ({
   const activeSubcategoryId = toPositiveInteger(activeSubcategory?.subCategoryId);
 
   const activeToolSource = useMemo(() => {
-    if (!activeSubcategoryId) {
-      return [];
-    }
-
+    if (!activeSubcategoryId) return [];
     const nextTools = toolOptionsByCategory[String(activeSubcategoryId)];
     return Array.isArray(nextTools) ? nextTools : [];
   }, [activeSubcategoryId, toolOptionsByCategory]);
@@ -160,6 +164,7 @@ const CategoryMultiSelect = ({
         .filter((tool) => tool.id && tool.label),
     [activeToolSource],
   );
+
   const activeSuggestedSkills = useMemo(() => {
     const rawSkills = skillSuggestionsByCategory?.[activeCategoryValue];
     return normalizeStringArray(
@@ -176,10 +181,7 @@ const CategoryMultiSelect = ({
     const seen = new Set();
     return rawIds.reduce((accumulator, value) => {
       const normalizedValue = toPositiveInteger(value);
-      if (!normalizedValue || seen.has(normalizedValue)) {
-        return accumulator;
-      }
-
+      if (!normalizedValue || seen.has(normalizedValue)) return accumulator;
       seen.add(normalizedValue);
       accumulator.push(normalizedValue);
       return accumulator;
@@ -195,26 +197,20 @@ const CategoryMultiSelect = ({
     () => normalizeStringArray(activeSubcategory?.customSkillNames),
     [activeSubcategory?.customSkillNames],
   );
-  const activeVisibleCustomSkills = useMemo(() => {
-    if (!activeSelectedCustomSkills.length) {
-      return [];
-    }
 
+  const activeVisibleCustomSkills = useMemo(() => {
+    if (!activeSelectedCustomSkills.length) return [];
     const toolLabelKeys = new Set(
       activeToolOptions.map((tool) => normalizeSkillMatchKey(tool.label)),
     );
-
     return activeSelectedCustomSkills.filter(
       (skill) => !toolLabelKeys.has(normalizeSkillMatchKey(skill)),
     );
   }, [activeSelectedCustomSkills, activeToolOptions]);
 
-  const filteredOptions = useMemo(() => {
-    const normalizedQuery = String(searchQuery || "").trim().toLowerCase();
-    if (!normalizedQuery) {
-      return options;
-    }
-
+  const filteredBrowseOptions = useMemo(() => {
+    const normalizedQuery = String(browseSearchQuery || "").trim().toLowerCase();
+    if (!normalizedQuery) return options;
     return options.filter((option) =>
       String(
         [option?.label, option?.selectedLabel, option?.categoryLabel]
@@ -224,13 +220,12 @@ const CategoryMultiSelect = ({
         .toLowerCase()
         .includes(normalizedQuery),
     );
-  }, [options, searchQuery]);
+  }, [options, browseSearchQuery]);
 
   const activeSelectedToolEntries = useMemo(() => {
     const toolLabelById = new Map(
       activeToolOptions.map((tool) => [tool.id, tool.label]),
     );
-
     return activeSelectedToolIds.map((toolId) => ({
       id: toolId,
       label: toolLabelById.get(toolId) || `Skill ${toolId}`,
@@ -242,13 +237,9 @@ const CategoryMultiSelect = ({
 
   const selectedSkillEntries = useMemo(() => {
     const normalizedEntries = Array.isArray(selectedSubcategories) ? selectedSubcategories : [];
-
     return normalizedEntries.flatMap((entry) => {
       const categoryKey = getSubcategorySelectionKey(entry);
-      if (!categoryKey || !selectedSet.has(categoryKey)) {
-        return [];
-      }
-
+      if (!categoryKey || !selectedSet.has(categoryKey)) return [];
       const categoryLabel =
         optionLabelByValue.get(categoryKey) ||
         String(entry?.label || entry?.subCategoryKey || "").trim() ||
@@ -263,14 +254,10 @@ const CategoryMultiSelect = ({
           String(tool?.label || tool?.name || "").trim(),
         ]),
       );
-
       const toolEntries = (Array.isArray(entry?.selectedToolIds) ? entry.selectedToolIds : [])
         .map((toolId) => {
           const normalizedToolId = toPositiveInteger(toolId);
-          if (!normalizedToolId) {
-            return null;
-          }
-
+          if (!normalizedToolId) return null;
           return {
             type: "tool",
             categoryKey,
@@ -280,7 +267,6 @@ const CategoryMultiSelect = ({
           };
         })
         .filter(Boolean);
-
       const customEntries = normalizeStringArray(entry?.customSkillNames).map((skillName) => ({
         type: "custom",
         categoryKey,
@@ -288,45 +274,126 @@ const CategoryMultiSelect = ({
         value: skillName,
         label: skillName,
       }));
-
       return [...toolEntries, ...customEntries];
     });
   }, [optionLabelByValue, selectedSet, selectedSubcategories, toolOptionsByCategory]);
 
+  // Pre-fetch ALL skills for ALL categories in the background so we can search across them
+  useEffect(() => {
+    const optionsWithIds = options.filter((opt) => toPositiveInteger(opt.subCategoryId));
+    if (!optionsWithIds.length) return;
+
+    const optionsKey = optionsWithIds.map((o) => o.value).join(",");
+    if (preFetchedOptionsKeyRef.current === optionsKey) return;
+    preFetchedOptionsKeyRef.current = optionsKey;
+
+    if (preFetchAbortRef.current) preFetchAbortRef.current.abort();
+    const controller = new AbortController();
+    preFetchAbortRef.current = controller;
+
+    Promise.allSettled(
+      optionsWithIds.map(async (opt) => {
+        const subCatId = toPositiveInteger(opt.subCategoryId);
+        const response = await fetch(
+          `${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCatId}`,
+          { signal: controller.signal },
+        );
+        if (!response.ok) throw new Error("Failed");
+        const payload = await response.json();
+        const tools = (Array.isArray(payload?.data) ? payload.data : [])
+          .map((entry) => ({
+            id: toPositiveInteger(entry?.id),
+            label: String(entry?.name || "").trim(),
+          }))
+          .filter((t) => t.id && t.label);
+        return [opt.value, tools];
+      }),
+    ).then((results) => {
+      if (controller.signal.aborted) return;
+      const toolsByOptionValue = {};
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          const [optionValue, tools] = result.value;
+          toolsByOptionValue[optionValue] = tools;
+        }
+      });
+      setAllPreFetchedTools((prev) => ({ ...prev, ...toolsByOptionValue }));
+    });
+
+    return () => {
+      controller.abort();
+    };
+  }, [options]);
+
+  // Unified search index: categories + all pre-fetched skills
+  const searchIndex = useMemo(() => {
+    const entries = [];
+    options.forEach((opt) => {
+      entries.push({
+        type: "category",
+        label: opt.label,
+        categoryValue: opt.value,
+        categoryLabel: opt.label,
+        toolId: null,
+      });
+    });
+    Object.entries(allPreFetchedTools).forEach(([optionValue, tools]) => {
+      const categoryLabel = optionLabelByValue.get(optionValue) || optionValue;
+      (Array.isArray(tools) ? tools : []).forEach((tool) => {
+        entries.push({
+          type: "skill",
+          label: tool.label,
+          categoryValue: optionValue,
+          categoryLabel,
+          toolId: tool.id,
+        });
+      });
+    });
+    return entries;
+  }, [options, allPreFetchedTools, optionLabelByValue]);
+
+  // Filtered inline search results
+  const searchResults = useMemo(() => {
+    const q = String(searchQuery || "").trim().toLowerCase();
+    if (!q) return { categories: [], skills: [] };
+    const matching = searchIndex.filter((entry) =>
+      entry.label.toLowerCase().includes(q),
+    );
+    return {
+      categories: matching.filter((e) => e.type === "category").slice(0, 8),
+      skills: matching.filter((e) => e.type === "skill").slice(0, 12),
+    };
+  }, [searchIndex, searchQuery]);
+
+  const hasSearchResults =
+    searchResults.categories.length > 0 || searchResults.skills.length > 0;
+
+  // Click outside: close both panels
   useEffect(() => {
     const handleClickOutside = (event) => {
       const target = event.target;
       const isInsideTrigger = containerRef.current?.contains(target);
       const isInsidePopup = popupRef.current?.contains(target);
-
       if (!isInsideTrigger && !isInsidePopup) {
-        setIsOpen(false);
+        setIsBrowseOpen(false);
+        setIsSearchOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   useEffect(() => {
-    if (!isOpen) {
-      setSearchQuery("");
-    }
-  }, [isOpen]);
+    if (!isBrowseOpen) setBrowseSearchQuery("");
+  }, [isBrowseOpen]);
 
+  // Position the browse portal popup
   useLayoutEffect(() => {
-    if (!isOpen || typeof window === "undefined") {
-      return undefined;
-    }
+    if (!isBrowseOpen || typeof window === "undefined") return undefined;
 
     const updatePopupPosition = () => {
       const triggerElement = containerRef.current;
-      if (!triggerElement) {
-        return;
-      }
-
+      if (!triggerElement) return;
       const rect = triggerElement.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
@@ -348,7 +415,6 @@ const CategoryMultiSelect = ({
         Math.max(rect.left, margin),
         viewportWidth - nextWidth - margin,
       );
-
       setPopupStyle({
         position: "fixed",
         left: `${nextLeft}px`,
@@ -364,50 +430,36 @@ const CategoryMultiSelect = ({
     };
 
     updatePopupPosition();
-
     window.addEventListener("resize", updatePopupPosition);
     window.addEventListener("scroll", updatePopupPosition, true);
-
     return () => {
       window.removeEventListener("resize", updatePopupPosition);
       window.removeEventListener("scroll", updatePopupPosition, true);
     };
-  }, [isOpen]);
+  }, [isBrowseOpen]);
 
   useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
+    if (!isBrowseOpen) return undefined;
     const frameId = requestAnimationFrame(() => {
-      searchInputRef.current?.focus();
+      browseSearchInputRef.current?.focus();
     });
-
     return () => cancelAnimationFrame(frameId);
-  }, [isOpen]);
+  }, [isBrowseOpen]);
 
   const commitCategorySelection = (nextSelectedValues, nextActiveValue) => {
     onChange?.(nextSelectedValues);
     onActiveCategoryChange?.(nextActiveValue);
-
-    if (closeOnSelect) {
-      setIsOpen(false);
-    }
+    if (closeOnSelect) setIsBrowseOpen(false);
   };
 
   const toggleOption = (optionValue) => {
     const normalizedValue = String(optionValue).trim();
-    if (!normalizedValue) {
-      return;
-    }
-
+    if (!normalizedValue) return;
     const wasSelected = selectedSet.has(normalizedValue);
     const nextSelectedValues = wasSelected
       ? normalizedSelected
       : [...normalizedSelected, normalizedValue];
-    const nextActiveValue = normalizedValue;
-
-    commitCategorySelection(nextSelectedValues, nextActiveValue);
+    commitCategorySelection(nextSelectedValues, normalizedValue);
   };
 
   const removeOption = (optionValue) => {
@@ -419,18 +471,11 @@ const CategoryMultiSelect = ({
       normalizedValue === activeCategoryValue
         ? nextSelectedValues[0] || ""
         : activeCategoryValue;
-
     commitCategorySelection(nextSelectedValues, nextActiveValue);
   };
 
-  const handleSkillSelectionChange = (
-    nextSelectedToolIds,
-    nextCustomSkillNames,
-  ) => {
-    if (!activeCategoryValue || !onSubcategorySkillChange) {
-      return;
-    }
-
+  const handleSkillSelectionChange = (nextSelectedToolIds, nextCustomSkillNames) => {
+    if (!activeCategoryValue || !onSubcategorySkillChange) return;
     onSubcategorySkillChange(activeCategoryValue, {
       selectedToolIds: nextSelectedToolIds,
       customSkillNames: nextCustomSkillNames,
@@ -439,14 +484,10 @@ const CategoryMultiSelect = ({
 
   const handleToggleTool = (toolId) => {
     const normalizedToolId = toPositiveInteger(toolId);
-    if (!normalizedToolId) {
-      return;
-    }
-
+    if (!normalizedToolId) return;
     const nextSelectedToolIds = activeSelectedToolIdSet.has(normalizedToolId)
       ? activeSelectedToolIds.filter((value) => value !== normalizedToolId)
       : [...activeSelectedToolIds, normalizedToolId];
-
     handleSkillSelectionChange(nextSelectedToolIds, activeSelectedCustomSkills);
   };
 
@@ -462,10 +503,7 @@ const CategoryMultiSelect = ({
 
   const handleToggleSuggestedSkill = (skillName) => {
     const normalizedSkillName = String(skillName || "").trim();
-    if (!normalizedSkillName) {
-      return;
-    }
-
+    if (!normalizedSkillName) return;
     const nextCustomSkillNames = activeSelectedCustomSkills.some(
       (value) => value.toLowerCase() === normalizedSkillName.toLowerCase(),
     )
@@ -473,32 +511,22 @@ const CategoryMultiSelect = ({
           (value) => value.toLowerCase() !== normalizedSkillName.toLowerCase(),
         )
       : [...activeSelectedCustomSkills, normalizedSkillName];
-
     handleSkillSelectionChange(activeSelectedToolIds, nextCustomSkillNames);
   };
 
   const handleRemoveSkillEntry = (entry) => {
-    if (!entry?.categoryKey || !onSubcategorySkillChange) {
-      return;
-    }
-
+    if (!entry?.categoryKey || !onSubcategorySkillChange) return;
     const currentSubcategory =
       (Array.isArray(selectedSubcategories) ? selectedSubcategories : []).find(
         (subcategory) => getSubcategorySelectionKey(subcategory) === entry.categoryKey,
       ) || null;
-
-    if (!currentSubcategory) {
-      return;
-    }
-
+    if (!currentSubcategory) return;
     const currentToolIds = (Array.isArray(currentSubcategory.selectedToolIds)
       ? currentSubcategory.selectedToolIds
-      : []
-    )
+      : [])
       .map((value) => toPositiveInteger(value))
       .filter(Boolean);
     const currentCustomSkills = normalizeStringArray(currentSubcategory.customSkillNames);
-
     if (entry.type === "tool") {
       const nextToolIds = currentToolIds.filter((value) => String(value) !== String(entry.value));
       onSubcategorySkillChange(entry.categoryKey, {
@@ -507,7 +535,6 @@ const CategoryMultiSelect = ({
       });
       return;
     }
-
     const nextCustomSkills = currentCustomSkills.filter(
       (value) => value.toLowerCase() !== String(entry.value || "").trim().toLowerCase(),
     );
@@ -517,39 +544,198 @@ const CategoryMultiSelect = ({
     });
   };
 
-  const summaryText = useMemo(
-    () => (isLoading ? loadingMessage : placeholder),
-    [isLoading, loadingMessage, placeholder],
-  );
+  // Handle clicking a result from the inline search dropdown
+  const handleSelectSearchResult = (entry) => {
+    if (entry.type === "category") {
+      toggleOption(entry.categoryValue);
+    } else {
+      // Auto-select the parent category if not already selected
+      if (!selectedSet.has(entry.categoryValue)) {
+        const nextValues = [...normalizedSelected, entry.categoryValue];
+        onChange?.(nextValues);
+        onActiveCategoryChange?.(entry.categoryValue);
+      }
+      // Auto-select the skill within that category
+      if (onSubcategorySkillChange) {
+        const currentEntry = (Array.isArray(selectedSubcategories) ? selectedSubcategories : [])
+          .find((e) => getSubcategorySelectionKey(e) === entry.categoryValue);
+        const currentToolIds = currentEntry
+          ? (Array.isArray(currentEntry.selectedToolIds) ? currentEntry.selectedToolIds : [])
+              .map(toPositiveInteger)
+              .filter(Boolean)
+          : [];
+        const currentCustom = currentEntry
+          ? normalizeStringArray(currentEntry.customSkillNames)
+          : [];
+        if (!currentToolIds.includes(entry.toolId)) {
+          onSubcategorySkillChange(entry.categoryValue, {
+            selectedToolIds: [...currentToolIds, entry.toolId],
+            customSkillNames: currentCustom,
+          });
+        }
+      }
+    }
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
 
   return (
     <div className="space-y-3">
       <div className="relative" ref={containerRef}>
-        <button
-          type="button"
-          onClick={() => setIsOpen((current) => !current)}
+        {/* â”€â”€ Trigger row: text search input + Browse button â”€â”€ */}
+        <div
           className={cn(
-            "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors focus:ring-1",
+            "flex h-10 w-full items-center rounded-xl border bg-card transition-colors",
             hasError
-              ? "border-destructive/70 text-foreground focus:border-destructive/60 focus:ring-destructive/20"
-              : selectedOptions.length > 0
-                ? "border-border text-foreground focus:border-primary/50 focus:ring-primary/20"
-                : "border-border text-muted-foreground focus:border-primary/50 focus:ring-primary/20",
-            isOpen && "border-primary/50 ring-1 ring-primary/20",
+              ? "border-destructive/70"
+              : isSearchOpen || isBrowseOpen
+                ? "border-primary/50 ring-1 ring-primary/20"
+                : "border-border",
           )}
-          aria-invalid={hasError}
-          aria-expanded={isOpen}
         >
-          <span className="truncate text-left">{summaryText}</span>
-          <ChevronDown
-            className={cn(
-              "h-4 w-4 transition-transform duration-200",
-              selectedOptions.length > 0 ? "text-foreground/60" : "text-muted-foreground",
-              isOpen && "rotate-180",
-            )}
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setIsBrowseOpen(false);
+              setIsSearchOpen(e.target.value.trim().length > 0);
+            }}
+            onFocus={() => {
+              if (searchQuery.trim()) setIsSearchOpen(true);
+            }}
+            placeholder={isLoading ? loadingMessage : searchPlaceholder}
+            disabled={isLoading}
+            className="h-full min-w-0 flex-1 rounded-l-xl bg-transparent px-4 !text-[14px] !leading-5 text-foreground outline-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground"
           />
-        </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsBrowseOpen((current) => !current);
+              setIsSearchOpen(false);
+              setSearchQuery("");
+            }}
+            className={cn(
+              "flex h-full items-center gap-1 rounded-r-xl border-l border-border px-3 text-xs font-medium transition-colors",
+              isBrowseOpen
+                ? "bg-primary/10 text-primary border-primary/30"
+                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+            )}
+            title="Browse all categories & skills"
+          >
+            <span className="hidden sm:inline">Browse</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform duration-200",
+                isBrowseOpen && "rotate-180",
+              )}
+            />
+          </button>
+        </div>
 
+        {/* â”€â”€ Inline search results dropdown â”€â”€ */}
+        {isSearchOpen && searchQuery.trim() ? (
+          <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-xl shadow-black/10 subtle-scrollbar dark:shadow-black/40">
+            {!hasSearchResults ? (
+              <div className="px-4 py-3 text-sm text-muted-foreground">
+                {noResultsMessage}
+              </div>
+            ) : (
+              <div className="p-1.5">
+                {searchResults.categories.length > 0 && (
+                  <div className="mb-1">
+                    <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Categories
+                    </p>
+                    {searchResults.categories.map((entry) => {
+                      const isSelected = selectedSet.has(entry.categoryValue);
+                      return (
+                        <button
+                          key={entry.categoryValue}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectSearchResult(entry);
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                            isSelected
+                              ? "bg-primary/10 text-primary"
+                              : "text-foreground hover:bg-muted",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                              isSelected ? "border-primary bg-primary" : "border-border",
+                            )}
+                          >
+                            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {searchResults.skills.length > 0 && (
+                  <div>
+                    <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      Skills
+                    </p>
+                    {searchResults.skills.map((entry) => {
+                      const parentEntry = (Array.isArray(selectedSubcategories)
+                        ? selectedSubcategories
+                        : []).find(
+                        (e) => getSubcategorySelectionKey(e) === entry.categoryValue,
+                      );
+                      const isSelected =
+                        Boolean(parentEntry) &&
+                        (Array.isArray(parentEntry.selectedToolIds)
+                          ? parentEntry.selectedToolIds
+                          : []
+                        )
+                          .map(toPositiveInteger)
+                          .includes(entry.toolId);
+                      return (
+                        <button
+                          key={`${entry.categoryValue}-${entry.toolId}`}
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectSearchResult(entry);
+                          }}
+                          className={cn(
+                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                            isSelected
+                              ? "bg-primary/10 text-primary"
+                              : "text-foreground hover:bg-muted",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                              isSelected ? "border-primary bg-primary" : "border-border",
+                            )}
+                          >
+                            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
+                            {entry.categoryLabel}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* â”€â”€ Selected category tags â”€â”€ */}
         {selectedOptions.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {selectedOptions.map((option) => (
@@ -571,6 +757,7 @@ const CategoryMultiSelect = ({
           </div>
         ) : null}
 
+        {/* â”€â”€ Selected skills tags â”€â”€ */}
         {selectedSkillEntries.length > 0 ? (
           <div className="mt-4 space-y-2">
             <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -597,7 +784,8 @@ const CategoryMultiSelect = ({
           </div>
         ) : null}
 
-        {isOpen && typeof document !== "undefined"
+        {/* â”€â”€ Browse panel (two-column portal) â”€â”€ */}
+        {isBrowseOpen && typeof document !== "undefined"
           ? createPortal(
               <div
                 ref={popupRef}
@@ -607,18 +795,17 @@ const CategoryMultiSelect = ({
               >
                 <div className="border-b border-border p-2.5">
                   <input
-                    ref={searchInputRef}
+                    ref={browseSearchInputRef}
                     type="text"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder={searchPlaceholder}
+                    value={browseSearchQuery}
+                    onChange={(event) => setBrowseSearchQuery(event.target.value)}
+                    placeholder="Search categories..."
                     className="h-10 w-full rounded-lg border border-input bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
 
-                <div
-                  className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row"
-                >
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+                  {/* Categories column */}
                   <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border md:border-b-0 md:border-r md:border-r-border">
                     <div className="shrink-0 border-b border-border px-4 py-3">
                       <div className="flex items-center justify-between">
@@ -640,20 +827,16 @@ const CategoryMultiSelect = ({
                         <div className="px-3 py-2 text-sm text-muted-foreground/60">
                           {emptyMessage}
                         </div>
-                      ) : filteredOptions.length === 0 ? (
+                      ) : filteredBrowseOptions.length === 0 ? (
                         <div className="px-3 py-2 text-sm text-muted-foreground/60">
                           {noResultsMessage}
                         </div>
                       ) : (
-                        filteredOptions.map((option) => {
+                        filteredBrowseOptions.map((option) => {
                           const isSelected = selectedSet.has(String(option.value));
                           const isActive = activeCategoryValue === String(option.value);
-
                           return (
-                            <div
-                              key={option.value}
-                              className="relative my-1 w-full"
-                            >
+                            <div key={option.value} className="relative my-1 w-full">
                               <button
                                 type="button"
                                 onClick={() => toggleOption(option.value)}
@@ -666,16 +849,16 @@ const CategoryMultiSelect = ({
                                       : "border-transparent text-foreground hover:bg-muted",
                                 )}
                                 aria-pressed={isSelected}
-                                >
-                                  <span className="min-w-0 flex-1 truncate font-medium">
-                                    {option.label}
-                                  </span>
-                                </button>
+                              >
+                                <span className="min-w-0 flex-1 truncate font-medium">
+                                  {option.label}
+                                </span>
+                              </button>
                               {isSelected ? (
                                 <button
-                                type="button"
-                                onClick={() => removeOption(option.value)}
-                                className={cn(
+                                  type="button"
+                                  onClick={() => removeOption(option.value)}
+                                  className={cn(
                                     "absolute right-1 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent shadow-none transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0",
                                     isActive
                                       ? "text-primary-foreground hover:text-primary-foreground/90"
@@ -693,6 +876,7 @@ const CategoryMultiSelect = ({
                     </div>
                   </div>
 
+                  {/* Skills column */}
                   <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                     {activeCategoryValue ? (
                       <>
@@ -714,9 +898,7 @@ const CategoryMultiSelect = ({
                               activeToolOptions.length === 0 &&
                               activeSuggestedSkills.length === 0 &&
                               activeVisibleCustomSkills.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">
-                                  Loading skills...
-                                </p>
+                                <p className="text-sm text-muted-foreground">Loading skills...</p>
                               ) : activeToolOptions.length > 0 ||
                                 activeVisibleCustomSkills.length > 0 ? (
                                 <>
@@ -769,7 +951,9 @@ const CategoryMultiSelect = ({
                                             <Check
                                               className={cn(
                                                 "ml-3 h-4 w-4 shrink-0 transition-colors",
-                                                isSelected ? "text-primary" : "text-muted-foreground/50",
+                                                isSelected
+                                                  ? "text-primary"
+                                                  : "text-muted-foreground/50",
                                               )}
                                             />
                                           </button>
@@ -783,7 +967,6 @@ const CategoryMultiSelect = ({
                                   const isSelected = activeSelectedCustomSkills.some(
                                     (value) => value.toLowerCase() === skill.toLowerCase(),
                                   );
-
                                   return (
                                     <button
                                       key={skill}
@@ -873,6 +1056,7 @@ const CategoryMultiSelect = ({
 };
 
 const SERVICE_PLACEHOLDERS = {
+
   "influencer marketing": [
     "Influencer Growth Strategy",
     "Creator-Led Brand Growth",
@@ -1113,6 +1297,7 @@ const FreelancerServiceInfoSlide = ({
             value: getSubcategorySelectionKey({ subCategoryId: entry?.id }),
             label: String(entry?.name || "").trim(),
             isCustom: false,
+            subCategoryId: entry?.id,
           }))
           .filter((entry) => entry.value && entry.label);
 
