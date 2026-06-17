@@ -465,6 +465,7 @@ function PhoneRoleOnboarding() {
                           src={profileImage}
                           alt="Profile preview"
                           className="size-full object-cover"
+                          onError={() => setProfileImage("")}
                         />
                       ) : (
                         <Camera className="size-7 transition group-hover:scale-[1.04]" />
