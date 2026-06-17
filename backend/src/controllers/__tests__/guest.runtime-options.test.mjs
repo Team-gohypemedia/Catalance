@@ -16,6 +16,9 @@ const {
   buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
   stripAdminDirectiveLines,
+  stripAllNumberedOptionLines,
+  extractNumberedOptionLabelsFromMessage,
+  messageUsesExpectedOptionLabels,
   stripQuestionStepLabels,
   findExtractedBudgetMinimumViolation,
   findBudgetMinimumViolationChange,
@@ -495,6 +498,54 @@ test("strips inline question step labels from assistant output before returning 
   assert.equal(
     stripQuestionStepLabels("Thanks for sharing your brand name, dj group! Q3. Tell us a little about your business."),
     "Thanks for sharing your brand name, dj group! Tell us a little about your business."
+  );
+});
+
+test("extracts numbered option labels from assistant replies", () => {
+  assert.deepEqual(
+    extractNumberedOptionLabelsFromMessage([
+      "Which capabilities do you need?",
+      "1. Product catalog, cart & checkout",
+      "2. Online payments (Stripe, PayPal, etc.)",
+      "3. 3D product viewer / animations",
+    ].join("\n")),
+    [
+      "Product catalog, cart & checkout",
+      "Online payments (Stripe, PayPal, etc.)",
+      "3D product viewer / animations",
+    ],
+  );
+});
+
+test("detects when assistant reply options do not match the expected runtime options", () => {
+  assert.equal(
+    messageUsesExpectedOptionLabels(
+      [
+        "Which of these do you definitely want for gohype?",
+        "1. Inventory Management",
+        "2. Product Variations (sizes, colors, etc.)",
+        "3. Coupon & Discount System",
+      ].join("\n"),
+      [
+        "Product catalog, cart & checkout",
+        "Online payments (Stripe, PayPal, etc.)",
+        "3D product viewer / animations",
+      ],
+    ),
+    false,
+  );
+});
+
+test("removes all numbered option lines so backend can inject the runtime list deterministically", () => {
+  assert.equal(
+    stripAllNumberedOptionLines([
+      "Nice, a footwear e-commerce site sounds like a strong concept.",
+      "",
+      "1. Inventory Management",
+      "2. Product Variations (sizes, colors, etc.)",
+      "3. Coupon & Discount System",
+    ].join("\n")),
+    "Nice, a footwear e-commerce site sounds like a strong concept.",
   );
 });
 

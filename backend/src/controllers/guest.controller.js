@@ -2300,6 +2300,8 @@ const getQuestionOptionLabels = (question = {}, runtimeOptionsByQuestionSlug = {
         .map((option) => String(option?.label || option?.value || "").trim())
         .filter(Boolean);
 
+const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
+
 const buildQuestionInputConfig = (question = null, runtimeOptionsByQuestionSlug = {}, answersBySlug = {}) => ({
     type: question?.type || "text",
     options: question ? getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug, answersBySlug) : [],
@@ -2652,6 +2654,36 @@ const stripExistingOptionLines = (message = "", optionLabels = []) => {
         .join("\n")
         .replace(/\n{3,}/g, "\n\n")
         .trim();
+};
+
+const stripAllNumberedOptionLines = (message = "") =>
+    String(message || "")
+        .split("\n")
+        .filter((line) => !OPTION_LINE_REGEX.test(String(line || "").trim()))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+const extractNumberedOptionLabelsFromMessage = (message = "") =>
+    String(message || "")
+        .split("\n")
+        .map((line) => String(line || "").trim().match(OPTION_LINE_REGEX))
+        .filter(Boolean)
+        .map((match) => String(match[2] || "").trim())
+        .filter(Boolean);
+
+const messageUsesExpectedOptionLabels = (message = "", expectedOptionLabels = []) => {
+    const expected = (Array.isArray(expectedOptionLabels) ? expectedOptionLabels : [])
+        .map((label) => normalizeTextToken(label))
+        .filter(Boolean);
+    if (expected.length === 0) return true;
+
+    const actual = extractNumberedOptionLabelsFromMessage(message)
+        .map((label) => normalizeTextToken(label))
+        .filter(Boolean);
+
+    if (actual.length !== expected.length) return false;
+    return actual.every((label, index) => label === expected[index]);
 };
 
 const buildFriendlyMessage = (mainText = "", bridgeText = "") => {
@@ -5001,8 +5033,12 @@ ${outputFormatBlock}
 
             let postFifthMessage = uniqueSegments.join("\n").trim();
 
-            if (hasOptions && !hasNumberedOptionsInMessage(postFifthMessage)) {
-                postFifthMessage = `${postFifthMessage}\n\n${optionLabelsText}`;
+            if (hasOptions) {
+                const optionLabels = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug);
+                const cleanedMessage = messageUsesExpectedOptionLabels(postFifthMessage, optionLabels)
+                    ? postFifthMessage
+                    : stripAllNumberedOptionLines(postFifthMessage);
+                postFifthMessage = `${cleanedMessage}\n\n${optionLabelsText}`.trim();
             }
 
             return postFifthMessage;
@@ -5017,16 +5053,14 @@ ${outputFormatBlock}
         // We removed the strict question mark test because the AI might naturally end with a colon like "Please choose an option below:"
 
             if (hasOptions) {
-                const optionLabels = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug);
+                const optionLabels = getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug);
                 const normalizedParsedMessage = stripInlineOptionListTail(parsedMessage);
-                if (!hasNumberedOptionsInMessage(normalizedParsedMessage)) {
-                    const cleanedMessage = stripQuestionStepLabels(
-                        stripExistingOptionLines(normalizedParsedMessage, optionLabels)
-                    );
-                    return `${cleanedMessage} \n\n${optionLabelsText} `;
-                }
-
-                return stripQuestionStepLabels(normalizedParsedMessage);
+                const cleanedMessage = stripQuestionStepLabels(
+                    messageUsesExpectedOptionLabels(normalizedParsedMessage, optionLabels)
+                        ? normalizedParsedMessage
+                        : stripAllNumberedOptionLines(stripExistingOptionLines(normalizedParsedMessage, optionLabels))
+                );
+                return `${cleanedMessage}\n\n${optionLabelsText}`.trim();
             }
 
         return stripQuestionStepLabels(parsedMessage);
@@ -6617,8 +6651,12 @@ Return plain text only.
                 )
             )
         );
-        if (hasOptions && !hasNumberedOptionsInMessage(cleanedMessage)) {
-            cleanedMessage = `${stripExistingOptionLines(cleanedMessage, nextQuestionOptions)}\n\n${optionLabelsText}`.trim();
+        if (hasOptions) {
+            cleanedMessage = `${
+                messageUsesExpectedOptionLabels(cleanedMessage, nextQuestionOptions)
+                    ? cleanedMessage
+                    : stripAllNumberedOptionLines(stripExistingOptionLines(cleanedMessage, nextQuestionOptions))
+            }\n\n${optionLabelsText}`.trim();
         }
         return cleanedMessage;
     } catch (error) {
@@ -6630,8 +6668,8 @@ Return plain text only.
             return `Happy to help with ${service?.name || "this"}.\nTell me a bit about what you want to build, and I will guide you from there.`;
         }
         return nextQuestion
-            ? (getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug).length > 0
-                ? formatQuestionWithOptions(nextQuestion, runtimeOptionsByQuestionSlug)
+            ? (getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug).length > 0
+                ? formatQuestionWithOptions(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug)
                 : String(nextQuestion?.text || "Tell me a bit more about what you need."))
             : "Tell me a bit more about what you need, and I will shape it into a proposal-ready brief.";
     }
@@ -8826,6 +8864,9 @@ export const __testables = {
     buildPersistedAnswersPayload,
     buildQuestionDisplayAnswer,
     stripAdminDirectiveLines,
+    stripAllNumberedOptionLines,
+    extractNumberedOptionLabelsFromMessage,
+    messageUsesExpectedOptionLabels,
     stripQuestionStepLabels,
     findExtractedBudgetMinimumViolation,
     findBudgetMinimumViolationChange,
