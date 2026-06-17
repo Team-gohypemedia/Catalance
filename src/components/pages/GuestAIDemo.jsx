@@ -5541,16 +5541,6 @@ const GuestAIDemo = () => {
                                                 <input
                                                     value={briefingAnswers.goal}
                                                     onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') {
-                                                            e.preventDefault();
-                                                            if (canContinueBriefing) {
-                                                                startTransition(() => {
-                                                                    setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
-                                                                });
-                                                            }
-                                                        }
-                                                    }}
                                                     placeholder={currentBriefingStep.placeholder}
                                                     className={`w-full bg-transparent text-base outline-none ${briefingFieldTextClasses}`}
                                                 />
