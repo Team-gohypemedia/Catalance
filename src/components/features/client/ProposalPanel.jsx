@@ -522,7 +522,7 @@ const ProposalPanel = ({ content, proposals, activeServiceKey }) => {
                             onClick={handleAccept}
                         >
                             Accept Proposal
-                            <ArrowRight className="h-4 w-4" />
+                            
                         </Button>
                     </div>
                 </CardContent>

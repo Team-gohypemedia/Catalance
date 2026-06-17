@@ -112,7 +112,7 @@ const FreelancerOnboardingWelcomeModal = ({
                 className="h-10 w-[14rem] rounded-[8px] bg-primary text-[0.9rem] font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 Start Onboarding
-                <ArrowRight className="ml-2 size-4" />
+                
               </Button>
             </AlertDialogAction>
           </div>

@@ -291,7 +291,7 @@ const GrowthQuestQuizView = ({
                 className={PRIMARY_BUTTON_CLASS}
               >
                 Next
-                <ArrowRight className="size-4" />
+                
               </button>
             ) : (
               <button

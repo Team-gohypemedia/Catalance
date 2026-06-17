@@ -135,7 +135,7 @@ const Onboading = () => {
             <Button
               size="lg"
               className="text-lg gap-2 rounded-full shadow-md w-full sm:w-auto cursor-pointer">
-              Hire a professional <ArrowRight className="h-5 w-4" />
+              Hire a professional 
             </Button>
           </Link>
           <Link to="/signup?role=freelancer" className="w-full sm:w-auto">

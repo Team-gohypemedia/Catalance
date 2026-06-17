@@ -177,7 +177,7 @@ const GrowthQuestResultView = ({ result, nextResetAt, onBack }) => {
 
         <button type="button" onClick={onBack} className={cn(PRIMARY_BUTTON_CLASS, "w-full")}>
           Back to Growth Hub
-          <ArrowRight className="size-4" />
+          
         </button>
       </section>
     </div>

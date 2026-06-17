@@ -57,7 +57,7 @@ const MarketPlaceCTA = () => {
                 className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-sm bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 shadow-[0_8px_24px_rgba(217,105,42,0.25)]"
               >
                 Browse Talent
-                <ArrowRight className="w-4.5 h-4.5 text-primary-foreground" />
+                
               </Link>
             </div>
           </div>

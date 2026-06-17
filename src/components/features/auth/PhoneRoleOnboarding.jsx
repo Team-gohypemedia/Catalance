@@ -567,7 +567,7 @@ function PhoneRoleOnboarding() {
                     setFormErrors({});
                   }}
                   placeholder="Enter your full name"
-                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                 />
                 <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
               </div>
@@ -588,7 +588,7 @@ function PhoneRoleOnboarding() {
                     setFormErrors({});
                   }}
                   placeholder="Enter your email address"
-                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                 />
                 <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
               </div>
@@ -654,8 +654,8 @@ function PhoneRoleOnboarding() {
                       setPhoneNumber(digits.slice(0, 15));
                       setFormErrors({});
                     }}
-                    placeholder="9999999999"
-                    className="!h-10 w-full rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:text-[#1c1b1f]/45 dark:placeholder:text-[#ffffff]/35 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                    placeholder="1234567890"
+                    className="!h-10 w-full rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                   />
                   <Phone className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
                 </div>
@@ -848,7 +848,7 @@ function PhoneRoleOnboarding() {
               >
                 {isSaving ? <Loader2 className="size-4 animate-spin text-white keep-white" /> : null}
                 {isSaving ? "Saving..." : isEmailRequired ? "Continue" : "Continue with WhatsApp"}
-                {!isSaving && <ArrowRight className="size-4.5 transition-transform group-hover:translate-x-1 text-white keep-white" />}
+
               </button>
             </div>
 

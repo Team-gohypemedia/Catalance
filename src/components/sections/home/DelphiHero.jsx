@@ -488,7 +488,7 @@ const DelphiHero = () => {
                                         className="w-full group/btn bg-transparent hover:bg-primary text-primary hover:text-primary-foreground border border-primary/50 hover:border-primary font-semibold px-6 py-6 text-base shadow-none hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02]"
                                     >
                                         Explore Talent
-                                        <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                                        
                                     </Button>
                                 </Link>
                                 <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-primary/0 to-primary/20/0 -z-10 blur-xl" />
@@ -546,7 +546,7 @@ const DelphiHero = () => {
                                         className="w-full group/btn bg-transparent hover:bg-primary text-primary hover:text-primary-foreground border border-primary/50 hover:border-primary font-semibold px-6 py-6 text-base shadow-none hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 hover:scale-[1.02]"
                                     >
                                         Start Your Career
-                                        <ArrowRight className="ml-2 w-5 h-5 group-hover/btn:translate-x-1 transition-transform duration-300" />
+                                        
                                     </Button>
                                 </Link>
                                 <div className="absolute inset-0 rounded-3xl bg-linear-to-br from-primary/0 to-primary/0 -z-10 blur-xl" />

@@ -204,7 +204,7 @@ const BillingToolRow = ({
       <p className="text-sm font-semibold text-foreground">{label}</p>
       <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
     </div>
-    <ArrowRight className="size-4 text-muted-foreground transition group-hover:text-foreground" />
+    
   </button>
 );
 
@@ -1415,7 +1415,7 @@ const ClientPaymentsContent = () => {
                       className="mt-3 inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
                     >
                       View all
-                      <ArrowRight className="size-3.5" />
+                      
                     </button>
                   </div>
 

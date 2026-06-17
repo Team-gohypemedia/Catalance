@@ -893,7 +893,7 @@ const FreelancerProjectCard = ({ project }) => {
         <div className="mt-auto pt-6">
           <Link to={project.actionHref} className={actionClassName}>
             {project.actionLabel}
-            <ArrowRight className="size-4" />
+            
           </Link>
         </div>
       </div>

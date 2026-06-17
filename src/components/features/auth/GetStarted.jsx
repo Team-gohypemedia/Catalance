@@ -367,7 +367,7 @@ export default function GetStarted() {
             )}
           >
             Continue
-            <ArrowRight className="size-4.5 transition-transform group-hover:translate-x-1" />
+            
           </button>
 
           {/* Security note */}

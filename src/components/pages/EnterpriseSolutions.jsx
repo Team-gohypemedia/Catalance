@@ -326,7 +326,7 @@ const EnterpriseSolutions = () => {
                 size="lg"
                 className="h-14 px-10 text-lg rounded-full bg-primary text-black hover:bg-primary/90 shadow-[0_0_20px_rgba(200, 80, 40,0.3)]"
               >
-                Get Started <ArrowRight className="ml-2 w-5 h-5" />
+                Get Started 
               </Button>
             </Link>
           </div>

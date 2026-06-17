@@ -516,7 +516,7 @@ const ServiceCard = memo(function ServiceCard({
                 {isSelected ? (
                   <Check className="w-4 h-4" />
                 ) : (
-                  <ArrowRight className="w-4 h-4 -rotate-45 group-hover:rotate-0 transition-transform duration-300" />
+                  
                 )}
               </div>
             </div>

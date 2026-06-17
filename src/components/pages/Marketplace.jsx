@@ -1789,7 +1789,7 @@ const Marketplace = () => {
                           </div>
                           <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
                             View
-                            <ArrowRight className="h-3.5 w-3.5" />
+                            
                           </span>
                         </div>
                       </CardContent>
@@ -1904,7 +1904,7 @@ const Marketplace = () => {
                         className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
                       >
                         {project.ctaLabel}
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        
                       </Link>
                     </div>
                   </CardContent>
@@ -2252,7 +2252,7 @@ const Marketplace = () => {
                                     className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:border-primary hover:bg-primary/90"
                                   >
                                     {cta.label}
-                                    <ArrowRight className="h-3.5 w-3.5" />
+                                    
                                   </Link>
                                 </div>
                               </div>
@@ -2396,7 +2396,7 @@ const Marketplace = () => {
                             </div>
                             <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
                               View
-                              <ArrowRight className="h-3.5 w-3.5" />
+                              
                             </span>
                           </div>
                         </CardContent>
@@ -2513,7 +2513,7 @@ const Marketplace = () => {
                           className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
                         >
                           {project.ctaLabel}
-                          <ArrowRight className="h-3.5 w-3.5" />
+                          
                         </Link>
                       </div>
                     </CardContent>
@@ -2716,7 +2716,7 @@ const Marketplace = () => {
             >
               <span className="relative z-10 mr-4 keep-white" style={{ color: "#fff" }}>Book a 15-min call</span>
               <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary transition-all duration-300 group-hover:-rotate-45 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 keep-white">
-                <ArrowRight className="h-4 w-4" />
+                
               </div>
             </Button>
           </div>

@@ -381,7 +381,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
             ) : (
               <>
                 Start Today&apos;s 6 Questions
-                <ArrowRight className="size-4" />
+                
               </>
             )}
           </button>
@@ -469,7 +469,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
               </div>
               <button type="button" className="growth-quest-inline-link">
                 View Dashboard
-                <ArrowRight className="size-4" />
+                
               </button>
             </div>
 
@@ -519,7 +519,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
                   <ArrowLeft className="size-4" />
                 </button>
                 <button type="button" aria-label="Next">
-                  <ArrowRight className="size-4" />
+                  
                 </button>
               </div>
             </div>
@@ -928,7 +928,7 @@ const GrowthQuestLiveDashboard = ({
               <>
                 <Star className="size-4" />
                 Start Today&apos;s Quest
-                <ArrowRight className="size-4" />
+                
               </>
             )}
           </button>
@@ -1142,7 +1142,7 @@ const GrowthQuestLiveDashboard = ({
                         className="growth-quest-service-option"
                       >
                         <span>{service}</span>
-                        <ArrowRight className="size-4" />
+                        
                       </button>
                     ))}
                   </div>
@@ -1215,7 +1215,7 @@ const GrowthQuestLiveDashboard = ({
                     <>
                       <Star className="size-4" />
                       Start Today&apos;s Quest
-                      <ArrowRight className="size-4" />
+                      
                     </>
                   )}
                 </button>
@@ -1482,7 +1482,7 @@ const GrowthQuestLiveDashboard = ({
                 </div>
                 {operation.id === "daily-quest" && (
                   <button type="button" onClick={done ? undefined : onStartQuest} disabled={done} className={cn(PRIMARY_BUTTON_CLASS, "w-full mt-1")}>
-                    {done ? <><CheckCircle2 className="size-4" />Completed for today</> : <><Star className="size-4" />Start Today&apos;s Quest<ArrowRight className="size-4" /></>}
+                    {done ? <><CheckCircle2 className="size-4" />Completed for today</> : <><Star className="size-4" />Start Today&apos;s Quest</>}
                   </button>
                 )}
               </div>
@@ -1759,7 +1759,7 @@ const GrowthQuestLiveDashboard = ({
               })}
             </div>
             <button type="button" onClick={() => scrollBy(1)} className="growth-quest-scroll-arrow absolute -right-4 top-1/2 -translate-y-1/2 z-10 size-10 rounded-full border border-white/10 bg-background/80 backdrop-blur shadow-xl grid place-items-center hover:bg-white/5 transition-colors">
-              <ArrowRight className="size-5" />
+              
             </button>
           </div>
         </section>
@@ -1852,7 +1852,7 @@ const GrowthQuestLiveDashboard = ({
                           style={{ background: theme.btn }}
                         >
                           View Contest
-                          <ArrowRight className="size-3.5" />
+                          
                         </button>
                       </div>
                     </div>
@@ -1862,7 +1862,7 @@ const GrowthQuestLiveDashboard = ({
             </div>
 
             <button type="button" onClick={() => contestScrollBy(1)} className="growth-quest-scroll-arrow absolute -right-4 top-1/2 -translate-y-1/2 z-10 size-11 rounded-full border border-white/10 bg-background/90 backdrop-blur-md shadow-2xl grid place-items-center hover:bg-white/5 transition-all active:scale-90">
-              <ArrowRight className="size-5" />
+              
             </button>
           </div>
         </section>

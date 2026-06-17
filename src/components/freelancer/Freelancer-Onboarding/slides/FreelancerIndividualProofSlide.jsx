@@ -328,7 +328,7 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
           className="h-10 px-8 rounded-full bg-primary text-white keep-white font-semibold shadow-lg shadow-primary/10 hover:bg-primary/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
         >
           <span className="text-white keep-white">Continue</span>
-          <ArrowRight className="h-4 w-4 text-white keep-white" />
+          
         </button>
         
         {/* Helper lock text */}

@@ -100,7 +100,7 @@ const Blog7 = ({
           <Button variant="link" className="w-full sm:w-auto" asChild>
             <BlogLink href={resolvedButtonUrl} className="inline-flex items-center">
               <span>{buttonText}</span>
-              <ArrowRight className="ml-2 size-4" />
+              
             </BlogLink>
           </Button>
         </div>
@@ -144,7 +144,7 @@ const Blog7 = ({
                     className="flex items-center text-foreground hover:underline"
                   >
                     Read more
-                    <ArrowRight className="ml-2 size-4" />
+                    
                   </BlogLink>
                 </CardFooter>
               </Card>

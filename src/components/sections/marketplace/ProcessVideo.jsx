@@ -221,7 +221,7 @@ const ProcessVideo = () => {
                 className="group inline-flex items-center gap-2.5 rounded-full border border-primary/30 bg-primary/10 px-6 py-3 text-[14px] font-semibold text-primary transition-all hover:bg-primary/15 hover:border-primary/50"
               >
                 Start exploring services
-                <ArrowRight className="h-4 w-4 text-primary transition-transform duration-200 group-hover:translate-x-1" />
+                
               </a>
             </motion.div>
           </motion.div>

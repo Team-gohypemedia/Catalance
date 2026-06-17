@@ -180,7 +180,7 @@ const Blog = () => {
                         <span className="text-muted-foreground">{featuredPost.authorName}</span>
                         <span className="inline-flex items-center gap-2 text-primary">
                           Read article
-                          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                          
                         </span>
                       </div>
                     </div>
@@ -258,7 +258,7 @@ const Blog = () => {
                       <span className="text-muted-foreground">{post.authorName}</span>
                       <span className="inline-flex items-center gap-2 text-primary">
                         Read
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                        
                       </span>
                     </div>
                   </div>

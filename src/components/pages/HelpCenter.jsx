@@ -660,7 +660,7 @@ const HelpCenter = () => {
               <Button asChild>
                 <Link to="/contact">
                   Need Support
-                  <ArrowRight className="h-4 w-4" />
+                  
                 </Link>
               </Button>
               <Button asChild variant="outline">
@@ -692,7 +692,7 @@ const HelpCenter = () => {
                   onClick={() => setSelectedArticleId(article.id)}
                 >
                   Open
-                  <ArrowRight className="h-4 w-4" />
+                  
                 </Button>
               </article>
             ))}
@@ -711,7 +711,7 @@ const HelpCenter = () => {
           <Button asChild className="mt-5 rounded-full px-6">
             <Link to="/contact">
               Contact Support
-              <ArrowRight className="h-4 w-4" />
+              
             </Link>
           </Button>
         </section>

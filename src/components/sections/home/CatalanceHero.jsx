@@ -232,7 +232,7 @@ const CatalanceHero = () => {
                       className="w-full group/btn font-semibold px-6 py-5 sm:py-6 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40"
                     >
                       Hire Now
-                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300 text-primary-foreground" />
+                      
                     </Button>
                   </div>
                   <div className={`absolute inset-0 rounded-3xl -z-10 blur-xl ${isDark ? "bg-linear-to-br from-primary/0 to-primary/20" : "bg-linear-to-br from-primary/30 to-white/0"}`} />
@@ -332,7 +332,7 @@ const CatalanceHero = () => {
                       className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-6 py-5 sm:py-6 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/40"
                     >
                       Get Hired Now
-                      <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300 text-primary-foreground" />
+                      
                     </Button>
                   </div>
                   <div className={`absolute inset-0 rounded-3xl -z-10 blur-xl ${isDark ? "bg-linear-to-br from-primary/0 to-primary/0" : "bg-linear-to-br from-primary/20 to-transparent"}`} />

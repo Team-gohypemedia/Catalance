@@ -406,7 +406,7 @@ function PMLogin({ className, ...props }) {
                                         <>
                                             <Lock className="size-4 text-white keep-white" />
                                             Access Dashboard
-                                            <ArrowRight className="size-4 text-white keep-white transition-transform group-hover:translate-x-0.5" />
+                                            
                                         </>
                                     )}
                                 </Button>

@@ -608,8 +608,8 @@ function PhoneAuth() {
       ? "!h-10 !w-full"
       : "!h-12 !w-full";
     const phoneInputClass = compact
-      ? "phone-auth-autofill !h-10 !py-0"
-      : "phone-auth-autofill !h-12 !py-0";
+      ? "phone-auth-autofill !h-10 !py-0 placeholder:font-normal placeholder:text-black/30 dark:placeholder:text-white/30"
+      : "phone-auth-autofill !h-12 !py-0 placeholder:font-normal placeholder:text-black/30 dark:placeholder:text-white/30";
     const submitButtonClass = compact
       ? "!h-10 w-full rounded-md bg-primary text-[12px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[13px]"
       : "!h-12 w-full rounded-md bg-primary text-[13px] font-medium text-black shadow-none hover:bg-primary/95 sm:text-[14px]";
@@ -684,7 +684,7 @@ function PhoneAuth() {
                   inputMode="numeric"
                   autoComplete="tel-national"
                   aria-label="Phone number"
-                  placeholder="999 999 9999"
+                  placeholder="1234567890"
                   value={formattedPhone}
                   disabled={isSubmitting || isResending}
                   onKeyDown={(event) => {
