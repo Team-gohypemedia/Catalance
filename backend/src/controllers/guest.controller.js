@@ -1505,7 +1505,7 @@ const buildServiceAwareOpeningMessage = (serviceName = "") => {
         ? `your ${normalizedServiceName} requirement`
         : "your requirement";
 
-    return `Hello! I'm CATA, here to help with ${scopeLabel}.\nI'd love to learn a little about you first.\nMay I know your name?`;
+    return `Hello! I'm CATA, here to help with ${scopeLabel}.\nTell me a bit about what you want to build, and I can help shape the scope or generate a proposal.`;
 };
 
 const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
@@ -2206,6 +2206,32 @@ const getRuntimeOptionsByQuestionSlug = (sessionAnswers = {}) => {
     }, {});
 };
 
+const getCapturedCustomAnswerForQuestion = (question = {}, answersBySlug = {}) => {
+    const baseSlug = String(question?.slug || "").trim();
+    if (!baseSlug) return "";
+
+    const directCustomAnswer = answersBySlug?.[`${baseSlug}_other`];
+    if (hasAnswerValue(directCustomAnswer)) {
+        return clipContextSnippet(String(directCustomAnswer || "").trim(), 80);
+    }
+
+    return "";
+};
+
+const buildCapturedCustomOptionForQuestion = (question = {}, answersBySlug = {}) => {
+    const customAnswer = getCapturedCustomAnswerForQuestion(question, answersBySlug);
+    if (!customAnswer) return null;
+
+    return normalizeOptionObject({
+        label: customAnswer,
+        value: customAnswer,
+        canonicalLabel: customAnswer,
+        canonicalValue: customAnswer,
+        aliases: [customAnswer, "custom", "other"],
+        requiresFollowup: false,
+    });
+};
+
 const getCanonicalQuestionOptions = (question = {}, controls = null) => {
     if (!Array.isArray(question?.options)) return [];
     const adminControls = controls && typeof controls === "object"
@@ -2234,7 +2260,7 @@ const mergeUniqueOptionsByValue = (...optionLists) => {
     return merged;
 };
 
-const getDisplayedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
+const getDisplayedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}, answersBySlug = {}) => {
     const adminControls = getQuestionAdminControls(question);
     const runtimeOptions = question?.slug
         ? runtimeOptionsByQuestionSlug?.[question.slug]
@@ -2242,28 +2268,41 @@ const getDisplayedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug
     const normalizedRuntimeOptions = Array.isArray(runtimeOptions)
         ? runtimeOptions.map((option) => normalizeOptionObject(option)).filter(Boolean)
         : [];
+    const capturedCustomOption = buildCapturedCustomOptionForQuestion(question, answersBySlug);
 
     if (normalizedRuntimeOptions.length > 0) {
-        return applyAdminControlsToOptions(normalizedRuntimeOptions, adminControls);
+        return applyAdminControlsToOptions(
+            mergeUniqueOptionsByValue(
+                capturedCustomOption ? [capturedCustomOption] : [],
+                normalizedRuntimeOptions
+            ),
+            adminControls
+        );
     }
 
-    return getCanonicalQuestionOptions(question, adminControls);
+    return applyAdminControlsToOptions(
+        mergeUniqueOptionsByValue(
+            capturedCustomOption ? [capturedCustomOption] : [],
+            getCanonicalQuestionOptions(question, adminControls)
+        ),
+        adminControls
+    );
 };
 
-const getAcceptedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) =>
+const getAcceptedQuestionOptions = (question = {}, runtimeOptionsByQuestionSlug = {}, answersBySlug = {}) =>
     mergeUniqueOptionsByValue(
-        getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug),
+        getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug, answersBySlug),
         getCanonicalQuestionOptions(question)
     );
 
-const getQuestionOptionLabels = (question = {}, runtimeOptionsByQuestionSlug = {}) =>
-    getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug)
+const getQuestionOptionLabels = (question = {}, runtimeOptionsByQuestionSlug = {}, answersBySlug = {}) =>
+    getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug, answersBySlug)
         .map((option) => String(option?.label || option?.value || "").trim())
         .filter(Boolean);
 
-const buildQuestionInputConfig = (question = null, runtimeOptionsByQuestionSlug = {}) => ({
+const buildQuestionInputConfig = (question = null, runtimeOptionsByQuestionSlug = {}, answersBySlug = {}) => ({
     type: question?.type || "text",
-    options: question ? getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug) : [],
+    options: question ? getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug, answersBySlug) : [],
     showRecommendationPopup: Boolean(question?.showRecommendationPopup),
     disableAutoRecommendationPopup: Boolean(question?.disableAutoRecommendationPopup),
 });
@@ -3421,6 +3460,44 @@ const buildQuestionReplyLengthPolicy = ({
     };
 };
 
+const DEFERRED_ANSWER_REGEX =
+    /\b(?:skip(?:\s+it)?|skip\s+right\s+now|for\s+now|right\s+now|later|decide\s+later|come\s+back\s+later|you\s+decide|you\s+choose|you\s+recommend|open\s+to\s+recommendation|no\s+preference|whatever\s+you\s+recommend)\b/i;
+
+const isDeferrableDiscoveryQuestion = (question = {}) => {
+    const combined = [
+        question?.slug || "",
+        question?.text || "",
+        question?.subtitle || "",
+    ]
+        .join(" ")
+        .toLowerCase();
+
+    if (!combined.trim()) return false;
+    if (/\b(name|email|phone|budget|timeline|deadline|launch|audience|goal|objective|scope)\b/.test(combined)) {
+        return false;
+    }
+
+    return /\b(preference|prefer|preferred|recommend|recommended|hosting|database|stack|technology|tech|platform|cms|framework|backend|frontend|infrastructure|integrations?)\b/.test(combined);
+};
+
+const buildDeferredQuestionAnswer = (question = {}) => {
+    const combined = [
+        question?.slug || "",
+        question?.text || "",
+        question?.subtitle || "",
+    ]
+        .join(" ")
+        .toLowerCase();
+
+    if (/\bhosting\b/.test(combined)) return "Open to recommendation for hosting";
+    if (/\bdatabase\b/.test(combined)) return "No database preference yet";
+    if (/\bstack|technology|tech|framework|backend|frontend|platform|infrastructure\b/.test(combined)) {
+        return "Open to recommendation";
+    }
+
+    return "Decide later";
+};
+
 const getFastLocalValidationResult = ({
     question = null,
     userMessage = "",
@@ -3434,6 +3511,16 @@ const getFastLocalValidationResult = ({
     if (hasAttachmentContext || hasUrlContext || correctionIntent) return null;
 
     const questionType = normalizeTextToken(question?.type || "input");
+    if (DEFERRED_ANSWER_REGEX.test(rawMessage) && isDeferrableDiscoveryQuestion(question)) {
+        const normalizedAnswer = buildDeferredQuestionAnswer(question);
+        return {
+            isValid: true,
+            status: "valid_answer",
+            message: "No problem, I’ll leave that open for now and recommend the best fit based on the rest of your answers.",
+            normalizedAnswer,
+        };
+    }
+
     if (
         OPTION_QUESTION_TYPES.has(questionType)
         && looksLikeSingleOptionSelection(rawMessage, question, runtimeOptionsByQuestionSlug)
@@ -4350,16 +4437,16 @@ const parsePostFifthMessageFields = (rawMessage = "") => {
     };
 };
 
-const buildOptionLabelsText = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
-    const labels = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug);
+const buildOptionLabelsText = (question = {}, runtimeOptionsByQuestionSlug = {}, answersBySlug = {}) => {
+    const labels = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug, answersBySlug);
     if (labels.length === 0) return "No predefined options.";
     return labels.map((label, index) => `${index + 1}. ${label}`).join("\n");
 };
 
-const formatQuestionWithOptions = (question = {}, runtimeOptionsByQuestionSlug = {}) => {
+const formatQuestionWithOptions = (question = {}, runtimeOptionsByQuestionSlug = {}, answersBySlug = {}) => {
     const questionText = String(question?.text || "").trim();
-    const optionsText = buildOptionLabelsText(question, runtimeOptionsByQuestionSlug);
-    const hasOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug).length > 0;
+    const optionsText = buildOptionLabelsText(question, runtimeOptionsByQuestionSlug, answersBySlug);
+    const hasOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug, answersBySlug).length > 0;
     if (!questionText) return "";
     if (!hasOptions) return questionText;
     return `${questionText}\n${optionsText}`;
@@ -4371,12 +4458,13 @@ const hasNumberedOptionsInMessage = (value = "") =>
 const shouldAppendQuestionBlockForInfoRequest = ({
     assistantMessage = "",
     question = {},
-    runtimeOptionsByQuestionSlug = {}
+    runtimeOptionsByQuestionSlug = {},
+    answersBySlug = {}
 }) => {
     const message = String(assistantMessage || "").trim();
     if (!message) return true;
 
-    const hasOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug).length > 0;
+    const hasOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug, answersBySlug).length > 0;
     if (hasOptions) {
         if (hasNumberedOptionsInMessage(message)) return false;
         if (countOptionLabelsMentioned(message, question, runtimeOptionsByQuestionSlug) >= 2) return false;
@@ -4447,21 +4535,88 @@ ${JSON.stringify(canonicalOptions)}
 
 Task:
 1. Select the most relevant options to show right now for this user.
-2. You may reorder and relabel options for clarity.
-3. You must keep each "value" exactly from the canonical option pool.
-4. Do not invent new values.
+2. Prefer generating fresh contextual options when the user's context clearly points to specific real-world choices.
+3. You may reorder and relabel options for clarity.
+4. You may either reuse a canonical option or generate a new option.
 5. Prefer 2 to 5 options for single-select questions and 3 to 6 for multi-select questions.
 6. If the pool includes "Other" or "Not sure", keep it when it could help.
 7. Avoid options that are clearly irrelevant based on the confirmed context.
 8. Keep labels short, user-facing, and natural.
-9. If context is weak, keep the broadest sensible choices instead of over-filtering.
-10. If Admin Controls define option priority or a preferred recommendation, keep those options visible and place them first whenever they still fit the user context.
+9. If context is weak, uncertain, or generic, return an empty options array so the system can fall back to the canonical backend options.
+10. If Admin Controls define option priority or a preferred recommendation, follow that whenever it still fits the user context.
 11. If Admin Controls define mapping aliases, treat those aliases as valid clues for which option matters.
+12. Do not generate fake brands, impossible technologies, or options that are too niche unless the user context strongly suggests them.
 
 Return strict JSON only:
 {
   "options": [
-    { "value": "canonical_value", "label": "User-facing label" }
+    { "value": "option value", "label": "User-facing label", "source": "generated" | "canonical" }
+  ]
+}
+`;
+};
+
+const buildAiFirstRuntimeOptionPrompt = ({
+    serviceName = "",
+    servicePrompt = "",
+    question = {},
+    answersByQuestionText = {},
+    answersBySlug = {},
+    allQuestions = []
+}) => {
+    const adminControls = getQuestionAdminControls(question, servicePrompt);
+    const answersContext = buildAnswersContextLines(answersByQuestionText, {
+        maxItems: 5,
+        questionLimit: 80,
+        answerLimit: 100,
+    });
+    const savedResponseContext = buildSavedResponseContextLines(
+        answersBySlug,
+        allQuestions,
+        {},
+        {
+            maxItems: 5,
+            questionLimit: 80,
+            answerLimit: 100,
+            subtitleLimit: 70,
+        }
+    );
+    const questionContext = clipContextSnippet(buildAdminControlSummaryText(adminControls), 140);
+
+    return `
+You are generating the visible UI options for one questionnaire step.
+
+Service: ${JSON.stringify(serviceName)}
+Question: ${JSON.stringify(String(question?.text || ""))}
+Question type: ${JSON.stringify(String(question?.type || "input"))}
+Question context: ${JSON.stringify(questionContext || "none")}
+Confirmed user context:
+${answersContext || "- none yet"}
+
+Saved AI memory:
+${savedResponseContext || "- none yet"}
+
+${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)", {
+        maxResponseRules: 3,
+        maxValidationRules: 3,
+        maxMappings: 3,
+        contextLimit: 140,
+    })}
+
+Task:
+1. Generate the most relevant user-facing options for this question based on the known context.
+2. Do not use any backend option list. Think from the user context and the question itself.
+3. Prefer real-world choices, technologies, providers, directions, or business options when the context clearly suggests them.
+4. Keep labels short, clear, and natural.
+5. Prefer 2 to 5 options for single-select questions and 3 to 6 for multi-select questions.
+6. If the context is too weak or generic, return an empty options array.
+7. Do not generate fake brands, impossible tools, or overly random niche options.
+8. If the user context clearly points to a region, stack, market, or integration type, let the options reflect that.
+
+Return strict JSON only:
+{
+  "options": [
+    { "value": "option value", "label": "User-facing label" }
   ]
 }
 `;
@@ -4483,11 +4638,7 @@ const generateRuntimeOptionsForQuestion = async ({
         return [];
     }
 
-    if (canonicalOptions.length <= 4) {
-        return canonicalOptions;
-    }
-
-    const prompt = buildRuntimeOptionSelectionPrompt({
+    const aiFirstPrompt = buildAiFirstRuntimeOptionPrompt({
         serviceName,
         servicePrompt,
         question,
@@ -4502,57 +4653,52 @@ const generateRuntimeOptionsForQuestion = async ({
             key: "runtime_option_selection_ai",
             label: "Select runtime options",
             detail: `Choosing visible options for "${String(question?.slug || question?.text || "question").trim()}".`,
-            messages: [{ role: "user", content: prompt }],
+            messages: [{ role: "user", content: aiFirstPrompt }],
             conversationHistory: [{ role: "system", content: "You are a JSON-only assistant. Return strict JSON only." }],
             selectedServiceName: "system_runtime_options",
         });
 
         if (!response?.success) {
+            console.log(`[Runtime Options] fallback=canonical reason=ai_failure question=${String(question?.slug || question?.text || "question").trim()}`);
             return canonicalOptions;
         }
 
         const parsed = parseJsonObjectFromRaw(response.message);
         const rows = Array.isArray(parsed?.options) ? parsed.options : [];
         if (rows.length === 0) {
+            console.log(`[Runtime Options] fallback=canonical reason=empty_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
             return canonicalOptions;
         }
 
-        const canonicalByValue = canonicalOptions.reduce((acc, option) => {
-            const key = normalizeTextToken(option.value || option.canonicalValue || option.label);
-            if (key) acc[key] = option;
-            return acc;
-        }, {});
-
         const selectedOptions = rows
             .map((row) => {
-                const canonical = canonicalByValue[normalizeTextToken(row?.value || "")];
-                if (!canonical) return null;
+                const rawValue = String(row?.value || "").trim();
+                const rawLabel = String(row?.label || "").trim();
+                if (!rawValue && !rawLabel) return null;
+
                 return normalizeOptionObject({
-                    value: canonical.value,
-                    canonicalValue: canonical.value,
-                    canonicalLabel: canonical.canonicalLabel || canonical.label,
-                    label: String(row?.label || canonical.label || canonical.canonicalLabel || canonical.value).trim(),
-                    aliases: [
-                        canonical.label,
-                        canonical.canonicalLabel,
-                        canonical.value,
-                        row?.label
-                    ]
+                    value: rawValue || rawLabel,
+                    canonicalValue: rawValue || rawLabel,
+                    canonicalLabel: rawLabel || rawValue,
+                    label: rawLabel || rawValue,
+                    aliases: [rawLabel, rawValue],
                 });
             })
             .filter(Boolean);
 
-        const merged = mergeUniqueOptionsByValue(selectedOptions);
-        const catchAllOptions = canonicalOptions.filter((option) => isCatchAllOption(option));
         const finalOptions = applyAdminControlsToOptions(
-            mergeUniqueOptionsByValue(merged, catchAllOptions),
+            mergeUniqueOptionsByValue(selectedOptions),
             adminControls
         );
 
-        if (finalOptions.length === 0) {
+        if (finalOptions.length < 2) {
+            console.log(`[Runtime Options] fallback=canonical reason=weak_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
             return canonicalOptions;
         }
 
+        console.log(
+            `[Runtime Options] source=ai_generated question=${String(question?.slug || question?.text || "question").trim()} options=${finalOptions.map((option) => option.label || option.value).join(" | ")}`
+        );
         return finalOptions;
     } catch (error) {
         console.warn("[Runtime Options] Falling back to canonical options:", error?.message || error);
@@ -6035,7 +6181,9 @@ const buildServiceStartState = async ({
                 : (firstQuestionDefinition.text || "How can I help you regarding this service?")
         )
         : `How can I help you regarding ${service?.name || "this service"}?`;
-    let firstQuestion = sanitizedAiFirstQuestion;
+    let firstQuestion = isNameFirstQuestion && !startPrefillBridge
+        ? buildServiceAwareOpeningMessage(service.name)
+        : sanitizedAiFirstQuestion;
     if (!firstQuestion) {
         firstQuestion = startPrefillBridge
             ? buildFriendlyMessage(
@@ -6224,6 +6372,269 @@ const generateProposalResponseForSession = async ({
     }
 
     return responseContent;
+};
+
+const PROPOSAL_REQUEST_REGEX =
+    /\b(?:generate|create|make|prepare|draft|build|send)\b[\s\w]{0,40}\b(?:proposal|quotation|quote|estimate)\b|\b(?:proposal|quotation|quote|estimate)\b[\s\w]{0,20}\b(?:now|please|ready|generate|create|make)\b/i;
+
+const CONVERSATIONAL_DISCOVERY_REGEX =
+    /\b(?:not sure|dont know|don't know|suggest|recommend|which is better|what do you think|can you explain|difference between|help me decide|you decide|guide me)\b/i;
+
+const isProposalRequestMessage = (message = "") =>
+    PROPOSAL_REQUEST_REGEX.test(String(message || "").trim());
+
+const isCriticalDiscoveryQuestion = (question = {}) => {
+    const combined = `${String(question?.slug || "")} ${String(question?.text || "")}`.trim();
+    return Boolean(question?.required)
+        || /\b(name|company|business|brand|project|brief|goal|objective|requirement|scope|budget|timeline|launch|audience|platform)\b/i.test(combined);
+};
+
+const buildDiscoveryCoverageSummary = ({
+    questions = [],
+    answersBySlug = {},
+    runtimeOptionsByQuestionSlug = {},
+}) => {
+    const safeQuestions = Array.isArray(questions) ? questions : [];
+    const answeredQuestions = [];
+    const missingQuestions = [];
+    let requiredCount = 0;
+    let requiredAnsweredCount = 0;
+    let criticalCount = 0;
+    let criticalAnsweredCount = 0;
+
+    safeQuestions.forEach((question) => {
+        const slug = String(question?.slug || "").trim();
+        const answerValue = slug ? answersBySlug?.[slug] : undefined;
+        const answered = hasAnswerValue(answerValue);
+        const critical = isCriticalDiscoveryQuestion(question);
+
+        if (question?.required) {
+            requiredCount += 1;
+            if (answered) requiredAnsweredCount += 1;
+        }
+
+        if (critical) {
+            criticalCount += 1;
+            if (answered) criticalAnsweredCount += 1;
+        }
+
+        const row = {
+            slug,
+            question: String(question?.text || "").trim(),
+            answer: answered
+                ? (buildQuestionDisplayAnswer(question, answerValue, runtimeOptionsByQuestionSlug) || String(answerValue))
+                : "",
+        };
+
+        if (answered) answeredQuestions.push(row);
+        else missingQuestions.push(row);
+    });
+
+    const totalCount = safeQuestions.length;
+    const answeredCount = answeredQuestions.length;
+    const nextQuestionIndex = findNextUnansweredStep(safeQuestions, answersBySlug);
+    const nextQuestion = nextQuestionIndex < totalCount ? safeQuestions[nextQuestionIndex] : null;
+    const totalTarget = totalCount > 0 ? Math.min(totalCount, Math.max(3, Math.ceil(totalCount * 0.35))) : 0;
+    const criticalTarget = criticalCount > 0 ? Math.min(criticalCount, Math.max(2, Math.ceil(criticalCount * 0.5))) : 0;
+    const requiredTarget = requiredCount > 0 ? Math.min(requiredCount, Math.max(1, Math.ceil(requiredCount * 0.5))) : 0;
+
+    const enoughForProposal =
+        totalCount === 0
+            ? false
+            : answeredCount >= totalTarget
+            && (criticalCount === 0 || criticalAnsweredCount >= criticalTarget)
+            && (requiredCount === 0 || requiredAnsweredCount >= requiredTarget);
+
+    const enoughForExplicitRequest =
+        totalCount === 0
+            ? false
+            : answeredCount >= Math.min(totalCount, 3)
+            && (criticalCount === 0 || criticalAnsweredCount >= Math.min(criticalCount, 2));
+
+    return {
+        totalCount,
+        answeredCount,
+        requiredCount,
+        requiredAnsweredCount,
+        criticalCount,
+        criticalAnsweredCount,
+        nextQuestionIndex,
+        nextQuestion,
+        answeredQuestions,
+        missingQuestions,
+        enoughForProposal,
+        enoughForExplicitRequest,
+    };
+};
+
+const shouldUseConversationalRecovery = ({
+    userMessage = "",
+    validationResult = null,
+    extractedAnswers = [],
+    currentQuestion = null,
+    isOpeningIntakeStep = false,
+}) => {
+    const normalizedMessage = String(userMessage || "").trim();
+    if (!normalizedMessage) return false;
+    if (isProposalRequestMessage(normalizedMessage)) return true;
+    if (
+        isOpeningIntakeStep
+        && GREETING_ONLY_REGEX.test(normalizedMessage)
+        && NAME_QUESTION_REGEX.test(String(currentQuestion?.text || ""))
+    ) {
+        return true;
+    }
+    if (validationResult?.status === "info_request") return true;
+    if (CONTEXT_SUGGESTION_REGEX.test(normalizedMessage) || CONVERSATIONAL_DISCOVERY_REGEX.test(normalizedMessage)) {
+        return true;
+    }
+    return Array.isArray(extractedAnswers) && extractedAnswers.length > 0;
+};
+
+const stripQuestionnairePhrasing = (text = "") => {
+    let cleaned = String(text || "");
+    if (!cleaned.trim()) return "";
+
+    cleaned = cleaned
+        .replace(/^[ \t]*#{1,6}[ \t]*the current question[^\n]*\n?/gim, "")
+        .replace(/^[ \t]*the current question[^\n]*\n?/gim, "")
+        .replace(/^[ \t]*current pending question[^\n]*\n?/gim, "")
+        .replace(/^[ \t]*best next question to ask if helpful[^\n]*\n?/gim, "")
+        .replace(/^[ \t]*question:[ \t]*/gim, "")
+        .replace(/^[ \t]*if you don't see what you need, kindly type it below\.?[ \t]*$/gim, "")
+        .replace(/^[ \t]*if you do not see what you need, kindly type it below\.?[ \t]*$/gim, "")
+        .replace(/^[ \t]*knowing this helps me[^.\n]*[.\n]?/gim, "")
+        .replace(/^[ \t]*this helps me think about[^.\n]*[.\n]?/gim, "")
+        .replace(/[ \t]+\n/g, "\n")
+        .replace(/\n{3,}/g, "\n\n");
+
+    return cleaned.trim();
+};
+
+const buildConversationalServiceReply = async ({
+    service = {},
+    currentQuestion = null,
+    nextQuestion = null,
+    runtimeOptionsByQuestionSlug = {},
+    answersBySlug = {},
+    userMessageText = "",
+    conversationHistory = [],
+    coverageSummary = null,
+    explicitProposalRequest = false,
+    timingTracker = null,
+}) => {
+    const openingNameStep =
+        (coverageSummary?.answeredCount || 0) === 0
+        && NAME_QUESTION_REGEX.test(String(nextQuestion?.text || currentQuestion?.text || ""));
+    const answeredSummary = (coverageSummary?.answeredQuestions || [])
+        .slice(0, 8)
+        .map((row) => `${row.question}: ${row.answer}`)
+        .join("\n");
+    const missingSummary = (coverageSummary?.missingQuestions || [])
+        .slice(0, 5)
+        .map((row) => row.question)
+        .join("\n");
+    const nextQuestionOptions = nextQuestion
+        ? getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug).slice(0, 6)
+        : [];
+    const optionLabelsText = nextQuestion
+        ? buildOptionLabelsText(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug)
+        : "";
+    const hasOptions = nextQuestionOptions.length > 0;
+
+    const assistantPrompt = `
+You are handling a live service consultation chat for ${service?.name || "this service"}.
+
+The business goal:
+- sound natural and conversational like ChatGPT or Claude
+- quietly collect discovery details from the chat
+- use the hidden service question set only as internal guidance
+- never sound like a rigid form
+
+Latest user message:
+${JSON.stringify(String(userMessageText || "").trim())}
+
+Known answers:
+${answeredSummary || "none yet"}
+
+Open discovery points:
+${missingSummary || "none"}
+
+Current pending question:
+${JSON.stringify(String(currentQuestion?.text || "").trim() || "none")}
+
+Best next question to ask if helpful:
+${JSON.stringify(String(nextQuestion?.text || "").trim() || "none")}
+
+Best next options if relevant:
+${JSON.stringify(nextQuestionOptions)}
+
+Coverage:
+${JSON.stringify({
+        answeredCount: coverageSummary?.answeredCount || 0,
+        totalCount: coverageSummary?.totalCount || 0,
+        enoughForProposal: Boolean(coverageSummary?.enoughForProposal),
+        enoughForExplicitRequest: Boolean(coverageSummary?.enoughForExplicitRequest),
+        explicitProposalRequest,
+    })}
+
+Rules:
+- Respond directly to the user's latest message first.
+- Do not mention questionnaire, required field, current step, validation, or internal logic.
+- Never use headings, markdown section titles, or labels such as "The current question", "Current pending question", "Best next question", or "Question:".
+- Never use UI helper copy such as "If you don't see what you need, kindly type it below."
+- If the user is asking for guidance, answer clearly before asking anything else.
+- If this is the opening turn and the hidden pending detail is only the user's name, do not force the name question first. Start broader by asking about the project need or goal.
+- When a follow-up is useful, make the reply feel engaging in this order:
+  1. one short acknowledgement
+  2. one short context sentence tied to what the user already shared
+  3. one short neutral recommendation or guidance sentence for the current decision
+  4. one natural follow-up question
+- Keep those lines distinct. Do not duplicate the same reason in acknowledgement, context, and recommendation.
+- Ask at most one follow-up question.
+- Only ask a follow-up when more detail would materially improve the brief.
+- If you ask a follow-up and options exist, show them as a numbered list using the exact labels provided.
+- If the user explicitly wants a proposal and enough context exists, say you have enough and will generate it now.
+- Keep it concise, warm, and professional.
+
+Return plain text only.
+`.trim();
+
+    try {
+        const aiResponse = await runTrackedAiCall({
+            timingTracker,
+            key: "conversational_service_reply_ai",
+            label: "Write conversational service reply",
+            detail: "Writing a natural assistant reply that also advances service discovery.",
+            messages: [{ role: "user", content: assistantPrompt }],
+            conversationHistory,
+            selectedServiceName: service?.name || "",
+        });
+        let cleanedMessage = stripAdminDirectiveLines(
+            stripQuestionStepLabels(
+                stripQuestionnairePhrasing(
+                    stripNameNotedRecap(String(aiResponse?.message || "").trim())
+                )
+            )
+        );
+        if (hasOptions && !hasNumberedOptionsInMessage(cleanedMessage)) {
+            cleanedMessage = `${stripExistingOptionLines(cleanedMessage, nextQuestionOptions)}\n\n${optionLabelsText}`.trim();
+        }
+        return cleanedMessage;
+    } catch (error) {
+        console.error("[Conversational Reply] Failed:", error?.message || error);
+        if (explicitProposalRequest && (coverageSummary?.enoughForExplicitRequest || coverageSummary?.enoughForProposal)) {
+            return "I have enough context to put the proposal together now.";
+        }
+        if (openingNameStep) {
+            return `Happy to help with ${service?.name || "this"}.\nTell me a bit about what you want to build, and I will guide you from there.`;
+        }
+        return nextQuestion
+            ? (getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug).length > 0
+                ? formatQuestionWithOptions(nextQuestion, runtimeOptionsByQuestionSlug)
+                : String(nextQuestion?.text || "Tell me a bit more about what you need."))
+            : "Tell me a bit more about what you need, and I will shape it into a proposal-ready brief.";
+    }
 };
 
 // @desc    Start a new guest session with guided questions
@@ -7404,13 +7815,18 @@ export const guestChat = asyncHandler(async (req, res) => {
 
         if (!validationResult.isValid) {
             if (validationResult.status === "info_request") {
-                const questionBlock = formatQuestionWithOptions(currentQuestion, sessionRuntimeOptionsByQuestionSlug);
+                const questionBlock = formatQuestionWithOptions(
+                    currentQuestion,
+                    sessionRuntimeOptionsByQuestionSlug,
+                    existingAnswersBySlug
+                );
                 if (
                     questionBlock &&
                     shouldAppendQuestionBlockForInfoRequest({
                         assistantMessage: aiResponseContent,
                         question: currentQuestion,
-                        runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug
+                        runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
+                        answersBySlug: existingAnswersBySlug,
                     })
                 ) {
                     aiResponseContent = `${aiResponseContent}\n\n${questionBlock}`;
@@ -7503,6 +7919,176 @@ export const guestChat = asyncHandler(async (req, res) => {
                 });
             }
 
+            const canUseConversationalRecovery = shouldUseConversationalRecovery({
+                userMessage: userMessageText,
+                validationResult,
+                extractedAnswers: extractedAnswersForMessage,
+                currentQuestion,
+                isOpeningIntakeStep,
+            });
+
+            if (canUseConversationalRecovery) {
+                const conversationalAnswersBySlug = correctionCapture.updatedSlugs.length > 0
+                    ? correctionCapture.answersBySlug
+                    : { ...existingAnswersBySlug };
+                let conversationalRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
+                const conversationalNextStep = findNextUnansweredStep(
+                    questions,
+                    conversationalAnswersBySlug
+                );
+                let conversationalPersistedAnswers = buildPersistedAnswersPayload(
+                    conversationalAnswersBySlug,
+                    questions,
+                    {
+                        runtimeOptionsByQuestionSlug: conversationalRuntimeOptionsByQuestionSlug,
+                        existingPayload: session.answers || {},
+                    }
+                );
+
+                if (conversationalNextStep < questions.length) {
+                    const runtimeOptions = await generateRuntimeOptionsForQuestion({
+                        serviceName: service.name,
+                        servicePrompt: serviceAiInstructions,
+                        question: questions[conversationalNextStep],
+                        answersByQuestionText: conversationalPersistedAnswers.byQuestionText,
+                        answersBySlug: conversationalAnswersBySlug,
+                        allQuestions: questions,
+                        timingTracker: requestTimingTracker,
+                    });
+                    if (questions[conversationalNextStep]?.slug && runtimeOptions.length > 0) {
+                        conversationalRuntimeOptionsByQuestionSlug[questions[conversationalNextStep].slug] = runtimeOptions;
+                    }
+                    conversationalPersistedAnswers = buildPersistedAnswersPayload(
+                        conversationalAnswersBySlug,
+                        questions,
+                        {
+                            runtimeOptionsByQuestionSlug: conversationalRuntimeOptionsByQuestionSlug,
+                            existingPayload: session.answers || {},
+                        }
+                    );
+                }
+
+                const coverageSummary = buildDiscoveryCoverageSummary({
+                    questions,
+                    answersBySlug: conversationalAnswersBySlug,
+                    runtimeOptionsByQuestionSlug: conversationalRuntimeOptionsByQuestionSlug,
+                });
+                const explicitProposalRequest = isProposalRequestMessage(userMessageText);
+
+                await prisma.aiGuestMessage.create({
+                    data: {
+                        sessionId,
+                        role: "user",
+                        content: persistedUserMessageContent,
+                    },
+                });
+
+                await prisma.aiGuestSession.update({
+                    where: { id: sessionId },
+                    data: {
+                        answers: conversationalPersistedAnswers,
+                        currentStep: conversationalNextStep,
+                    },
+                });
+
+                const recoveryConversationHistory = [
+                    ...sanitizeGuestMessageArray(session.messages).map((message) => ({
+                        role: message.role,
+                        content: message.content,
+                    })),
+                    { role: "user", content: persistedUserMessageContent },
+                ];
+
+                let conversationalResponse = "";
+                let conversationalInputConfig = conversationalNextStep < questions.length
+                    ? buildQuestionInputConfig(
+                        questions[conversationalNextStep],
+                        conversationalRuntimeOptionsByQuestionSlug
+                    )
+                    : { type: "text", options: [] };
+
+                if (
+                    explicitProposalRequest
+                    && (coverageSummary.enoughForExplicitRequest || coverageSummary.enoughForProposal)
+                ) {
+                    try {
+                        conversationalResponse = await generateProposalResponseForSession({
+                            sessionId,
+                            session: {
+                                ...session,
+                                answers: conversationalPersistedAnswers,
+                            },
+                            service,
+                            questions,
+                            runtimeOptionsByQuestionSlug: conversationalRuntimeOptionsByQuestionSlug,
+                            persistedAnswers: conversationalPersistedAnswers,
+                            userMessageForReasoning,
+                            userMessageText,
+                            timingTracker: requestTimingTracker,
+                        });
+                        conversationalInputConfig = { type: "text", options: [] };
+                        await prisma.aiGuestSession.update({
+                            where: { id: sessionId },
+                            data: { currentStep: questions.length },
+                        });
+                    } catch (error) {
+                        console.error("[Conversational Proposal] Generation failed:", error?.message || error);
+                        conversationalResponse = "I have the main context now, but I could not generate the proposal right this moment. Share one more detail or try again.";
+                    }
+                } else {
+                    conversationalResponse = await buildConversationalServiceReply({
+                        service,
+                        currentQuestion,
+                        nextQuestion: conversationalNextStep < questions.length
+                            ? questions[conversationalNextStep]
+                            : null,
+                        runtimeOptionsByQuestionSlug: conversationalRuntimeOptionsByQuestionSlug,
+                        answersBySlug: conversationalAnswersBySlug,
+                        userMessageText,
+                        conversationHistory: recoveryConversationHistory,
+                        coverageSummary,
+                        explicitProposalRequest,
+                        timingTracker: requestTimingTracker,
+                    });
+                }
+
+                conversationalResponse = stripAdminDirectiveLines(
+                    stripQuestionStepLabels(
+                        stripNameNotedRecap(
+                            buildFriendlyMessage(
+                                conversationalResponse,
+                                [attachmentInsightNote, urlInsightNote].filter(Boolean).join(" ")
+                            )
+                        )
+                    )
+                );
+
+                await prisma.aiGuestMessage.create({
+                    data: {
+                        sessionId,
+                        role: "assistant",
+                        content: conversationalResponse,
+                    },
+                });
+
+                const sessionReload = await prisma.aiGuestSession.findUnique({
+                    where: { id: sessionId },
+                    include: { messages: { orderBy: { createdAt: "asc" } } },
+                });
+
+                return res.json({
+                    success: true,
+                    message: conversationalResponse,
+                    inputConfig: conversationalInputConfig,
+                    history: sessionReload.messages.map((message) => ({ role: message.role, content: message.content })),
+                    serviceMeta: { serviceId: service.slug, serviceName: service.name },
+                    sharedAnswers: buildSharedSessionAnswers({
+                        questions,
+                        sessionAnswers: sessionReload.answers || conversationalPersistedAnswers,
+                    }),
+                });
+            }
+
 
             let invalidFlowAnswersBySlug = existingAnswersBySlug;
             let capturedFutureNote = "";
@@ -7567,7 +8153,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                 });
             const feedbackCore = aiResponseContent || fallbackFeedbackFromAi || formatQuestionWithOptions(
                 currentQuestion,
-                sessionRuntimeOptionsByQuestionSlug
+                sessionRuntimeOptionsByQuestionSlug,
+                invalidFlowAnswersBySlug
             );
             const sideReply = buildAgentSideReply({
                 userMessage: userMessageText,
@@ -7830,111 +8417,77 @@ export const guestChat = asyncHandler(async (req, res) => {
     // 4. Determine Next Assistant Response
     let responseContent = "";
     let nextInputConfig = { type: "text", options: [] };
+    const explicitProposalRequest = isProposalRequestMessage(userMessageText);
+    const coverageSummary = buildDiscoveryCoverageSummary({
+        questions,
+        answersBySlug: updatedAnswersBySlug,
+        runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+    });
 
-    if (nextStep < questions.length) {
+    if (
+        nextStep < questions.length
+        && explicitProposalRequest
+        && (coverageSummary.enoughForExplicitRequest || coverageSummary.enoughForProposal)
+    ) {
+        try {
+            responseContent = await generateProposalResponseForSession({
+                sessionId,
+                session: {
+                    ...session,
+                    answers: persistedAnswers,
+                },
+                service,
+                questions,
+                runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+                persistedAnswers,
+                userMessageForReasoning,
+                userMessageText,
+                timingTracker: requestTimingTracker,
+            });
+            nextInputConfig = { type: "text", options: [] };
+            await prisma.aiGuestSession.update({
+                where: { id: sessionId },
+                data: { currentStep: questions.length },
+            });
+        } catch (error) {
+            console.error("[Early Proposal] Generation failed:", error?.message || error);
+            responseContent = "I have enough context for the proposal, but I could not generate it right now. Please try again in a moment.";
+        }
+    } else if (nextStep < questions.length) {
         const nextQuestion = questions[nextStep];
-        const nextQuestionText = nextQuestion.text;
-        const expectedImmediateNextStep = resolveNextQuestionIndex(
-            questions,
-            currentStep,
-            currentQuestion?.slug ? updatedAnswersBySlug[currentQuestion.slug] : userMessageText
+        nextInputConfig = buildQuestionInputConfig(
+            nextQuestion,
+            nextRuntimeOptionsByQuestionSlug,
+            updatedAnswersBySlug
         );
 
-        const canUseAiTransition = Boolean(aiResponseContent)
-            && autoCapturedAnswerSlugs.length === 0
-            && !dependentResetApplied
-            && nextStep === expectedImmediateNextStep;
+        const conversationalHistory = [
+            ...sanitizeGuestMessageArray(session.messages).map((message) => ({
+                role: message.role,
+                content: message.content,
+            })),
+            { role: "user", content: persistedUserMessageContent },
+        ];
 
-        const sideReply = buildAgentSideReply({
-            userMessage: userMessageText,
-            answersByQuestionText: persistedAnswers.byQuestionText
-        });
-        const personalizedBridge = buildPersonalizedQuestionBridge({
-            nextQuestionText,
-            answersByQuestionText: persistedAnswers.byQuestionText,
-            serviceName: service.name
-        });
-        const aiBridge = canUseAiTransition
-            ? extractFriendlyBridgeFromValidationMessage(aiResponseContent, nextQuestionText)
-            : "";
-        const bridgeSegments = [];
-
-        if (aiBridge) {
-            bridgeSegments.push(aiBridge);
-            if (!containsNormalizedText(aiBridge, personalizedBridge)) {
-                bridgeSegments.push(personalizedBridge);
-            }
-        } else {
-            bridgeSegments.push(personalizedBridge);
-        }
-
-        if (attachmentInsightNote) {
-            const alreadyIncluded = bridgeSegments.some((segment) =>
-                containsNormalizedText(segment, attachmentInsightNote)
-            );
-            if (!alreadyIncluded) {
-                bridgeSegments.unshift(attachmentInsightNote);
-            }
-        }
-
-        if (urlInsightNote) {
-            const alreadyIncluded = bridgeSegments.some((segment) =>
-                containsNormalizedText(segment, urlInsightNote)
-            );
-            if (!alreadyIncluded) {
-                bridgeSegments.unshift(urlInsightNote);
-            }
-        }
-
-        if (autoCapturedAnswerSlugs.length > 0) {
-            bridgeSegments.push("I have already captured some details from your previous message.");
-        }
-
-        if (dependentResetApplied) {
-            bridgeSegments.push("I updated related answers so this flow stays consistent.");
-        }
-
-        const progressBridge = buildProgressBridge({
-            nextStep,
-            totalQuestions: questions.length
-        });
-        if (progressBridge) {
-            bridgeSegments.push(progressBridge);
-        }
-
-        const aiGuidedQuestionMessage = await buildAiGuidedQuestionMessage({
-            serviceName: service.name,
-            servicePrompt: serviceAiInstructions,
-            userLastMessage: userMessageText,
+        responseContent = await buildConversationalServiceReply({
+            service,
             currentQuestion,
             nextQuestion,
-            answersByQuestionText: persistedAnswers.byQuestionText,
-            answersBySlug: persistedAnswers.bySlug,
-            allQuestions: questions,
             runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
-            sideReply,
-            bridgeSegments,
+            answersBySlug: updatedAnswersBySlug,
+            userMessageText: userMessageForReasoning || userMessageText,
+            conversationHistory: conversationalHistory,
+            coverageSummary,
+            explicitProposalRequest,
             timingTracker: requestTimingTracker,
         });
 
-        if (aiGuidedQuestionMessage) {
-            responseContent = aiGuidedQuestionMessage;
-        } else {
-            const combinedBridge = combineInlineMessages(...bridgeSegments);
-            const fallbackQuestionPrompt = getQuestionOptionLabels(nextQuestion, nextRuntimeOptionsByQuestionSlug).length > 0
-                ? formatQuestionWithOptions(nextQuestion, nextRuntimeOptionsByQuestionSlug)
-                : nextQuestionText;
-            const questionMessage = buildFriendlyMessage(fallbackQuestionPrompt, combinedBridge);
-            responseContent = sideReply
-                ? buildFriendlyMessage(questionMessage, sideReply)
-                : questionMessage;
+        if (attachmentInsightNote || urlInsightNote) {
+            responseContent = buildFriendlyMessage(
+                responseContent,
+                [attachmentInsightNote, urlInsightNote].filter(Boolean).join(" ")
+            );
         }
-
-        // Configure next input
-        nextInputConfig = buildQuestionInputConfig(
-            nextQuestion,
-            nextRuntimeOptionsByQuestionSlug
-        );
     } else {
         // CASE B: All questions answered -> Generate Proposal
         try {
@@ -8265,6 +8818,7 @@ export const __testables = {
     applyExtractedAnswerUpdates,
     buildAdminControlSummaryText,
     buildBusinessNameGuardPrompt,
+    buildDiscoveryCoverageSummary,
     buildCurrentQuestionValidationPrompt,
     buildSessionStartPrefill,
     buildSupplementalBudgetExtractions,
@@ -8288,11 +8842,13 @@ export const __testables = {
     getMostRecentMessageContentByRole,
     getServiceScopedMessages,
     isBudgetQuestion,
+    isProposalRequestMessage,
     getRuntimeOptionsByQuestionSlug,
     mergeExtractedAnswers,
     normalizeAnswerForQuestion,
     parseKnownBrandAffiliationResponse,
     parseAdminControlText,
+    shouldUseConversationalRecovery,
     shouldSkipMessageAnswerExtraction,
     toChronologicalGuestHistory,
 };

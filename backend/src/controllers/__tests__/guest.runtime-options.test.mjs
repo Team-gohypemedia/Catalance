@@ -8,6 +8,7 @@ const {
   applyExtractedAnswerUpdates,
   buildAdminControlSummaryText,
   buildBusinessNameGuardPrompt,
+  buildDiscoveryCoverageSummary,
   buildCurrentQuestionValidationPrompt,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
@@ -31,10 +32,12 @@ const {
   getSemanticDependentIndexesForChanges,
   getServiceScopedMessages,
   isBudgetQuestion,
+  isProposalRequestMessage,
   mergeExtractedAnswers,
   normalizeAnswerForQuestion,
   parseKnownBrandAffiliationResponse,
   parseAdminControlText,
+  shouldUseConversationalRecovery,
   shouldSkipMessageAnswerExtraction,
   toChronologicalGuestHistory,
 } = __testables;
@@ -96,6 +99,62 @@ test("builds displayed answers from runtime option labels", () => {
     getDisplayedQuestionOptions(question, runtimeOptionsByQuestionSlug)[0].label,
     "Fast Next.js build"
   );
+});
+
+test("detects explicit proposal generation requests from natural chat", () => {
+  assert.equal(
+    isProposalRequestMessage("I don't want to answer everything, just generate proposal now."),
+    true
+  );
+  assert.equal(
+    isProposalRequestMessage("Can you explain the difference between React and Next.js first?"),
+    false
+  );
+});
+
+test("marks conversational recovery when the user asks for guidance instead of a direct field answer", () => {
+  assert.equal(
+    shouldUseConversationalRecovery({
+      userMessage: "Not sure. Which option do you recommend for a small laundry business?",
+      validationResult: { status: "info_request" },
+      extractedAnswers: [],
+    }),
+    true
+  );
+});
+
+test("uses conversational recovery for a greeting on the opening name step", () => {
+  assert.equal(
+    shouldUseConversationalRecovery({
+      userMessage: "hi",
+      validationResult: { status: "invalid_answer" },
+      extractedAnswers: [],
+      currentQuestion: { text: "May I know your name?" },
+      isOpeningIntakeStep: true,
+    }),
+    true
+  );
+});
+
+test("scores discovery coverage for early proposal readiness", () => {
+  const summary = buildDiscoveryCoverageSummary({
+    questions: [
+      { slug: "client_name", text: "May I know your name?", required: true },
+      { slug: "company_name", text: "What is your business or company name?", required: true },
+      { slug: "project_brief", text: "Tell me about your project requirement.", required: true },
+      { slug: "budget", text: "What is your budget for this project?", required: true },
+      { slug: "timeline", text: "When do you want to launch?", required: false },
+    ],
+    answersBySlug: {
+      client_name: "Ravi",
+      company_name: "Cleclo",
+      project_brief: "Booking website for laundry pickup and delivery",
+    },
+  });
+
+  assert.equal(summary.answeredCount, 3);
+  assert.equal(summary.criticalAnsweredCount >= 3, true);
+  assert.equal(summary.enoughForExplicitRequest, true);
 });
 
 test("normalizes popup advice options from numbered chat option objects", () => {

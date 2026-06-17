@@ -45,7 +45,8 @@ import {
     Trash2,
     Globe,
     MessageSquarePlus,
-    ChevronDown
+    ChevronDown,
+    Lightbulb
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import LightRays from '@/components/ui/LightRays';
@@ -63,6 +64,11 @@ import {
     mergeProposalStructureDefinitions,
     parseProposalStructureDefinitions,
 } from '@/shared/lib/project-proposal-fields';
+import {
+    forceSentenceBreaks,
+    normalizeMarkdownContent,
+    parseAssistantMessageLayout,
+} from '@/components/pages/guestAiMessageLayout';
 import {
     getGuestChatSidebarSizeStorageKeys,
     getGuestChatStorageKeys,
@@ -1340,32 +1346,6 @@ const isAgencyProposalMessage = (content = "") => {
     return /(^|\n)\s*service breakdown\s*:/i.test(String(content || ""));
 };
 
-const stripQuestionStepLabels = (content = "") =>
-    String(content || "")
-        .replace(/^\s*Q\d+\.\s*$/gim, "")
-        .replace(/^\s*Q\d+\.\s*/i, "")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
-
-const stripInlineOptionListTail = (value = "") => {
-    if (typeof value !== "string") return "";
-    const text = value.trim();
-    if (!text) return "";
-
-    const inlineOptionIndex = text.search(/\s+\d+\s*[.)]\s+\S/);
-    if (inlineOptionIndex > 0) {
-        return text.slice(0, inlineOptionIndex).trim().replace(/[:\-]\s*$/, "").trim();
-    }
-
-    return text;
-};
-
-const normalizeMarkdownContent = (content = "") =>
-    stripQuestionStepLabels(String(content))
-        .replace(/^```(?:markdown)?\s*/i, "")
-        .replace(/\s*```$/i, "")
-        .trim();
-
 const appendSpeechTranscript = (
     baseInput = '',
     finalTranscript = '',
@@ -1377,9 +1357,6 @@ const appendSpeechTranscript = (
         .join(' ')
         .trim();
 
-const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
-const QUESTION_LINE_REGEX = /\?\s*$/;
-const OPTION_PROMPT_CUE_REGEX = /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
 const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
 const AUTO_HELPER_QUESTION_REGEX = /\b(budget|price|pricing|cost|timeline|ready|launch|deadline|when would you like|when do you want|how soon)\b/i;
 const AUTO_RECOMMEND_OPTION_VALUE = 'Recommend best option';
@@ -1434,27 +1411,6 @@ const RECOMMENDATION_ACCEPTANCE_FILLER_WORDS = new Set([
     'works',
 ]);
 
-const repairBrokenTechTokens = (text = "") =>
-    String(text || "")
-        // Fix "Node. js" / "Node.\njs" -> "Node.js"
-        .replace(/\b([A-Za-z][A-Za-z0-9+#-]*)\.\s*\n+\s*(js|ts|io)\b/gi, '$1.$2')
-        .replace(/\b([A-Za-z][A-Za-z0-9+#-]*)\.\s+(js|ts|io)\b/gi, '$1.$2');
-
-const forceSentenceBreaks = (text = "") => {
-    const source = repairBrokenTechTokens(String(text || ""));
-    if (!source) return source;
-
-    // Preserve authored structure (lists/newlines) and only split single-line blobs.
-    if (source.includes("\n") || /(^|\s)([-*]|\d+\.)\s+/m.test(source)) {
-        return source;
-    }
-
-    return source
-        .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
-        .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
-        .replace(/_PROTECT_/g, ". ");
-};
-
 const normalizeAssistantParagraphSpacing = (text = "") => {
     const source = String(text || "").replace(/\r/g, "").trim();
     if (!source) return source;
@@ -1498,189 +1454,6 @@ const AssistantMarkdownBlocks = ({ content = '', className = '' }) => {
     );
 };
 
-const normalizeInlineOptions = (text = "") =>
-    String(text || "")
-        // Common AI output: "... question? 1. Option A"
-        .replace(/\?\s*(\d+)\.\s+/g, '?\n$1. ')
-        // Fallback for prompt formats like "Please choose: 1. A"
-        .replace(/:\s*(\d+)\.\s+/g, ':\n$1. ')
-        // Split chained inline options: "1. A 2. B 3. C"
-        .replace(/([^\n])\s+(\d+)\.\s+(?=[A-Za-z])/g, '$1\n$2. ');
-
-const hasNestedOptionMarker = (text = "") => /\b\d+\.\s+\S/.test(String(text || ""));
-
-const dedupeOptionEntries = (optionEntries = []) => {
-    const bestByNumber = new Map();
-
-    for (const entry of optionEntries) {
-        const number = String(entry?.number || '').trim();
-        const text = String(entry?.text || '').trim();
-        if (!number || !text) continue;
-
-        const existing = bestByNumber.get(number);
-        if (!existing) {
-            bestByNumber.set(number, { ...entry, number, text });
-            continue;
-        }
-
-        const existingHasNested = hasNestedOptionMarker(existing.text);
-        const incomingHasNested = hasNestedOptionMarker(text);
-        const shouldReplace =
-            (existingHasNested && !incomingHasNested)
-            || (existingHasNested === incomingHasNested && text.length < existing.text.length);
-
-        if (shouldReplace) {
-            bestByNumber.set(number, { ...entry, number, text });
-        }
-    }
-
-    return Array.from(bestByNumber.values()).sort(
-        (a, b) => Number(a.number) - Number(b.number)
-    );
-};
-
-const splitContextAndQuestion = (text = "") => {
-    const source = repairBrokenTechTokens(String(text || "")).trim();
-    if (!source) return { contextText: "", questionText: "" };
-    if (!source.includes("?")) return { contextText: source, questionText: "" };
-
-    const protectedSource = source.replace(
-        /\b([A-Za-z][A-Za-z0-9+#-]*)\.(js|ts|io)\b/gi,
-        '$1__DOT__$2'
-    );
-    const restoreProtectedDots = (value = "") => String(value || "").replace(/__DOT__/g, '.');
-
-    const sentenceMatches = protectedSource.match(/[^.!?\n]+[.!?]+/g) || [protectedSource];
-    let questionIdx = -1;
-
-    for (let idx = sentenceMatches.length - 1; idx >= 0; idx -= 1) {
-        if (sentenceMatches[idx].trim().endsWith("?")) {
-            questionIdx = idx;
-            break;
-        }
-    }
-
-    if (questionIdx === -1) {
-        const lines = source
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean);
-        const lastLine = lines[lines.length - 1] || "";
-        if (!lastLine.endsWith("?")) {
-            return { contextText: source, questionText: "" };
-        }
-        return {
-            contextText: restoreProtectedDots(lines.slice(0, -1).join("\n\n").trim()),
-            questionText: restoreProtectedDots(lastLine)
-        };
-    }
-
-    const questionText = restoreProtectedDots(sentenceMatches[questionIdx].trim());
-    const contextText = sentenceMatches
-        .filter((_, idx) => idx !== questionIdx)
-        .map((sentence) => sentence.trim())
-        .filter((sentence) => !/^\d+\.$/.test(sentence))
-        .map((sentence) => sentence.trim())
-        .join("\n\n")
-        .trim();
-
-    return { contextText: restoreProtectedDots(contextText), questionText };
-};
-
-const parseAssistantMessageLayout = (content = "", { forceInteractiveOptions = false } = {}) => {
-    const normalized = normalizeInlineOptions(
-        repairBrokenTechTokens(
-            normalizeMarkdownContent(content).replace(/\r/g, "").trim()
-        )
-    );
-    if (!normalized) {
-        return { contextText: "", questionText: "", options: [] };
-    }
-
-    const lines = normalized
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean);
-
-    const optionEntries = lines
-        .map((line, idx) => {
-            const match = line.match(OPTION_LINE_REGEX);
-            if (!match) return null;
-            return { idx, number: match[1], text: match[2].trim() };
-        })
-        .filter(Boolean);
-    const normalizedOptionEntries = dedupeOptionEntries(optionEntries);
-
-    const hasQuestionLine = lines.some((line) => QUESTION_LINE_REGEX.test(line));
-    const isLikelyInteractivePrompt =
-        normalizedOptionEntries.length >= 2 &&
-        normalizedOptionEntries.length <= 24 &&
-        (hasQuestionLine || OPTION_PROMPT_CUE_REGEX.test(normalized) || forceInteractiveOptions);
-
-    // Keep numbered informational answers as normal markdown instead of forcing
-    // question/option card layout.
-    if (optionEntries.length > 0 && !isLikelyInteractivePrompt) {
-        return { contextText: forceSentenceBreaks(normalized), questionText: "", options: [] };
-    }
-
-    let questionIndex = -1;
-    for (let idx = lines.length - 1; idx >= 0; idx -= 1) {
-        if (QUESTION_LINE_REGEX.test(lines[idx])) {
-            questionIndex = idx;
-            break;
-        }
-    }
-
-    if (questionIndex === -1 && optionEntries.length > 0) {
-        const firstOptionIndex = optionEntries[0].idx;
-        for (let idx = firstOptionIndex - 1; idx >= 0; idx -= 1) {
-            if (!OPTION_LINE_REGEX.test(lines[idx])) {
-                questionIndex = idx;
-                break;
-            }
-        }
-    }
-
-    if (questionIndex === -1) {
-        const split = splitContextAndQuestion(normalized);
-        if (!split.questionText) {
-            return { contextText: normalized, questionText: "", options: [] };
-        }
-        return {
-            contextText: split.contextText,
-            questionText: split.questionText,
-            options: []
-        };
-    }
-
-    const splitQuestionLine = splitContextAndQuestion(lines[questionIndex]);
-    const hasInlineQuestionSplit = Boolean(splitQuestionLine.questionText);
-    const questionText = stripInlineOptionListTail(
-        hasInlineQuestionSplit
-            ? splitQuestionLine.questionText
-            : lines[questionIndex]
-    );
-    const contextParts = lines
-        .filter((line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line));
-
-    // Add extracted context only when we actually split a mixed line
-    // like "Tip... What would you like...?"
-    if (hasInlineQuestionSplit && splitQuestionLine.contextText) {
-        contextParts.push(splitQuestionLine.contextText);
-    }
-
-    const contextText = contextParts.join("\n\n").trim();
-
-    return {
-        contextText: forceSentenceBreaks(contextText),
-        questionText: forceSentenceBreaks(questionText),
-        options: normalizedOptionEntries.map((option) => ({
-            number: option.number,
-            text: option.text
-        }))
-    };
-};
-
 const AssistantMessageBody = ({
     content,
     isDark,
@@ -1689,6 +1462,7 @@ const AssistantMessageBody = ({
     onOptionClick = () => { },
     isOptionSelected = () => false,
     isMultiInput = false,
+    isSingleChoiceInput = false,
     selectedCount = 0,
     onSubmitMulti = () => { }
 }) => {
@@ -1713,7 +1487,7 @@ const AssistantMessageBody = ({
 
             {questionText && (
                 <div className={`rounded-2xl border px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/30 bg-primary/12'}`}>
-                    <div className={`prose prose-sm max-w-none text-[12.5px] font-medium leading-normal prose-p:my-0.5 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
+                    <div className={`prose prose-sm max-w-none break-words text-[12.5px] font-medium leading-normal prose-p:my-0.5 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
                         <ReactMarkdown>{questionText}</ReactMarkdown>
                     </div>
                 </div>
@@ -1741,7 +1515,7 @@ const AssistantMessageBody = ({
                                     }`}
                             >
                                 <span className={`mt-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
-                                    {option.number}
+                                    {isMultiInput ? '□' : isSingleChoiceInput ? '○' : option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
@@ -1753,7 +1527,7 @@ const AssistantMessageBody = ({
                                 className={`flex items-start gap-2 rounded-xl border px-2.5 py-1.5 ${isDark ? 'border-white/15 bg-white/[0.045]' : 'border-black/10 bg-white'}`}
                             >
                                 <span className={`mt-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
-                                    {option.number}
+                                    {isMultiInput ? '□' : isSingleChoiceInput ? '○' : option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
@@ -3247,6 +3021,7 @@ const GuestAIDemo = () => {
     const [inputConfig, setInputConfig] = useState({ type: 'text', options: [] });
     const [selectedOptions, setSelectedOptions] = useState([]);
     const [pendingOptionFollowup, setPendingOptionFollowup] = useState(null);
+    const [isRecommendationPanelOpen, setIsRecommendationPanelOpen] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
     const [sidebarSize, setSidebarSize] = useState(() => readStoredSidebarSize());
@@ -3300,6 +3075,9 @@ const GuestAIDemo = () => {
     const isMultiInput = normalizedInputType === 'multi_select'
         || normalizedInputType === 'multi_option'
         || normalizedInputType === 'grouped_multi_select';
+    const isSingleChoiceInput = normalizedInputType === 'single_select'
+        || normalizedInputType === 'single option'
+        || normalizedInputType === 'single_option';
     const hasOptionInput = Array.isArray(inputConfig.options) && inputConfig.options.length > 0;
     const shouldShowTextInput = true;
     const visiblePreviousChats = previousChats.filter((chat) => chat?.sessionId);
@@ -3695,6 +3473,12 @@ const GuestAIDemo = () => {
     const automaticQuestionHelperKey = shouldAutoRecommendQuestion
         ? `${sessionId || 'guest'}::${normalizeOptionToken(latestAssistantPrompt.questionText)}::${normalizeOptionToken(latestAssistantPrompt.contextText)}`
         : '';
+
+    useEffect(() => {
+        if (!pendingOptionFollowup) {
+            setIsRecommendationPanelOpen(false);
+        }
+    }, [pendingOptionFollowup]);
 
     const optionIsSelected = (value = '') =>
         selectedOptions.some((selected) => normalizeOptionToken(selected) === normalizeOptionToken(value));
@@ -4474,6 +4258,7 @@ const GuestAIDemo = () => {
         setPendingAttachments([]);
         setSelectedOptions([]);
         setPendingOptionFollowup(null);
+        setIsRecommendationPanelOpen(false);
         setInputConfig({ type: 'text', options: [] });
     }, []);
 
@@ -6511,164 +6296,221 @@ const GuestAIDemo = () => {
             : contextualPendingOptionPlaceholder;
 
         return (
-            <form
-                onSubmit={handleSendMessage}
-                className={`rounded-[clamp(1.25rem,5vw,1.5rem)] md:rounded-3xl border p-[clamp(0.5rem,2.5vw,0.625rem)] md:p-2.5 shadow-md backdrop-blur-xl ${isDark
-                    ? 'border-white/10 bg-[#2F2F2F]'
-                    : 'border-slate-200 bg-[#F4F4F4]'
-                    }`}
-            >
-                {isAgencyFlowCompleted && (
-                    <div className={`mb-3 rounded-2xl border px-3.5 py-3 text-sm ${isDark
-                        ? 'border-[#ffc800]/20 bg-[#ffc800]/[0.08] text-zinc-200'
-                        : 'border-primary/20 bg-primary/10 text-slate-700'
-                        }`}>
-                        The combined agency proposal is ready. Keep chatting below to refine it. If you want a service-specific change like budget or timeline, name the service first.
-                    </div>
-                )}
+            <div className="relative">
                 {isPendingOptionFollowup && (
-                    <div className={`mb-3 flex items-center justify-between gap-3 rounded-2xl px-3.5 py-2.5 text-sm ${isDark
-                        ? 'bg-white/5 text-slate-200'
-                        : 'bg-black/5 text-slate-700'
-                        }`}>
-                        <p className="min-w-0 flex-1">
-                            {contextualPendingOptionNotice}
-                        </p>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className={`h-8 w-8 shrink-0 rounded-full hover:bg-black/10`}
-                            onClick={() => {
-                                if (pendingOptionFollowup?.autoSuggestion && pendingOptionFollowup?.questionKey) {
-                                    dismissedAutoHelperKeysRef.current.add(pendingOptionFollowup.questionKey);
-                                }
-                                setPendingOptionFollowup(null);
-                                setSelectedOptions([]);
-                                setInput('');
-                            }}
-                            aria-label="Clear selected special option"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                )}
-                {pendingAttachments.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-2 px-2 pt-1">
-                        {pendingAttachments.map((file, index) => {
-                            const imageFile = String(file.type || '').startsWith('image/');
-                            return (
-                                <div
-                                    key={`${file.name}-${file.size}-${index}`}
-                                    className={`inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isDark
-                                        ? 'border-white/10 bg-[#212121] text-slate-200'
-                                        : 'border-slate-300 bg-white text-slate-700'
-                                        }`}
-                                >
-                                    {imageFile ? (
-                                        <ImageIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                                    ) : (
-                                        <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                                    )}
-                                    <span className="max-w-[190px] truncate font-medium">{file.name}</span>
-                                    <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        {formatBytes(file.size)}
-                                    </span>
-                                    <button
-                                        type="button"
-                                        className={`rounded-full p-0.5 ml-1 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
-                                        onClick={() => removePendingAttachment(index)}
-                                    >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
+                    <div className="absolute right-0 top-[-3.2rem] z-20 sm:right-[-3.75rem] sm:top-1/2 sm:-translate-y-1/2">
+                        <div className="relative">
+                            {isRecommendationPanelOpen && (
+                                <div className={`absolute bottom-[calc(100%+0.75rem)] right-0 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border p-3 shadow-xl backdrop-blur-xl sm:bottom-auto sm:right-[calc(100%+0.75rem)] sm:top-1/2 sm:w-72 sm:-translate-y-1/2 ${isDark
+                                    ? 'border-white/10 bg-[#1d1d1d]/95 text-slate-200'
+                                    : 'border-slate-200 bg-white/95 text-slate-700'
+                                    }`}>
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-primary/80' : 'text-primary'}`}>
+                                                Recommendation
+                                            </p>
+                                            <p className="mt-2 text-sm leading-relaxed">
+                                                {contextualPendingOptionNotice}
+                                            </p>
+                                            {pendingRecommendedAnswer && (
+                                                <p className={`mt-2 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                    Suggested reply: {pendingRecommendedAnswer}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className={`h-8 w-8 shrink-0 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                                            onClick={() => setIsRecommendationPanelOpen(false)}
+                                            aria-label="Hide recommendation"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between gap-2">
+                                        <button
+                                            type="button"
+                                            className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+                                            onClick={() => {
+                                                if (pendingOptionFollowup?.autoSuggestion && pendingOptionFollowup?.questionKey) {
+                                                    dismissedAutoHelperKeysRef.current.add(pendingOptionFollowup.questionKey);
+                                                }
+                                                setPendingOptionFollowup(null);
+                                                setSelectedOptions([]);
+                                                setInput('');
+                                                setIsRecommendationPanelOpen(false);
+                                            }}
+                                        >
+                                            Clear helper
+                                        </button>
+                                        {pendingRecommendedAnswer && (
+                                            <button
+                                                type="button"
+                                                className={`text-xs font-semibold ${isDark ? 'text-primary hover:text-primary/80' : 'text-primary hover:text-primary/80'}`}
+                                                onClick={() => {
+                                                    setInput((current) => current.trim() ? current : pendingRecommendedAnswer);
+                                                    setIsRecommendationPanelOpen(false);
+                                                    requestAnimationFrame(() => focusMessageInput());
+                                                }}
+                                            >
+                                                Use suggestion
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            );
-                        })}
-                    </div>
-                )}
-                <div className="flex items-end gap-[clamp(0.35rem,1.8vw,0.5rem)] md:gap-2">
-                    <div className="flex flex-1 items-center bg-transparent">
-                        <div className="flex flex-col flex-1">
-                            <textarea
-                                ref={inputRef}
-                                data-guest-ai-input="true"
-                                autoFocus
-                                value={input}
-                                onChange={(e) => {
-                                    setInput(e.target.value);
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
-                                }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        if (input.trim() || pendingAttachments.length > 0) {
-                                            handleSendMessage(e);
-                                        }
-                                    }
-                                }}
-                                rows={1}
-                                placeholder={composerPlaceholder}
-                                className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] md:min-h-[44px] w-full resize-none bg-transparent px-[clamp(0.75rem,3vw,1rem)] md:px-4 py-[clamp(0.65rem,2.8vw,0.75rem)] md:py-3 text-[clamp(0.95rem,3.6vw,1rem)] md:text-base outline-none ${isDark
-                                    ? 'text-white placeholder:text-slate-400'
-                                    : 'text-slate-900 placeholder:text-slate-500'
+                            )}
+                            <Button
+                                type="button"
+                                size="icon"
+                                onClick={() => setIsRecommendationPanelOpen((current) => !current)}
+                                className={`h-11 w-11 rounded-full border shadow-md ${isRecommendationPanelOpen
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : isDark
+                                        ? 'border-white/10 bg-[#2F2F2F] text-[#ffd54a] hover:bg-[#383838]'
+                                        : 'border-slate-200 bg-white text-primary hover:bg-primary/5'
                                     }`}
-                                disabled={isTyping || isUploadingAttachment}
-                                style={{ overflowY: 'auto' }}
-                            />
+                                aria-label={isRecommendationPanelOpen ? 'Hide recommendation helper' : 'Show recommendation helper'}
+                            >
+                                <Lightbulb className="h-5 w-5" />
+                            </Button>
                         </div>
                     </div>
+                )}
+                <form
+                    onSubmit={handleSendMessage}
+                    className={`rounded-[clamp(1.25rem,5vw,1.5rem)] md:rounded-3xl border p-[clamp(0.5rem,2.5vw,0.625rem)] md:p-2.5 shadow-md backdrop-blur-xl ${isDark
+                        ? 'border-white/10 bg-[#2F2F2F]'
+                        : 'border-slate-200 bg-[#F4F4F4]'
+                        }`}
+                >
+                    {isAgencyFlowCompleted && (
+                        <div className={`mb-3 rounded-2xl border px-3.5 py-3 text-sm ${isDark
+                            ? 'border-[#ffc800]/20 bg-[#ffc800]/[0.08] text-zinc-200'
+                            : 'border-primary/20 bg-primary/10 text-slate-700'
+                            }`}>
+                            The combined agency proposal is ready. Keep chatting below to refine it. If you want a service-specific change like budget or timeline, name the service first.
+                        </div>
+                    )}
+                    {pendingAttachments.length > 0 && (
+                        <div className="mb-2 flex flex-wrap gap-2 px-2 pt-1">
+                            {pendingAttachments.map((file, index) => {
+                                const imageFile = String(file.type || '').startsWith('image/');
+                                return (
+                                    <div
+                                        key={`${file.name}-${file.size}-${index}`}
+                                        className={`inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isDark
+                                            ? 'border-white/10 bg-[#212121] text-slate-200'
+                                            : 'border-slate-300 bg-white text-slate-700'
+                                            }`}
+                                    >
+                                        {imageFile ? (
+                                            <ImageIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                        ) : (
+                                            <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                        )}
+                                        <span className="max-w-[190px] truncate font-medium">{file.name}</span>
+                                        <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                            {formatBytes(file.size)}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            className={`rounded-full p-0.5 ml-1 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
+                                            onClick={() => removePendingAttachment(index)}
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                    <div className="flex items-end gap-[clamp(0.35rem,1.8vw,0.5rem)] md:gap-2">
+                        <div className="flex flex-1 items-center bg-transparent">
+                            <div className="flex flex-col flex-1">
+                                <textarea
+                                    ref={inputRef}
+                                    data-guest-ai-input="true"
+                                    autoFocus
+                                    value={input}
+                                    onChange={(e) => {
+                                        setInput(e.target.value);
+                                        e.target.style.height = 'auto';
+                                        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            if (input.trim() || pendingAttachments.length > 0) {
+                                                handleSendMessage(e);
+                                            }
+                                        }
+                                    }}
+                                    rows={1}
+                                    placeholder={composerPlaceholder}
+                                    className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] md:min-h-[44px] w-full resize-none bg-transparent px-[clamp(0.75rem,3vw,1rem)] md:px-4 py-[clamp(0.65rem,2.8vw,0.75rem)] md:py-3 text-[clamp(0.95rem,3.6vw,1rem)] md:text-base outline-none ${isDark
+                                        ? 'text-white placeholder:text-slate-400'
+                                        : 'text-slate-900 placeholder:text-slate-500'
+                                        }`}
+                                    disabled={isTyping || isUploadingAttachment}
+                                    style={{ overflowY: 'auto' }}
+                                />
+                            </div>
+                        </div>
 
-                    <div className="flex shrink-0 items-center gap-[clamp(0.15rem,1vw,0.375rem)] md:gap-1.5 px-[clamp(0.25rem,1vw,0.5rem)] md:px-2 pb-[clamp(0.2rem,1vw,0.375rem)] md:pb-1.5">
-                        <input
-                            ref={attachmentInputRef}
-                            type="file"
-                            multiple
-                            accept={CHAT_FILE_ACCEPT}
-                            className="hidden"
-                            onChange={handleAttachmentPick}
-                        />
-                        <Button
-                            size="icon"
-                            type="button"
-                            variant="ghost"
-                            onClick={openAttachmentPicker}
-                            disabled={isTyping || isUploadingAttachment}
-                            className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
-                        >
-                            <Paperclip className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />
-                        </Button>
-                        {isSpeechSupported && (
+                        <div className="flex shrink-0 items-center gap-[clamp(0.15rem,1vw,0.375rem)] md:gap-1.5 px-[clamp(0.25rem,1vw,0.5rem)] md:px-2 pb-[clamp(0.2rem,1vw,0.375rem)] md:pb-1.5">
+                            <input
+                                ref={attachmentInputRef}
+                                type="file"
+                                multiple
+                                accept={CHAT_FILE_ACCEPT}
+                                className="hidden"
+                                onChange={handleAttachmentPick}
+                            />
                             <Button
                                 size="icon"
                                 type="button"
                                 variant="ghost"
-                                onClick={toggleVoiceInput}
+                                onClick={openAttachmentPicker}
                                 disabled={isTyping || isUploadingAttachment}
-                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
                             >
-                                {isListening ? <MicOff className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" /> : <Mic className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />}
+                                <Paperclip className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />
                             </Button>
-                        )}
-                        <Button
-                            size="icon"
-                            type="submit"
-                            disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
-                            className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full transition-colors ${input.trim() || pendingAttachments.length > 0
-                                    ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
-                                    : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
-                                }`}
-                        >
-                            <Send className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4 shrink-0 keep-white" />
-                        </Button>
+                            {isSpeechSupported && (
+                                <Button
+                                    size="icon"
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={toggleVoiceInput}
+                                    disabled={isTyping || isUploadingAttachment}
+                                    className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                                >
+                                    {isListening ? <MicOff className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" /> : <Mic className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />}
+                                </Button>
+                            )}
+                            <Button
+                                size="icon"
+                                type="submit"
+                                disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
+                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full transition-colors ${input.trim() || pendingAttachments.length > 0
+                                        ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
+                                        : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
+                                    }`}
+                            >
+                                <Send className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4 shrink-0 keep-white" />
+                            </Button>
+                        </div>
                     </div>
-                </div>
-                {isUploadingAttachment && (
-                    <p className={`mt-1 pl-4 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Uploading attachment...
-                    </p>
-                )}
-            </form>
+                    {isUploadingAttachment && (
+                        <p className={`mt-1 pl-4 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Uploading attachment...
+                        </p>
+                    )}
+                </form>
+            </div>
         );
     };
 
@@ -7153,6 +6995,7 @@ const GuestAIDemo = () => {
                                                     onOptionClick={handleChatOptionClick}
                                                     isOptionSelected={isOptionSelectedByText}
                                                     isMultiInput={isMultiInput}
+                                                    isSingleChoiceInput={isSingleChoiceInput}
                                                     selectedCount={selectedOptions.length}
                                                     onSubmitMulti={(e) => handleSendMessage(e, selectedOptions, {
                                                         ignorePendingOptionFollowup: Boolean(pendingOptionFollowup?.autoSuggestion),
