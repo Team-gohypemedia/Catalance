@@ -473,6 +473,7 @@ function PhoneAuth() {
           replace: true,
           state: {
             fromPhoneVerification: true,
+            role: requestedRole,
             ...(redirectTo ? { redirectTo } : {}),
           },
         });
@@ -554,6 +555,7 @@ function PhoneAuth() {
           replace: true,
           state: {
             fromGoogleSignin: true,
+            role: requestedRole,
             ...(redirectTo ? { redirectTo } : {}),
           },
         });

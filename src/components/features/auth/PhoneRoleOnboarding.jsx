@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import * as Flags from "country-flag-icons/react/3x2";
 import { Button } from "@/components/ui/button";
@@ -172,6 +172,7 @@ const getTargetPath = (role, user) => {
 function PhoneRoleOnboarding() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login: setAuthSession, token, user, authFetch } = useAuth();
   const onboardingState = location?.state || {};
   const isFromEmailAuth = Boolean(
@@ -182,9 +183,20 @@ function PhoneRoleOnboarding() {
   const isEmailRequired = hasNonPhoneEmail || isFromEmailAuth;
   const isEmailLocked = hasNonPhoneEmail;
   const initialRole = useMemo(() => {
-    const role = String(user?.role || "").toUpperCase();
-    return role === FREELANCER_ROLE ? FREELANCER_ROLE : null;
-  }, [user?.role]);
+    const normalizeRole = (value) => {
+      const role = String(value || "").trim().toUpperCase();
+      return role === CLIENT_ROLE || role === FREELANCER_ROLE ? role : null;
+    };
+
+    const explicitRole =
+      normalizeRole(searchParams.get("role")) ||
+      normalizeRole(onboardingState?.role) ||
+      normalizeRole(user?.onboardingRole);
+    const userRole = normalizeRole(user?.role);
+
+    return explicitRole || (userRole === FREELANCER_ROLE ? userRole : null);
+  }, [onboardingState?.role, searchParams, user?.onboardingRole, user?.role]);
+  const hasLockedRole = Boolean(initialRole);
   const [activeSlide, setActiveSlide] = useState(0);
   const [selectedRole, setSelectedRole] = useState(initialRole);
   const [fullName, setFullName] = useState(() => getInitialName(user));
@@ -221,7 +233,7 @@ function PhoneRoleOnboarding() {
 
   const hasProfilePhoto = Boolean(profileImage);
 
-  const slide = SLIDES[activeSlide];
+  const slide = hasLockedRole && activeSlide > 0 ? SLIDES[0] : SLIDES[activeSlide];
   const emailValue = normalizeEmail(email);
   const phoneDigits = normalizePhoneNumber(phoneNumber);
   const selectedCountry = COUNTRY_OPTION_BY_CODE[countryCode] || COUNTRY_OPTION_BY_CODE[DEFAULT_COUNTRY_CODE];
@@ -367,7 +379,7 @@ function PhoneRoleOnboarding() {
 
     setFormErrors({});
 
-    if (!isLastSlide) {
+    if (!isLastSlide && !hasLockedRole) {
       const progressToastId = toast.loading("Preparing the next step...");
 
       try {
@@ -841,7 +853,7 @@ function PhoneRoleOnboarding() {
               <button
                 type="button"
                 disabled={isSaving}
-                onClick={handleNext}
+                onClick={() => handleNext()}
                 className={cn(
                   "group flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[0.95rem] font-bold transition-all duration-200 keep-white",
                   "bg-primary text-white shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
