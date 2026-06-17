@@ -270,15 +270,7 @@ export const DEFAULT_CASE_STUDY_FIELDS = [
     system: true,
     canDelete: false,
   },
-  {
-    id: "previewGradient",
-    type: "select",
-    label: "Background Gradient",
-    required: false,
-    visible: true,
-    system: true,
-    canDelete: false,
-  },
+
   {
     id: "role",
     type: "select",

@@ -582,6 +582,7 @@ const UploadArea = ({
         onChange={(e) => {
           void processFiles(e.target.files);
           e.target.value = "";
+          e.target.blur();
         }}
         className="hidden"
       />
@@ -592,6 +593,7 @@ const UploadArea = ({
         onChange={(e) => {
           void processFiles(e.target.files);
           e.target.value = "";
+          e.target.blur();
         }}
         className="hidden"
       />
@@ -603,6 +605,7 @@ const UploadArea = ({
         onChange={(e) => {
           void processFiles(e.target.files);
           e.target.value = "";
+          e.target.blur();
         }}
         className="hidden"
       />

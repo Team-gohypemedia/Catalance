@@ -1858,7 +1858,6 @@ const FreelancerOnboardingShell = () => {
       projectLink: String(currentActiveCaseStudy?.projectLink || "").trim(),
       projectFile: currentActiveCaseStudy?.projectFile || null,
       previewImage: currentActiveCaseStudy?.previewImage || null,
-      previewGradient: String(currentActiveCaseStudy?.previewGradient || "").trim(),
       role: String(currentActiveCaseStudy?.role || "").trim(),
       timeline: String(currentActiveCaseStudy?.timeline || "").trim(),
       budget: String(currentActiveCaseStudy?.budget || "").trim(),
@@ -3040,6 +3039,9 @@ const FreelancerOnboardingShell = () => {
     submitOnboardingAndNavigate();
   };
   const handleBack = () => {
+    if (typeof document !== "undefined") {
+      document.activeElement?.blur();
+    }
     if (
       currentSlide.id === "acceptInProgressProjects" &&
       serviceSkipReturnRef.current
@@ -3939,104 +3941,141 @@ const FreelancerOnboardingShell = () => {
         </div>
       </header>
 
-      <section
-        ref={onboardingScrollContainerRef}
-        className="subtle-scrollbar relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+      <div
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const target = e.target;
+            if (!target) return;
+            const tagName = target.tagName.toUpperCase();
+            if (tagName === "TEXTAREA" || tagName === "BUTTON" || target.disabled) {
+              return;
+            }
+
+            // Check if there is any open dropdown, menu, dialog, or popover overlay
+            const hasOpenOverlay = Boolean(
+              document.querySelector("[role='listbox']") ||
+              document.querySelector("[role='menu']") ||
+              document.querySelector("[role='dialog']") ||
+              document.querySelector("[data-radix-popper-content-wrapper]")
+            );
+            if (hasOpenOverlay) {
+              return;
+            }
+
+            if (tagName === "INPUT") {
+              const type = (target.type || "").toLowerCase();
+              if (["checkbox", "radio", "file", "submit", "button"].includes(type)) {
+                return;
+              }
+            }
+
+            e.preventDefault();
+            if (footerPrimaryAction && !footerPrimaryDisabled) {
+              footerPrimaryAction();
+            }
+          }
+        }}
+        className="contents"
       >
-        <div className={`min-h-full px-4 sm:px-6 lg:px-8 ${
-          currentSlide?.id === "individualProof"
-            ? "py-2 sm:py-3 lg:py-4 pb-2 sm:pb-3 lg:pb-4"
-            : `py-4 sm:py-6 lg:py-8 ${isFooterHidden ? 'pb-4 sm:pb-6 lg:pb-8' : 'pb-24'}`
-        }`}>
-          <AnimatePresence initial={false} mode="wait">
-            <motion.div
-              key={currentSlide.id}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-              className="w-full"
-            >
-              <ActiveSlide
-                slide={currentSlide}
-                selectedWorkPreference={selectedWorkPreference}
-                onSelectWorkPreference={handleWorkPreferenceSelect}
-                basicProfileForm={basicProfileForm}
-                basicProfileFields={basicProfileFields}
-                onBasicProfileFieldChange={handleBasicProfileFieldChange}
-                onUsernameBlur={handleUsernameBlur}
-                basicProfileErrors={basicProfileErrors}
-                usernameStatus={usernameStatus}
-                countryOptions={countryOptions}
-                stateOptions={stateOptions}
-                languageOptions={languageOptions}
-                isStateOptionsLoading={isStateOptionsLoading}
-                profilePhotoPreviewUrl={extractProfilePhotoUrl(
-                  basicProfileForm.profilePhoto,
-                )}
-                onProfilePhotoSelect={handleProfilePhotoSelect}
-                onProfilePhotoRemove={handleProfilePhotoRemove}
-                resumeFile={basicProfileForm.resume}
-                onResumeSelect={handleResumeSelect}
-                onResumeRemove={handleResumeRemove}
-                isResumeAutofillRunning={isResumeAutofillRunning}
-                resumeAutofillTone={resumeAutofillState.tone}
-                resumeAutofillMessage={resumeAutofillState.message}
-                resumeUploadRequestId={resumeUploadRequestId}
-                selectedServices={selectedServices}
-                onToggleService={handleServiceToggle}
-                dbServices={dbServices}
-                currentServiceKey={currentServiceKey}
-                currentService={currentService}
-                currentServiceName={currentServiceName}
-                onboardingContent={activeOnboardingContent}
-                currentServiceIndex={currentServiceIndex}
-                totalSelectedServices={selectedServices.length}
-                serviceDraft={currentServiceDraft}
-                onServiceStepChange={handleServiceStepChange}
-                onUpdateServiceDraft={handleServiceInfoDraftUpdate}
-                serviceInfoFields={serviceInfoFields}
-                serviceInfoForm={currentServiceInfoForm}
-                onServiceInfoFieldChange={handleServiceInfoFieldChange}
-                serviceInfoValidationErrors={serviceInfoValidationErrors}
-                servicePricingForm={currentServicePricingForm}
-                servicePricingFields={servicePricingFields}
-                onServicePricingFieldChange={handleServicePricingFieldChange}
-                servicePricingValidationErrors={servicePricingValidationErrors}
-                serviceVisualsForm={currentServiceVisualsForm}
-                serviceVisualFields={serviceVisualFields}
-                suggestedKeywords={suggestedKeywords}
-                isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
-                onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
-                onUploadServiceMediaFile={uploadServiceMediaFile}
-                serviceVisualsValidationErrors={serviceVisualsValidationErrors}
-                caseStudyForm={currentCaseStudyForm}
-                caseStudyFields={caseStudyFields}
-                caseStudies={currentServiceCaseStudies}
-                activeCaseStudyId={currentActiveCaseStudyId}
-                activeCaseStudyIndex={currentActiveCaseStudyIndex}
-                nicheOptions={dbNiches}
-                onCaseStudyFieldChange={handleCaseStudyFieldChange}
-                onAddCaseStudy={handleAddCaseStudy}
-                onRemoveCaseStudy={handleRemoveCaseStudy}
-                onActiveCaseStudyChange={handleActiveCaseStudyChange}
-                onUploadMediaFile={uploadServiceMediaFile}
-                caseStudyValidationErrors={caseStudyValidationErrors}
-                acceptInProgressProjectsValue={acceptInProgressProjectsValue}
-                onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
-                onCommunicationPolicyReadinessChange={(isReady) =>
-                  setCommunicationPolicyReady(Boolean(isReady))
-                }
-                isProfileSaving={isProfileSaving}
-                user={user}
-                onSkipServices={handleSkipServicesSection}
-                continueButton={null}
-                onContinue={handleContinue}
-              />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </section>
+        <section
+          ref={onboardingScrollContainerRef}
+          className="subtle-scrollbar relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+        >
+          <div className={`min-h-full px-4 sm:px-6 lg:px-8 ${
+            currentSlide?.id === "individualProof"
+              ? "py-2 sm:py-3 lg:py-4 pb-2 sm:pb-3 lg:pb-4"
+              : `py-4 sm:py-6 lg:py-8 ${isFooterHidden ? 'pb-4 sm:pb-6 lg:pb-8' : 'pb-24'}`
+          }`}>
+            <AnimatePresence initial={false} mode="wait">
+              <motion.div
+                key={currentSlide.id}
+                initial={{ opacity: 0, x: 10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="w-full"
+              >
+                <ActiveSlide
+                  slide={currentSlide}
+                  selectedWorkPreference={selectedWorkPreference}
+                  onSelectWorkPreference={handleWorkPreferenceSelect}
+                  basicProfileForm={basicProfileForm}
+                  basicProfileFields={basicProfileFields}
+                  onBasicProfileFieldChange={handleBasicProfileFieldChange}
+                  onUsernameBlur={handleUsernameBlur}
+                  basicProfileErrors={basicProfileErrors}
+                  usernameStatus={usernameStatus}
+                  countryOptions={countryOptions}
+                  stateOptions={stateOptions}
+                  languageOptions={languageOptions}
+                  isStateOptionsLoading={isStateOptionsLoading}
+                  profilePhotoPreviewUrl={extractProfilePhotoUrl(
+                    basicProfileForm.profilePhoto,
+                  )}
+                  onProfilePhotoSelect={handleProfilePhotoSelect}
+                  onProfilePhotoRemove={handleProfilePhotoRemove}
+                  resumeFile={basicProfileForm.resume}
+                  onResumeSelect={handleResumeSelect}
+                  onResumeRemove={handleResumeRemove}
+                  isResumeAutofillRunning={isResumeAutofillRunning}
+                  resumeAutofillTone={resumeAutofillState.tone}
+                  resumeAutofillMessage={resumeAutofillState.message}
+                  resumeUploadRequestId={resumeUploadRequestId}
+                  selectedServices={selectedServices}
+                  onToggleService={handleServiceToggle}
+                  dbServices={dbServices}
+                  currentServiceKey={currentServiceKey}
+                  currentService={currentService}
+                  currentServiceName={currentServiceName}
+                  onboardingContent={activeOnboardingContent}
+                  currentServiceIndex={currentServiceIndex}
+                  totalSelectedServices={selectedServices.length}
+                  serviceDraft={currentServiceDraft}
+                  onServiceStepChange={handleServiceStepChange}
+                  onUpdateServiceDraft={handleServiceInfoDraftUpdate}
+                  serviceInfoFields={serviceInfoFields}
+                  serviceInfoForm={currentServiceInfoForm}
+                  onServiceInfoFieldChange={handleServiceInfoFieldChange}
+                  serviceInfoValidationErrors={serviceInfoValidationErrors}
+                  servicePricingForm={currentServicePricingForm}
+                  servicePricingFields={servicePricingFields}
+                  onServicePricingFieldChange={handleServicePricingFieldChange}
+                  servicePricingValidationErrors={servicePricingValidationErrors}
+                  serviceVisualsForm={currentServiceVisualsForm}
+                  serviceVisualFields={serviceVisualFields}
+                  suggestedKeywords={suggestedKeywords}
+                  isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
+                  onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
+                  onUploadServiceMediaFile={uploadServiceMediaFile}
+                  serviceVisualsValidationErrors={serviceVisualsValidationErrors}
+                  caseStudyForm={currentCaseStudyForm}
+                  caseStudyFields={caseStudyFields}
+                  caseStudies={currentServiceCaseStudies}
+                  activeCaseStudyId={currentActiveCaseStudyId}
+                  activeCaseStudyIndex={currentActiveCaseStudyIndex}
+                  nicheOptions={dbNiches}
+                  onCaseStudyFieldChange={handleCaseStudyFieldChange}
+                  onAddCaseStudy={handleAddCaseStudy}
+                  onRemoveCaseStudy={handleRemoveCaseStudy}
+                  onActiveCaseStudyChange={handleActiveCaseStudyChange}
+                  onUploadMediaFile={uploadServiceMediaFile}
+                  caseStudyValidationErrors={caseStudyValidationErrors}
+                  acceptInProgressProjectsValue={acceptInProgressProjectsValue}
+                  onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
+                  onCommunicationPolicyReadinessChange={(isReady) =>
+                    setCommunicationPolicyReady(Boolean(isReady))
+                  }
+                  isProfileSaving={isProfileSaving}
+                  user={user}
+                  onSkipServices={handleSkipServicesSection}
+                  continueButton={null}
+                  onContinue={handleContinue}
+                />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </section>
+      </div>
 
       {/* Sticky Bottom Bar */}
       {!isFooterHidden && (

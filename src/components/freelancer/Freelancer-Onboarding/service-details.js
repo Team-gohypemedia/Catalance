@@ -226,7 +226,6 @@ const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
       typeof source.previewImage === "string" || source.previewImage instanceof File
         ? source.previewImage
         : null,
-    previewGradient: toOptionalString(source.previewGradient) || "",
     projectFile:
       typeof source.projectFile === "string" || source.projectFile instanceof File
         ? source.projectFile

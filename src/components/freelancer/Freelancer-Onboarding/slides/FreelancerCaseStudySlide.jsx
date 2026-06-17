@@ -240,7 +240,7 @@ const FreelancerCaseStudySlide = ({
   const budgetError = String(caseStudyValidationErrors.budget || "").trim();
   const customCaseStudyFields = resolvedFields.filter(
     (field) =>
-      !["title", "description", "niche", "projectLink", "projectFile", "role", "timeline", "budget", "previewImage", "previewGradient"].includes(field.id) &&
+      !["title", "description", "niche", "projectLink", "projectFile", "role", "timeline", "budget", "previewImage"].includes(field.id) &&
       field.visible !== false,
   );
 
@@ -709,19 +709,7 @@ const FreelancerCaseStudySlide = ({
               </div>
             </div>
 
-            {/* Background Gradient */}
-            <div className="space-y-0">
-              <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                Background Gradient
-              </label>
-              <CustomSelect
-                value={caseStudyForm.previewGradient}
-                onChange={(val) => onCaseStudyFieldChange("previewGradient", val)}
-                options={GRADIENT_OPTIONS}
-                placeholder="Select gradient"
-                className="h-10"
-              />
-            </div>
+
             {customCaseStudyFields.map((field) => {
               const customValue = caseStudyForm?.customFields?.[field.id] ?? "";
               const customError = String(caseStudyValidationErrors[field.id] || "").trim();

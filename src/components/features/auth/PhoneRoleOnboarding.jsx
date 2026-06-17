@@ -298,6 +298,7 @@ function PhoneRoleOnboarding() {
     handleProfileImageSelect(input.files?.[0], () => {
       input.value = "";
     });
+    input.blur();
   };
 
   const handleProfileImageCropCancel = () => {
@@ -441,6 +442,9 @@ function PhoneRoleOnboarding() {
   };
 
   const handleBack = () => {
+    if (typeof document !== "undefined") {
+      document.activeElement?.blur();
+    }
     setFormErrors({});
     setActiveSlide((current) => Math.max(current - 1, 0));
   };
@@ -821,7 +825,44 @@ function PhoneRoleOnboarding() {
           </div>
 
           {/* Right card */}
-          <div className={cn("w-full max-w-md rounded-3xl border p-6 sm:p-7 shadow-2xl shadow-black/5 dark:shadow-black/40", isDark ? "border-white/[0.07] bg-white/[0.04] backdrop-blur-xl" : "border-black/[0.06] bg-white")}>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleNext();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const target = e.target;
+                if (!target) return;
+                const tagName = target.tagName.toUpperCase();
+                if (tagName === "TEXTAREA" || tagName === "BUTTON" || target.disabled) {
+                  return;
+                }
+
+                // Check if there is any open dropdown, menu, dialog, or popover overlay
+                const hasOpenOverlay = Boolean(
+                  document.querySelector("[role='listbox']") ||
+                  document.querySelector("[role='menu']") ||
+                  document.querySelector("[role='dialog']") ||
+                  document.querySelector("[data-radix-popper-content-wrapper]")
+                );
+                if (hasOpenOverlay) {
+                  return;
+                }
+
+                if (tagName === "INPUT") {
+                  const type = (target.type || "").toLowerCase();
+                  if (["checkbox", "radio", "file", "submit", "button"].includes(type)) {
+                    return;
+                  }
+                }
+
+                e.preventDefault();
+                void handleNext();
+              }
+            }}
+            className={cn("w-full max-w-md rounded-3xl border p-6 sm:p-7 shadow-2xl shadow-black/5 dark:shadow-black/40", isDark ? "border-white/[0.07] bg-white/[0.04] backdrop-blur-xl" : "border-black/[0.06] bg-white")}
+          >
             {/* Mobile heading */}
             <div className="mb-4 lg:hidden">
               <div className={cn("mb-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.75rem] font-medium", isDark ? "border-white/10 bg-white/[0.05] text-white/60" : "border-black/[0.08] bg-black/[0.04] text-black/50")}>
@@ -839,9 +880,8 @@ function PhoneRoleOnboarding() {
             {/* CTA */}
             <div className="mt-4">
               <button
-                type="button"
+                type="submit"
                 disabled={isSaving}
-                onClick={handleNext}
                 className={cn(
                   "group flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[0.95rem] font-bold transition-all duration-200 keep-white",
                   "bg-primary text-white shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"

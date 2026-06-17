@@ -251,6 +251,7 @@ const FreelancerBasicProfileSlide = ({
       onProfilePhotoSelect(file);
     }
     event.target.value = "";
+    event.target.blur();
   };
 
   const renderProfilePhotoField = () => {
@@ -534,6 +535,7 @@ const FreelancerBasicProfileSlide = ({
                     onResumeSelect(file);
                   }
                   event.target.value = "";
+                  event.target.blur();
                 }}
               />
               <span className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90">

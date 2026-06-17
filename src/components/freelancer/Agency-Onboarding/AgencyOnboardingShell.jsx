@@ -1734,7 +1734,6 @@ const AgencyOnboardingShell = ({
       projectLink: String(currentActiveCaseStudy?.projectLink || "").trim(),
       projectFile: currentActiveCaseStudy?.projectFile || null,
       previewImage: currentActiveCaseStudy?.previewImage || null,
-      previewGradient: String(currentActiveCaseStudy?.previewGradient || "").trim(),
       role: String(currentActiveCaseStudy?.role || "").trim(),
       timeline: String(currentActiveCaseStudy?.timeline || "").trim(),
       budget: String(currentActiveCaseStudy?.budget || "").trim(),
@@ -2904,6 +2903,9 @@ const AgencyOnboardingShell = ({
   };
 
   const handleBack = () => {
+    if (typeof document !== "undefined") {
+      document.activeElement?.blur();
+    }
     if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
       setCurrentSlideIndex(serviceReviewSlideIndex);
@@ -3794,95 +3796,132 @@ const AgencyOnboardingShell = ({
         </div>
       </header>
 
-      <section
-        ref={onboardingScrollContainerRef}
-        className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
-      >
-        <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 pb-24">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentSlide.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="w-full"
-            >
-              <ActiveSlide
-                slide={currentSlide}
-                selectedWorkPreference={selectedWorkPreference}
-                onSelectWorkPreference={handleWorkPreferenceSelect}
-                basicProfileForm={basicProfileForm}
-                onBasicProfileFieldChange={handleBasicProfileFieldChange}
-                onUsernameBlur={handleUsernameBlur}
-                basicProfileErrors={basicProfileErrors}
-                usernameStatus={usernameStatus}
-                countryOptions={countryOptions}
-                stateOptions={stateOptions}
-                languageOptions={languageOptions}
-                isStateOptionsLoading={isStateOptionsLoading}
-                profilePhotoPreviewUrl={extractProfilePhotoUrl(
-                  basicProfileForm.profilePhoto,
-                )}
-                onProfilePhotoSelect={handleProfilePhotoSelect}
-                onProfilePhotoRemove={handleProfilePhotoRemove}
-                resumeFile={basicProfileForm.resume}
-                onResumeSelect={handleResumeSelect}
-                onResumeRemove={handleResumeRemove}
-                isResumeAutofillRunning={isResumeAutofillRunning}
-                resumeAutofillTone={resumeAutofillState.tone}
-                resumeAutofillMessage={resumeAutofillState.message}
-                resumeUploadRequestId={resumeUploadRequestId}
-                agencyProfileForm={agencyProfileForm}
-                onAgencyFieldChange={handleAgencyFieldChange}
-                agencyValidationErrors={agencyValidationErrors}
-                selectedServices={selectedServices}
-                onToggleService={handleServiceToggle}
-                dbServices={dbServices}
-                currentServiceKey={currentServiceKey}
-                currentService={currentService}
-                currentServiceName={currentServiceName}
-                currentServiceIndex={currentServiceIndex}
-                totalSelectedServices={selectedServices.length}
-                serviceDraft={currentServiceDraft}
-                onServiceStepChange={handleServiceStepChange}
-                onUpdateServiceDraft={handleServiceInfoDraftUpdate}
-                serviceInfoForm={currentServiceInfoForm}
-                onServiceInfoFieldChange={handleServiceInfoFieldChange}
-                serviceInfoValidationErrors={serviceInfoValidationErrors}
-                servicePricingForm={currentServicePricingForm}
-                onServicePricingFieldChange={handleServicePricingFieldChange}
-                servicePricingValidationErrors={servicePricingValidationErrors}
-                serviceVisualsForm={currentServiceVisualsForm}
-                suggestedKeywords={suggestedKeywords}
-                isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
-                onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
-                serviceVisualsValidationErrors={serviceVisualsValidationErrors}
-                caseStudyForm={currentCaseStudyForm}
-                caseStudies={currentServiceCaseStudies}
-                activeCaseStudyId={currentActiveCaseStudyId}
-                activeCaseStudyIndex={currentActiveCaseStudyIndex}
-                nicheOptions={dbNiches}
-                onCaseStudyFieldChange={handleCaseStudyFieldChange}
-                onAddCaseStudy={handleAddCaseStudy}
-                onRemoveCaseStudy={handleRemoveCaseStudy}
-                onActiveCaseStudyChange={handleActiveCaseStudyChange}
-                onUploadMediaFile={uploadServiceMediaFile}
-                caseStudyValidationErrors={caseStudyValidationErrors}
-                acceptInProgressProjectsValue={acceptInProgressProjectsValue}
-                onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
-                onCommunicationPolicyReadinessChange={(isReady) =>
-                  setCommunicationPolicyReady(Boolean(isReady))
-                }
-                isProfileSaving={isProfileSaving}
-                user={user}
-                onSkipServices={handleSkipServicesSection}
-              />
-            </motion.div>
-          </AnimatePresence>
+      <div
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const target = e.target;
+            if (!target) return;
+            const tagName = target.tagName.toUpperCase();
+            if (tagName === "TEXTAREA" || tagName === "BUTTON" || target.disabled) {
+              return;
+            }
 
-        </div>
-      </section>
+            // Check if there is any open dropdown, menu, dialog, or popover overlay
+            const hasOpenOverlay = Boolean(
+              document.querySelector("[role='listbox']") ||
+              document.querySelector("[role='menu']") ||
+              document.querySelector("[role='dialog']") ||
+              document.querySelector("[data-radix-popper-content-wrapper]")
+            );
+            if (hasOpenOverlay) {
+              return;
+            }
+
+            if (tagName === "INPUT") {
+              const type = (target.type || "").toLowerCase();
+              if (["checkbox", "radio", "file", "submit", "button"].includes(type)) {
+                return;
+              }
+            }
+
+            e.preventDefault();
+            if (footerPrimaryAction && !footerPrimaryDisabled) {
+              footerPrimaryAction();
+            }
+          }
+        }}
+        className="contents"
+      >
+        <section
+          ref={onboardingScrollContainerRef}
+          className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
+        >
+          <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 pb-24">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentSlide.id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="w-full"
+              >
+                <ActiveSlide
+                  slide={currentSlide}
+                  selectedWorkPreference={selectedWorkPreference}
+                  onSelectWorkPreference={handleWorkPreferenceSelect}
+                  basicProfileForm={basicProfileForm}
+                  onBasicProfileFieldChange={handleBasicProfileFieldChange}
+                  onUsernameBlur={handleUsernameBlur}
+                  basicProfileErrors={basicProfileErrors}
+                  usernameStatus={usernameStatus}
+                  countryOptions={countryOptions}
+                  stateOptions={stateOptions}
+                  languageOptions={languageOptions}
+                  isStateOptionsLoading={isStateOptionsLoading}
+                  profilePhotoPreviewUrl={extractProfilePhotoUrl(
+                    basicProfileForm.profilePhoto,
+                  )}
+                  onProfilePhotoSelect={handleProfilePhotoSelect}
+                  onProfilePhotoRemove={handleProfilePhotoRemove}
+                  resumeFile={basicProfileForm.resume}
+                  onResumeSelect={handleResumeSelect}
+                  onResumeRemove={handleResumeRemove}
+                  isResumeAutofillRunning={isResumeAutofillRunning}
+                  resumeAutofillTone={resumeAutofillState.tone}
+                  resumeAutofillMessage={resumeAutofillState.message}
+                  resumeUploadRequestId={resumeUploadRequestId}
+                  agencyProfileForm={agencyProfileForm}
+                  onAgencyFieldChange={handleAgencyFieldChange}
+                  agencyValidationErrors={agencyValidationErrors}
+                  selectedServices={selectedServices}
+                  onToggleService={handleServiceToggle}
+                  dbServices={dbServices}
+                  currentServiceKey={currentServiceKey}
+                  currentService={currentService}
+                  currentServiceName={currentServiceName}
+                  currentServiceIndex={currentServiceIndex}
+                  totalSelectedServices={selectedServices.length}
+                  serviceDraft={currentServiceDraft}
+                  onServiceStepChange={handleServiceStepChange}
+                  onUpdateServiceDraft={handleServiceInfoDraftUpdate}
+                  serviceInfoForm={currentServiceInfoForm}
+                  onServiceInfoFieldChange={handleServiceInfoFieldChange}
+                  serviceInfoValidationErrors={serviceInfoValidationErrors}
+                  servicePricingForm={currentServicePricingForm}
+                  onServicePricingFieldChange={handleServicePricingFieldChange}
+                  servicePricingValidationErrors={servicePricingValidationErrors}
+                  serviceVisualsForm={currentServiceVisualsForm}
+                  suggestedKeywords={suggestedKeywords}
+                  isSuggestedKeywordsLoading={isSuggestedKeywordsLoading}
+                  onServiceVisualsFieldChange={handleServiceVisualsFieldChange}
+                  serviceVisualsValidationErrors={serviceVisualsValidationErrors}
+                  caseStudyForm={currentCaseStudyForm}
+                  caseStudies={currentServiceCaseStudies}
+                  activeCaseStudyId={currentActiveCaseStudyId}
+                  activeCaseStudyIndex={currentActiveCaseStudyIndex}
+                  nicheOptions={dbNiches}
+                  onCaseStudyFieldChange={handleCaseStudyFieldChange}
+                  onAddCaseStudy={handleAddCaseStudy}
+                  onRemoveCaseStudy={handleRemoveCaseStudy}
+                  onActiveCaseStudyChange={handleActiveCaseStudyChange}
+                  onUploadMediaFile={uploadServiceMediaFile}
+                  caseStudyValidationErrors={caseStudyValidationErrors}
+                  acceptInProgressProjectsValue={acceptInProgressProjectsValue}
+                  onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
+                  onCommunicationPolicyReadinessChange={(isReady) =>
+                    setCommunicationPolicyReady(Boolean(isReady))
+                  }
+                  isProfileSaving={isProfileSaving}
+                  user={user}
+                  onSkipServices={handleSkipServicesSection}
+                />
+              </motion.div>
+            </AnimatePresence>
+
+          </div>
+        </section>
+      </div>
 
       {isFooterHidden ? null : (
         <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">

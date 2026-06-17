@@ -1267,51 +1267,56 @@ const ClientProfileContent = () => {
         }}
       >
         <DialogContent className="max-h-[90dvh] w-[calc(100vw-24px)] max-w-3xl gap-0 overflow-hidden rounded-[24px] border-border bg-card p-0 text-muted-foreground sm:w-full sm:rounded-[32px]">
-          <div className="border-b border-border px-5 py-4 sm:px-8 sm:py-5">
-            <DialogHeader>
-              <DialogTitle className="text-base font-semibold tracking-[-0.02em] text-foreground sm:text-xl sm:tracking-[-0.03em]">
-                {activeEditor ? activeEditorMeta[activeEditor]?.title : ""}
-              </DialogTitle>
-              <DialogDescription className="text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
-                {activeEditor ? activeEditorMeta[activeEditor]?.description : ""}
-              </DialogDescription>
-            </DialogHeader>
-          </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSubmit();
+            }}
+            className="flex flex-col w-full h-full"
+          >
+            <div className="border-b border-border px-5 py-4 sm:px-8 sm:py-5">
+              <DialogHeader>
+                <DialogTitle className="text-base font-semibold tracking-[-0.02em] text-foreground sm:text-xl sm:tracking-[-0.03em]">
+                  {activeEditor ? activeEditorMeta[activeEditor]?.title : ""}
+                </DialogTitle>
+                <DialogDescription className="text-xs leading-5 text-muted-foreground sm:text-sm sm:leading-6">
+                  {activeEditor ? activeEditorMeta[activeEditor]?.description : ""}
+                </DialogDescription>
+              </DialogHeader>
+            </div>
 
-          <div className="max-h-[60dvh] overflow-y-auto px-5 py-5 sm:max-h-[70vh] sm:px-8 sm:py-6">
-            {renderEditorContent()}
-          </div>
+            <div className="max-h-[60dvh] overflow-y-auto px-5 py-5 sm:max-h-[70vh] sm:px-8 sm:py-6">
+              {renderEditorContent()}
+            </div>
 
-          <DialogFooter className="border-t border-border px-5 py-4 sm:px-8 sm:py-5">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={closeSectionEditor}
-              disabled={loading}
-              className="h-12 rounded-full border-border bg-muted px-6 text-sm font-semibold text-foreground hover:bg-muted/80"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                void handleSubmit();
-              }}
-              disabled={loading}
-              className="h-12 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_16px_40px_-20px_color-mix(in_srgb,var(--primary)_60%,transparent)] hover:bg-primary/90"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                  Saving...
-                </>
-              ) : activeEditor ? (
-                activeEditorMeta[activeEditor]?.saveLabel
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="border-t border-border px-5 py-4 sm:px-8 sm:py-5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeSectionEditor}
+                disabled={loading}
+                className="h-12 rounded-full border-border bg-muted px-6 text-sm font-semibold text-foreground hover:bg-muted/80"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="h-12 rounded-full bg-primary px-7 text-sm font-semibold text-primary-foreground shadow-[0_16px_40px_-20px_color-mix(in_srgb,var(--primary)_60%,transparent)] hover:bg-primary/90"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : activeEditor ? (
+                  activeEditorMeta[activeEditor]?.saveLabel
+                ) : (
+                  "Save Changes"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 

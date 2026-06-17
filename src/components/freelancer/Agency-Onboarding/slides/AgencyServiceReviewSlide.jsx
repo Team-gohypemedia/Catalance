@@ -1129,7 +1129,7 @@ const AgencyServiceReviewSlide = ({
                               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)] keep-white" />
                             </>
                           ) : (
-                            <div className={cn("relative aspect-[16/9] w-full overflow-hidden dark-card keep-white", caseStudy.previewGradient || "bg-[linear-gradient(135deg,#090909,#131313_55%,#111111)]")}>
+                            <div className="relative aspect-[16/9] w-full overflow-hidden dark-card keep-white bg-[linear-gradient(135deg,#090909,#131313_55%,#111111)]">
                               <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.82))] keep-white" />
                             </div>
                           )}
