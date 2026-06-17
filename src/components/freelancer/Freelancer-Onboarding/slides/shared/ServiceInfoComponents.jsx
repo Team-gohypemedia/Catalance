@@ -307,6 +307,7 @@ export const CustomSelect = ({
         onClick={() => setIsOpen(false)}
       />
       <div
+        data-onboarding-popup="true"
         className={cn(
           "z-[70] overflow-hidden rounded-xl border border-border bg-card shadow-xl",
           isCenteredPopup

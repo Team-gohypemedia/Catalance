@@ -3947,19 +3947,56 @@ const FreelancerOnboardingShell = () => {
             const target = e.target;
             if (!target) return;
             const tagName = target.tagName.toUpperCase();
-            if (tagName === "TEXTAREA" || tagName === "BUTTON" || target.disabled) {
+            if (tagName === "TEXTAREA" || target.disabled) {
               return;
             }
 
             // Check if there is any open dropdown, menu, dialog, or popover overlay
-            const hasOpenOverlay = Boolean(
-              document.querySelector("[role='listbox']") ||
-              document.querySelector("[role='menu']") ||
-              document.querySelector("[role='dialog']") ||
-              document.querySelector("[data-radix-popper-content-wrapper]")
-            );
+            const hasOpenOverlay = (() => {
+              if (
+                document.querySelector("[role='listbox']") ||
+                document.querySelector("[role='menu']") ||
+                document.querySelector("[data-radix-popper-content-wrapper]") ||
+                document.querySelector("[data-onboarding-popup='true']")
+              ) {
+                return true;
+              }
+              const dialogs = document.querySelectorAll("[role='dialog']");
+              for (const el of dialogs) {
+                const state = el.getAttribute("data-state");
+                if (state === "open") return true;
+                if (state === "closed") continue;
+                if (el.getAttribute("aria-hidden") === "true") continue;
+                const style = window.getComputedStyle(el);
+                if (style.display !== "none" && style.visibility !== "hidden") {
+                  return true;
+                }
+              }
+              return false;
+            })();
             if (hasOpenOverlay) {
               return;
+            }
+
+            if (tagName === "BUTTON") {
+              const btnText = String(target.textContent || "").trim().toLowerCase();
+              const ariaLabel = String(target.getAttribute("aria-label") || "").toLowerCase();
+              
+              // Prevent navigation if the focused button has an explicit navigation/removal action
+              const isBackBtn = btnText.includes("back") || ariaLabel.includes("back") || target.querySelector(".lucide-chevron-left");
+              const isSkipBtn = btnText.includes("skip") || ariaLabel.includes("skip");
+              const isResetBtn = btnText.includes("reset") || ariaLabel.includes("reset");
+              const isRemoveBtn = btnText.includes("remove") || ariaLabel.includes("remove") || target.querySelector(".lucide-x") || target.title?.toLowerCase().includes("remove") || target.ariaLabel?.toLowerCase().includes("remove");
+              
+              if (isBackBtn || isSkipBtn || isResetBtn || isRemoveBtn) {
+                return;
+              }
+              
+              // Let browser's native click behavior on primary continue buttons run without double triggering
+              const isPrimaryBtn = target.getAttribute("type") === "submit" || btnText.includes("continue") || btnText.includes("next");
+              if (isPrimaryBtn) {
+                return;
+              }
             }
 
             if (tagName === "INPUT") {

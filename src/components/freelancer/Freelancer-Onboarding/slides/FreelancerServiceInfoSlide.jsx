@@ -636,7 +636,7 @@ const CategoryMultiSelect = ({
 
         {/* â”€â”€ Inline search results dropdown â”€â”€ */}
         {isSearchOpen && searchQuery.trim() ? (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-xl shadow-black/10 subtle-scrollbar dark:shadow-black/40">
+          <div data-onboarding-popup="true" className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-xl shadow-black/10 subtle-scrollbar dark:shadow-black/40">
             {!hasSearchResults ? (
               <div className="px-4 py-3 text-sm text-muted-foreground">
                 {noResultsMessage}
@@ -789,6 +789,7 @@ const CategoryMultiSelect = ({
           ? createPortal(
               <div
                 ref={popupRef}
+                data-onboarding-popup="true"
                 className="z-[70] flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/10 dark:shadow-black/40"
                 style={popupStyle || undefined}
                 onClick={(event) => event.stopPropagation()}
