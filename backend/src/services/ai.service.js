@@ -1221,6 +1221,19 @@ const isBudgetPromptText = (text = "") =>
   BUDGET_INCREASE_REQUEST_REGEX.test(text) ||
   /starting budget|start at|stretch the budget|nudge it/i.test(text);
 
+const isStrictBudgetQuestionText = (text = "") => {
+  const normalized = normalizeQuestionText(text);
+  if (!normalized) return false;
+  return (
+    /^what(?:'s| is)? your budget(?: for this project)?\??$/i.test(normalized) ||
+    /^what budget(?: range)? do you have in mind/i.test(normalized) ||
+    /^what is your budget/i.test(normalized) ||
+    /^what is your expected monthly investment/i.test(normalized) ||
+    /^what monthly ad spend are you planning/i.test(normalized) ||
+    /^what is your monthly budget/i.test(normalized)
+  );
+};
+
 const AFFIRMATIVE_ONLY_REGEX =
   /^(yes|y|yeah|yep|sure|ok|okay|yup|alright|all right|can do|doable|works|sounds good|please do|go ahead)$/i;
 
@@ -1561,8 +1574,9 @@ const buildUserInputGuardMessage = ({
 
   const isBudgetQuestion =
     matchedQuestion?.id === "user_budget" ||
-    isBudgetPromptText(assistantText) ||
-    BUDGET_QUESTION_REGEX.test(questionText || "");
+    (matchedQuestion
+      ? BUDGET_QUESTION_REGEX.test(matchedQuestion.question || "")
+      : isStrictBudgetQuestionText(assistantQuestionLine || questionText || ""));
 
   if (isBudgetQuestion) {
     const parsed = parseFlexibleBudgetFromText(userText);
