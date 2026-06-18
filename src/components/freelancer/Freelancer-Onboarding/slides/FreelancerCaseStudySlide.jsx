@@ -457,7 +457,7 @@ const FreelancerCaseStudySlide = ({
                   "e.g. E-commerce Platform Redesign"
                 }
                 className={cn(
-                  "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:ring-1",
                   titleError
                     ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                     : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -486,7 +486,7 @@ const FreelancerCaseStudySlide = ({
                 }
                 rows={4}
                 className={cn(
-                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:ring-1",
                   descriptionError
                     ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                     : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -544,7 +544,7 @@ const FreelancerCaseStudySlide = ({
                       "https://..."
                     }
                     className={cn(
-                      "h-10 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
+                      "h-10 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
                     )}
                   />
                 </div>
@@ -612,7 +612,7 @@ const FreelancerCaseStudySlide = ({
                       "e.g. 5000"
                     }
                     className={cn(
-                      "h-10 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      "h-10 w-full rounded-xl border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:ring-1",
                       budgetError
                         ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                         : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -768,7 +768,7 @@ const FreelancerCaseStudySlide = ({
                       placeholder={field.placeholder || ""}
                       rows={4}
                       className={cn(
-                        "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                        "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:ring-1",
                         customError
                           ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                           : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -811,7 +811,7 @@ const FreelancerCaseStudySlide = ({
                     onChange={(e) => onCaseStudyFieldChange(field.id, e.target.value)}
                     placeholder={field.placeholder || ""}
                     className={cn(
-                      "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:ring-1",
+                      "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:ring-1",
                       customError
                         ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                         : "border-border focus:border-primary/50 focus:ring-primary/20",

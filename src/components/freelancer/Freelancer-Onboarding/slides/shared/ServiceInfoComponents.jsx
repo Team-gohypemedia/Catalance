@@ -305,7 +305,7 @@ export const CustomSelect = ({
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-full rounded-lg border border-border bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/60 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              className="h-10 w-full rounded-lg border border-border bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
             />
           </div>
         ) : null}
@@ -347,7 +347,7 @@ export const CustomSelect = ({
       </div>
     </>
   ) : null;
-
+ 
   return (
     <div className="relative">
       <button
@@ -355,8 +355,8 @@ export const CustomSelect = ({
         type="button"
         onClick={handleTriggerClick}
         className={cn(
-          "flex h-12 w-full items-center justify-between rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 transition-colors hover:border-border/80",
-          value ? "text-foreground" : "text-muted-foreground/70",
+          "flex h-12 w-full items-center justify-between rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 transition-colors hover:border-border/80 font-normal",
+          value ? "text-foreground" : "text-muted-foreground/50",
           hasError
             ? "border-destructive/70 ring-1 ring-destructive/20"
             : isOpen && "border-primary/50 ring-1 ring-primary/20",
@@ -364,7 +364,7 @@ export const CustomSelect = ({
         )}
         aria-invalid={hasError}
       >
-        <span className="text-[14px] leading-5">{selectedOption?.label || placeholder}</span>
+        <span className="text-[14px] leading-5 font-normal">{selectedOption?.label || placeholder}</span>
         <ChevronDown
           className={cn(
             "h-4 w-4 text-muted-foreground transition-transform duration-200",

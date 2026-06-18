@@ -733,7 +733,7 @@ const FreelancerServiceVisualsSlide = ({
                         placeholder={field.placeholder || ""}
                         rows={4}
                         className={cn(
-                          "w-full resize-none rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1",
+                          "w-full resize-none rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1",
                           error
                             ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                             : "border-border focus:border-primary/50 focus:ring-primary/20",
@@ -780,7 +780,7 @@ const FreelancerServiceVisualsSlide = ({
                       }
                       placeholder={field.placeholder || ""}
                       className={cn(
-                        "h-10 w-full rounded-xl border bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:ring-1",
+                        "h-10 w-full rounded-xl border bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1",
                         error
                           ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                           : "border-border focus:border-primary/50 focus:ring-primary/20",
