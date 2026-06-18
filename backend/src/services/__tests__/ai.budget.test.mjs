@@ -155,6 +155,25 @@ test("treats foreign-currency budget replies against INR minimums", () => {
   assert.match(warning, /₹|Rs\.|INR|â‚¹/i);
 });
 
+test("input guard does not hijack non-budget option questions into budget fallback", () => {
+  const guardMessage = buildUserInputGuardMessage({
+    conversationHistory: [
+      assistant([
+        "Nice, that’s a very complete ecommerce feature set for gohype.",
+        "Which of these design directions fits best?",
+        "",
+        "1. Clean, modern, and minimal",
+        "2. Bold and vibrant, high-impact visuals",
+        "3. Sleek and tech-focused",
+      ].join("\n"))
+    ],
+    messages: [user("Clean, modern, and minimal")],
+    selectedServiceName: SERVICE_NAME
+  });
+
+  assert.equal(guardMessage, null);
+});
+
 test("internal AI tasks use the lightweight request profile", () => {
   const validatorProfile = resolveChatRequestProfile("system_validator");
   const writerProfile = resolveChatRequestProfile("system_question_writer");

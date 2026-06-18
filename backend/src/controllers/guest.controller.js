@@ -3075,6 +3075,117 @@ const buildProgressBridge = ({ nextStep = 0, totalQuestions = 0 }) => {
     return "";
 };
 
+const BUDGET_CANONICAL_QUESTION_TEXT = "What is your budget for this project?";
+const QUESTION_MATCH_STOPWORDS = new Set([
+    "what",
+    "which",
+    "how",
+    "when",
+    "where",
+    "why",
+    "do",
+    "does",
+    "is",
+    "are",
+    "can",
+    "could",
+    "would",
+    "should",
+    "you",
+    "your",
+    "the",
+    "a",
+    "an",
+    "to",
+    "for",
+    "of",
+    "in",
+    "on",
+    "with",
+    "like",
+    "want",
+    "need",
+    "have",
+    "this",
+    "that",
+]);
+
+const canonicalizeQuestionMatchText = (value = "") =>
+    normalizeTextToken(value)
+        .replace(/\bsite\b/g, "website")
+        .replace(/\blook\b/g, "design")
+        .replace(/\bfeel\b/g, "design")
+        .replace(/\bvisual\b/g, "design")
+        .replace(/\btech\b/g, "technology");
+
+const extractQuestionMatchTokens = (value = "") =>
+    canonicalizeQuestionMatchText(value)
+        .split(" ")
+        .filter((token) => token && token.length > 2 && !QUESTION_MATCH_STOPWORDS.has(token));
+
+const getQuestionMatchScore = (source = "", target = "") => {
+    const sourceNormalized = canonicalizeQuestionMatchText(source);
+    const targetNormalized = canonicalizeQuestionMatchText(target);
+    if (!sourceNormalized || !targetNormalized) return 0;
+    if (sourceNormalized.includes(targetNormalized) || targetNormalized.includes(sourceNormalized)) {
+        return 1;
+    }
+
+    const targetTokens = extractQuestionMatchTokens(targetNormalized);
+    if (targetTokens.length === 0) return 0;
+    const sourceTokens = new Set(extractQuestionMatchTokens(sourceNormalized));
+    let hits = 0;
+    for (const token of targetTokens) {
+        if (sourceTokens.has(token)) hits += 1;
+    }
+    return hits / targetTokens.length;
+};
+
+const extractReplyQuestionLine = (replyText = "") => {
+    const lines = String(replyText || "")
+        .split("\n")
+        .map((line) => String(line || "").trim())
+        .filter(Boolean)
+        .filter((line) => !OPTION_LINE_REGEX.test(line));
+
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+        if (lines[index].includes("?")) return lines[index];
+    }
+
+    for (let index = lines.length - 1; index >= 0; index -= 1) {
+        if (/^(what|which|how|when|where|why|do|does|is|are|can|could|would|should)\b/i.test(lines[index])) {
+            return lines[index];
+        }
+    }
+
+    return "";
+};
+
+const shouldReplaceBudgetFallbackQuestion = ({
+    replyText = "",
+    nextQuestion = null,
+}) => {
+    const cleanedReply = String(replyText || "").trim();
+    const nextQuestionText = String(nextQuestion?.text || "").trim();
+    if (!cleanedReply || !nextQuestionText) return false;
+    if (cleanedReply !== BUDGET_CANONICAL_QUESTION_TEXT) return false;
+    return !isBudgetQuestion(nextQuestion);
+};
+
+const shouldReplaceMismatchedQuestionReply = ({
+    replyText = "",
+    nextQuestion = null,
+}) => {
+    const nextQuestionText = String(nextQuestion?.text || "").trim();
+    if (!nextQuestionText) return false;
+
+    const replyQuestionLine = extractReplyQuestionLine(replyText);
+    if (!replyQuestionLine) return false;
+
+    const matchScore = getQuestionMatchScore(replyQuestionLine, nextQuestionText);
+    return matchScore < 0.2;
+};
+
 const buildAgentSideReply = ({ userMessage = "", answersByQuestionText = {} }) => {
     const normalizedUserMessage = normalizeTextToken(userMessage);
     if (!normalizedUserMessage) return "";
@@ -6951,6 +7062,12 @@ Return plain text only.
                 )
             )
         );
+        if (shouldReplaceBudgetFallbackQuestion({ replyText: cleanedMessage, nextQuestion })) {
+            cleanedMessage = String(nextQuestion?.text || "").trim();
+        }
+        if (shouldReplaceMismatchedQuestionReply({ replyText: cleanedMessage, nextQuestion })) {
+            cleanedMessage = String(nextQuestion?.text || "").trim();
+        }
         if (hasOptions) {
             cleanedMessage = `${
                 messageUsesExpectedOptionLabels(cleanedMessage, nextQuestionOptions)
@@ -9211,6 +9328,8 @@ export const __testables = {
     normalizeAnswerForQuestion,
     parseKnownBrandAffiliationResponse,
     parseAdminControlText,
+    shouldReplaceBudgetFallbackQuestion,
+    shouldReplaceMismatchedQuestionReply,
     shouldUseConversationalRecovery,
     shouldSkipMessageAnswerExtraction,
     toChronologicalGuestHistory,

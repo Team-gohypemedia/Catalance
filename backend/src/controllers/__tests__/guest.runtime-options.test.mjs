@@ -42,6 +42,8 @@ const {
   normalizeAnswerForQuestion,
   parseKnownBrandAffiliationResponse,
   parseAdminControlText,
+  shouldReplaceBudgetFallbackQuestion,
+  shouldReplaceMismatchedQuestionReply,
   shouldUseConversationalRecovery,
   shouldSkipMessageAnswerExtraction,
   toChronologicalGuestHistory,
@@ -626,6 +628,54 @@ test("does not display captured _other text unless the base option was actually 
     design_style_other: "Dark and futuristic",
   });
   assert.equal(validCustomOptions[0].label, "Dark and futuristic");
+});
+
+test("replaces budget fallback text when the actual next question is not budget", () => {
+  assert.equal(
+    shouldReplaceBudgetFallbackQuestion({
+      replyText: "What is your budget for this project?",
+      nextQuestion: {
+        slug: "design_style",
+        text: "How would you like your website to look and feel?",
+      },
+    }),
+    true
+  );
+
+  assert.equal(
+    shouldReplaceBudgetFallbackQuestion({
+      replyText: "What is your budget for this project?",
+      nextQuestion: {
+        slug: "user_budget",
+        text: "What is your budget for this website project?",
+      },
+    }),
+    false
+  );
+});
+
+test("replaces replies whose question line clearly does not match the active question", () => {
+  assert.equal(
+    shouldReplaceMismatchedQuestionReply({
+      replyText: "What is your budget for this project?",
+      nextQuestion: {
+        slug: "design_style",
+        text: "How would you like your website to look and feel?",
+      },
+    }),
+    true
+  );
+
+  assert.equal(
+    shouldReplaceMismatchedQuestionReply({
+      replyText: "What kind of design direction fits your website best?",
+      nextQuestion: {
+        slug: "design_style",
+        text: "How would you like your website to look and feel?",
+      },
+    }),
+    false
+  );
 });
 
 test("strips admin directive lines from assistant output before returning it", () => {
