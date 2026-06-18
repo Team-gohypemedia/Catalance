@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
+import Info from "lucide-react/dist/esm/icons/info";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
@@ -189,13 +190,18 @@ const FreelancerCaseStudySlide = ({
   useEffect(() => {
     titleInputRef.current?.focus();
 
-    // Show info popup after a comfortable 2.5-second delay to let the user see the form first
-    const timer = setTimeout(() => {
-      setShowInfoModal(true);
-    }, 2500);
+    const storageKey = `seen_case_study_info_modal_${user?.id || "guest"}`;
+    const hasSeen = localStorage.getItem(storageKey);
+    if (!hasSeen) {
+      // Show info popup after a comfortable 2.5-second delay to let the user see the form first
+      const timer = setTimeout(() => {
+        setShowInfoModal(true);
+        localStorage.setItem(storageKey, "true");
+      }, 2500);
 
-    return () => clearTimeout(timer);
-  }, []);
+      return () => clearTimeout(timer);
+    }
+  }, [user?.id]);
 
   const handleCloseModal = () => {
     setShowInfoModal(false);
@@ -291,42 +297,13 @@ const FreelancerCaseStudySlide = ({
         {/* Step Content */}
         <div className="mx-auto w-full max-w-3xl space-y-4">
           <div className="space-y-4">
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-3 sm:flex sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-3">
-                <div>
+            <div className="space-y-1">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-3 sm:flex sm:items-center sm:justify-between">
+                <div className="min-w-0 sm:flex-1">
                   <h2 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "text-foreground")}>
                     {caseStudyContent?.sectionTitle || "Case Studies"}
                   </h2>
-                  <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground")}>
-                    {caseStudyContent?.sectionDescription ||
-                      "Add multiple case studies and switch between them while filling the details."}
-                  </p>
                 </div>
-              </div>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => onSkipServices?.()}
-                className={cn(
-                  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
-                  "shrink-0 whitespace-nowrap px-3 py-2 text-sm sm:hidden",
-                )}
-              >
-                Skip
-              </Button>
-
-              <div className="hidden sm:flex sm:flex-nowrap sm:items-center sm:justify-end sm:gap-3">
-                <button
-                  type="button"
-                  onClick={onAddCaseStudy}
-                  disabled={isCaseStudyLimitReached}
-                  className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
-                >
-                  <Plus className="h-4 w-4 text-inherit keep-white" />
-                  {caseStudyContent?.addButtonLabel || "Add Case Study"}
-                </button>
 
                 <Button
                   type="button"
@@ -335,12 +312,42 @@ const FreelancerCaseStudySlide = ({
                   onClick={() => onSkipServices?.()}
                   className={cn(
                     ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
-                    "shrink-0 whitespace-nowrap px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+                    "shrink-0 whitespace-nowrap px-3 py-2 text-sm sm:hidden",
                   )}
                 >
                   Skip
                 </Button>
+
+                <div className="hidden sm:flex sm:flex-nowrap sm:items-center sm:justify-end sm:gap-3">
+                  <button
+                    type="button"
+                    onClick={onAddCaseStudy}
+                    disabled={isCaseStudyLimitReached}
+                    className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
+                  >
+                    <Plus className="h-4 w-4 text-inherit keep-white" />
+                    {caseStudyContent?.addButtonLabel || "Add Case Study"}
+                  </button>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onSkipServices?.()}
+                    className={cn(
+                      ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                      "shrink-0 whitespace-nowrap px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
+                    )}
+                  >
+                    Skip
+                  </Button>
+                </div>
               </div>
+
+              <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground sm:whitespace-nowrap")}>
+                {caseStudyContent?.sectionDescription ||
+                  "Add multiple case studies and switch between them while filling the details."}
+              </p>
             </div>
 
             <div className="sm:hidden">
@@ -416,11 +423,20 @@ const FreelancerCaseStudySlide = ({
             ) : null}
           </div>
 
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
-          {/* Project Header */}
-          <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "mb-4 text-foreground")}>
-            {activeCaseStudyLabel}
-          </h3>
+          <div className="relative rounded-2xl border border-border bg-card p-4 shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
+            <button
+              type="button"
+              onClick={() => setShowInfoModal(true)}
+              className="absolute right-4 top-4 inline-flex size-6 items-center justify-center rounded-full bg-primary/15 text-primary transition-all duration-200 hover:bg-primary/25 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 cursor-pointer z-10"
+              aria-label="View case studies info"
+              title="View case studies info"
+            >
+              <Info className="size-3.5" />
+            </button>
+            {/* Project Header */}
+            <h3 className={cn(ONBOARDING_SECTION_TITLE_CLASS, "mb-4 pr-8 text-foreground")}>
+              {activeCaseStudyLabel}
+            </h3>
 
           <div className="space-y-4">
             {/* Case Study Title */}
