@@ -396,18 +396,28 @@ const resolveTagIcon = (label = "") => {
 
 const PreviewTag = ({ label, variant = "pill" }) => {
   const Icon = resolveTagIcon(label);
-  const isCategoryCard = variant === "category";
+  const isCategory = variant === "category";
+  const isCategoryCompact = variant === "category-compact";
+  const isCompact = variant === "compact";
 
   return (
     <div
-      className={
-        isCategoryCard
-          ? "flex min-h-[54px] items-center gap-3 rounded-2xl border border-border bg-muted px-4 py-3 text-sm font-medium text-foreground"
-          : "flex items-center gap-2 rounded-full border border-border bg-muted px-4 py-3 text-sm font-medium text-foreground"
-      }
+      className={cn(
+        "flex items-center text-foreground border border-border bg-muted",
+        isCategory
+          ? "min-h-[54px] gap-3 rounded-2xl px-4 py-3 text-sm font-medium"
+          : isCategoryCompact
+            ? "min-h-[38px] gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold"
+            : isCompact
+              ? "gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+              : "gap-2 rounded-full px-4 py-3 text-sm font-medium"
+      )}
     >
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/12 text-primary">
-        <Icon className="h-3.5 w-3.5" />
+      <span className={cn(
+        "flex items-center justify-center rounded-full bg-primary/12 text-primary shrink-0",
+        (isCategory || variant === "pill") ? "h-7 w-7" : "h-5 w-5"
+      )}>
+        <Icon className={(isCategory || variant === "pill") ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} />
       </span>
       <span className="truncate">{label}</span>
     </div>
@@ -1018,7 +1028,7 @@ const FreelancerServiceReviewSlide = ({
                         <video
                           key={mediaPreview.url}
                           src={mediaPreview.url}
-                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                          className="absolute inset-0 h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.01]"
                           muted
                           playsInline
                           autoPlay
@@ -1037,7 +1047,7 @@ const FreelancerServiceReviewSlide = ({
                           key={mediaPreview.url}
                           src={mediaPreview.url}
                           alt={`${serviceName} preview`}
-                          className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.01]"
+                          className="absolute inset-0 h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.01]"
                         />
                       </div>
                     )
@@ -1230,67 +1240,9 @@ const FreelancerServiceReviewSlide = ({
                 )}
               </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className={SECTION_TITLE_CLASS}>
-                    Skills Category
-                  </h3>
-                  <p className={SECTION_SUBTITLE_CLASS}>
-                    Subcategories clients will link to service
-                  </p>
-                </div>
+            </article>
 
-                {selectedCategoryLabels.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {selectedCategoryLabels.map((tag) => (
-                      <PreviewTag key={tag} label={tag} variant="category" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
-                    Select at least one sub-category in the overview step to show it here.
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className={SECTION_TITLE_CLASS}>
-                    Skills
-                  </h3>
-                  <p className={SECTION_SUBTITLE_CLASS}>
-                    Skills grouped by sub-category for clear mapping.
-                  </p>
-                </div>
-
-                {skillsBySubCategory.length > 0 ? (
-                  <div className="space-y-4">
-                    {skillsBySubCategory.map((group) => (
-                      <div key={group.id} className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                          {group.label}
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                          {group.skills.map((tag) => (
-                            <PreviewTag key={`${group.id}-${tag}`} label={tag} />
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : skillTags.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {skillTags.map((tag) => (
-                      <PreviewTag key={tag} label={tag} />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
-                    Add tools or custom skills in the overview step to populate this section.
-                  </div>
-                )}
-              </div>
-            </article>             <aside className="space-y-4 lg:pt-0">
+            <aside className="space-y-6 lg:pt-0">
               <div className="relative overflow-hidden rounded-[29px] border border-border bg-card">
                 <div className="absolute inset-0" />
                 <section className="relative p-6">
@@ -1319,6 +1271,69 @@ const FreelancerServiceReviewSlide = ({
                     {deliveryLabel}
                   </p>
                 </div>
+              </div>
+
+              {/* Skills Category */}
+              <div className="space-y-3 border-t border-border pt-6">
+                <div className="space-y-1">
+                  <h3 className={CARD_LABEL_CLASS}>
+                    Skills Category
+                  </h3>
+                  <p className="text-xs text-muted-foreground/50">
+                    Subcategories clients will link to service
+                  </p>
+                </div>
+
+                {selectedCategoryLabels.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedCategoryLabels.map((tag) => (
+                      <PreviewTag key={tag} label={tag} variant="category-compact" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-3 text-xs text-muted-foreground/60">
+                    Select sub-category.
+                  </div>
+                )}
+              </div>
+
+              {/* Skills */}
+              <div className="space-y-3 border-t border-border pt-6">
+                <div className="space-y-1">
+                  <h3 className={CARD_LABEL_CLASS}>
+                    Skills
+                  </h3>
+                  <p className="text-xs text-muted-foreground/50">
+                    Skills grouped by sub-category.
+                  </p>
+                </div>
+
+                {skillsBySubCategory.length > 0 ? (
+                  <div className="space-y-4">
+                    {skillsBySubCategory.map((group) => (
+                      <div key={group.id} className="space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60">
+                          {group.label}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {group.skills.map((tag) => (
+                            <PreviewTag key={`${group.id}-${tag}`} label={tag} variant="compact" />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : skillTags.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {skillTags.map((tag) => (
+                      <PreviewTag key={tag} label={tag} variant="compact" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-3 text-xs text-muted-foreground/60">
+                    No tools/skills added.
+                  </div>
+                )}
               </div>
             </aside>
           </div>

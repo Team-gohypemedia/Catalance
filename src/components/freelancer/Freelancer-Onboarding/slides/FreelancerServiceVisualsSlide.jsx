@@ -10,6 +10,12 @@ import { resolveAvatarUrl } from "@/components/freelancer/Freelancer-Profile/fre
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   DEFAULT_FREELANCER_ONBOARDING_CONTENT,
   resolveServiceVisualFields,
 } from "@/shared/lib/freelancer-onboarding-content";
@@ -541,20 +547,45 @@ const UploadArea = ({
           ))}
 
           {/* Add more slots */}
-          {canAddImage ? (
-            <UploadSlot
-              onClick={openImagePicker}
-              isUploading={isUploading}
-              label={`Image (${imageCount}/${MAX_IMAGES})`}
-            />
-          ) : null}
-          {canAddVideo ? (
-            <UploadSlot
-              onClick={openVideoPicker}
-              isUploading={isUploading}
-              label={`Video (${videoCount}/${MAX_VIDEOS})`}
-            />
-          ) : null}
+          {totalCount < maxTotal && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  ) : (
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                      <Plus className="h-4 w-4" />
+                    </div>
+                  )}
+                  <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                    {isUploading ? "Uploading..." : `Upload (${totalCount}/${maxTotal})`}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56 rounded-xl border-border bg-card text-foreground shadow-lg">
+                <DropdownMenuItem
+                  disabled={!canAddImage}
+                  onClick={openImagePicker}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canAddVideo}
+                  onClick={openVideoPicker}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <Play className="h-4 w-4 text-muted-foreground" />
+                  <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       )}
 

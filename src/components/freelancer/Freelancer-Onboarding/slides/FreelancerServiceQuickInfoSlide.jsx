@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import X from "lucide-react/dist/esm/icons/x";
@@ -14,6 +15,12 @@ import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import { toast } from "sonner";
 import { resolveAvatarUrl } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { cn } from "@/shared/lib/utils";
@@ -95,19 +102,64 @@ const normalizeSkillMatchKey = (value = "") =>
 
 /* ─────────────────────── Section Header ─────────────────────── */
 
-const SectionHeader = ({ number, icon: Icon, title, description }) => (
-  <div className="flex items-start gap-3 mb-4">
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-      <Icon className="h-4 w-4" />
+const SectionHeader = ({
+  number,
+  icon: Icon,
+  title,
+  description,
+  isCollapsible = false,
+  isExpanded = false,
+  onToggle = null,
+  rightElement = null,
+}) => {
+  const content = (
+    <div className="flex items-start justify-between gap-3 w-full min-w-0">
+      <div className="flex items-start gap-3 flex-1 min-w-0">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-foreground">
+            {number}. {title}
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{description}</p>
+        </div>
+      </div>
+      {isCollapsible && (
+        <div className="flex h-8 items-center shrink-0">
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground/60 transition-transform duration-200",
+              isExpanded ? "rotate-180" : ""
+            )}
+          />
+        </div>
+      )}
     </div>
-    <div>
-      <h3 className="text-sm font-semibold text-foreground">
-        {number}. {title}
-      </h3>
-      <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
+  );
+
+  if (isCollapsible) {
+    return (
+      <div className="flex items-start justify-between gap-4 w-full">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex flex-1 items-start text-left cursor-pointer group/header select-none rounded-xl p-2 -m-2 hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+        >
+          {content}
+        </button>
+        {rightElement && <div className="shrink-0">{rightElement}</div>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start justify-between gap-4 w-full">
+      {content}
+      {rightElement && <div className="shrink-0">{rightElement}</div>}
     </div>
-  </div>
-);
+  );
+};
 /* ─────────────────────── Media Upload Section ─────────────────────── */
 
 const getMediaFile = (value) => {
@@ -164,7 +216,7 @@ const CompactMediaCard = ({ item, previewUrl, index, onRemove }) => (
     <button
       type="button"
       onClick={() => onRemove(item.id)}
-      className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition-all duration-200 hover:scale-105"
+      className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background text-foreground border border-border hover:bg-muted shadow-md transition-all duration-200 hover:scale-105"
       aria-label={`Remove ${item.name}`}
     >
       <X className="h-3 w-3" />
@@ -323,44 +375,88 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
       {/* Header */}
       <div className="flex items-center justify-between">
         <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-foreground")}>Uploaded Media ({totalCount}/{maxTotal})</p>
-        <div className="flex gap-2">
-          {canAddImage && !hasMedia && (
-            <button type="button" onClick={openImagePicker} className="text-xs text-primary hover:underline">Add Image</button>
-          )}
-          {canAddVideo && !hasMedia && (
-            <button type="button" onClick={openVideoPicker} className="text-xs text-primary hover:underline">Add Video</button>
-          )}
-        </div>
       </div>
 
       {/* Empty State */}
       {!hasMedia ? (
-        <button
-          type="button"
-          onClick={openImagePicker}
-          className={cn(
-            "group flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-300",
-            hasError ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
-          )}
-        >
-          <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border transition-colors", "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary")}>
-            <Plus className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">Upload images or video</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
-          </div>
-        </button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                "group flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-300 cursor-pointer",
+                hasError ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
+              )}
+            >
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border transition-colors", "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary")}>
+                <Plus className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Upload images or video</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-56 rounded-xl border-border bg-card text-foreground shadow-lg">
+            <DropdownMenuItem
+              onClick={openImagePicker}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent"
+            >
+              <Image className="h-4 w-4 text-muted-foreground" />
+              <span>Upload Image</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={openVideoPicker}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent"
+            >
+              <Play className="h-4 w-4 text-muted-foreground" />
+              <span>Upload Video</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {resolvedPreviewItems.map((item, index) => (
             <CompactMediaCard key={item.id} item={item} previewUrl={item.previewUrl} index={index} onRemove={removeFile} />
           ))}
-          {canAddImage && (
-            <CompactUploadSlot onClick={openImagePicker} isUploading={isUploading} label={`Image (${imageCount}/${MAX_IMAGES})`} />
-          )}
-          {canAddVideo && (
-            <CompactUploadSlot onClick={openVideoPicker} isUploading={isUploading} label={`Video (${videoCount}/${MAX_VIDEOS})`} />
+          {totalCount < maxTotal && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted/20 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  ) : (
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                      <Plus className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+                  <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">
+                    {isUploading ? "Uploading..." : `Upload (${totalCount}/${maxTotal})`}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="center" className="w-56 rounded-xl border-border bg-card text-foreground shadow-lg">
+                <DropdownMenuItem
+                  disabled={!canAddImage}
+                  onClick={openImagePicker}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!canAddVideo}
+                  onClick={openVideoPicker}
+                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                >
+                  <Play className="h-4 w-4 text-muted-foreground" />
+                  <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       )}
@@ -535,6 +631,37 @@ const FreelancerServiceQuickInfoSlide = ({
   const experienceError = String(serviceInfoValidationErrors.experience || "").trim();
   const deliveryTimelineError = String(servicePricingValidationErrors.deliveryTimeline || "").trim();
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
+
+  const [expandedSections, setExpandedSections] = useState({
+    2: false,
+    3: false,
+  });
+
+  const toggleSection = (sectionId) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  const sec2ErrorVal = String(servicePricingValidationErrors.priceRange || "").trim();
+
+  useEffect(() => {
+    const hasSec2Error = Boolean(experienceError || sec2ErrorVal || deliveryTimelineError);
+    const hasSec3Error = Boolean(mediaFilesError);
+
+    if (hasSec2Error || hasSec3Error) {
+      setExpandedSections((prev) => ({
+        2: hasSec2Error ? true : prev[2],
+        3: hasSec3Error ? true : prev[3],
+      }));
+    }
+  }, [
+    experienceError,
+    sec2ErrorVal,
+    deliveryTimelineError,
+    mediaFilesError,
+  ]);
 
   useEffect(() => {
     if (configuredCategoryOptions.length > 0) { setCategoryOptions(configuredCategoryOptions); setIsCategoriesLoading(false); return undefined; }
@@ -717,193 +844,235 @@ const FreelancerServiceQuickInfoSlide = ({
 
         {/* Content */}
         <div className="mx-auto w-full max-w-3xl">
-          <div className="rounded-2xl border border-border bg-card p-6 sm:p-10 space-y-12">
+          <div className="rounded-2xl border border-border bg-card p-6 sm:p-10 space-y-6">
             
             {/* ━━━ Section 1: Tell clients what you offer ━━━ */}
             <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <SectionHeader
-                  number="1"
-                  icon={FileText}
-                  title="Tell clients what you offer"
-                  description="Capture the title, category, and experience you want shown for this service."
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSkipServices?.()}
-                  className={cn(ONBOARDING_SERVICE_SKIP_BUTTON_CLASS, "self-start px-3 py-2 text-sm text-muted-foreground hover:text-foreground")}
-                >
-                  Skip
-                </Button>
-              </div>
-
-              {/* Service Title */}
-              {infoFieldMap.title?.visible !== false && (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <label className={ONBOARDING_FIELD_LABEL_CLASS} htmlFor="service-title-input">
-                      {infoFieldMap.title?.label || "Service Title"}
-                    </label>
-                    <ServiceTitleTooltip message={serviceInfoContent?.serviceTitleTooltip} />
-                  </div>
-                  <div className="relative">
-                    <input
-                      ref={titleInputRef}
-                      id="service-title-input"
-                      type="text"
-                      value={serviceInfoForm.title}
-                      onChange={(event) => {
-                        if (event.target.value.length <= SERVICE_TITLE_MAX) {
-                          onServiceInfoFieldChange("title", event.target.value);
-                        }
+              <SectionHeader
+                number="1"
+                icon={FileText}
+                title="Tell clients what you offer"
+                description="Capture the title, category, and experience you want shown for this service."
+                rightElement={
+                  onSkipServices && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSkipServices?.();
                       }}
-                      placeholder={displayedPlaceholder}
                       className={cn(
-                        "h-10 w-full rounded-xl border bg-card px-4 !pr-24 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1",
-                        titleError
+                        ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                        "px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      Skip
+                    </Button>
+                  )
+                }
+              />
+
+              <div className="space-y-4 pt-4">
+                {/* Service Title */}
+                {infoFieldMap.title?.visible !== false && (
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <label className={ONBOARDING_FIELD_LABEL_CLASS} htmlFor="service-title-input">
+                        {infoFieldMap.title?.label || "Service Title"}
+                      </label>
+                      <ServiceTitleTooltip message={serviceInfoContent?.serviceTitleTooltip} />
+                    </div>
+                    <div className="relative">
+                      <input
+                        ref={titleInputRef}
+                        id="service-title-input"
+                        type="text"
+                        value={serviceInfoForm.title}
+                        onChange={(event) => {
+                          if (event.target.value.length <= SERVICE_TITLE_MAX) {
+                            onServiceInfoFieldChange("title", event.target.value);
+                          }
+                        }}
+                        placeholder={displayedPlaceholder}
+                        className={cn(
+                          "h-10 w-full rounded-xl border bg-card px-4 !pr-24 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1",
+                          titleError
+                            ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                            : "border-border focus:border-primary/50 focus:ring-primary/20",
+                        )}
+                        aria-invalid={Boolean(titleError)}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/50">
+                        {serviceInfoForm.title.length} / {SERVICE_TITLE_MAX} MAX
+                      </span>
+                    </div>
+                    {titleError && <p className="mt-1 text-xs text-destructive">{titleError}</p>}
+                  </div>
+                )}
+
+                {/* Select Category */}
+                {infoFieldMap.categories?.visible !== false && (
+                  <div className="space-y-1">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
+                      {infoFieldMap.categories?.label || "Select Category"}
+                    </label>
+                    <CategoryMultiSelect
+                      selected={selectedCategoryKeys}
+                      onChange={handleSelectedCategoriesChange}
+                      options={allCategoryOptions}
+                      placeholder={isCategoriesLoading ? "Loading..." : infoFieldMap.categories?.placeholder || "Search or select a category"}
+                      searchPlaceholder={infoFieldMap.categories?.searchPlaceholder || "Search categories..."}
+                      isLoading={isCategoriesLoading}
+                      hasError={Boolean(categoryError)}
+                      activeCategoryKey={activeSkillCategoryId}
+                      onActiveCategoryChange={(value) =>
+                        onUpdateServiceDraft((draft) => ({ ...draft, activeSkillCategory: value || null }))
+                      }
+                      selectedSubcategories={normalizedSubcategories}
+                      toolOptionsByCategory={toolOptionsByCategory}
+                      onSubcategorySkillChange={handleSubcategorySkillChange}
+                      isToolsLoading={isToolsLoading}
+                      toolFetchError={toolFetchError}
+                    />
+                    {categoryError && <p className="mt-1 text-xs text-destructive">{categoryError}</p>}
+                  </div>
+                )}
+
+                {/* Service Description */}
+                {pricingFieldMap.description?.visible !== false && (
+                  <div className="space-y-1 pt-4">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
+                      {pricingFieldMap.description?.label || "Service Description"}
+                    </label>
+                    <textarea
+                      value={servicePricingForm.description}
+                      onChange={(event) => onServicePricingFieldChange("description", event.target.value)}
+                      placeholder={pricingFieldMap.description?.placeholder || "Describe what this service includes, the process, and what clients can expect..."}
+                      rows={4}
+                      className={cn(
+                        "w-full resize-none rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1",
+                        servicePricingValidationErrors.description
                           ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
                           : "border-border focus:border-primary/50 focus:ring-primary/20",
                       )}
-                      aria-invalid={Boolean(titleError)}
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground/50">
-                      {serviceInfoForm.title.length} / {SERVICE_TITLE_MAX} MAX
-                    </span>
-                  </div>
-                  {titleError && <p className="mt-1 text-xs text-destructive">{titleError}</p>}
-                </div>
-              )}
-
-              {/* Select Category */}
-              {infoFieldMap.categories?.visible !== false && (
-                <div className="space-y-1">
-                  <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
-                    {infoFieldMap.categories?.label || "Select Category"}
-                  </label>
-                  <CategoryMultiSelect
-                    selected={selectedCategoryKeys}
-                    onChange={handleSelectedCategoriesChange}
-                    options={allCategoryOptions}
-                    placeholder={isCategoriesLoading ? "Loading..." : infoFieldMap.categories?.placeholder || "Search or select a category"}
-                    searchPlaceholder={infoFieldMap.categories?.searchPlaceholder || "Search categories..."}
-                    isLoading={isCategoriesLoading}
-                    hasError={Boolean(categoryError)}
-                    activeCategoryKey={activeSkillCategoryId}
-                    onActiveCategoryChange={(value) =>
-                      onUpdateServiceDraft((draft) => ({ ...draft, activeSkillCategory: value || null }))
-                    }
-                    selectedSubcategories={normalizedSubcategories}
-                    toolOptionsByCategory={toolOptionsByCategory}
-                    onSubcategorySkillChange={handleSubcategorySkillChange}
-                    isToolsLoading={isToolsLoading}
-                    toolFetchError={toolFetchError}
-                  />
-                  {categoryError && <p className="mt-1 text-xs text-destructive">{categoryError}</p>}
-                </div>
-              )}
-
-              {/* Service Description */}
-              {pricingFieldMap.description?.visible !== false && (
-                <div className="space-y-1 pt-4">
-                  <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
-                    {pricingFieldMap.description?.label || "Service Description"}
-                  </label>
-                  <textarea
-                    value={servicePricingForm.description}
-                    onChange={(event) => onServicePricingFieldChange("description", event.target.value)}
-                    placeholder={pricingFieldMap.description?.placeholder || "Describe what this service includes, the process, and what clients can expect..."}
-                    rows={4}
-                    className={cn(
-                      "w-full resize-none rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1",
-                      servicePricingValidationErrors.description
-                        ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                        : "border-border focus:border-primary/50 focus:ring-primary/20",
+                    {servicePricingValidationErrors.description && (
+                      <p className="mt-1 text-xs text-destructive">{servicePricingValidationErrors.description}</p>
                     )}
-                  />
-                  {servicePricingValidationErrors.description && (
-                    <p className="mt-1 text-xs text-destructive">{servicePricingValidationErrors.description}</p>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* ━━━ Section 2: Set your price ━━━ */}
-            <div className="space-y-4">
+            <div className="space-y-4 pt-6 border-t border-border">
               <SectionHeader
                 number="2"
                 icon={Tag}
                 title="Set your price"
                 description="Provide the details of the service you will offer."
+                isCollapsible
+                isExpanded={expandedSections[2]}
+                onToggle={() => toggleSection(2)}
               />
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {/* Experience Level */}
-                {infoFieldMap.experience?.visible !== false && (
-                  <div className="space-y-1">
-                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                      {infoFieldMap.experience?.label || "Experience Level"}
-                    </label>
-                    <CustomSelect
-                      value={serviceInfoForm.experience}
-                      onChange={(value) => onServiceInfoFieldChange("experience", value)}
-                      options={infoFieldMap.experience?.options || EXPERIENCE_OPTIONS}
-                      placeholder={infoFieldMap.experience?.placeholder || "Select experience level"}
-                      hasError={Boolean(experienceError)}
-                      className="h-10"
-                    />
-                    {experienceError && <p className="mt-1 text-xs text-destructive">{experienceError}</p>}
-                  </div>
-                )}
+              <AnimatePresence initial={false}>
+                {expandedSections[2] && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-4">
+                      {/* Experience Level */}
+                      {infoFieldMap.experience?.visible !== false && (
+                        <div className="space-y-1">
+                          <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                            {infoFieldMap.experience?.label || "Experience Level"}
+                          </label>
+                          <CustomSelect
+                            value={serviceInfoForm.experience}
+                            onChange={(value) => onServiceInfoFieldChange("experience", value)}
+                            options={infoFieldMap.experience?.options || EXPERIENCE_OPTIONS}
+                            placeholder={infoFieldMap.experience?.placeholder || "Select experience level"}
+                            hasError={Boolean(experienceError)}
+                            className="h-10"
+                          />
+                          {experienceError && <p className="mt-1 text-xs text-destructive">{experienceError}</p>}
+                        </div>
+                      )}
 
-                {/* Starting Price */}
-                {pricingFieldMap.priceRange?.visible !== false &&
-                  renderInputField(
-                    { ...pricingFieldMap.priceRange, label: pricingFieldMap.priceRange?.label || "Starting Price (INR)", prefix: pricingFieldMap.priceRange?.prefix || "₹", placeholder: pricingFieldMap.priceRange?.placeholder || "Enter starting price" },
-                    servicePricingForm.priceRange || "",
-                    String(servicePricingValidationErrors.priceRange || "").trim(),
-                    (value) => onServicePricingFieldChange("priceRange", value),
-                    { numeric: true },
-                  )
-                }
+                      {/* Starting Price */}
+                      {pricingFieldMap.priceRange?.visible !== false &&
+                        renderInputField(
+                          { ...pricingFieldMap.priceRange, label: pricingFieldMap.priceRange?.label || "Starting Price (INR)", prefix: pricingFieldMap.priceRange?.prefix || "₹", placeholder: pricingFieldMap.priceRange?.placeholder || "Enter starting price" },
+                          servicePricingForm.priceRange || "",
+                          String(servicePricingValidationErrors.priceRange || "").trim(),
+                          (value) => onServicePricingFieldChange("priceRange", value),
+                          { numeric: true },
+                        )
+                      }
 
-                {/* Delivery Timeline */}
-                {pricingFieldMap.deliveryTimeline?.visible !== false && (
-                  <div className="space-y-1">
-                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                      {pricingFieldMap.deliveryTimeline?.label || "Delivery Timeline"}
-                    </label>
-                    <CustomSelect
-                      value={servicePricingForm.deliveryTimeline || ""}
-                      onChange={(value) => onServicePricingFieldChange("deliveryTimeline", value)}
-                      options={deliveryTimelineOptions}
-                      placeholder={pricingFieldMap.deliveryTimeline?.placeholder || "Select delivery time"}
-                      hasError={Boolean(deliveryTimelineError)}
-                      className="h-10"
-                    />
-                    {deliveryTimelineError && <p className="mt-1 text-xs text-destructive">{deliveryTimelineError}</p>}
-                  </div>
+                      {/* Delivery Timeline */}
+                      {pricingFieldMap.deliveryTimeline?.visible !== false && (
+                        <div className="space-y-1">
+                          <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                            {pricingFieldMap.deliveryTimeline?.label || "Delivery Timeline"}
+                          </label>
+                          <CustomSelect
+                            value={servicePricingForm.deliveryTimeline || ""}
+                            onChange={(value) => onServicePricingFieldChange("deliveryTimeline", value)}
+                            options={deliveryTimelineOptions}
+                            placeholder={pricingFieldMap.deliveryTimeline?.placeholder || "Select delivery time"}
+                            hasError={Boolean(deliveryTimelineError)}
+                            className="h-10"
+                          />
+                          {deliveryTimelineError && <p className="mt-1 text-xs text-destructive">{deliveryTimelineError}</p>}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
             </div>
 
             {/* ━━━ Section 3: Enhance your service ━━━ */}
-            <div className="space-y-4">
+            <div className="space-y-4 pt-6 border-t border-border">
               <SectionHeader
                 number="3"
                 icon={LayoutGrid}
                 title="Enhance your service"
                 description="Add media for better visibility and trust."
+                isCollapsible
+                isExpanded={expandedSections[3]}
+                onToggle={() => toggleSection(3)}
               />
 
-              <CompactUploadArea
-                files={serviceVisualsForm.mediaFiles}
-                onChange={(next) => onServiceVisualsFieldChange("mediaFiles", next)}
-                onUploadFile={onUploadServiceMediaFile}
-                hasError={Boolean(mediaFilesError)}
-              />
-              {mediaFilesError && <p className="text-xs text-destructive">{mediaFilesError}</p>}
+              <AnimatePresence initial={false}>
+                {expandedSections[3] && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-4 pt-4">
+                      <CompactUploadArea
+                        files={serviceVisualsForm.mediaFiles}
+                        onChange={(next) => onServiceVisualsFieldChange("mediaFiles", next)}
+                        onUploadFile={onUploadServiceMediaFile}
+                        hasError={Boolean(mediaFilesError)}
+                      />
+                      {mediaFilesError && <p className="text-xs text-destructive">{mediaFilesError}</p>}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
           

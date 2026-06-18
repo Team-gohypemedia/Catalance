@@ -948,14 +948,9 @@ const CategoryMultiSelect = ({
                                             <span className="min-w-0 flex-1 truncate font-medium">
                                               {tool.label}
                                             </span>
-                                            <Check
-                                              className={cn(
-                                                "ml-3 h-4 w-4 shrink-0 transition-colors",
-                                                isSelected
-                                                  ? "text-primary"
-                                                  : "text-muted-foreground/50",
-                                              )}
-                                            />
+                                            {isSelected && (
+                                              <Check className="ml-3 h-4 w-4 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
+                                            )}
                                           </button>
                                         );
                                       })}
@@ -983,12 +978,9 @@ const CategoryMultiSelect = ({
                                       <span className="min-w-0 flex-1 truncate font-medium">
                                         {skill}
                                       </span>
-                                      <Check
-                                        className={cn(
-                                          "ml-3 h-4 w-4 shrink-0 transition-colors",
-                                          isSelected ? "text-primary" : "text-muted-foreground/50",
-                                        )}
-                                      />
+                                      {isSelected && (
+                                        <Check className="ml-3 h-4 w-4 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
+                                      )}
                                     </button>
                                   );
                                 })
