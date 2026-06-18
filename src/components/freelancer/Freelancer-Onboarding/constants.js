@@ -44,7 +44,6 @@ const SERVICE_QUICK_INFO_SLIDE = {
   title: "Fill Your Service Info",
   progressValue: 36,
   continueLabel: "Continue",
-  footerMode: "hidden",
 };
 
 const CASE_STUDY_SLIDE = {

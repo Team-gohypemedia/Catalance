@@ -321,7 +321,7 @@ export const resolveAvatarUrl = (value, { allowBlob = false } = {}) => {
       key = String(key || "").trim();
       if (key) {
         let apiBaseUrl = String(import.meta.env?.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
-        if (!apiBaseUrl) {
+        if (!apiBaseUrl || apiBaseUrl.includes("localhost") || apiBaseUrl.includes("127.0.0.1")) {
           apiBaseUrl = "/api";
         }
         return `${apiBaseUrl}/images/${key}`;

@@ -1,4 +1,4 @@
-﻿const normalizeOptionEntries = (options = []) =>
+const normalizeOptionEntries = (options = []) =>
   (Array.isArray(options) ? options : [])
     .map((option) => ({
       value: String(option?.value || "").trim(),

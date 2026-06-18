@@ -1036,6 +1036,11 @@ html.dark .bg-\[var\(--primary\)\] * {
   color: #1C1B1F !important;
   stroke: #1C1B1F !important;
 }
+html.dark .bg-primary .case-study-close-btn,
+html.dark .bg-primary .case-study-close-btn * {
+  color: #FFFFFF !important;
+  stroke: #FFFFFF !important;
+}
 html.dark .hover\:bg-primary:hover,
 html.dark .hover\:bg-\[var\(--primary\)\]:hover {
   color: #1C1B1F !important;

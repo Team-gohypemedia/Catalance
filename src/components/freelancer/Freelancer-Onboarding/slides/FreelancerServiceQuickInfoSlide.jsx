@@ -20,6 +20,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   ONBOARDING_FIELD_LABEL_CLASS,
   ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+  ONBOARDING_PAGE_TITLE_CLASS,
 } from "../typography";
 import {
   deriveDraftSkillsAndTechnologies,
@@ -159,7 +160,7 @@ const CompactMediaCard = ({ item, previewUrl, index, onRemove }) => (
         {item.isVideo ? <Play className="h-5 w-5" /> : <Image className="h-5 w-5" />}
       </div>
     )}
-    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.5)_100%)]" />
+    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.5)_100%)] keep-white" />
     <button
       type="button"
       onClick={() => onRemove(item.id)}
@@ -407,6 +408,11 @@ const FreelancerServiceQuickInfoSlide = ({
   onContinue,
 }) => {
   const serviceName = currentServiceName || "Service";
+  const titleInputRef = useRef(null);
+
+  useEffect(() => {
+    titleInputRef.current?.focus();
+  }, []);
 
   /* ─── Content ─── */
   const serviceInfoContent = onboardingContent?.serviceInfo || DEFAULT_FREELANCER_ONBOARDING_CONTENT.serviceInfo;
@@ -527,6 +533,7 @@ const FreelancerServiceQuickInfoSlide = ({
   const titleError = String(serviceInfoValidationErrors.title || "").trim();
   const categoryError = String(serviceInfoValidationErrors.category || "").trim();
   const experienceError = String(serviceInfoValidationErrors.experience || "").trim();
+  const deliveryTimelineError = String(servicePricingValidationErrors.deliveryTimeline || "").trim();
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
 
   useEffect(() => {
@@ -695,7 +702,7 @@ const FreelancerServiceQuickInfoSlide = ({
       <div className="w-full space-y-8">
         {/* Page Title */}
         <div className="text-center">
-          <h1 className="text-xl md:text-4xl lg:text-5xl font-medium">
+          <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             {applyServiceTemplate(serviceInfoContent?.headingTitleTemplate, serviceName)}
           </h1>
         </div>
@@ -743,6 +750,7 @@ const FreelancerServiceQuickInfoSlide = ({
                   </div>
                   <div className="relative">
                     <input
+                      ref={titleInputRef}
                       id="service-title-input"
                       type="text"
                       value={serviceInfoForm.title}
@@ -830,7 +838,7 @@ const FreelancerServiceQuickInfoSlide = ({
                 description="Provide the details of the service you will offer."
               />
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {/* Experience Level */}
                 {infoFieldMap.experience?.visible !== false && (
                   <div className="space-y-1">
@@ -859,6 +867,24 @@ const FreelancerServiceQuickInfoSlide = ({
                     { numeric: true },
                   )
                 }
+
+                {/* Delivery Timeline */}
+                {pricingFieldMap.deliveryTimeline?.visible !== false && (
+                  <div className="space-y-1">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                      {pricingFieldMap.deliveryTimeline?.label || "Delivery Timeline"}
+                    </label>
+                    <CustomSelect
+                      value={servicePricingForm.deliveryTimeline || ""}
+                      onChange={(value) => onServicePricingFieldChange("deliveryTimeline", value)}
+                      options={deliveryTimelineOptions}
+                      placeholder={pricingFieldMap.deliveryTimeline?.placeholder || "Select delivery time"}
+                      hasError={Boolean(deliveryTimelineError)}
+                      className="h-10"
+                    />
+                    {deliveryTimelineError && <p className="mt-1 text-xs text-destructive">{deliveryTimelineError}</p>}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -881,17 +907,9 @@ const FreelancerServiceQuickInfoSlide = ({
             </div>
           </div>
           
-          {/* Custom Footer */}
-          <div className="mt-10 mb-20 flex flex-col items-center">
-            <Button 
-              type="button" 
-              onClick={onContinue}
-              size="lg"
-              className="bg-primary hover:bg-primary/90 text-white rounded-xl px-12 py-6 text-base font-medium shadow-sm transition-all"
-            >
-              Continue
-            </Button>
-            <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+          {/* Custom Footer Lock Text */}
+          <div className="mt-8 mb-12 flex flex-col items-center justify-center">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Lock className="h-3 w-3" />
               <span>You can review everything before publishing</span>
             </div>

@@ -28,7 +28,7 @@ export const ONBOARDING_STEP_LABEL_CLASS =
   "min-w-0 text-center text-sm leading-5 transition-[opacity,color] duration-300 ease-out";
 
 export const ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS =
-  "h-11 px-10 text-base font-medium disabled:opacity-100 disabled:bg-primary disabled:text-primary-foreground";
+  "h-11 px-10 text-base font-medium disabled:opacity-100 disabled:bg-primary disabled:text-primary-foreground !text-white keep-white dark:!text-black";
 
 export const ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS =
   "h-11 px-6 text-base font-normal";

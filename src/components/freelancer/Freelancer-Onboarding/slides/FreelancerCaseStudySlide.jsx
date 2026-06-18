@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
+import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
@@ -175,9 +179,31 @@ const FreelancerCaseStudySlide = ({
   caseStudyValidationErrors = {},
   onUploadMediaFile,
   continueButton,
+  user,
 }) => {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState("");
+  const titleInputRef = useRef(null);
+  const [showInfoModal, setShowInfoModal] = useState(false);
+
+  useEffect(() => {
+    titleInputRef.current?.focus();
+
+    // Show info popup after a comfortable 2.5-second delay to let the user see the form first
+    const timer = setTimeout(() => {
+      setShowInfoModal(true);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleCloseModal = () => {
+    setShowInfoModal(false);
+    setTimeout(() => {
+      titleInputRef.current?.focus();
+    }, 50);
+  };
+
   const caseStudyContent =
     onboardingContent?.caseStudy ||
     DEFAULT_FREELANCER_ONBOARDING_CONTENT.caseStudy;
@@ -259,7 +285,6 @@ const FreelancerCaseStudySlide = ({
           <ServiceInfoStepper
             activeStepId="caseStudy"
             onStepChange={onServiceStepChange}
-            steps={stepperSteps}
           />
         </div>
 
@@ -299,7 +324,7 @@ const FreelancerCaseStudySlide = ({
                   disabled={isCaseStudyLimitReached}
                   className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
                 >
-                  <Plus className="h-4 w-4 text-inherit" />
+                  <Plus className="h-4 w-4 text-inherit keep-white" />
                   {caseStudyContent?.addButtonLabel || "Add Case Study"}
                 </button>
 
@@ -325,7 +350,7 @@ const FreelancerCaseStudySlide = ({
                 disabled={isCaseStudyLimitReached}
                 className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted"
               >
-                <Plus className="h-4 w-4 text-inherit" />
+                <Plus className="h-4 w-4 text-inherit keep-white" />
                 {caseStudyContent?.addButtonLabel || "Add Case Study"}
               </button>
             </div>
@@ -371,7 +396,7 @@ const FreelancerCaseStudySlide = ({
                           onRemoveCaseStudy?.(caseStudyId);
                         }}
                         className={cn(
-                          "shrink-0 rounded-full bg-background p-1 text-primary transition-colors hover:bg-background/90",
+                          "shrink-0 rounded-full bg-background p-1 text-primary transition-colors hover:bg-background/90 dark:bg-black dark:text-white dark:hover:bg-black/80 case-study-close-btn",
                         )}
                         aria-label={`Remove ${caseStudyLabel}`}
                       >
@@ -404,6 +429,7 @@ const FreelancerCaseStudySlide = ({
                 {fieldMap.title?.label || caseStudyContent?.fields?.title?.label || "Case Study Title"}
               </label>
               <input
+                ref={titleInputRef}
                 type="text"
                 value={caseStudyForm.title}
                 onChange={(e) =>
@@ -785,6 +811,240 @@ const FreelancerCaseStudySlide = ({
       </div>
 
       {continueButton}
+
+      {/* Get Discovered. Rank Higher. Info Popup */}
+      <AnimatePresence>
+        {showInfoModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: "easeInOut" }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-foreground"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.92, y: 24 }}
+              transition={{
+                type: "spring",
+                stiffness: 280,
+                damping: 26,
+                mass: 0.9
+              }}
+              className="relative w-full max-w-[760px] md:w-[70%] lg:w-[48vw] max-h-[72vh] flex flex-col rounded-3xl border border-border bg-card p-4 shadow-[0_28px_100px_rgba(0,0,0,0.16)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.45)] overflow-hidden"
+            >
+              
+              {/* Close Button */}
+              <button
+                onClick={handleCloseModal}
+                className="absolute right-4 top-4 p-2 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer z-10"
+                aria-label="Close dialog"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {/* Modal Title */}
+              <div className="text-center mb-2 shrink-0 pr-8">
+                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                  Get Discovered. Rank Higher.
+                </h2>
+              </div>
+
+              {/* Scrollable Content */}
+              <div 
+                className="flex-1 overflow-y-auto pr-1 py-1 space-y-3"
+                style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}
+              >
+                {/* Modal Grid Content */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+                  
+                  {/* Left Column: Top Rated Freelancer list */}
+                  <div className="md:col-span-6 bg-muted/40 rounded-2xl p-3 border border-border/50 space-y-1.5 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-base">👑</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Top Rated Freelancers
+                      </span>
+                    </div>
+
+                    {/* Row 1: Your Profile (Highlighted) */}
+                    <div className="flex items-center justify-between gap-1.5 py-1.5 px-2 rounded-xl border border-primary/45 bg-primary/5 dark:bg-primary/10 shadow-sm min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-xs font-bold text-primary shrink-0">1</span>
+                        {user?.avatar || user?.profilePhoto || user?.profileDetails?.identity?.profilePhoto ? (
+                          <img
+                            src={user?.avatar || user?.profilePhoto || user?.profileDetails?.identity?.profilePhoto}
+                            alt=""
+                            className="size-6 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="size-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                            <span className="text-[9px] font-semibold text-primary">YP</span>
+                          </div>
+                        )}
+                        <span className="text-xs font-semibold truncate text-foreground min-w-0 flex-1">Your Profile</span>
+                        <span className="shrink-0 bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider">
+                          Top Rated
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
+                        <span className="text-amber-500">★</span>
+                        <span>5.0</span>
+                        <span className="text-[10px] text-muted-foreground font-normal ml-0.5">(128)</span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: Dummy Freelancer */}
+                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-xs font-bold text-muted-foreground shrink-0">2</span>
+                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="h-1 w-12 bg-muted-foreground/30 rounded" />
+                          <div className="h-1 w-8 bg-muted-foreground/20 rounded" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
+                        <span className="text-amber-500">★</span>
+                        <span>4.9</span>
+                      </div>
+                    </div>
+
+                    {/* Row 3: Dummy Freelancer */}
+                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-xs font-bold text-muted-foreground shrink-0">3</span>
+                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="h-1 w-16 bg-muted-foreground/30 rounded" />
+                          <div className="h-1 w-6 bg-muted-foreground/20 rounded" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
+                        <span className="text-amber-500">★</span>
+                        <span>4.8</span>
+                      </div>
+                    </div>
+
+                    {/* Row 4: Dummy Freelancer */}
+                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-xs font-bold text-muted-foreground shrink-0">4</span>
+                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="h-1 w-10 bg-muted-foreground/30 rounded" />
+                          <div className="h-1 w-8 bg-muted-foreground/20 rounded" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
+                        <span className="text-amber-500">★</span>
+                        <span>4.7</span>
+                      </div>
+                    </div>
+
+                    {/* Row 5: Dummy Freelancer */}
+                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-xs font-bold text-muted-foreground shrink-0">5</span>
+                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
+                        <div className="space-y-0.5 min-w-0 flex-1">
+                          <div className="h-1 w-12 bg-muted-foreground/30 rounded" />
+                          <div className="h-1 w-8 bg-muted-foreground/20 rounded" />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
+                        <span className="text-amber-500">★</span>
+                        <span>4.6</span>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Right Column: Case study info points */}
+                  <div className="md:col-span-6 space-y-3 flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">
+                        Complete Case Studies,
+                      </h3>
+                      <p className="text-base font-bold text-primary mt-0.5">
+                        Get More Visibility
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                        Freelancers with complete case studies are more likely to rank higher and win client trust.
+                      </p>
+                    </div>
+
+                    {/* Features */}
+                    <div className="space-y-2.5 pt-0.5">
+                      {/* Feature 1 */}
+                      <div className="flex gap-2.5 items-start">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <TrendingUp className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-bold text-foreground">Higher Visibility</h4>
+                          <p className="text-[10px] text-muted-foreground leading-normal">
+                            Better rankings in search results and marketplace.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Feature 2 */}
+                      <div className="flex gap-2.5 items-start">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <ShieldCheck className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-bold text-foreground">Build Trust</h4>
+                          <p className="text-[10px] text-muted-foreground leading-normal">
+                            Clients feel more confident hiring proven professionals.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Feature 3 */}
+                      <div className="flex gap-2.5 items-start">
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <Briefcase className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-xs font-bold text-foreground">Win More Projects</h4>
+                          <p className="text-[10px] text-muted-foreground leading-normal">
+                            Strong case studies lead to more inquiries and successful projects.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tip Box */}
+                    <div className="rounded-xl border border-primary/10 bg-primary/5 p-2 flex gap-2 items-start">
+                      <span className="text-xs shrink-0">💡</span>
+                      <p className="text-[10px] text-foreground leading-normal">
+                        <span className="font-semibold">Tip:</span> Add detailed case studies with outcomes, screenshots, and results for best impact.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Start Button */}
+              <div className="mt-3 flex flex-col items-center justify-center border-t border-border pt-3 shrink-0">
+                <button
+                  onClick={handleCloseModal}
+                  className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-6 text-xs font-semibold text-white keep-white dark:text-black hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer"
+                >
+                  Start Adding Case Studies
+                </button>
+                <span className="text-[9px] text-muted-foreground mt-1 text-center">
+                  You can edit or update case studies anytime.
+                </span>
+              </div>
+
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 };

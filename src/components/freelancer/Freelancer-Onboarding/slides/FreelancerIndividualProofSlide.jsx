@@ -325,9 +325,9 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
         <button
           type="button"
           onClick={onContinue}
-          className="h-10 px-8 rounded-full bg-primary text-white keep-white font-semibold shadow-lg shadow-primary/10 hover:bg-primary/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
+          className="h-10 px-8 rounded-full bg-primary text-white keep-white dark:text-black font-semibold shadow-lg shadow-primary/10 hover:bg-primary/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
         >
-          <span className="text-white keep-white">Continue</span>
+          <span className="text-white keep-white dark:text-black">Continue</span>
           
         </button>
         

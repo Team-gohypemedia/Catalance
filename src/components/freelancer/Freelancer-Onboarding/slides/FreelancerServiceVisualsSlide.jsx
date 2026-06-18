@@ -158,7 +158,7 @@ const MediaCard = ({ item, previewUrl, index, onRemove }) => (
     )}
 
     {/* Gradient overlay */}
-    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.5)_100%)]" />
+    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.5)_100%)] keep-white" />
 
     {/* Index badge */}
     <div className="absolute left-2 top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black/50 px-1.5 text-[10px] font-semibold text-white backdrop-blur-sm keep-white">

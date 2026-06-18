@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Info from "lucide-react/dist/esm/icons/info";
@@ -55,15 +56,22 @@ const StepperItem = ({
     type="button"
     onClick={() => onStepChange?.(step.id)}
     className={cn(
-      "relative flex h-8 sm:h-9 items-center justify-center rounded-full px-4 sm:px-6 text-[13px] sm:text-sm font-medium transition-all duration-300 ease-out focus-visible:outline-none",
+      "relative flex h-8 sm:h-9 items-center justify-center rounded-full px-4 sm:px-6 text-[13px] sm:text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none",
       isActive
-        ? "bg-primary text-primary-foreground shadow-sm"
+        ? "!text-white keep-white dark:!text-black"
         : "text-muted-foreground hover:text-foreground",
     )}
     aria-current={isActive ? "step" : undefined}
     aria-label={`${step.step}. ${step.label}`}
   >
-    {step.label}
+    {isActive && (
+      <motion.div
+        layoutId="activeTabOverlay"
+        className="absolute inset-0 rounded-full bg-primary shadow-sm"
+        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+      />
+    )}
+    <span className={cn("relative z-10", isActive ? "!text-white keep-white dark:!text-black" : "")}>{step.label}</span>
   </button>
 );
 
@@ -75,7 +83,7 @@ export const ServiceInfoStepper = ({
   const activeIdx = steps.findIndex((step) => step.id === activeStepId);
 
   return (
-    <div className="mx-auto flex w-fit items-center gap-1 rounded-full bg-muted/60 p-1">
+    <div className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/80 bg-muted/40 p-1 shadow-sm">
       {steps.map((step, idx) => (
         <StepperItem
           key={step.id}
