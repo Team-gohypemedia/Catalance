@@ -10,6 +10,7 @@ const {
   buildBusinessNameGuardPrompt,
   buildDiscoveryCoverageSummary,
   buildCurrentQuestionValidationPrompt,
+  buildSupplementalDescriptiveExtractions,
   buildLockedServiceReply,
   buildPersistedAnswersPayload,
   buildSessionStartPrefill,
@@ -478,6 +479,53 @@ test("accepts short business descriptions for about-business questions", () => {
   assert.equal(result.isValid, true);
   assert.equal(result.status, "valid_answer");
   assert.equal(result.normalizedAnswer, "it is about music");
+});
+
+test("captures a website brief from the same message as the brand name", () => {
+  const questions = [
+    { slug: "brand_name", text: "What is your company or brand name?" },
+    {
+      slug: "project_requirements_detail",
+      text: "What are your requirements for this Web Development project in detail?",
+    },
+    { slug: "budget", text: "What is your budget for this project?" },
+  ];
+
+  const extracted = buildSupplementalDescriptiveExtractions({
+    message: "Gohype. I need a coded footwear e-commerce website with 3D animation.",
+    questions,
+    currentQuestion: questions[0],
+    currentStep: 0,
+    currentAnswer: "Gohype",
+  });
+
+  assert.deepEqual(extracted, [
+    {
+      slug: "project_requirements_detail",
+      answer: "I need a coded footwear e-commerce website with 3D animation.",
+      confidence: 0.96,
+    },
+  ]);
+});
+
+test("does not capture a descriptive brief when the user only shares the brand name", () => {
+  const questions = [
+    { slug: "brand_name", text: "What is your company or brand name?" },
+    {
+      slug: "project_requirements_detail",
+      text: "What are your requirements for this Web Development project in detail?",
+    },
+  ];
+
+  const extracted = buildSupplementalDescriptiveExtractions({
+    message: "Gohype",
+    questions,
+    currentQuestion: questions[0],
+    currentStep: 0,
+    currentAnswer: "Gohype",
+  });
+
+  assert.deepEqual(extracted, []);
 });
 
 test("strips admin directive lines from assistant output before returning it", () => {

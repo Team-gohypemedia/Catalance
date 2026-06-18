@@ -3377,6 +3377,118 @@ const looksLikeMeaningfulBusinessSummaryAnswer = (message = "") => {
     return true;
 };
 
+const DESCRIPTIVE_DISCOVERY_QUESTION_REGEX =
+    /\b(describe|brief|briefly|requirements?|overview|summary|about|idea|vision|what you offer|looking for)\b/i;
+const DESCRIPTIVE_DISCOVERY_QUESTION_SLUG_REGEX =
+    /\b(project_requirements_detail|project_brief|brand_brief|business_brief|company_brief|brand_description|business_description|company_description|brand_overview|business_overview|company_overview|about_business|about_company|business_info|company_info|what_you_offer)\b/i;
+const PROJECT_BRIEF_KEYWORD_REGEX =
+    /\b(website|site|app|store|shop|e-?commerce|marketplace|platform|dashboard|booking|portfolio|landing page|product|products|services|3d|animation|brand|business|sell|selling)\b/i;
+
+const escapeRegExp = (value = "") =>
+    String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const isDescriptiveDiscoveryQuestion = (question = {}) => {
+    const questionType = normalizeTextToken(question?.type || "input");
+    if (OPTION_QUESTION_TYPES.has(questionType)) return false;
+
+    const content = [
+        question?.slug || "",
+        question?.id || "",
+        question?.text || "",
+        question?.subtitle || "",
+    ].join(" ");
+
+    return (
+        DESCRIPTIVE_DISCOVERY_QUESTION_REGEX.test(content)
+        || DESCRIPTIVE_DISCOVERY_QUESTION_SLUG_REGEX.test(content)
+    );
+};
+
+const normalizeSupplementalBriefCandidate = ({
+    message = "",
+    currentQuestion = null,
+    currentAnswer = "",
+}) => {
+    let candidate = String(message || "").replace(/\s+/g, " ").trim();
+    if (!candidate) return "";
+
+    const identityType = getQuestionIdentityType(currentQuestion);
+    if (identityType !== "person_name" && identityType !== "business_name") {
+        return candidate;
+    }
+
+    const normalizedCurrentAnswer = String(currentAnswer || "").replace(/\s+/g, " ").trim();
+    const strippedAtomicPrefix = stripAtomicAnswerPrefix(candidate, identityType);
+
+    if (normalizedCurrentAnswer) {
+        const leadingAnswerRegex = new RegExp(
+            `^${escapeRegExp(normalizedCurrentAnswer)}(?:\\s*[,.:;\\-]+\\s*|\\s+)`,
+            "i"
+        );
+        candidate = candidate.replace(leadingAnswerRegex, "").trim();
+    }
+
+    if (candidate === strippedAtomicPrefix) {
+        return candidate.replace(/^(?:and|but)\b[\s,:;-]*/i, "").trim();
+    }
+
+    candidate = candidate.replace(/^(?:and|but)\b[\s,:;-]*/i, "").trim();
+
+    if (
+        normalizedCurrentAnswer
+        && normalizeTextToken(candidate) === normalizeTextToken(normalizedCurrentAnswer)
+    ) {
+        return "";
+    }
+
+    return candidate;
+};
+
+const looksLikeMeaningfulProjectBriefAnswer = (message = "") => {
+    const stripped = String(message || "").replace(/\s+/g, " ").trim();
+    if (!looksLikeMeaningfulBusinessSummaryAnswer(stripped)) return false;
+    if (looksLikeAtomicNameAnswer(stripped, "person_name")) return false;
+    if (looksLikeAtomicNameAnswer(stripped, "business_name")) return false;
+
+    const tokens = stripped.split(/\s+/).filter(Boolean);
+    if (tokens.length >= 4) return true;
+    if (tokens.length >= 2 && PROJECT_BRIEF_KEYWORD_REGEX.test(stripped)) return true;
+
+    return false;
+};
+
+const buildSupplementalDescriptiveExtractions = ({
+    message = "",
+    questions = [],
+    currentQuestion = null,
+    currentStep = -1,
+    currentAnswer = "",
+}) => {
+    const candidateAnswer = normalizeSupplementalBriefCandidate({
+        message,
+        currentQuestion,
+        currentAnswer,
+    });
+
+    if (!looksLikeMeaningfulProjectBriefAnswer(candidateAnswer)) {
+        return [];
+    }
+
+    const nextDescriptiveQuestion = (Array.isArray(questions) ? questions : []).find((question, index) =>
+        Number.isInteger(index)
+        && index > currentStep
+        && isDescriptiveDiscoveryQuestion(question)
+    );
+
+    if (!nextDescriptiveQuestion?.slug) return [];
+
+    return [{
+        slug: nextDescriptiveQuestion.slug,
+        answer: candidateAnswer,
+        confidence: 0.96,
+    }];
+};
+
 const shouldSkipMessageAnswerExtraction = ({
     message = "",
     currentQuestion = null,
@@ -7801,18 +7913,32 @@ export const guestChat = asyncHandler(async (req, res) => {
 
         if (currentStep < questions.length) {
             extractedAnswersForMessage = await extractedAnswersForMessagePromise;
+            const supplementalDescriptiveExtractions = buildSupplementalDescriptiveExtractions({
+                message: userMessageForReasoning || userMessageText,
+                questions,
+                currentQuestion,
+                currentStep,
+                currentAnswer:
+                    validationResult?.normalizedAnswer
+                    || attachmentInferredAnswer
+                    || userMessageText,
+            });
             const supplementalBudgetExtractions = buildSupplementalBudgetExtractions({
                 message: userMessageForReasoning || userMessageText,
                 questions,
                 currentQuestion,
             });
-            if (supplementalBudgetExtractions.length > 0) {
+            const supplementalExtractions = [
+                ...supplementalDescriptiveExtractions,
+                ...supplementalBudgetExtractions,
+            ];
+            if (supplementalExtractions.length > 0) {
                 const existingExtractedSlugs = new Set(
                     extractedAnswersForMessage
                         .map((entry) => String(entry?.slug || "").trim())
                         .filter(Boolean)
                 );
-                supplementalBudgetExtractions.forEach((entry) => {
+                supplementalExtractions.forEach((entry) => {
                     if (!existingExtractedSlugs.has(entry.slug)) {
                         extractedAnswersForMessage.push(entry);
                     }
@@ -8858,6 +8984,7 @@ export const __testables = {
     buildBusinessNameGuardPrompt,
     buildDiscoveryCoverageSummary,
     buildCurrentQuestionValidationPrompt,
+    buildSupplementalDescriptiveExtractions,
     buildSessionStartPrefill,
     buildSupplementalBudgetExtractions,
     buildLockedServiceReply,
