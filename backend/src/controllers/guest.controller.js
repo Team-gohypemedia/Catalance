@@ -2326,9 +2326,28 @@ const getCapturedCustomAnswerForQuestion = (question = {}, answersBySlug = {}) =
     return "";
 };
 
+const getOtherAnswerBaseSlug = (value = "") => {
+    const slug = String(value || "").trim();
+    if (!slug) return "";
+    return slug.endsWith("_other") ? slug.slice(0, -6) : "";
+};
+
+const isOtherAnswerSelectedForQuestion = (question = {}, answersBySlug = {}) => {
+    const baseSlug = String(question?.slug || "").trim();
+    if (!baseSlug) return false;
+
+    const baseAnswer = answersBySlug?.[baseSlug];
+    if (!hasAnswerValue(baseAnswer)) return false;
+
+    return extractAnswerTokens(baseAnswer).some((token) =>
+        /^(other|custom|something else|not sure)$/i.test(String(token || "").trim())
+    );
+};
+
 const buildCapturedCustomOptionForQuestion = (question = {}, answersBySlug = {}) => {
     const customAnswer = getCapturedCustomAnswerForQuestion(question, answersBySlug);
     if (!customAnswer) return null;
+    if (!isOtherAnswerSelectedForQuestion(question, answersBySlug)) return null;
 
     return normalizeOptionObject({
         label: customAnswer,
@@ -5728,6 +5747,36 @@ const getSemanticDependentIndexesForChanges = (
     return Array.from(dependentIndexes).sort((a, b) => a - b);
 };
 
+const shouldAcceptAutoCapturedOtherAnswer = ({
+    slug = "",
+    currentQuestion = null,
+    baseAnswersBySlug = {},
+    existingAnswersBySlug = {},
+    correctionIntent = false,
+}) => {
+    const targetBaseSlug = getOtherAnswerBaseSlug(slug);
+    if (!targetBaseSlug) return true;
+    if (correctionIntent) return true;
+
+    const currentSlug = String(currentQuestion?.slug || "").trim();
+    if (!currentSlug) return false;
+    if (currentSlug !== targetBaseSlug && currentSlug !== slug) {
+        return false;
+    }
+
+    if (currentSlug === slug) return true;
+
+    const combinedAnswers = {
+        ...(existingAnswersBySlug || {}),
+        ...(baseAnswersBySlug || {}),
+    };
+
+    return isOtherAnswerSelectedForQuestion(
+        { slug: targetBaseSlug },
+        combinedAnswers
+    );
+};
+
 const clearAnswersByIndexes = (answersBySlug = {}, questions = [], indexes = []) => {
     const nextAnswers = { ...(answersBySlug || {}) };
     for (const index of indexes) {
@@ -5771,6 +5820,15 @@ const applyExtractedAnswerUpdates = ({
         if (!slug || (questionSlugSet.size > 0 && !questionSlugSet.has(slug))) continue;
         if (ignoreSlug && slug === ignoreSlug) continue;
         if (!hasAnswerValue(extracted?.answer)) continue;
+        if (!shouldAcceptAutoCapturedOtherAnswer({
+            slug,
+            currentQuestion,
+            baseAnswersBySlug,
+            existingAnswersBySlug,
+            correctionIntent,
+        })) {
+            continue;
+        }
 
         const targetIndex = questionIndexBySlug.get(slug);
         const targetQuestion = questionsBySlug.get(slug);

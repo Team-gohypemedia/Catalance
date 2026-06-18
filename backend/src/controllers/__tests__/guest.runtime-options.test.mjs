@@ -546,6 +546,88 @@ test("does not capture a descriptive brief when the user only shares the brand n
   assert.deepEqual(extracted, []);
 });
 
+test("does not auto-capture unrelated future _other answers from a pages selection", () => {
+  const questions = [
+    {
+      slug: "pages_required",
+      text: "Which pages do you need?",
+      type: "multi_select",
+      options: [
+        { label: "Home", value: "home" },
+        { label: "Shop / Products", value: "shop" },
+      ],
+    },
+    {
+      slug: "design_style",
+      text: "How would you like your website to look and feel?",
+      type: "single_select",
+      options: [
+        { label: "Clean and modern", value: "clean_modern" },
+        { label: "Premium and luxury", value: "premium_luxury" },
+        { label: "Other", value: "other" },
+      ],
+    },
+    {
+      slug: "design_style_other",
+      text: "Please describe your preferred design style.",
+      type: "input",
+    },
+  ];
+
+  const result = applyExtractedAnswerUpdates({
+    baseAnswersBySlug: {
+      pages_required: "Home, Shop / Products",
+    },
+    existingAnswersBySlug: {},
+    extractedAnswers: [
+      {
+        slug: "design_style_other",
+        answer: "Home, Shop / Products, Product Detail Page, Cart & Checkout, About Us, Contact",
+        confidence: 0.96,
+      },
+    ],
+    questionIndexBySlug: new Map(questions.map((question, index) => [question.slug, index])),
+    questionsBySlug: new Map(questions.map((question) => [question.slug, question])),
+    questionSlugSet: new Set(questions.map((question) => question.slug)),
+    runtimeOptionsByQuestionSlug: {},
+    currentStep: 0,
+    currentQuestion: questions[0],
+    ignoreSlug: "pages_required",
+    correctionIntent: false,
+    logPrefix: "[Test Auto Capture]",
+  });
+
+  assert.equal(result.answersBySlug.design_style_other, undefined);
+  assert.deepEqual(result.updatedSlugs, []);
+});
+
+test("does not display captured _other text unless the base option was actually other", () => {
+  const question = {
+    slug: "design_style",
+    text: "How would you like your website to look and feel?",
+    type: "single_select",
+    options: [
+      { label: "Clean and modern", value: "clean_modern" },
+      { label: "Premium and luxury", value: "premium_luxury" },
+      { label: "Other", value: "other" },
+    ],
+  };
+
+  const pollutedOptions = getDisplayedQuestionOptions(question, {}, {
+    design_style_other: "Home, Shop / Products, Product Detail Page, Cart & Checkout, About Us, Contact",
+  });
+  assert.equal(
+    pollutedOptions.some((option) => /Home, Shop \/ Products/i.test(option.label)),
+    false
+  );
+
+  const validCustomOptions = getDisplayedQuestionOptions(question, {}, {
+    design_style: "other",
+    design_style_other: "Dark and futuristic",
+  });
+  assert.equal(validCustomOptions[0].label, "Dark and futuristic");
+});
+
 test("strips admin directive lines from assistant output before returning it", () => {
   assert.equal(
     stripAdminDirectiveLines([
