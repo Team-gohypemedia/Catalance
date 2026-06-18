@@ -15,8 +15,10 @@ const {
   buildBudgetOverrideMessage,
   buildInternalSystemPrompt,
   buildUserInputGuardMessage,
+  convertBudgetAmount,
   isInternalAiTask,
   normalizeChatRole,
+  parseFlexibleBudgetFromText,
   resolveChatRequestProfile,
 } = __testables;
 
@@ -126,6 +128,31 @@ test("input guard does not force re-entry when user says cannot increase", () =>
   });
 
   assert.equal(guardMessage, null);
+});
+
+test("parses western and Indian budget units and converts USD to INR", () => {
+  assert.deepEqual(parseFlexibleBudgetFromText("USD 1,000"), {
+    amount: 1000,
+    currency: "USD",
+  });
+  assert.deepEqual(parseFlexibleBudgetFromText("2 crore"), {
+    amount: 20000000,
+    currency: "INR",
+  });
+  assert.deepEqual(parseFlexibleBudgetFromText("1.5 million"), {
+    amount: 1500000,
+    currency: "INR",
+  });
+  assert.equal(convertBudgetAmount(1000, "USD", "INR"), 83000);
+});
+
+test("treats foreign-currency budget replies against INR minimums", () => {
+  const history = [assistant(BUDGET_QUESTION), user("USD 50")];
+  const warning = runBudgetOverride(history);
+
+  assert.ok(warning);
+  assert.match(warning, /below the standard minimum requirement/i);
+  assert.match(warning, /₹|Rs\.|INR|â‚¹/i);
 });
 
 test("internal AI tasks use the lightweight request profile", () => {

@@ -8,6 +8,7 @@ const {
   applyExtractedAnswerUpdates,
   buildAdminControlSummaryText,
   buildBusinessNameGuardPrompt,
+  buildBudgetRuntimeOptions,
   buildDiscoveryCoverageSummary,
   buildCurrentQuestionValidationPrompt,
   buildSupplementalDescriptiveExtractions,
@@ -479,6 +480,23 @@ test("accepts short business descriptions for about-business questions", () => {
   assert.equal(result.isValid, true);
   assert.equal(result.status, "valid_answer");
   assert.equal(result.normalizedAnswer, "it is about music");
+});
+
+test("builds deterministic INR budget options without dollar labels", () => {
+  const options = buildBudgetRuntimeOptions({
+    question: {
+      slug: "project_budget",
+      text: "What is your budget for this website project (minimum INR 10,000)?",
+      type: "single_select",
+    },
+    serviceCurrency: "INR",
+    serviceMinBudget: 10000,
+  });
+
+  assert.equal(options.length >= 4, true);
+  assert.equal(options.some((option) => /\$/.test(option.label)), false);
+  assert.equal(options[0].label, "INR 10,000 - INR 25,000");
+  assert.equal(options[options.length - 1].label, "Over INR 2,50,000");
 });
 
 test("captures a website brief from the same message as the brand name", () => {

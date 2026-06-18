@@ -5,9 +5,11 @@ import { env } from "../config/env.js";
 import { ensurePdfJsRuntime, loadPdfJsWorker } from "../utils/pdfjs-runtime.js";
 import {
     chatWithAI,
+    convertBudgetAmount,
     formatCurrencyValue,
     generateProposalMarkdown,
     parseBudgetFromText,
+    parseFlexibleBudgetFromText,
 } from "../services/ai.service.js";
 
 const GREETING_ONLY_REGEX = /^(hi|hello|hey|yo|hola|good\s*(morning|afternoon|evening))[!.\s]*$/i;
@@ -1609,6 +1611,104 @@ const isBudgetQuestion = (question = {}) =>
         `${question?.slug || ""} ${question?.text || ""} ${question?.subtitle || ""}`.trim()
     );
 
+const normalizeBudgetCurrencyCode = (currencyCode = "") =>
+    String(currencyCode || "INR").trim().toUpperCase() || "INR";
+
+const parseQuestionMinimumBudget = (question = {}) => {
+    const parsedMinimum = parseFlexibleBudgetFromText(
+        `${question?.text || ""} ${question?.subtitle || ""}`.trim()
+    );
+    return parsedMinimum?.amount && Number.isFinite(parsedMinimum.amount)
+        ? parsedMinimum.amount
+        : 0;
+};
+
+const roundBudgetStep = (amount = 0) => {
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return 0;
+    if (numericAmount <= 10000) return Math.ceil(numericAmount / 1000) * 1000;
+    if (numericAmount <= 100000) return Math.ceil(numericAmount / 5000) * 5000;
+    if (numericAmount <= 500000) return Math.ceil(numericAmount / 25000) * 25000;
+    return Math.ceil(numericAmount / 50000) * 50000;
+};
+
+const buildBudgetRangeLabel = (minAmount = 0, maxAmount = 0, currencyCode = "INR") => {
+    const normalizedCurrency = normalizeBudgetCurrencyCode(currencyCode);
+    const formattedMin = formatServiceBudgetAmount(roundBudgetStep(minAmount), normalizedCurrency);
+    const formattedMax = formatServiceBudgetAmount(roundBudgetStep(maxAmount), normalizedCurrency);
+    if (!formattedMin || !formattedMax) return "";
+    return `${formattedMin} - ${formattedMax}`;
+};
+
+const buildBudgetCeilingLabel = (minAmount = 0, currencyCode = "INR") => {
+    const normalizedCurrency = normalizeBudgetCurrencyCode(currencyCode);
+    const formattedMin = formatServiceBudgetAmount(roundBudgetStep(minAmount), normalizedCurrency);
+    return formattedMin ? `Over ${formattedMin}` : "";
+};
+
+const buildBudgetRuntimeOptions = ({
+    question = {},
+    serviceCurrency = "INR",
+    serviceMinBudget = 0,
+}) => {
+    const normalizedCurrency = normalizeBudgetCurrencyCode(serviceCurrency);
+    const baseMinimum = Math.max(
+        Number(serviceMinBudget) || 0,
+        parseQuestionMinimumBudget(question),
+        normalizedCurrency === "INR" ? 10000 : 0
+    );
+    const minimum = roundBudgetStep(baseMinimum > 0 ? baseMinimum : 25000);
+    const multipliers = minimum <= 10000
+        ? [1, 2.5, 5, 10, 25]
+        : minimum <= 50000
+            ? [1, 2, 4, 8, 16]
+            : [1, 2, 3, 5, 10];
+
+    const thresholds = multipliers
+        .map((multiplier) => roundBudgetStep(minimum * multiplier))
+        .filter((value, index, arr) => value > 0 && (index === 0 || value > arr[index - 1]));
+
+    const options = [];
+    for (let index = 0; index < thresholds.length - 1; index += 1) {
+        const label = buildBudgetRangeLabel(
+            thresholds[index],
+            thresholds[index + 1],
+            normalizedCurrency
+        );
+        if (!label) continue;
+        options.push(normalizeOptionObject({
+            value: label,
+            label,
+            canonicalValue: label,
+            canonicalLabel: label,
+        }));
+    }
+
+    const ceilingLabel = buildBudgetCeilingLabel(
+        thresholds[thresholds.length - 1] || minimum,
+        normalizedCurrency
+    );
+    if (ceilingLabel) {
+        options.push(normalizeOptionObject({
+            value: ceilingLabel,
+            label: ceilingLabel,
+            canonicalValue: ceilingLabel,
+            canonicalLabel: ceilingLabel,
+        }));
+    }
+
+    return options.filter(Boolean);
+};
+
+const convertParsedBudgetToCurrency = (parsedBudget = null, currencyCode = "INR") => {
+    if (!parsedBudget?.amount || !Number.isFinite(Number(parsedBudget.amount))) return null;
+    return convertBudgetAmount(
+        Number(parsedBudget.amount),
+        parsedBudget.currency || "INR",
+        normalizeBudgetCurrencyCode(currencyCode)
+    );
+};
+
 const formatServiceBudgetAmount = (amount, currencyCode = "INR") => {
     const numericAmount = Number(amount);
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) return "";
@@ -1621,17 +1721,17 @@ const extractParsedBudgetFromAnswerText = (answerText = "") => {
     const rawText = String(answerText || "").trim();
     if (!rawText) return null;
 
-    const directParse = parseBudgetFromText(rawText);
+    const directParse = parseFlexibleBudgetFromText(rawText);
     if (directParse?.amount && Number.isFinite(directParse.amount)) {
         return directParse;
     }
 
     const budgetCandidates = rawText.match(
-        /(?:rs\.?|inr|usd|eur|gbp)?\s*[\d,]+(?:\.\d+)?\s*(?:lakh|lac|k|thousand)?\s*(?:rs\.?|inr|usd|eur|gbp)?/gi
+        /(?:rs\.?|inr|usd|eur|gbp|\$)?\s*[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?\s*(?:rs\.?|inr|usd|eur|gbp|\$)?/gi
     ) || [];
 
     for (const candidate of budgetCandidates) {
-        const parsedCandidate = parseBudgetFromText(String(candidate || "").trim());
+        const parsedCandidate = parseFlexibleBudgetFromText(String(candidate || "").trim());
         if (parsedCandidate?.amount && Number.isFinite(parsedCandidate.amount)) {
             return parsedCandidate;
         }
@@ -1652,11 +1752,16 @@ const getBudgetMinimumValidationResult = ({
 
     const parsedBudget = extractParsedBudgetFromAnswerText(answerText);
     if (!parsedBudget?.amount || !Number.isFinite(parsedBudget.amount)) return null;
-    if (parsedBudget.amount >= minBudget) return null;
 
-    const currency = String(service?.currency || parsedBudget.currency || "INR").trim().toUpperCase() || "INR";
-    const enteredBudget = formatServiceBudgetAmount(parsedBudget.amount, currency);
-    const minimumBudget = formatServiceBudgetAmount(minBudget, currency);
+    const serviceCurrency = normalizeBudgetCurrencyCode(service?.currency || "INR");
+    const convertedBudgetAmount = convertParsedBudgetToCurrency(parsedBudget, serviceCurrency);
+    if (!convertedBudgetAmount || !Number.isFinite(convertedBudgetAmount)) return null;
+    if (convertedBudgetAmount >= minBudget) return null;
+
+    const enteredBudget = parsedBudget.currency && normalizeBudgetCurrencyCode(parsedBudget.currency) !== serviceCurrency
+        ? `${formatServiceBudgetAmount(parsedBudget.amount, parsedBudget.currency)} (approx. ${formatServiceBudgetAmount(convertedBudgetAmount, serviceCurrency)})`
+        : formatServiceBudgetAmount(convertedBudgetAmount, serviceCurrency);
+    const minimumBudget = formatServiceBudgetAmount(minBudget, serviceCurrency);
     const serviceLabel = String(service?.name || "this service").trim() || "this service";
 
     return {
@@ -1770,8 +1875,11 @@ const getPostProposalBudgetFollowupAction = ({
     const parsedBudget = extractParsedBudgetFromAnswerText(
         proposedAnswersBySlug[budgetChange.slug] || budgetChange.nextValue || ""
     );
-    const formattedBudget = parsedBudget?.amount
-        ? formatServiceBudgetAmount(parsedBudget.amount, service?.currency || parsedBudget.currency || "INR")
+    const convertedBudgetAmount = parsedBudget?.amount
+        ? convertParsedBudgetToCurrency(parsedBudget, service?.currency || "INR")
+        : null;
+    const formattedBudget = convertedBudgetAmount
+        ? formatServiceBudgetAmount(convertedBudgetAmount, service?.currency || "INR")
         : String(proposedAnswersBySlug[budgetChange.slug] || budgetChange.nextValue || "").trim();
     const serviceLabel = String(service?.name || "current").trim() || "current";
 
@@ -4769,6 +4877,8 @@ Return strict JSON only:
 const generateRuntimeOptionsForQuestion = async ({
     serviceName = "",
     servicePrompt = "",
+    serviceCurrency = "INR",
+    serviceMinBudget = 0,
     question = {},
     answersByQuestionText = {},
     answersBySlug = {},
@@ -4778,7 +4888,25 @@ const generateRuntimeOptionsForQuestion = async ({
     const questionType = normalizeTextToken(question?.type || "input");
     const adminControls = getQuestionAdminControls(question, servicePrompt);
     const canonicalOptions = getCanonicalQuestionOptions(question, adminControls);
-    if (!OPTION_QUESTION_TYPES.has(questionType) || canonicalOptions.length === 0) {
+    if (!OPTION_QUESTION_TYPES.has(questionType)) {
+        return [];
+    }
+
+    if (isBudgetQuestion(question)) {
+        const budgetOptions = buildBudgetRuntimeOptions({
+            question,
+            serviceCurrency,
+            serviceMinBudget,
+        });
+        if (budgetOptions.length > 0) {
+            console.log(
+                `[Runtime Options] source=deterministic_budget question=${String(question?.slug || question?.text || "question").trim()} options=${budgetOptions.map((option) => option.label || option.value).join(" | ")}`
+            );
+            return budgetOptions;
+        }
+    }
+
+    if (canonicalOptions.length === 0) {
         return [];
     }
 
@@ -6277,6 +6405,8 @@ const buildServiceStartState = async ({
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
             servicePrompt: serviceAiInstructions,
+            serviceCurrency: service.currency || "INR",
+            serviceMinBudget: service.minBudget || 0,
             question: firstQuestionDefinition,
             answersByQuestionText: answersPayload.byQuestionText,
             answersBySlug: answersPayload.bySlug,
@@ -7094,6 +7224,8 @@ export const guestChat = asyncHandler(async (req, res) => {
             const runtimeOptions = await generateRuntimeOptionsForQuestion({
                 serviceName: service.name,
                 servicePrompt: serviceAiInstructions,
+                serviceCurrency: service.currency || "INR",
+                serviceMinBudget: service.minBudget || 0,
                 question: correctionNextQuestion,
                 answersByQuestionText: correctedPayload.byQuestionText,
                 answersBySlug: correctedAnswersBySlug,
@@ -8113,6 +8245,8 @@ export const guestChat = asyncHandler(async (req, res) => {
                     const runtimeOptions = await generateRuntimeOptionsForQuestion({
                         serviceName: service.name,
                         servicePrompt: serviceAiInstructions,
+                        serviceCurrency: service.currency || "INR",
+                        serviceMinBudget: service.minBudget || 0,
                         question: questions[conversationalNextStep],
                         answersByQuestionText: conversationalPersistedAnswers.byQuestionText,
                         answersBySlug: conversationalAnswersBySlug,
@@ -8547,6 +8681,8 @@ export const guestChat = asyncHandler(async (req, res) => {
         const runtimeOptions = await generateRuntimeOptionsForQuestion({
             serviceName: service.name,
             servicePrompt: serviceAiInstructions,
+            serviceCurrency: service.currency || "INR",
+            serviceMinBudget: service.minBudget || 0,
             question: questions[nextStep],
             answersByQuestionText: persistedAnswers.byQuestionText,
             answersBySlug: updatedAnswersBySlug,
@@ -8982,6 +9118,7 @@ export const __testables = {
     applyExtractedAnswerUpdates,
     buildAdminControlSummaryText,
     buildBusinessNameGuardPrompt,
+    buildBudgetRuntimeOptions,
     buildDiscoveryCoverageSummary,
     buildCurrentQuestionValidationPrompt,
     buildSupplementalDescriptiveExtractions,

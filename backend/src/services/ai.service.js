@@ -500,6 +500,41 @@ export const formatCurrencyValue = (amount, currencyCode = "INR") => {
   return amount.toLocaleString(locale);
 };
 
+const BUDGET_EXCHANGE_RATES_TO_INR = {
+  INR: 1,
+  USD: 83,
+  EUR: 90,
+  GBP: 105
+};
+
+const normalizeBudgetCurrencyCode = (currencyCode = "") => {
+  const normalized = String(currencyCode || "").trim().toUpperCase();
+  if (!normalized) return "INR";
+  if (normalized === "$") return "USD";
+  if (normalized === "€") return "EUR";
+  if (normalized === "£") return "GBP";
+  return BUDGET_EXCHANGE_RATES_TO_INR[normalized] ? normalized : "INR";
+};
+
+export const convertBudgetAmount = (
+  amount,
+  fromCurrency = "INR",
+  toCurrency = "INR"
+) => {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount)) return null;
+
+  const sourceCurrency = normalizeBudgetCurrencyCode(fromCurrency);
+  const targetCurrency = normalizeBudgetCurrencyCode(toCurrency);
+  const sourceRate = BUDGET_EXCHANGE_RATES_TO_INR[sourceCurrency];
+  const targetRate = BUDGET_EXCHANGE_RATES_TO_INR[targetCurrency];
+
+  if (!sourceRate || !targetRate) return null;
+
+  const amountInInr = numericAmount * sourceRate;
+  return amountInInr / targetRate;
+};
+
 const normalizeQuestionText = (value = "") =>
   normalizeServiceText(value).replace(/\s+/g, " ").trim();
 
@@ -938,12 +973,57 @@ export const parseBudgetFromText = (text = "") => {
   return { amount: amount * multiplier, currency };
 };
 
+export const parseFlexibleBudgetFromText = (text = "") => {
+  const requiresExtendedScale = /\b(crore|cr|million|billion)\b/i.test(
+    String(text || "")
+  );
+  const direct = parseBudgetFromText(text);
+  if (direct?.amount && !requiresExtendedScale) return direct;
+  if (typeof text !== "string") return null;
+
+  const flexibleBudgetRegex =
+    /(?:(\$|usd|eur|gbp|inr|rs\.?|â‚¹|â‚¬|Â£))?\s*([\d,]+(?:\.\d+)?)\s*(crore|cr|lakh|lac|million|billion|thousand|k)?\s*(\$|usd|eur|gbp|inr|rs\.?|â‚¹|â‚¬|Â£)?/i;
+  const match = flexibleBudgetRegex.exec(text);
+  if (!match) return null;
+
+  const rawAmount = Number.parseFloat(String(match[2] || "").replace(/,/g, ""));
+  if (!Number.isFinite(rawAmount)) return null;
+
+  const currencyToken = `${match[1] || ""} ${match[4] || ""}`;
+  let currency = "INR";
+  if (/\$|usd/i.test(currencyToken)) currency = "USD";
+  else if (/eur|â‚¬/i.test(currencyToken)) currency = "EUR";
+  else if (/gbp|Â£/i.test(currencyToken)) currency = "GBP";
+
+  const scaleToken = String(match[3] || "").toLowerCase();
+  let multiplier = 1;
+  if (/(lakh|lac)/i.test(scaleToken)) multiplier = 100000;
+  else if (/(crore|cr)/i.test(scaleToken)) multiplier = 10000000;
+  else if (/million/i.test(scaleToken)) multiplier = 1000000;
+  else if (/billion/i.test(scaleToken)) multiplier = 1000000000;
+  else if (/(thousand|k)/i.test(scaleToken)) multiplier = 1000;
+
+  return {
+    amount: rawAmount * multiplier,
+    currency,
+  };
+};
+
+const convertParsedBudgetAmount = (parsedBudget = null, targetCurrency = "INR") => {
+  if (!parsedBudget?.amount) return null;
+  return convertBudgetAmount(
+    parsedBudget.amount,
+    parsedBudget.currency || "INR",
+    targetCurrency
+  );
+};
+
 const BUDGET_QUESTION_REGEX = /budget|investment|price|cost|spend|how much/i;
 const hasBudgetSignal = (text = "") => {
   if (!text) return false;
   if (BUDGET_QUESTION_REGEX.test(text)) return true;
   if (/(₹|rs\.?|inr|\$|usd|€|eur|£|gbp)/i.test(text)) return true;
-  if (/\b(lakh|lac|thousand|k)\b/i.test(text)) return true;
+  if (/\b(lakh|lac|crore|cr|million|billion|thousand|k)\b/i.test(text)) return true;
   return false;
 };
 
@@ -1148,7 +1228,7 @@ const isAffirmativeResponse = (text = "") =>
   AFFIRMATIVE_ONLY_REGEX.test((text || "").trim());
 
 const isBudgetValueText = (text = "", prevAssistantText = "") => {
-  const parsed = parseBudgetFromText(text || "");
+  const parsed = parseFlexibleBudgetFromText(text || "");
   if (!parsed?.amount) return false;
   if (hasBudgetSignal(text || "")) return true;
   if (prevAssistantText && isBudgetPromptText(prevAssistantText)) return true;
@@ -1162,7 +1242,7 @@ const getUserBudgetsFromHistory = (history = [], { startIndex = 0 } = {}) => {
   for (let i = start; i < history.length; i += 1) {
     const msg = history[i];
     if (!msg || msg.role === "assistant") continue;
-    const parsed = parseBudgetFromText(msg.content || "");
+    const parsed = parseFlexibleBudgetFromText(msg.content || "");
     if (!parsed?.amount) continue;
 
     const prevMsg = history[i - 1];
@@ -1310,6 +1390,8 @@ const buildBudgetOverrideMessage = ({
     ? allBudgets[allBudgets.length - 1]
     : null;
   if (!latestBudget?.amount || !Number.isFinite(latestBudget.amount)) return null;
+  const latestBudgetInInr = convertParsedBudgetAmount(latestBudget, "INR");
+  if (!latestBudgetInInr || !Number.isFinite(latestBudgetInInr)) return null;
 
   const warningIndex = findBudgetWarningIndex(history);
   const limitationsAcceptedIndex = findBudgetLimitationsAcceptedIndex(history);
@@ -1320,9 +1402,9 @@ const buildBudgetOverrideMessage = ({
   const latestUser = getLastUserMessageWithIndex(history);
   const lastAssistant = getLastAssistantMessage(history);
   const unitLabel = formatBudgetUnitLabel(service);
-  const enteredBudgetFormatted = formatInr(latestBudget.amount);
+  const enteredBudgetFormatted = formatInr(latestBudgetInInr);
 
-  if (latestBudget.amount >= minBudget) {
+  if (latestBudgetInInr >= minBudget) {
     if (
       latestUser &&
       latestUser.index === latestBudget.index &&
@@ -1357,7 +1439,10 @@ const buildBudgetOverrideMessage = ({
   }
 
   const lowBudgetsAfterWarning = allBudgets.filter(
-    (entry) => entry.index > warningIndex && entry.amount < minBudget
+    (entry) =>
+      entry.index > warningIndex &&
+      Number.isFinite(convertParsedBudgetAmount(entry, "INR")) &&
+      convertParsedBudgetAmount(entry, "INR") < minBudget
   );
   const repeatedSameLowBudget =
     lowBudgetsAfterWarning.length >= 2 &&
@@ -1480,7 +1565,7 @@ const buildUserInputGuardMessage = ({
     BUDGET_QUESTION_REGEX.test(questionText || "");
 
   if (isBudgetQuestion) {
-    const parsed = parseBudgetFromText(userText);
+    const parsed = parseFlexibleBudgetFromText(userText);
     const budgetSignal = hasBudgetSignal(userText);
     const assistantAskedIncrease = BUDGET_INCREASE_REQUEST_REGEX.test(
       assistantText
@@ -3316,12 +3401,12 @@ const normalizeProposalBudgetValue = (value = "", service = null) => {
     }
   }
 
-  const parsedBudget = parseBudgetFromText(source);
+  const parsedBudget = parseFlexibleBudgetFromText(source);
   if (parsedBudget?.amount) {
-    const currency = parsedBudget.currency || "INR";
-    const formatted = formatCurrencyValue(parsedBudget.amount, currency);
+    const normalizedAmount = convertParsedBudgetAmount(parsedBudget, "INR");
+    const formatted = formatCurrencyValue(normalizedAmount, "INR");
     if (formatted) {
-      return `${currency} ${formatted}${suffix ? ` ${suffix}` : ""}`;
+      return `INR ${formatted}${suffix ? ` ${suffix}` : ""}`;
     }
   }
 
@@ -4562,8 +4647,10 @@ export const __testables = {
   buildBudgetOverrideMessage,
   buildUserInputGuardMessage,
   buildInternalSystemPrompt,
+  convertBudgetAmount,
   isInternalAiTask,
   normalizeChatRole,
+  parseFlexibleBudgetFromText,
   normalizeProposalMarkdown,
   normalizeProposalBudgetValue,
   normalizeProposalTimelineValue,
