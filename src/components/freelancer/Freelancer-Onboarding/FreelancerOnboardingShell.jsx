@@ -75,6 +75,7 @@ import FreelancerServiceSetupSlide from "./slides/FreelancerServiceSetupSlide";
 import FreelancerServiceInfoSlide from "./slides/FreelancerServiceInfoSlide";
 import FreelancerServicePricingSlide from "./slides/FreelancerServicePricingSlide";
 import FreelancerServiceVisualsSlide from "./slides/FreelancerServiceVisualsSlide";
+import FreelancerServiceQuickInfoSlide from "./slides/FreelancerServiceQuickInfoSlide";
 import FreelancerCaseStudySlide from "./slides/FreelancerCaseStudySlide";
 import FreelancerServiceReviewSlide from "./slides/FreelancerServiceReviewSlide";
 import FreelancerAcceptInProgressProjectsSlide from "./slides/FreelancerAcceptInProgressProjectsSlide";
@@ -89,9 +90,12 @@ const slideRegistry = {
   basicProfile: FreelancerBasicProfileSlide,
   services: FreelancerServicesSlide,
   serviceSetup: FreelancerServiceSetupSlide,
+  // Legacy individual slides kept for backward-compat (draft restoration may land here)
   serviceInfo: FreelancerServiceInfoSlide,
   servicePricing: FreelancerServicePricingSlide,
   serviceVisuals: FreelancerServiceVisualsSlide,
+  // New combined slide
+  quickInfo: FreelancerServiceQuickInfoSlide,
   caseStudy: FreelancerCaseStudySlide,
   serviceReview: FreelancerServiceReviewSlide,
   acceptInProgressProjects: FreelancerAcceptInProgressProjectsSlide,
@@ -237,7 +241,7 @@ const normalizeCustomFieldValue = (field = {}, value) => {
 
 const getServiceSectionFieldsByStep = (stepId = "", sections = {}) => {
   const normalizedStepId = String(stepId || "").trim();
-  if (normalizedStepId === "serviceInfo") return sections.serviceInfoFields || [];
+  if (normalizedStepId === "quickInfo" || normalizedStepId === "serviceInfo") return sections.serviceInfoFields || [];
   if (normalizedStepId === "servicePricing") return sections.servicePricingFields || [];
   if (normalizedStepId === "serviceVisuals") return sections.serviceVisualFields || [];
   if (normalizedStepId === "caseStudy") return sections.caseStudyFields || [];
@@ -995,12 +999,14 @@ const FreelancerOnboardingShell = () => {
   const isServiceInfoSlide = currentSlide.id === "serviceInfo";
   const isServicePricingSlide = currentSlide.id === "servicePricing";
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
+  const isQuickInfoSlide = currentSlide.id === "quickInfo";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
   const isServiceSectionSlide =
     isServiceInfoSlide ||
     isServicePricingSlide ||
     isServiceVisualsSlide ||
+    isQuickInfoSlide ||
     isCaseStudySlide ||
     isServiceReviewSlide;
   const isAcceptInProgressProjectsSlide =
@@ -1020,6 +1026,9 @@ const FreelancerOnboardingShell = () => {
       : isCommunicationPolicySlide
         ? !communicationPolicyReady
       : false;
+  const quickInfoSlideIndex = onboardingSlides.findIndex(
+    (slide) => slide.id === "quickInfo",
+  );
   const serviceSetupSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceSetup",
   );
@@ -3085,6 +3094,57 @@ const FreelancerOnboardingShell = () => {
 
   const validateServiceStepBeforeContinue = useCallback(
     (stepId = currentSlide.id) => {
+      // For the combined quickInfo slide, validate all 3 sub-sections
+      if (stepId === "quickInfo") {
+        const infoErrors = getServiceStepValidationErrors(
+          currentServiceDraft,
+          "serviceInfo",
+          serviceInfoFields,
+        );
+        const pricingErrors = getServiceStepValidationErrors(
+          currentServiceDraft,
+          "servicePricing",
+          servicePricingFields,
+        );
+        const visualErrors = getServiceStepValidationErrors(
+          currentServiceDraft,
+          "serviceVisuals",
+          serviceVisualFields,
+        );
+        const infoMessage = getServiceStepValidationMessage(
+          currentServiceDraft,
+          "serviceInfo",
+          serviceInfoFields,
+        );
+        const pricingMessage = getServiceStepValidationMessage(
+          currentServiceDraft,
+          "servicePricing",
+          servicePricingFields,
+        );
+        const visualMessage = getServiceStepValidationMessage(
+          currentServiceDraft,
+          "serviceVisuals",
+          serviceVisualFields,
+        );
+
+        const hasErrors = infoMessage || pricingMessage || visualMessage;
+        if (hasErrors) {
+          setServiceValidationErrorsByStep((currentErrors) => ({
+            ...currentErrors,
+            ...(infoMessage ? { serviceInfo: infoErrors } : {}),
+            ...(pricingMessage ? { servicePricing: pricingErrors } : {}),
+            ...(visualMessage ? { serviceVisuals: visualErrors } : {}),
+          }));
+          toast.error(infoMessage || pricingMessage || visualMessage);
+          return false;
+        }
+
+        clearServiceStepValidationErrors("serviceInfo");
+        clearServiceStepValidationErrors("servicePricing");
+        clearServiceStepValidationErrors("serviceVisuals");
+        return true;
+      }
+
       const sectionFields = getServiceSectionFieldsByStep(stepId, {
         serviceInfoFields,
         servicePricingFields,
@@ -3133,7 +3193,11 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
-    if (isServiceSectionSlide && !validateServiceStepBeforeContinue()) {
+    // Determine the step ID for validation — quickInfo validates all 3 sub-sections
+    const validationStepId =
+      currentSlide.id === "quickInfo" ? "quickInfo" : currentSlide.id;
+
+    if (isServiceSectionSlide && !validateServiceStepBeforeContinue(validationStepId)) {
       return;
     }
 
@@ -3262,42 +3326,41 @@ const FreelancerOnboardingShell = () => {
         return;
       }
 
+      // Map current slide → step order in the new 3-tab stepper
       const currentServiceStepOrder =
-        currentSlide.id === "serviceInfo"
+        currentSlide.id === "quickInfo" ||
+        currentSlide.id === "serviceInfo" ||
+        currentSlide.id === "servicePricing" ||
+        currentSlide.id === "serviceVisuals"
           ? 0
-          : currentSlide.id === "servicePricing"
+          : currentSlide.id === "caseStudy"
             ? 1
-            : currentSlide.id === "serviceVisuals"
+            : currentSlide.id === "serviceReview"
               ? 2
-              : currentSlide.id === "caseStudy"
-                ? 3
-                : currentSlide.id === "serviceReview"
-                  ? 4
-                  : -1;
+              : -1;
+
+      // Map requested stepper tab → step order
       const nextServiceStepOrder =
-        nextStepId === "overview"
+        nextStepId === "quickInfo"
           ? 0
-          : nextStepId === "pricing"
+          : nextStepId === "caseStudy"
             ? 1
-            : nextStepId === "visuals"
+            : nextStepId === "preview"
               ? 2
-              : nextStepId === "caseStudy"
-                ? 3
-                : nextStepId === "preview"
-                  ? 4
-                  : -1;
+              : -1;
+
+      // Determine max unlocked step:
+      // quickInfo (0) is always available
+      // caseStudy (1) is available when quickInfo is complete (info + pricing + visuals)
+      // preview (2) is available when caseStudy is complete
+      const quickInfoComplete =
+        !isServiceInfoIncomplete && !isServicePricingIncomplete && !isServiceVisualsIncomplete;
       let maxUnlockedServiceStepOrder = 0;
-      if (!isServiceInfoIncomplete) {
+      if (quickInfoComplete) {
         maxUnlockedServiceStepOrder = 1;
       }
-      if (!isServicePricingIncomplete) {
+      if (quickInfoComplete && !isCaseStudyIncomplete) {
         maxUnlockedServiceStepOrder = 2;
-      }
-      if (!isServiceVisualsIncomplete) {
-        maxUnlockedServiceStepOrder = 3;
-      }
-      if (!isCaseStudyIncomplete) {
-        maxUnlockedServiceStepOrder = 4;
       }
 
       if (
@@ -3306,23 +3369,21 @@ const FreelancerOnboardingShell = () => {
         nextServiceStepOrder > maxUnlockedServiceStepOrder
       ) {
         if (nextServiceStepOrder > maxUnlockedServiceStepOrder) {
-          validateServiceStepBeforeContinue();
+          validateServiceStepBeforeContinue("quickInfo");
         }
         return;
       }
 
       const nextSlideIndex =
-        nextStepId === "overview"
-          ? serviceInfoSlideIndex
-          : nextStepId === "pricing"
-            ? servicePricingSlideIndex
-            : nextStepId === "visuals"
-              ? serviceVisualsSlideIndex
-              : nextStepId === "caseStudy"
-                ? caseStudySlideIndex
-                : nextStepId === "preview"
-                  ? serviceReviewSlideIndex
-                  : -1;
+        nextStepId === "quickInfo"
+          ? quickInfoSlideIndex >= 0
+            ? quickInfoSlideIndex
+            : serviceInfoSlideIndex
+          : nextStepId === "caseStudy"
+            ? caseStudySlideIndex
+            : nextStepId === "preview"
+              ? serviceReviewSlideIndex
+              : -1;
 
       if (
         !Number.isInteger(nextSlideIndex) ||
@@ -3343,11 +3404,10 @@ const FreelancerOnboardingShell = () => {
       isServiceInfoIncomplete,
       isServicePricingIncomplete,
       isServiceVisualsIncomplete,
+      quickInfoSlideIndex,
       validateServiceStepBeforeContinue,
       serviceInfoSlideIndex,
-      servicePricingSlideIndex,
       serviceReviewSlideIndex,
-      serviceVisualsSlideIndex,
       currentSlide.id,
     ],
   );

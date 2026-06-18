@@ -10,7 +10,7 @@ router.get("/chat/:key", getChatFile);
 // Resume files - stored in resumes/ folder
 router.get("/resumes/:key", getResumeFile);
 
-// Avatar files - stored in avatars/ folder
-router.get("/:key", getImage);
+// Generic R2 file proxy (nested keys, e.g. freelancers/...)
+router.get("/*", getImage);
 
 export const imageRouter = router;

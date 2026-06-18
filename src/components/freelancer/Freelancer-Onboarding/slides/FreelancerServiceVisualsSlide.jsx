@@ -5,6 +5,7 @@ import Play from "lucide-react/dist/esm/icons/play";
 import Image from "lucide-react/dist/esm/icons/image";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { toast } from "sonner";
+import { resolveAvatarUrl } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -16,7 +17,7 @@ import {
   ONBOARDING_FIELD_LABEL_CLASS,
   ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
 } from "../typography";
-import { ServiceInfoStepper } from "./shared/ServiceInfoComponents";
+import { ServiceInfoStepper, CustomSelect } from "./shared/ServiceInfoComponents";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
   "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
@@ -33,8 +34,8 @@ const getMediaFile = (value) => {
   return value?.file instanceof File ? value.file : null;
 };
 
-const getMediaUrl = (value) =>
-  String(
+const getMediaUrl = (value) => {
+  const rawUrl = String(
     value?.uploadedUrl ||
       value?.url ||
       value?.previewUrl ||
@@ -43,6 +44,8 @@ const getMediaUrl = (value) =>
       value?.value ||
       "",
   ).trim();
+  return resolveAvatarUrl(rawUrl, { allowBlob: true });
+};
 
 const getMediaMimeType = (value) => {
   const file = getMediaFile(value);
@@ -392,7 +395,8 @@ const UploadArea = ({
 
         for (const file of validFiles) {
           const uploadedEntry = await uploadSingleFile(file);
-          nextFiles = [...nextFiles, uploadedEntry];
+          const entryWithFile = { ...uploadedEntry, file };
+          nextFiles = [...nextFiles, entryWithFile];
           filesRef.current = nextFiles;
           onChange(nextFiles);
         }

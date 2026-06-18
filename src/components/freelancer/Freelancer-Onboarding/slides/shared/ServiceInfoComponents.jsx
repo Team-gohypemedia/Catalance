@@ -51,49 +51,20 @@ const StepperItem = ({
   isCompleted,
   onStepChange,
 }) => (
-  <div
+  <button
+    type="button"
+    onClick={() => onStepChange?.(step.id)}
     className={cn(
-      "flex min-w-0 items-center transition-[flex] duration-300 ease-out",
-      isActive ? "flex-[2.3]" : "flex-[0.9]",
-      "sm:flex-1",
+      "relative flex h-8 sm:h-9 items-center justify-center rounded-full px-4 sm:px-6 text-[13px] sm:text-sm font-medium transition-all duration-300 ease-out focus-visible:outline-none",
+      isActive
+        ? "bg-primary text-primary-foreground shadow-sm"
+        : "text-muted-foreground hover:text-foreground",
     )}
+    aria-current={isActive ? "step" : undefined}
+    aria-label={`${step.step}. ${step.label}`}
   >
-      <button
-      type="button"
-      onClick={() => onStepChange?.(step.id)}
-      className={cn(
-        "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
-        isActive
-          ? "justify-center gap-0 border-primary bg-primary px-2 text-white keep-white dark:text-[#1C1B1F] shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] min-[360px]:px-3 sm:gap-2 sm:px-4"
-          : isCompleted
-            ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:gap-2 sm:px-4"
-            : "justify-center gap-0 border-border/40 bg-muted/30 px-2 text-muted-foreground/85 hover:border-border/85 hover:bg-muted/60 hover:text-foreground sm:gap-2 sm:px-4",
-      )}
-      aria-current={isActive ? "step" : undefined}
-      aria-label={`${step.step}. ${step.label}`}
-    >
-      <span
-        className={cn(
-          ONBOARDING_STEP_LABEL_CLASS,
-          isActive
-            ? "max-w-none whitespace-nowrap text-xs font-medium text-white keep-white dark:text-[#1C1B1F] min-[360px]:text-sm"
-            : "max-w-full truncate text-sm font-normal text-inherit",
-        )}
-      >
-        {/* Mobile: active -> show label, inactive -> show step number. Desktop (sm+): always show full label. */}
-        <span 
-          className={cn(isActive ? "block sm:hidden text-white keep-white dark:text-[#1C1B1F]" : "block sm:hidden")}
-        >
-          {isActive ? step.label : String(step.step)}
-        </span>
-        <span 
-          className={cn("hidden sm:inline", isActive && "text-white keep-white dark:text-[#1C1B1F]")}
-        >
-          {step.label}
-        </span>
-      </span>
-    </button>
-  </div>
+    {step.label}
+  </button>
 );
 
 export const ServiceInfoStepper = ({
@@ -104,7 +75,7 @@ export const ServiceInfoStepper = ({
   const activeIdx = steps.findIndex((step) => step.id === activeStepId);
 
   return (
-    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-border bg-card p-1">
+    <div className="mx-auto flex w-fit items-center gap-1 rounded-full bg-muted/60 p-1">
       {steps.map((step, idx) => (
         <StepperItem
           key={step.id}

@@ -4,8 +4,15 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 
 export const getImage = asyncHandler(async (req, res) => {
-  const { key } = req.params;
-  const fullKey = `avatars/${key}`;
+  const wildcardPath = req.params[0] || req.params.key || "";
+  let fullKey = wildcardPath.replace(/^\/+/, "");
+  if (fullKey && !fullKey.includes("/")) {
+    fullKey = `avatars/${fullKey}`;
+  }
+
+  if (!fullKey) {
+    throw new AppError("Image key is required", 400);
+  }
 
   try {
     const command = new GetObjectCommand({

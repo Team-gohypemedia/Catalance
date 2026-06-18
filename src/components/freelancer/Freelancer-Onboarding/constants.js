@@ -39,25 +39,12 @@ const SERVICE_SETUP_SLIDE = {
   continueLabel: "Continue",
 };
 
-const SERVICE_INFO_SLIDE = {
-  id: "serviceInfo",
+const SERVICE_QUICK_INFO_SLIDE = {
+  id: "quickInfo",
   title: "Fill Your Service Info",
-  progressValue: 30,
+  progressValue: 36,
   continueLabel: "Continue",
-};
-
-const SERVICE_PRICING_SLIDE = {
-  id: "servicePricing",
-  title: "Set Your Service Price",
-  progressValue: 38,
-  continueLabel: "Continue",
-};
-
-const SERVICE_VISUALS_SLIDE = {
-  id: "serviceVisuals",
-  title: "Add Keywords & Media",
-  progressValue: 46,
-  continueLabel: "Continue",
+  footerMode: "hidden",
 };
 
 const CASE_STUDY_SLIDE = {
@@ -106,9 +93,7 @@ const INDIVIDUAL_FLOW_SLIDES = [
   },
   BASIC_PROFILE_SLIDE,
   SERVICES_SLIDE,
-  SERVICE_INFO_SLIDE,
-  SERVICE_PRICING_SLIDE,
-  SERVICE_VISUALS_SLIDE,
+  SERVICE_QUICK_INFO_SLIDE,
   CASE_STUDY_SLIDE,
   SERVICE_REVIEW_SLIDE,
   ACCEPT_IN_PROGRESS_PROJECTS_SLIDE,

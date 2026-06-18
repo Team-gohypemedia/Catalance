@@ -137,19 +137,22 @@ const buildObjectPreview = (
 };
 
 const resolveServiceMediaUrl = (entry) => {
-  if (typeof entry === "string") {
-    return entry.trim();
-  }
+  const rawUrl = (() => {
+    if (typeof entry === "string") {
+      return entry.trim();
+    }
 
-  return String(
-    entry?.uploadedUrl ||
-      entry?.url ||
-      entry?.previewUrl ||
-      entry?.mediaUrl ||
-      entry?.src ||
-      entry?.value ||
-      "",
-  ).trim();
+    return String(
+      entry?.uploadedUrl ||
+        entry?.url ||
+        entry?.previewUrl ||
+        entry?.mediaUrl ||
+        entry?.src ||
+        entry?.value ||
+        "",
+    ).trim();
+  })();
+  return resolveAvatarUrl(rawUrl, { allowBlob: true });
 };
 
 const resolveServiceMediaKind = (entry, url = "") => {

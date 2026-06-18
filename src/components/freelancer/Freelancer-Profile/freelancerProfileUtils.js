@@ -312,6 +312,21 @@ export const resolveAvatarUrl = (value, { allowBlob = false } = {}) => {
     const url = value.trim();
     if (!url) return "";
     if (!allowBlob && url.startsWith("blob:")) return "";
+    
+    // Resolve Cloudflare R2 URLs to backend proxy in development
+    if (url.includes("assets.catalance.in") || url.includes("r2.dev")) {
+      let key = url.includes("assets.catalance.in")
+        ? url.split("assets.catalance.in/")[1]
+        : url.split("r2.dev/")[1];
+      key = String(key || "").trim();
+      if (key) {
+        let apiBaseUrl = String(import.meta.env?.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
+        if (!apiBaseUrl) {
+          apiBaseUrl = "/api";
+        }
+        return `${apiBaseUrl}/images/${key}`;
+      }
+    }
     return url;
   }
   if (typeof value === "object") {
