@@ -1,14 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  Star, 
-  Sparkles, 
-  Users, 
-  TrendingUp, 
-  Handshake, 
-  ShieldCheck, 
   ArrowRight, 
-  Clock, 
   Lock 
 } from 'lucide-react'
 
@@ -17,6 +10,8 @@ import testimonial1 from '@/assets/images/testimonials/Ajay-prajapati.jpg'
 import testimonial2 from '@/assets/images/testimonials/mohd-kaif.jpg'
 import testimonial3 from '@/assets/images/testimonials/nitin-nayak.jpg'
 import testimonial4 from '@/assets/images/testimonials/aniket-thakur.jpg'
+import welcomeIllustrationLight from '@/assets/images/welcome-illustration-light.png'
+import welcomeIllustrationDark from '@/assets/images/welcome-illustration-dark.png'
 
 const testimonials = [
   {
@@ -60,123 +55,43 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
   }, [])
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-2 lg:py-3 flex flex-col items-center justify-center">
-      {/* Centered Heading Section */}
-      <div className="flex flex-col items-center text-center mb-5 lg:mb-6 max-w-4xl">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold tracking-wide mb-2">
-          <Star className="h-3.5 w-3.5 fill-current text-primary" />
-          <span className="text-primary font-bold">Your strengths make an impact</span>
-        </div>
+    <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-1 lg:py-2 flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center text-center mb-1 lg:mb-2 max-w-4xl">
 
         {/* Heading */}
-        <h1 className="text-2xl sm:text-3xl lg:text-[2.25rem] xl:text-[2.5rem] font-medium tracking-tight text-neutral-900 dark:text-white leading-tight mb-1.5">
-          Time to <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Show Off</span> a Little
+        <h1 className="text-2xl sm:text-3xl lg:text-[2.25rem] xl:text-[2.5rem] font-medium tracking-tight text-neutral-900 dark:text-white leading-tight mb-1">
+          Turn Your Skills into <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Real Income</span>
         </h1>
 
         {/* Subheading */}
         <div className="text-neutral-900/60 dark:text-neutral-400 text-xs sm:text-sm lg:text-base max-w-2xl leading-relaxed font-medium">
-          Share your strengths, we'll match you with clients who value them.
+          Join thousands of freelancers who are earning on their terms and building the life they want.
         </div>
       </div>
 
       {/* Two Column Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center w-full mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-center w-full mb-2">
         
-        {/* Left Column: Strengths & Layout details (boxes) */}
-        <div className="lg:col-span-7 flex flex-col gap-5">
-          
-          {/* Key Features Block */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
+        {/* Left Column: Welcome Illustration */}
+        <div className="lg:col-span-7 flex justify-center items-center">
+          <div className="relative w-full max-w-lg lg:max-w-xl xl:max-w-2xl flex justify-center items-center">
+            {/* Soft decorative background glow under the illustration */}
+            <div className="absolute -inset-10 bg-radial from-primary/10 to-transparent blur-3xl pointer-events-none rounded-full opacity-60 dark:opacity-30" />
             
-            {/* Feature 1 */}
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-neutral-200/60 bg-white/95 dark:border-neutral-800 dark:bg-neutral-900/40 hover:border-primary/30 dark:hover:border-primary/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.02)] hover:-translate-y-0.5 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Users className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-snug">Get Matched</div>
-                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-400 mt-0.5 font-medium">We connect you with clients who need you.</div>
-              </div>
-            </div>
+            {/* Light Theme Illustration */}
+            <img 
+              src={welcomeIllustrationLight} 
+              alt="Welcome Illustration (Light Theme)" 
+              className="relative w-full h-auto object-contain max-h-[250px] lg:max-h-[280px] xl:max-h-[310px] select-none hover:scale-[1.02] transition-transform duration-500 ease-out block dark:hidden"
+            />
 
-            {/* Feature 2 */}
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-neutral-200/60 bg-white/95 dark:border-neutral-800 dark:bg-neutral-900/40 hover:border-primary/30 dark:hover:border-primary/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.02)] hover:-translate-y-0.5 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Star className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-snug">Show Your Value</div>
-                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-400 mt-0.5 font-medium">Highlight your strengths and stand out.</div>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-neutral-200/60 bg-white/95 dark:border-neutral-800 dark:bg-neutral-900/40 hover:border-primary/30 dark:hover:border-primary/30 hover:shadow-[0_8px_30px_rgba(0,0,0,0.02)] hover:-translate-y-0.5 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <TrendingUp className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-primary" />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="text-xs sm:text-sm font-bold text-neutral-900 dark:text-white leading-snug">Grow Your Business</div>
-                <div className="text-[11px] leading-tight text-neutral-900/60 dark:text-neutral-400 mt-0.5 font-medium">Build relationships and achieve more.</div>
-              </div>
-            </div>
-
+            {/* Dark Theme Illustration */}
+            <img 
+              src={welcomeIllustrationDark} 
+              alt="Welcome Illustration (Dark Theme)" 
+              className="relative w-full h-auto object-contain max-h-[250px] lg:max-h-[280px] xl:max-h-[310px] select-none hover:scale-[1.02] transition-transform duration-500 ease-out hidden dark:block"
+            />
           </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
-            
-            {/* Stat 1 */}
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-neutral-200/60 bg-white dark:border-neutral-800 dark:bg-neutral-900/20 hover:border-primary/30 hover:bg-neutral-50/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="w-9 h-9 rounded-full bg-purple-100 dark:bg-purple-950/30 dark:border dark:border-purple-800/20 flex items-center justify-center shrink-0">
-                <Users className="h-4.5 w-4.5 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="text-base sm:text-xl font-extrabold text-neutral-900 dark:text-white leading-none">25K+</div>
-                <div className="text-[9px] sm:text-[10px] font-bold text-neutral-900/60 dark:text-neutral-400 uppercase tracking-tight mt-1 leading-none">Professionals</div>
-                <div className="text-[9px] sm:text-[10px] text-neutral-900/45 dark:text-neutral-500 mt-1.5 leading-snug">Trusted by experts</div>
-              </div>
-            </div>
-
-            {/* Stat 2 */}
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-neutral-200/60 bg-white dark:border-neutral-800 dark:bg-neutral-900/20 hover:border-primary/30 hover:bg-neutral-50/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-950/30 dark:border dark:border-emerald-800/20 flex items-center justify-center shrink-0">
-                <Handshake className="h-4.5 w-4.5 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="text-base sm:text-xl font-extrabold text-neutral-900 dark:text-white leading-none">10K+</div>
-                <div className="text-[9px] sm:text-[10px] font-bold text-neutral-900/60 dark:text-neutral-400 uppercase tracking-tight mt-1 leading-none">Matches</div>
-                <div className="text-[9px] sm:text-[10px] text-neutral-900/45 dark:text-neutral-500 mt-1.5 leading-snug">Meaningful links</div>
-              </div>
-            </div>
-
-            {/* Stat 3 */}
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-neutral-200/60 bg-white dark:border-neutral-800 dark:bg-neutral-900/20 hover:border-primary/30 hover:bg-neutral-50/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-950/30 dark:border dark:border-blue-800/20 flex items-center justify-center shrink-0">
-                <Star className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400 fill-current" />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="text-base sm:text-xl font-extrabold text-neutral-900 dark:text-white leading-none">4.9/5</div>
-                <div className="text-[9px] sm:text-[10px] font-bold text-neutral-900/60 dark:text-neutral-400 uppercase tracking-tight mt-1 leading-none">Rating</div>
-                <div className="text-[9px] sm:text-[10px] text-neutral-900/45 dark:text-neutral-500 mt-1.5 leading-snug">Highly approved</div>
-              </div>
-            </div>
-
-            {/* Stat 4 */}
-            <div className="flex items-center gap-2.5 p-3 rounded-2xl border border-neutral-200/60 bg-white dark:border-neutral-800 dark:bg-neutral-900/20 hover:border-primary/30 hover:bg-neutral-50/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.01)]">
-              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <ShieldCheck className="h-4.5 w-4.5 text-primary" />
-              </div>
-              <div className="flex flex-col text-left min-w-0">
-                <div className="text-base sm:text-xl font-extrabold text-neutral-900 dark:text-white leading-none">100%</div>
-                <div className="text-[9px] sm:text-[10px] font-bold text-neutral-900/60 dark:text-neutral-400 uppercase tracking-tight mt-1 leading-none">Secure</div>
-                <div className="text-[9px] sm:text-[10px] text-neutral-900/45 dark:text-neutral-500 mt-1.5 leading-snug">Private data</div>
-              </div>
-            </div>
-
-          </div>
-
         </div>
 
         {/* Right Column: Moving Reviews Carousel */}
@@ -270,14 +185,14 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
       </div>
 
       {/* Continue button block at bottom center */}
-      <div className="flex flex-col items-center mt-4 sm:mt-5 w-full">
+      <div className="flex flex-col items-center mt-1 sm:mt-1.5 w-full">
         <button
           type="button"
           onClick={onContinue}
           className="h-11 sm:h-12 px-10 sm:px-12 rounded-full bg-primary text-white keep-white dark:text-black font-semibold shadow-lg shadow-primary/10 hover:bg-primary/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
         >
           <span className="text-white keep-white dark:text-black">Continue</span>
-          
+          <ArrowRight className="h-4 w-4 text-white keep-white dark:text-black" />
         </button>
         
         {/* Helper lock text */}
