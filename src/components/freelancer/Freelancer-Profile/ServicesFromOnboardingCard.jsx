@@ -575,7 +575,7 @@ const ServiceDetailArticle = ({
       </div>
 
       {serviceName ? (
-        <div className="mb-3 inline-flex max-w-max items-center rounded-lg border border-orange-500/15 bg-orange-500/5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-orange-500 dark:text-orange-400">
+        <div className="mb-3 inline-flex max-w-max items-center rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-primary">
           <span className="max-w-[220px] truncate whitespace-nowrap">
             {serviceName}
           </span>
@@ -1350,11 +1350,26 @@ const ServicesFromOnboardingCard = ({
             </div>
           </div>
 
-          {processedServices.length > 1 ? (
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <CarouselPrevious className="relative inset-auto flex size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
+          {processedServices.length > 0 ? (
+            <div className="flex items-center gap-2.5 self-start sm:self-auto">
+              {typeof openAddServiceModal === "function" && (
+                <button
+                  type="button"
+                  onClick={openAddServiceModal}
+                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20 hover:scale-[1.02]"
+                >
+                  <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                  Add Service
+                </button>
+              )}
 
-              <CarouselNext className="relative inset-auto flex size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
+              {processedServices.length > 1 ? (
+                <div className="flex items-center gap-2">
+                  <CarouselPrevious className="relative inset-auto flex size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
+
+                  <CarouselNext className="relative inset-auto flex size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>
