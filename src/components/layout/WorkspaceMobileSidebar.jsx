@@ -32,6 +32,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
 import { cn } from "@/shared/lib/utils";
+import ThemeToggle from "@/components/common/ThemeToggle";
 
 const iconMap = {
   dashboard: LayoutDashboard,
@@ -328,6 +329,7 @@ const WorkspaceMobileSidebar = ({
         </Link>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <ThemeToggle />
           {topNotificationButton ? (
             <div>
               {topNotificationButton}

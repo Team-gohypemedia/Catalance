@@ -472,10 +472,10 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
           </div>
         </div>
 
-        {/* Middle Collapsible Section (Mobile) */}
+        {/* Middle Collapsible Section */}
         <div className={cn(
           "relative flex flex-col gap-8 w-full overflow-hidden transition-[max-height] duration-500 ease-in-out",
-          !isExpanded ? "max-h-[280px] sm:max-h-none" : "max-h-[2500px]"
+          !isExpanded ? "max-h-[280px]" : "max-h-[2500px]"
         )}>
           {/* Project Overview */}
           {parsedData.projectOverview && (
@@ -555,17 +555,17 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
             </div>
           )}
           
-          {/* Fading Overlay for Mobile */}
+          {/* Fading Overlay */}
           {!isExpanded && (
-            <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-background dark:from-card to-transparent sm:hidden pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-background dark:from-card to-transparent pointer-events-none" />
           )}
         </div>
 
-        {/* Read More Toggle for Mobile */}
+        {/* Read More Toggle */}
         <button
           type="button"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-[0.85rem] font-bold text-primary hover:underline sm:hidden self-start"
+          className="text-[0.85rem] font-bold text-primary hover:underline self-start"
         >
           {isExpanded ? "Show less" : "Read more"}
         </button>
