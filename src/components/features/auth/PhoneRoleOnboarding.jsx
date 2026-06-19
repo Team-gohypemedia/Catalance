@@ -628,7 +628,7 @@ function PhoneRoleOnboarding() {
               <span className={fieldLabelClassName}>
                 Phone number
               </span>
-              <div className="grid grid-cols-[3rem_minmax(0,1fr)] gap-2 sm:grid-cols-[3.5rem_minmax(0,1fr)]">
+              <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
                 <Select
                   value={countryCode}
                   onValueChange={(value) => {
