@@ -1246,96 +1246,6 @@ const normalizeServiceItem = (service = {}) => {
     };
 };
 
-// Keep the service cards grouped by intent: development first, then design/marketing, then the rest.
-const SERVICE_CARD_ORDER_GROUPS = [
-    [
-        "Web Development",
-        "Web Dev",
-        "Website Development",
-    ],
-    [
-        "Mobile App Development",
-        "App Development",
-        "App Dev",
-    ],
-    [
-        "AI Automation",
-    ],
-    [
-        "CRM & ERP Integrated Solutions",
-        "CRM and ERP Integrated Solutions",
-        "CRM ERP Integrated Solutions",
-        "CRM & ERP",
-    ],
-    [
-        "Voice Agent",
-    ],
-    [
-        "Creative & Design",
-        "Creative and Design",
-    ],
-    [
-        "Branding Kit",
-        "Branding",
-    ],
-    [
-        "UGC Marketing",
-    ],
-    [
-        "Paid Advertising",
-        "Paid Advertising Performance",
-        "Performance Marketing",
-    ],
-    [
-        "Social Media Marketing",
-        "Social Media Marketing",
-    ],
-    [
-        "Video Services",
-    ],
-    [
-        "Writing & Content",
-        "Writing and Content",
-    ],
-    [
-        "3D Animation/CGI Videos",
-        "3D Animation CGI Videos",
-        "CGI Video Services",
-    ],
-    [
-        "Influencer Marketing",
-    ],
-    [
-        "SEO / GMB",
-        "SEO",
-    ],
-];
-
-const SERVICE_CARD_ORDER_INDEX = new Map(
-    SERVICE_CARD_ORDER_GROUPS.flatMap((aliases, index) =>
-        aliases.map((alias) => [normalizeServiceLogoKey(alias), index]),
-    ),
-);
-
-const getServiceCardOrderIndex = (service = {}) => {
-    const candidates = [
-        service?.name,
-        service?.title,
-        service?.slug,
-        service?.id,
-    ]
-        .map((value) => normalizeServiceLogoKey(value))
-        .filter(Boolean);
-
-    for (const candidate of candidates) {
-        if (SERVICE_CARD_ORDER_INDEX.has(candidate)) {
-            return SERVICE_CARD_ORDER_INDEX.get(candidate);
-        }
-    }
-
-    return SERVICE_CARD_ORDER_GROUPS.length + candidates.length;
-};
-
 const isProposalMessage = (content = "") => {
     if (typeof content !== "string") return false;
     return /client name\s*:|project overview\s*:|primary objectives\s*:|features\/deliverables included\s*:/i.test(content);
@@ -3114,13 +3024,13 @@ const GuestAIDemo = () => {
         }
 
         return [...services]
-            .map((service, index) => ({
-                service,
-                index,
-                order: getServiceCardOrderIndex(service),
-            }))
-            .sort((a, b) => a.order - b.order || a.index - b.index)
-            .map((entry) => entry.service);
+            .sort((a, b) =>
+                String(a?.title || a?.name || '')
+                    .localeCompare(String(b?.title || b?.name || ''), undefined, {
+                        sensitivity: 'base',
+                        numeric: true,
+                    }),
+            );
     }, [services]);
     const briefingGoalSuggestions = useMemo(
         () => buildBriefingGoalSuggestions(briefingAnswers.role),
