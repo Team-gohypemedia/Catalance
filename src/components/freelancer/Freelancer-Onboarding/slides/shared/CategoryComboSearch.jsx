@@ -888,7 +888,7 @@ const CategoryMultiSelect = ({
                               isSelected ? "border-primary bg-primary" : "border-border",
                             )}
                           >
-                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                            {isSelected && <Check className="h-3 w-3 !text-white" />}
                           </span>
                           <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
                           <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -939,7 +939,7 @@ const CategoryMultiSelect = ({
                               isSelected ? "border-primary bg-primary" : "border-border",
                             )}
                           >
-                            {isSelected && <Check className="h-3 w-3 text-white" />}
+                            {isSelected && <Check className="h-3 w-3 !text-white" />}
                           </span>
                           <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
                           <span className="shrink-0 text-[11px] text-muted-foreground">
