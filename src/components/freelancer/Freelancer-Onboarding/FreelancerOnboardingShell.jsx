@@ -1,5 +1,5 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
@@ -927,11 +927,15 @@ const getFirstBasicProfileError = (errors, fields = []) =>
 
 const FreelancerOnboardingShell = () => {
   const navigate = useNavigate();
+  const { stepId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { authFetch, refreshUser, user } = useAuth();
   const usernameCheckRequestRef = useRef(0);
   const onboardingScrollContainerRef = useRef(null);
   const serviceSkipReturnRef = useRef(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+
+
   const [selectedWorkPreference, setSelectedWorkPreference] = useState("");
   const [showAgencyFlow, setShowAgencyFlow] = useState(false);
   const [basicProfileForm, setBasicProfileForm] = useState(
@@ -991,6 +995,37 @@ const FreelancerOnboardingShell = () => {
     () => getOnboardingSlideSet(selectedWorkPreference),
     [selectedWorkPreference],
   );
+
+  const navigateToSlideIndex = useCallback((index, sIndex = null) => {
+    const slide = onboardingSlides[index];
+    if (slide) {
+      setCurrentSlideIndex(index);
+      if (sIndex !== null && sIndex >= 0) {
+        setCurrentServiceIndex(sIndex);
+      }
+      const url = `/freelancer/onboarding/${slide.id}${sIndex !== null && sIndex > 0 ? `?serviceIndex=${sIndex}` : ""}`;
+      navigate(url);
+    }
+  }, [navigate, onboardingSlides]);
+
+  // Sync URL -> State (useLayoutEffect prevents flicker on browser back button)
+  useLayoutEffect(() => {
+    if (!onboardingSlides || onboardingSlides.length === 0) return;
+    
+    let targetSlideIndex = 0;
+    if (stepId) {
+      const idx = onboardingSlides.findIndex(s => s.id === stepId);
+      if (idx >= 0) targetSlideIndex = idx;
+    }
+    
+    let targetServiceIndex = parseInt(searchParams.get("serviceIndex"), 10);
+    if (Number.isNaN(targetServiceIndex)) targetServiceIndex = 0;
+
+    setCurrentSlideIndex(prev => prev !== targetSlideIndex ? targetSlideIndex : prev);
+    setCurrentServiceIndex(prev => prev !== targetServiceIndex ? targetServiceIndex : prev);
+  }, [stepId, searchParams, onboardingSlides]);
+
+  // Sync URL -> State removed because we use layout effect above
 
   const totalSlides = onboardingSlides.length;
   const currentSlide =
@@ -1068,7 +1103,7 @@ const FreelancerOnboardingShell = () => {
   );
   const handleAiResumeUpload = useCallback(() => {
     if (basicProfileSlideIndex >= 0 && currentSlideIndex !== basicProfileSlideIndex) {
-      setCurrentSlideIndex(basicProfileSlideIndex);
+      navigateToSlideIndex(basicProfileSlideIndex);
     }
 
     setResumeUploadRequestId((value) => value + 1);
@@ -1164,7 +1199,7 @@ const FreelancerOnboardingShell = () => {
         ).map((serviceKey) => resolveServiceKey(dbServices, serviceKey)),
       );
 
-      setCurrentSlideIndex(
+      navigateToSlideIndex(
         clampSlideIndex(storedDraft.currentSlideIndex, storedSlides.length),
       );
       setSelectedWorkPreference(normalizedStoredWorkPreference);
@@ -3032,17 +3067,17 @@ const FreelancerOnboardingShell = () => {
     };
 
     if (acceptInProgressProjectsSlideIndex >= 0) {
-      setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
+      navigateToSlideIndex(acceptInProgressProjectsSlideIndex);
       return;
     }
 
     if (deliveryPolicySlideIndex >= 0) {
-      setCurrentSlideIndex(deliveryPolicySlideIndex);
+      navigateToSlideIndex(deliveryPolicySlideIndex);
       return;
     }
 
     if (communicationPolicySlideIndex >= 0) {
-      setCurrentSlideIndex(communicationPolicySlideIndex);
+      navigateToSlideIndex(communicationPolicySlideIndex);
       return;
     }
 
@@ -3058,14 +3093,12 @@ const FreelancerOnboardingShell = () => {
     ) {
       const { slideIndex, serviceIndex } = serviceSkipReturnRef.current;
       serviceSkipReturnRef.current = null;
-      setCurrentServiceIndex(serviceIndex);
-      setCurrentSlideIndex(slideIndex);
+      navigateToSlideIndex(slideIndex, serviceIndex);
       return;
     }
 
     if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
-      setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
-      setCurrentSlideIndex(serviceReviewSlideIndex);
+      navigateToSlideIndex(serviceReviewSlideIndex, currentServiceIndex - 1);
       return;
     }
 
@@ -3073,7 +3106,7 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
-    setCurrentSlideIndex((currentIndex) => Math.max(currentIndex - 1, 0));
+    navigateToSlideIndex(Math.max(currentSlideIndex - 1, 0));
   };
 
   const clearServiceStepValidationErrors = useCallback((stepId) => {
@@ -3204,15 +3237,12 @@ const FreelancerOnboardingShell = () => {
 
     if (currentSlide.id === "serviceReview") {
       if (currentServiceIndex < selectedServices.length - 1) {
-        setCurrentServiceIndex((currentIndex) =>
-          Math.min(currentIndex + 1, selectedServices.length - 1),
-        );
-        setCurrentSlideIndex(quickInfoSlideIndex);
+        navigateToSlideIndex(quickInfoSlideIndex, currentServiceIndex + 1);
         return;
       }
 
       if (acceptInProgressProjectsSlideIndex >= 0) {
-        setCurrentSlideIndex(acceptInProgressProjectsSlideIndex);
+        navigateToSlideIndex(acceptInProgressProjectsSlideIndex);
         return;
       }
 
@@ -3222,7 +3252,7 @@ const FreelancerOnboardingShell = () => {
 
     if (currentSlide.id === "acceptInProgressProjects") {
       if (deliveryPolicySlideIndex >= 0) {
-        setCurrentSlideIndex(deliveryPolicySlideIndex);
+        navigateToSlideIndex(deliveryPolicySlideIndex);
         return;
       }
 
@@ -3232,7 +3262,7 @@ const FreelancerOnboardingShell = () => {
 
     if (currentSlide.id === "deliveryPolicy") {
       if (communicationPolicySlideIndex >= 0) {
-        setCurrentSlideIndex(communicationPolicySlideIndex);
+        navigateToSlideIndex(communicationPolicySlideIndex);
         return;
       }
 
@@ -3248,9 +3278,7 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
-    setCurrentSlideIndex((currentIndex) =>
-      Math.min(currentIndex + 1, totalSlides - 1)
-    );
+    navigateToSlideIndex(Math.min(currentSlideIndex + 1, totalSlides - 1));
   };
 
   const handleDeliveryPolicyAgree = () => {
@@ -3261,7 +3289,7 @@ const FreelancerOnboardingShell = () => {
     setDeliveryPolicyAccepted(true);
 
     if (communicationPolicySlideIndex >= 0) {
-      setCurrentSlideIndex(communicationPolicySlideIndex);
+      navigateToSlideIndex(communicationPolicySlideIndex);
       return;
     }
 
@@ -3292,11 +3320,11 @@ const FreelancerOnboardingShell = () => {
     setSelectedWorkPreference(normalizedNextValue);
 
     if (isWorkPreferenceSlide) {
-      setCurrentSlideIndex((currentIndex) =>
+      navigateToSlideIndex(
         Math.min(
-          currentIndex + 1,
-          Math.max(getOnboardingSlideSet(normalizedNextValue).length - 1, 0),
-        ),
+          currentSlideIndex + 1,
+          Math.max(getOnboardingSlideSet(normalizedNextValue).length - 1, 0)
+        )
       );
     }
   };
@@ -3314,7 +3342,7 @@ const FreelancerOnboardingShell = () => {
     setAcceptInProgressProjectsValue(normalizedValue);
 
     if (deliveryPolicySlideIndex >= 0) {
-      setCurrentSlideIndex(deliveryPolicySlideIndex);
+      navigateToSlideIndex(deliveryPolicySlideIndex);
       return;
     }
 
@@ -3394,7 +3422,7 @@ const FreelancerOnboardingShell = () => {
         return;
       }
 
-      setCurrentSlideIndex(nextSlideIndex);
+      navigateToSlideIndex(nextSlideIndex);
     },
     [
       caseStudySlideIndex,
@@ -3784,9 +3812,7 @@ const FreelancerOnboardingShell = () => {
   const handleBasicProfileNext = async () => {
     setProfileError("");
     if (currentSlide.id !== "basicProfile") {
-      setCurrentSlideIndex((currentIndex) =>
-        Math.min(currentIndex + 1, totalSlides - 1),
-      );
+      navigateToSlideIndex(Math.min(currentSlideIndex + 1, totalSlides - 1));
       return;
     }
 
@@ -3794,9 +3820,7 @@ const FreelancerOnboardingShell = () => {
     try {
       await validateBasicProfileBeforeContinue();
       await ensureMarketplaceServicesLoaded();
-      setCurrentSlideIndex((currentIndex) =>
-        Math.min(currentIndex + 1, totalSlides - 1),
-      );
+      navigateToSlideIndex(Math.min(currentSlideIndex + 1, totalSlides - 1));
     } catch (error) {
       setProfileError(error?.message || "Please complete your basic profile.");
       toast.error(error?.message || "Please complete your basic profile.");
@@ -3811,7 +3835,7 @@ const FreelancerOnboardingShell = () => {
     revokeObjectUrlIfNeeded(currentPhotoUrl);
     usernameCheckRequestRef.current += 1;
 
-    setCurrentSlideIndex(0);
+    navigateToSlideIndex(0);
     setSelectedWorkPreference("");
     setShowAgencyFlow(false);
     setBasicProfileForm(createInitialBasicProfileForm());

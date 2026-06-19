@@ -32,6 +32,11 @@ const Toaster = ({
           "--border-radius": "var(--radius)"
         }
       }
+      toastOptions={{
+        classNames: {
+          toast: "text-xs sm:text-sm p-3 sm:p-4 w-auto max-w-[90vw] sm:max-w-[420px]",
+        },
+      }}
       {...props} />
   );
 }

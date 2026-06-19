@@ -683,7 +683,7 @@ function PhoneRoleOnboarding() {
                       }
                       if (countryCode === "IN") {
                         if (/^[^6-9]/.test(digits)) {
-                          toast.error("Indian phone numbers must start with 6, 7, 8, or 9.");
+                          toast.error("Indian phone numbers must start with 6, 7, 8, or 9.", { id: "invalid-in-phone" });
                         }
                         digits = digits.replace(/^[^6-9]+/, "");
                         setPhoneNumber(digits.slice(0, 10));
@@ -702,7 +702,7 @@ function PhoneRoleOnboarding() {
           </div>
 
           {formErrors.details && (
-            <p className="text-xs text-red-400">{formErrors.details}</p>
+            <p className="text-xs text-destructive">{formErrors.details}</p>
           )}
         </div>
       );
@@ -779,7 +779,7 @@ function PhoneRoleOnboarding() {
             })}
           </div>
           {formErrors.role && (
-            <p className="text-xs text-red-400">{formErrors.role}</p>
+            <p className="text-xs text-destructive">{formErrors.role}</p>
           )}
         </div>
       );
@@ -945,7 +945,7 @@ function PhoneRoleOnboarding() {
 
             {renderSlideContent()}
 
-            {formErrors.submit && <p className="mt-2 text-xs text-red-400">{formErrors.submit}</p>}
+            {formErrors.submit && <p className="mt-2 text-xs text-destructive">{formErrors.submit}</p>}
 
             {/* CTA & Security Note (Sticky on mobile) */}
             <div className={cn(
@@ -992,7 +992,7 @@ function PhoneRoleOnboarding() {
       <div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-6xl items-center justify-center">
         <div className="w-full pt-4">
           {renderSlideContent()}
-          {formErrors.submit && <p className="mt-3 text-xs text-red-400">{formErrors.submit}</p>}
+          {formErrors.submit && <p className="mt-3 text-xs text-destructive">{formErrors.submit}</p>}
         </div>
       </div>
     </main>

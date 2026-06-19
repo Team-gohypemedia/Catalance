@@ -690,7 +690,7 @@ const App = () => {
               }
             />
             <Route
-              path="/freelancer/onboarding"
+              path="/freelancer/onboarding/:stepId?"
               element={
                 <ProtectedRoute
                   allowFreelancerOnboardingOnly
@@ -701,7 +701,7 @@ const App = () => {
               }
             />
             <Route
-              path={AGENCY_ONBOARDING_PATH}
+              path="/agency/onboarding/:stepId?"
               element={
                 <ProtectedRoute
                   allowFreelancerOnboardingOnly
