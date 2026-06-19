@@ -291,7 +291,23 @@ const FreelancerCaseStudySlide = ({
         {/* Heading */}
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
-            {caseStudyContent?.headingTitle || "Tell Us About Your Previous Work"}
+            {(() => {
+              const headingText = caseStudyContent?.headingTitle || "Tell Us About Your Previous Work";
+              const matchIdx = headingText.toLowerCase().lastIndexOf("previous work");
+              if (matchIdx >= 0) {
+                const mainPart = headingText.slice(0, matchIdx);
+                const highlightPart = headingText.slice(matchIdx);
+                return (
+                  <>
+                    <span>{mainPart}</span>
+                    <span className="text-primary">
+                      {highlightPart}
+                    </span>
+                  </>
+                );
+              }
+              return <span>{headingText}</span>;
+            })()}
           </h1>
         </div>
 
@@ -309,7 +325,7 @@ const FreelancerCaseStudySlide = ({
               onClick={() => onSkipServices?.()}
               className="onboarding-skip-btn sm:absolute sm:right-0 self-end sm:self-auto shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
             >
-              Skip this service
+              Skip this
             </Button>
           )}
         </div>
