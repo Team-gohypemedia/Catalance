@@ -6201,94 +6201,76 @@ const GuestAIDemo = () => {
 
     const renderChatInput = () => {
         if (!shouldShowTextInput) return null;
+
         const composerPlaceholder = isAgencyFlowCompleted
             ? 'Refine the combined proposal by naming a service or asking for a change...'
             : contextualPendingOptionPlaceholder;
 
         return (
             <div className="relative">
-                {isPendingOptionFollowup && (
-                    <div className="absolute right-0 top-[-3.2rem] z-20 sm:right-[-3.75rem] sm:top-1/2 sm:-translate-y-1/2">
-                        <div className="relative">
-                            {isRecommendationPanelOpen && (
-                                <div className={`absolute bottom-[calc(100%+0.75rem)] right-0 w-[min(18rem,calc(100vw-2rem))] rounded-2xl border p-3 shadow-xl backdrop-blur-xl sm:bottom-auto sm:right-[calc(100%+0.75rem)] sm:top-1/2 sm:w-72 sm:-translate-y-1/2 ${isDark
-                                    ? 'border-white/10 bg-[#1d1d1d]/95 text-slate-200'
-                                    : 'border-slate-200 bg-white/95 text-slate-700'
-                                    }`}>
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0 flex-1">
-                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-primary/80' : 'text-primary'}`}>
-                                                Recommendation
-                                            </p>
-                                            <p className="mt-2 text-sm leading-relaxed">
-                                                {contextualPendingOptionNotice}
-                                            </p>
-                                            {pendingRecommendedAnswer && (
-                                                <p className={`mt-2 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                    Suggested reply: {pendingRecommendedAnswer}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className={`h-8 w-8 shrink-0 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
-                                            onClick={() => setIsRecommendationPanelOpen(false)}
-                                            aria-label="Hide recommendation"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                    <div className="mt-3 flex items-center justify-between gap-2">
-                                        <button
-                                            type="button"
-                                            className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
-                                            onClick={() => {
-                                                if (pendingOptionFollowup?.autoSuggestion && pendingOptionFollowup?.questionKey) {
-                                                    dismissedAutoHelperKeysRef.current.add(pendingOptionFollowup.questionKey);
-                                                }
-                                                setPendingOptionFollowup(null);
-                                                setSelectedOptions([]);
-                                                setInput('');
-                                                setIsRecommendationPanelOpen(false);
-                                            }}
-                                        >
-                                            Clear helper
-                                        </button>
-                                        {pendingRecommendedAnswer && (
-                                            <button
-                                                type="button"
-                                                className={`text-xs font-semibold ${isDark ? 'text-primary hover:text-primary/80' : 'text-primary hover:text-primary/80'}`}
-                                                onClick={() => {
-                                                    setInput((current) => current.trim() ? current : pendingRecommendedAnswer);
-                                                    setIsRecommendationPanelOpen(false);
-                                                    requestAnimationFrame(() => focusMessageInput());
-                                                }}
-                                            >
-                                                Use suggestion
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
+                {isPendingOptionFollowup && isRecommendationPanelOpen && (
+                    <div className={`absolute bottom-[calc(100%+0.75rem)] left-0 right-0 z-20 w-full rounded-2xl border p-3 shadow-xl backdrop-blur-xl ${isDark
+                        ? 'border-white/10 bg-[#1d1d1d]/95 text-slate-200'
+                        : 'border-slate-200 bg-white/95 text-slate-700'
+                        }`}>
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                                <p className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-primary/80' : 'text-primary'}`}>
+                                    Recommendation
+                                </p>
+                                <p className="mt-2 text-sm leading-relaxed">
+                                    {contextualPendingOptionNotice}
+                                </p>
+                                {pendingRecommendedAnswer && (
+                                    <p className={`mt-2 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        Suggested reply: {pendingRecommendedAnswer}
+                                    </p>
+                                )}
+                            </div>
                             <Button
                                 type="button"
+                                variant="ghost"
                                 size="icon"
-                                onClick={() => setIsRecommendationPanelOpen((current) => !current)}
-                                className={`h-11 w-11 rounded-full border shadow-md ${isRecommendationPanelOpen
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : isDark
-                                        ? 'border-white/10 bg-[#2F2F2F] text-[#ffd54a] hover:bg-[#383838]'
-                                        : 'border-slate-200 bg-white text-primary hover:bg-primary/5'
-                                    }`}
-                                aria-label={isRecommendationPanelOpen ? 'Hide recommendation helper' : 'Show recommendation helper'}
+                                className={`h-8 w-8 shrink-0 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-black/5'}`}
+                                onClick={() => setIsRecommendationPanelOpen(false)}
+                                aria-label="Hide recommendation"
                             >
-                                <Lightbulb className="h-5 w-5" />
+                                <X className="h-4 w-4" />
                             </Button>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                            <button
+                                type="button"
+                                className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
+                                onClick={() => {
+                                    if (pendingOptionFollowup?.autoSuggestion && pendingOptionFollowup?.questionKey) {
+                                        dismissedAutoHelperKeysRef.current.add(pendingOptionFollowup.questionKey);
+                                    }
+                                    setPendingOptionFollowup(null);
+                                    setSelectedOptions([]);
+                                    setInput('');
+                                    setIsRecommendationPanelOpen(false);
+                                }}
+                            >
+                                Clear helper
+                            </button>
+                            {pendingRecommendedAnswer && (
+                                <button
+                                    type="button"
+                                    className={`text-xs font-semibold ${isDark ? 'text-primary hover:text-primary/80' : 'text-primary hover:text-primary/80'}`}
+                                    onClick={() => {
+                                        setInput((current) => current.trim() ? current : pendingRecommendedAnswer);
+                                        setIsRecommendationPanelOpen(false);
+                                        requestAnimationFrame(() => focusMessageInput());
+                                    }}
+                                >
+                                    Use suggestion
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
+
                 <form
                     onSubmit={handleSendMessage}
                     className={`rounded-[clamp(1.25rem,5vw,1.5rem)] md:rounded-3xl border p-[clamp(0.5rem,2.5vw,0.625rem)] md:p-2.5 shadow-md backdrop-blur-xl ${isDark
@@ -6304,6 +6286,7 @@ const GuestAIDemo = () => {
                             The combined agency proposal is ready. Keep chatting below to refine it. If you want a service-specific change like budget or timeline, name the service first.
                         </div>
                     )}
+
                     {pendingAttachments.length > 0 && (
                         <div className="mb-2 flex flex-wrap gap-2 px-2 pt-1">
                             {pendingAttachments.map((file, index) => {
@@ -6327,7 +6310,7 @@ const GuestAIDemo = () => {
                                         </span>
                                         <button
                                             type="button"
-                                            className={`rounded-full p-0.5 ml-1 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
+                                            className={`ml-1 rounded-full p-0.5 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
                                             onClick={() => removePendingAttachment(index)}
                                         >
                                             <X className="h-3.5 w-3.5" />
@@ -6337,6 +6320,7 @@ const GuestAIDemo = () => {
                             })}
                         </div>
                     )}
+
                     <div className="flex items-end gap-[clamp(0.35rem,1.8vw,0.5rem)] md:gap-2">
                         <div className="flex flex-1 items-center bg-transparent">
                             <div className="flex flex-col flex-1">
@@ -6360,7 +6344,7 @@ const GuestAIDemo = () => {
                                     }}
                                     rows={1}
                                     placeholder={composerPlaceholder}
-                                    className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] md:min-h-[44px] w-full resize-none bg-transparent px-[clamp(0.75rem,3vw,1rem)] md:px-4 py-[clamp(0.65rem,2.8vw,0.75rem)] md:py-3 text-[clamp(0.95rem,3.6vw,1rem)] md:text-base outline-none ${isDark
+                                    className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] w-full resize-none bg-transparent px-[clamp(0.75rem,3vw,1rem)] py-[clamp(0.65rem,2.8vw,0.75rem)] text-[clamp(0.95rem,3.6vw,1rem)] outline-none md:min-h-[44px] md:px-4 md:py-3 md:text-base ${isDark
                                         ? 'text-white placeholder:text-slate-400'
                                         : 'text-slate-900 placeholder:text-slate-500'
                                         }`}
@@ -6370,7 +6354,7 @@ const GuestAIDemo = () => {
                             </div>
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-[clamp(0.15rem,1vw,0.375rem)] md:gap-1.5 px-[clamp(0.25rem,1vw,0.5rem)] md:px-2 pb-[clamp(0.2rem,1vw,0.375rem)] md:pb-1.5">
+                        <div className="flex shrink-0 items-center gap-[clamp(0.15rem,1vw,0.375rem)] px-[clamp(0.25rem,1vw,0.5rem)] pb-[clamp(0.2rem,1vw,0.375rem)] md:gap-1.5 md:px-2 md:pb-1.5">
                             <input
                                 ref={attachmentInputRef}
                                 type="file"
@@ -6385,7 +6369,7 @@ const GuestAIDemo = () => {
                                 variant="ghost"
                                 onClick={openAttachmentPicker}
                                 disabled={isTyping || isUploadingAttachment}
-                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full md:h-9 md:w-9 ${isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/5'}`}
                             >
                                 <Paperclip className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />
                             </Button>
@@ -6396,7 +6380,7 @@ const GuestAIDemo = () => {
                                     variant="ghost"
                                     onClick={toggleVoiceInput}
                                     disabled={isTyping || isUploadingAttachment}
-                                    className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'hover:bg-white/10 text-slate-300' : 'hover:bg-black/5 text-slate-600'}`}
+                                    className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full md:h-9 md:w-9 ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/5'}`}
                                 >
                                     {isListening ? <MicOff className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" /> : <Mic className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />}
                                 </Button>
@@ -6405,15 +6389,16 @@ const GuestAIDemo = () => {
                                 size="icon"
                                 type="submit"
                                 disabled={((!input.trim() && pendingAttachments.length === 0) || (isPendingOptionFollowup && !input.trim())) || isTyping || isUploadingAttachment}
-                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] md:h-9 md:w-9 rounded-full transition-colors ${input.trim() || pendingAttachments.length > 0
-                                        ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
-                                        : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
+                                className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full transition-colors md:h-9 md:w-9 ${input.trim() || pendingAttachments.length > 0
+                                    ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
+                                    : isDark ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-400'
                                     }`}
                             >
-                                <Send className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4 shrink-0 keep-white" />
+                                <Send className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] shrink-0 keep-white md:h-4 md:w-4" />
                             </Button>
                         </div>
                     </div>
+
                     {isUploadingAttachment && (
                         <p className={`mt-1 pl-4 text-xs ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                             Uploading attachment...
