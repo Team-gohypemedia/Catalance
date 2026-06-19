@@ -42,19 +42,6 @@ const EXPERIENCE_LABELS = {
   veteran: "10+ Years",
 };
 
-const DELIVERY_TIMELINE_LABELS = {
-  "1_week": "1 Week",
-  "2_weeks": "2 Weeks",
-  "3_weeks": "3 Weeks",
-  "4_weeks": "4 Weeks",
-  "6_weeks": "6 Weeks",
-  "8_weeks": "8 Weeks",
-  "12_weeks": "12 Weeks",
-  ongoing: "Ongoing / Retainer",
-};
-
-
-
 const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} text-foreground`;
 const SECTION_SUBTITLE_CLASS =
   `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-muted-foreground`;
@@ -946,8 +933,6 @@ const FreelancerServiceReviewSlide = ({
   const experienceLabel =
     EXPERIENCE_LABELS[serviceInfoForm?.experience] || "Not selected";
 
-  const deliveryLabel =
-    DELIVERY_TIMELINE_LABELS[servicePricingForm?.deliveryTimeline] || "Not selected";
   const startingPriceDisplay = resolveStartingPriceDisplay(
     servicePricingForm?.priceRange,
   );
@@ -1263,14 +1248,6 @@ const FreelancerServiceReviewSlide = ({
                   </p>
                 </div>
 
-                <div className="rounded-[24px] border border-border bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.08)]">
-                  <p className={CARD_LABEL_CLASS}>
-                    Delivery Timeline
-                  </p>
-                  <p className={CARD_VALUE_CLASS}>
-                    {deliveryLabel}
-                  </p>
-                </div>
               </div>
 
               {/* Skills Category */}

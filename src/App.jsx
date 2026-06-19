@@ -142,6 +142,9 @@ const AdminLogin = lazy(() => import("@/components/features/admin/AdminLogin"));
 const AdminApprovals = lazy(
   () => import("@/components/features/admin/AdminApprovals"),
 );
+const AdminUserRequests = lazy(
+  () => import("@/components/features/admin/AdminUserRequests"),
+);
 const AdminFreelancerOnboarding = lazy(
   () => import("@/components/features/admin/AdminFreelancerOnboarding"),
 );
@@ -835,6 +838,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminApprovals />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/user-requests"
+              element={
+                <AdminRoute>
+                  <AdminUserRequests />
                 </AdminRoute>
               }
             />

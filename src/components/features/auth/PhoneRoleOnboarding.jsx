@@ -223,6 +223,7 @@ function PhoneRoleOnboarding() {
   const [profileImageCropSession, setProfileImageCropSession] = useState(0);
   const [formErrors, setFormErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const deviceInputRef = useRef(null);
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -233,7 +234,7 @@ function PhoneRoleOnboarding() {
 
   const hasProfilePhoto = Boolean(profileImage);
 
-  const slide = hasLockedRole && activeSlide > 0 ? SLIDES[0] : SLIDES[activeSlide];
+  const slide = (hasLockedRole && activeSlide > 0 ? SLIDES[0] : SLIDES[activeSlide]) || SLIDES[0];
   const emailValue = normalizeEmail(email);
   const phoneDigits = normalizePhoneNumber(phoneNumber);
   const selectedCountry = COUNTRY_OPTION_BY_CODE[countryCode] || COUNTRY_OPTION_BY_CODE[DEFAULT_COUNTRY_CODE];
@@ -372,6 +373,8 @@ function PhoneRoleOnboarding() {
   };
 
   const handleNext = async (roleOverride = selectedRole) => {
+    if (isTransitioning || isSaving) return;
+
     const errorMessage = validateCurrentSlide(roleOverride);
     if (errorMessage) {
       setFormErrors({ [slide.id]: errorMessage });
@@ -381,15 +384,18 @@ function PhoneRoleOnboarding() {
     setFormErrors({});
 
     if (!isLastSlide && !hasLockedRole) {
+      setIsTransitioning(true);
       const progressToastId = toast.loading("Preparing the next step...");
 
       try {
         await delay(350);
         toast.dismiss(progressToastId);
-        setActiveSlide((current) => current + 1);
+        setActiveSlide((current) => Math.min(current + 1, SLIDES.length - 1));
       } catch {
         toast.dismiss(progressToastId);
-        setActiveSlide((current) => current + 1);
+        setActiveSlide((current) => Math.min(current + 1, SLIDES.length - 1));
+      } finally {
+        setIsTransitioning(false);
       }
       return;
     }

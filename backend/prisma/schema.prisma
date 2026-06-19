@@ -166,6 +166,9 @@ model User {
   bookedAppointments  Appointment[]         @relation("AppointmentBooker")
   managedAppointments Appointment[]         @relation("AppointmentManager")
   payments            Payment[]             @relation("FreelancerPayments")
+  userRequests           UserRequest[] @relation("UserRequestUser")
+  reviewedUserRequests   UserRequest[] @relation("UserRequestReviewer")
+
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 }
@@ -1063,4 +1066,37 @@ model EngagementAdminAuditLog {
   @@index([adminId, createdAt])
   @@index([targetUserId, createdAt])
   @@index([entityType, entityId])
+}
+
+enum UserRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model UserRequest {
+  id              String              @id @default(cuid())
+  userId          String
+  user            User                @relation("UserRequestUser", fields: [userId], references: [id], onDelete: Cascade)
+  request         String              // The name the user typed
+  normalizedName  String              // Lowercase-trimmed for duplicate detection
+  status          UserRequestStatus   @default(PENDING)
+  requestedType   String?             // "category" or "skill"
+  adminNote       String?             @db.Text
+  reviewedById    String?
+  reviewedBy      User?               @relation("UserRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt      DateTime?
+  
+  // Optional fields filled by admin upon approval
+  approvedAsType  String?             // "category" or "skill"
+  approvedEntityId Int?               // ID of the created MarketplaceFilterSubCategory or MarketplaceFilterTool
+  
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([normalizedName, status])
+  @@index([userId])
+  @@index([status])
+  @@index([reviewedById])
+  @@map("user_requests")
 }

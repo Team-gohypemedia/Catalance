@@ -1909,15 +1909,10 @@ const FreelancerOnboardingShell = () => {
   const isServicePricingIncomplete = useMemo(() => {
     const hasDescription =
       String(currentServicePricingForm?.description || "").trim().length > 0;
-    const hasDeliveryTimeline =
-      String(currentServicePricingForm?.deliveryTimeline || "").trim().length > 0;
-    const hasPrice = Number(currentServicePricingForm?.priceRange || 0) > 0;
 
-    return !(hasDescription && hasDeliveryTimeline && hasPrice);
+    return !hasDescription;
   }, [
-    currentServicePricingForm?.deliveryTimeline,
     currentServicePricingForm?.description,
-    currentServicePricingForm?.priceRange,
   ]);
 
   const isServiceVisualsIncomplete = useMemo(() => {

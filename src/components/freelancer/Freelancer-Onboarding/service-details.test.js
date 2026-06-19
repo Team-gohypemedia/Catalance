@@ -100,6 +100,20 @@ describe("service step validation", () => {
     ).toBe("");
   });
 
+  it("accepts pricing without delivery timeline or starting price", () => {
+    expect(
+      getServiceStepValidationMessage(
+        {
+          serviceKey: "web_development",
+          description: "A concise but complete service description.",
+          deliveryTimeline: "",
+          priceRange: "",
+        },
+        "servicePricing",
+      ),
+    ).toBe("");
+  });
+
   it("requires media before continuing visuals", () => {
     expect(getServiceStepValidationMessage({}, "serviceVisuals")).toBe(
       "Please add up to 2 images and 1 video before continuing.",

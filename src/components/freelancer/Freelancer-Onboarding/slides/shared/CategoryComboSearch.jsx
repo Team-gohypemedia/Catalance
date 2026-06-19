@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import { Check, ChevronDown, LayoutGrid, Search, X } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { Input } from "@/components/ui/input";
-import { API_BASE_URL } from "@/shared/lib/api-client";
+import { API_BASE_URL, request } from "@/shared/lib/api-client";
 import { getSubcategorySelectionKey, normalizeStringArray } from "../../service-details";
+import { toast } from "sonner";
 
 const toPositiveInteger = (value) => {
   const parsed = Number(value);
@@ -56,6 +57,7 @@ const CategoryMultiSelect = ({
   onSubcategorySkillChange,
   isToolsLoading = false,
   toolFetchError = "",
+  onRequestCreated,
 }) => {
   const [isBrowseOpen, setIsBrowseOpen] = useState(false);
   const [browseSearchQuery, setBrowseSearchQuery] = useState("");
@@ -63,6 +65,7 @@ const CategoryMultiSelect = ({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [popupStyle, setPopupStyle] = useState(null);
   const [allPreFetchedTools, setAllPreFetchedTools] = useState({});
+  const [requestingType, setRequestingType] = useState("");
 
   const containerRef = useRef(null);
   const popupRef = useRef(null);
@@ -85,10 +88,41 @@ const CategoryMultiSelect = ({
     [normalizedSelected],
   );
 
-  const selectedOptions = useMemo(
-    () => options.filter((option) => selectedSet.has(String(option.value))),
-    [options, selectedSet],
-  );
+  const customSelections = useMemo(() => {
+    const catalogValues = new Set(options.map((option) => String(option.value || "").trim()));
+    return (Array.isArray(selectedSubcategories) ? selectedSubcategories : [])
+      .map((entry) => {
+        const value = getSubcategorySelectionKey(entry);
+        const label = String(
+          entry?.label ||
+            entry?.subCategoryLabel ||
+            entry?.name ||
+            entry?.subCategoryKey ||
+            value ||
+            "",
+        ).trim();
+        if (!value || !selectedSet.has(value) || catalogValues.has(value)) return null;
+        return { value, label: label || value };
+      })
+      .filter(Boolean);
+  }, [options, selectedSet, selectedSubcategories]);
+
+  const selectedOptions = useMemo(() => {
+    const catalogSelections = options
+      .filter((option) => selectedSet.has(String(option.value)))
+      .map((option) => ({
+        value: String(option.value || "").trim(),
+        label: String(option.label || option.value || "").trim(),
+      }));
+    const seen = new Set(catalogSelections.map((option) => option.value));
+    const uniqueCustomSelections = customSelections.filter((opt) => {
+      if (seen.has(opt.value)) return false;
+      seen.add(opt.value);
+      return true;
+    });
+    const finalOptions = [...catalogSelections, ...uniqueCustomSelections];
+    return finalOptions.filter(opt => opt.value !== "_unassigned_skills_");
+  }, [options, selectedSet, customSelections]);
 
   const optionLabelByValue = useMemo(
     () =>
@@ -123,14 +157,24 @@ const CategoryMultiSelect = ({
   }, [activeSubcategoryId, toolOptionsByCategory]);
 
   const activeToolOptions = useMemo(
-    () =>
-      activeToolSource
+    () => {
+      const standardTools = activeToolSource
         .map((tool) => ({
           id: toPositiveInteger(tool?.id),
           label: String(tool?.label || tool?.name || "").trim(),
+          isCustom: false,
         }))
-        .filter((tool) => tool.id && tool.label),
-    [activeToolSource],
+        .filter((tool) => tool.id && tool.label);
+      
+      const customSkills = normalizeStringArray(activeSubcategory?.customSkillNames).map((skillName) => ({
+        id: `custom-${skillName}`,
+        label: skillName,
+        isCustom: true,
+      }));
+
+      return [...standardTools, ...customSkills];
+    },
+    [activeToolSource, activeSubcategory],
   );
 
   const activeSuggestedSkills = useMemo(() => {
@@ -178,8 +222,10 @@ const CategoryMultiSelect = ({
 
   const filteredBrowseOptions = useMemo(() => {
     const normalizedQuery = String(browseSearchQuery || "").trim().toLowerCase();
-    if (!normalizedQuery) return options;
-    return options.filter((option) =>
+    const customOptions = customSelections.map(opt => ({ ...opt, isCustom: true }));
+    const allOptions = [...options, ...customOptions].filter(opt => opt.value !== "_unassigned_skills_");
+    if (!normalizedQuery) return allOptions;
+    return allOptions.filter((option) =>
       String(
         [option?.label, option?.selectedLabel, option?.categoryLabel]
           .filter(Boolean)
@@ -188,7 +234,7 @@ const CategoryMultiSelect = ({
         .toLowerCase()
         .includes(normalizedQuery),
     );
-  }, [options, browseSearchQuery]);
+  }, [options, customSelections, browseSearchQuery]);
 
   const activeSelectedToolEntries = useMemo(() => {
     const toolLabelById = new Map(
@@ -321,10 +367,13 @@ const CategoryMultiSelect = ({
     };
   }, [optionsSignature]);
 
-  // Unified search index: categories + all pre-fetched skills
+  // Unified search index: categories + all pre-fetched skills + custom items
   const searchIndex = useMemo(() => {
     const entries = [];
-    options.forEach((opt) => {
+    const customOptions = customSelections.map(opt => ({ ...opt, isCustom: true }));
+    const allCategoryOptions = [...options, ...customOptions].filter(opt => opt.value !== "_unassigned_skills_");
+
+    allCategoryOptions.forEach((opt) => {
       entries.push({
         type: "category",
         label: opt.label,
@@ -333,6 +382,7 @@ const CategoryMultiSelect = ({
         toolId: null,
       });
     });
+
     Object.entries(allPreFetchedTools).forEach(([optionValue, tools]) => {
       const categoryLabel = optionLabelByValue.get(optionValue) || optionValue;
       (Array.isArray(tools) ? tools : []).forEach((tool) => {
@@ -345,8 +395,21 @@ const CategoryMultiSelect = ({
         });
       });
     });
-    return entries;
-  }, [options, allPreFetchedTools, optionLabelByValue]);
+
+    const customSkills = (Array.isArray(selectedSubcategories) ? selectedSubcategories : []).flatMap((sub) => {
+      const categoryValue = getSubcategorySelectionKey(sub);
+      const categoryLabel = optionLabelByValue.get(categoryValue) || categoryValue;
+      return normalizeStringArray(sub.customSkillNames).map((skillName) => ({
+        type: "skill",
+        label: skillName,
+        categoryValue,
+        categoryLabel: categoryValue === "_unassigned_skills_" ? "Requested Skills" : categoryLabel,
+        toolId: `custom-${skillName}`,
+      }));
+    });
+
+    return [...entries, ...customSkills];
+  }, [options, customSelections, allPreFetchedTools, optionLabelByValue, selectedSubcategories]);
 
   // Filtered inline search results
   const searchResults = useMemo(() => {
@@ -363,6 +426,11 @@ const CategoryMultiSelect = ({
 
   const hasSearchResults =
     searchResults.categories.length > 0 || searchResults.skills.length > 0;
+
+  const normalizedSearchRequest = useMemo(
+    () => String(searchQuery || "").trim().replace(/\s+/g, " "),
+    [searchQuery],
+  );
 
   // Click outside: close both panels
   useEffect(() => {
@@ -575,6 +643,131 @@ const CategoryMultiSelect = ({
     setIsSearchOpen(false);
   };
 
+  const selectExistingRequestEntity = (payload, requestName) => {
+    if (payload?.status !== "EXISTS") return false;
+
+    const entity = payload.existingEntity || {};
+    if (payload.existingType === "category") {
+      const subCategoryId = toPositiveInteger(entity.id);
+      const categoryValue = subCategoryId ? `catalog:${subCategoryId}` : "";
+      if (!categoryValue) return false;
+      const nextSelectedValues = selectedSet.has(categoryValue)
+        ? normalizedSelected
+        : [...normalizedSelected, categoryValue];
+      commitCategorySelection(nextSelectedValues, categoryValue);
+      toast.success(`${entity.name || requestName} already exists. Added it to your service.`);
+      return true;
+    }
+
+    if (payload.existingType === "skill") {
+      const toolId = toPositiveInteger(entity.id);
+      const subCategoryId = toPositiveInteger(entity.subCategoryId);
+      const categoryValue = subCategoryId ? `catalog:${subCategoryId}` : "";
+      if (!toolId || !categoryValue || !onSubcategorySkillChange) return false;
+
+      const nextSelectedValues = selectedSet.has(categoryValue)
+        ? normalizedSelected
+        : [...normalizedSelected, categoryValue];
+      onChange?.(nextSelectedValues);
+      onActiveCategoryChange?.(categoryValue);
+
+      const currentSubcategory =
+        (Array.isArray(selectedSubcategories) ? selectedSubcategories : []).find(
+          (entry) => getSubcategorySelectionKey(entry) === categoryValue,
+        ) || null;
+      const currentToolIds = (Array.isArray(currentSubcategory?.selectedToolIds)
+        ? currentSubcategory.selectedToolIds
+        : [])
+        .map(toPositiveInteger)
+        .filter(Boolean);
+      const currentCustomSkills = normalizeStringArray(currentSubcategory?.customSkillNames);
+      if (!currentToolIds.includes(toolId)) {
+        onSubcategorySkillChange(categoryValue, {
+          selectedToolIds: [...currentToolIds, toolId],
+          customSkillNames: currentCustomSkills,
+        });
+      }
+      toast.success(`${entity.name || requestName} already exists. Added it to your skills.`);
+      return true;
+    }
+
+    return false;
+  };
+
+  const submitMissingOptionRequest = async (requestedType) => {
+    const requestName = normalizedSearchRequest;
+    if (!requestName || requestingType) return;
+
+    setRequestingType(requestedType);
+    try {
+      const payload = await request("/user-requests", {
+        method: "POST",
+        body: JSON.stringify({
+          request: requestName,
+          requestedType,
+        }),
+      });
+
+      if (selectExistingRequestEntity(payload, requestName)) {
+        setSearchQuery("");
+        setIsSearchOpen(false);
+        return;
+      }
+
+      if (requestedType === "category") {
+        const customValue = requestName;
+        if (!selectedSet.has(customValue)) {
+          commitCategorySelection([...normalizedSelected, customValue], customValue);
+        }
+      } else if (requestedType === "skill") {
+        let targetCategoryValue = activeCategoryValue;
+        
+        if (!targetCategoryValue) {
+          targetCategoryValue = "_unassigned_skills_";
+          if (!selectedSet.has(targetCategoryValue)) {
+            commitCategorySelection([...normalizedSelected, targetCategoryValue], targetCategoryValue);
+          }
+        }
+
+        if (onSubcategorySkillChange) {
+          const currentSubcategory =
+            (Array.isArray(selectedSubcategories) ? selectedSubcategories : []).find(
+              (entry) => getSubcategorySelectionKey(entry) === targetCategoryValue,
+            ) || null;
+          const currentToolIds = (Array.isArray(currentSubcategory?.selectedToolIds)
+            ? currentSubcategory.selectedToolIds
+            : [])
+            .map(toPositiveInteger)
+            .filter(Boolean);
+          const currentCustomSkills = normalizeStringArray(currentSubcategory?.customSkillNames);
+          const hasSkill = currentCustomSkills.some(
+            (skill) => skill.toLowerCase() === requestName.toLowerCase(),
+          );
+          if (!hasSkill) {
+            onSubcategorySkillChange(targetCategoryValue, {
+              selectedToolIds: currentToolIds,
+              customSkillNames: [...currentCustomSkills, requestName],
+            });
+          }
+        }
+      }
+
+      onRequestCreated?.({
+        requestedType,
+        request: requestName,
+        data: payload,
+      });
+      toast.success(`${requestName} sent for admin review`);
+      setSearchQuery("");
+      setIsSearchOpen(false);
+    } catch (error) {
+      console.error("Failed to submit user request:", error);
+      toast.error(error?.message || "Failed to submit request");
+    } finally {
+      setRequestingType("");
+    }
+  };
+
   return (
     <div className="space-y-3" ref={containerRef}>
       <div className="relative">
@@ -634,8 +827,34 @@ const CategoryMultiSelect = ({
         {isSearchOpen && searchQuery.trim() ? (
           <div data-onboarding-popup="true" className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-xl shadow-black/10 subtle-scrollbar dark:shadow-black/40">
             {!hasSearchResults ? (
-              <div className="px-4 py-3 text-sm text-muted-foreground">
-                {noResultsMessage}
+              <div className="space-y-3 px-4 py-3">
+                <p className="text-sm text-muted-foreground">{noResultsMessage}</p>
+                {normalizedSearchRequest ? (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        void submitMissingOptionRequest("category");
+                      }}
+                      disabled={Boolean(requestingType)}
+                      className="rounded-md border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {requestingType === "category" ? "Sending..." : `Request category "${normalizedSearchRequest}"`}
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        void submitMissingOptionRequest("skill");
+                      }}
+                      disabled={Boolean(requestingType)}
+                      className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {requestingType === "skill" ? "Sending..." : `Request skill "${normalizedSearchRequest}"`}
+                    </button>
+                  </div>
+                ) : null}
               </div>
             ) : (
               <div className="p-1.5">
