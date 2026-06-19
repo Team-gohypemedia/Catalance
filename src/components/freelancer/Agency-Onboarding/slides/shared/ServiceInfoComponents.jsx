@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import Check from "lucide-react/dist/esm/icons/check";
 
 import { cn } from "@/shared/lib/utils";
 import {
@@ -40,12 +41,17 @@ const StepperItem = ({
         isActive
           ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] sm:gap-2 sm:px-4"
           : isCompleted
-            ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:gap-2 sm:px-4"
+            ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:px-4"
             : "justify-center gap-0 border-border/40 bg-muted/30 px-2 text-muted-foreground/85 hover:border-border/85 hover:bg-muted/60 hover:text-foreground sm:gap-2 sm:px-4",
       )}
       aria-current={isActive ? "step" : undefined}
       aria-label={`${step.step}. ${step.label}`}
     >
+      {isCompleted && (
+        <span className="flex size-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0">
+          <Check className="size-2.5 stroke-[3.5]" />
+        </span>
+      )}
       <span
         className={cn(
           ONBOARDING_STEP_LABEL_CLASS,
@@ -58,10 +64,10 @@ const StepperItem = ({
         <span 
           className={cn(isActive ? "block sm:hidden text-primary-foreground" : "block sm:hidden")}
         >
-          {isActive ? step.label : String(step.step)}
+          {isActive ? step.label : isCompleted ? "" : String(step.step)}
         </span>
         <span 
-          className={cn("hidden sm:inline", isActive && "text-primary-foreground")}
+          className={cn("hidden sm:inline", isActive && "text-primary-foreground", isCompleted && "ml-1.5")}
         >
           {step.label}
         </span>

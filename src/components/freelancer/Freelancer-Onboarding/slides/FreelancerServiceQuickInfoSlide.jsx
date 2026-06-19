@@ -845,11 +845,22 @@ const FreelancerServiceQuickInfoSlide = ({
         </div>
 
         {/* Stepper — 3 tabs: Quick Info, Case Study, Preview */}
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full max-w-3xl relative flex items-center justify-center">
           <ServiceInfoStepper
             activeStepId="quickInfo"
             onStepChange={onServiceStepChange}
           />
+          {onSkipServices && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSkipServices?.()}
+              className="onboarding-skip-btn absolute right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+            >
+              Skip this step
+            </Button>
+          )}
         </div>
 
         {/* Content */}
@@ -863,25 +874,6 @@ const FreelancerServiceQuickInfoSlide = ({
                 icon={FileText}
                 title="Tell clients what you offer"
                 description="Capture the title, category, and experience you want shown for this service."
-                rightElement={
-                  onSkipServices && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSkipServices?.();
-                      }}
-                      className={cn(
-                        ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
-                        "px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      Skip
-                    </Button>
-                  )
-                }
               />
 
               <div className="space-y-4 pt-4">
@@ -956,18 +948,30 @@ const FreelancerServiceQuickInfoSlide = ({
                     <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
                       {pricingFieldMap.description?.label || "Service Description"}
                     </label>
-                    <textarea
-                      value={servicePricingForm.description}
-                      onChange={(event) => onServicePricingFieldChange("description", event.target.value)}
-                      placeholder={pricingFieldMap.description?.placeholder || "Describe what this service includes, the process, and what clients can expect..."}
-                      rows={4}
-                      className={cn(
-                        "w-full resize-none rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1",
-                        servicePricingValidationErrors.description
-                          ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                          : "border-border focus:border-primary/50 focus:ring-primary/20",
-                      )}
-                    />
+                    <div className="relative">
+                      <textarea
+                        value={servicePricingForm.description}
+                        onChange={(event) => onServicePricingFieldChange("description", event.target.value)}
+                        placeholder={pricingFieldMap.description?.placeholder || "Describe what this service includes, the process, and what clients can expect..."}
+                        rows={2}
+                        className={cn(
+                          "w-full resize-y h-[72px] min-h-[60px] rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1 pb-9 pr-14 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden",
+                          (servicePricingValidationErrors.description || String(servicePricingForm.description || "").trim().split(/\s+/).filter(Boolean).length > 150)
+                            ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                            : "border-border focus:border-primary/50 focus:ring-primary/20",
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "absolute right-3.5 bottom-3.5 text-[11px] font-normal transition-colors pointer-events-none",
+                          String(servicePricingForm.description || "").trim().split(/\s+/).filter(Boolean).length > 150
+                            ? "text-destructive"
+                            : "text-black/20 dark:text-white/20",
+                        )}
+                      >
+                        {String(servicePricingForm.description || "").trim().split(/\s+/).filter(Boolean).length} / 150 words
+                      </span>
+                    </div>
                     {servicePricingValidationErrors.description && (
                       <p className="mt-1 text-xs text-destructive">{servicePricingValidationErrors.description}</p>
                     )}

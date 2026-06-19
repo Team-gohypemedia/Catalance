@@ -780,6 +780,11 @@ const buildServicePricingValidationErrors = (normalizedDraft, fields = []) => {
     !description
   ) {
     errors.description = "Please add a service description.";
+  } else if (description) {
+    const wordCount = description.split(/\s+/).filter(Boolean).length;
+    if (wordCount > 150) {
+      errors.description = "Service description cannot exceed 150 words.";
+    }
   }
 
   const deliveryTimeline = String(normalizedDraft.deliveryTimeline || "").trim();

@@ -3890,7 +3890,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                   onClick={() => navigate("/freelancer/profile")}
                   className="mt-1 text-left text-[11px] font-semibold tracking-wide text-[var(--primary)] hover:text-[#ffd54f] transition-colors"
                 >
-                  {profileCompletionComplete ? "Open Profile" : "Finish Now →"}
+                  {profileCompletionComplete ? "Open Profile" : "Finish Now"}
                 </button>
               </div>
             </div>

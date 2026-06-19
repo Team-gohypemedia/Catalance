@@ -450,21 +450,39 @@ const FreelancerBasicProfileSlide = ({
   const renderTextareaField = (field) => {
     const fieldValue = getFieldValue(basicProfileForm, field.id) || "";
     const fieldError = basicProfileErrors[field.id];
+    const isBio = field.id === "professionalBio";
+    const wordCount = isBio ? String(fieldValue).trim().split(/\s+/).filter(Boolean).length : 0;
+    const isOverLimit = isBio && wordCount > 50;
 
     return (
       <div key={field.id} className="w-full space-y-3">
-        <Label className={getFieldLabelClasses(Boolean(fieldError))}>
+        <Label className={getFieldLabelClasses(Boolean(fieldError) || isOverLimit)}>
           {field.label}
         </Label>
-        <Textarea
-          value={fieldValue}
-          onChange={(event) =>
-            onBasicProfileFieldChange(field.id, event.target.value)
-          }
-          placeholder={field.placeholder || ""}
-          className={getTextAreaClasses(Boolean(fieldError))}
-          aria-invalid={Boolean(fieldError)}
-        />
+        <div className="relative">
+          <Textarea
+            value={fieldValue}
+            onChange={(event) =>
+              onBasicProfileFieldChange(field.id, event.target.value)
+            }
+            placeholder={field.placeholder || ""}
+            className={cn(
+              getTextAreaClasses(Boolean(fieldError) || isOverLimit),
+              isBio && "pb-9 pr-14"
+            )}
+            aria-invalid={Boolean(fieldError) || isOverLimit}
+          />
+          {isBio && (
+            <span
+              className={cn(
+                "absolute right-3.5 bottom-3.5 text-[11px] font-normal transition-colors pointer-events-none",
+                isOverLimit ? "text-destructive" : "text-black/20 dark:text-white/20",
+              )}
+            >
+              {wordCount} / 50 words
+            </span>
+          )}
+        </div>
         {fieldError ? (
           <p className="text-sm text-destructive">{fieldError}</p>
         ) : null}

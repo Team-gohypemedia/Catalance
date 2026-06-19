@@ -857,11 +857,17 @@ const getBasicProfileFieldError = (field, form, schemaField = null) => {
       }
       return "";
     }
-    case "professionalBio":
-      if (!isRequired) return "";
-      return String(form.professionalBio || "").trim()
-        ? ""
-        : "Please enter your professional bio.";
+    case "professionalBio": {
+      const bioText = String(form.professionalBio || "").trim();
+      if (!bioText) {
+        return isRequired ? "Please enter your professional bio." : "";
+      }
+      const wordCount = bioText.split(/\s+/).filter(Boolean).length;
+      if (wordCount > 50) {
+        return "Professional bio cannot exceed 50 words.";
+      }
+      return "";
+    }
     case "country":
       if (!isRequired) return "";
       return String(form.country || "").trim() ? "" : "Please select your country.";

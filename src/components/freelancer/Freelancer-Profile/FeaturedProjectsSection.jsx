@@ -132,12 +132,12 @@ const FeaturedProjectsSection = ({
 
           <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
             <Button
-              variant="default"
+              variant="outline"
               size="sm"
-              className="w-full text-sm font-semibold sm:w-auto"
+              className="case-study-add-btn w-full text-sm font-semibold sm:w-auto border-primary text-primary hover:bg-primary/10 hover:text-primary transition-all duration-200"
               onClick={onAddProject}
             >
-              <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+              <Plus className="mr-1.5 h-3.5 w-3.5 text-primary" aria-hidden="true" />
               Add Case Study
             </Button>
 
@@ -363,8 +363,12 @@ const FeaturedProjectsSection = ({
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
               No case studies added yet. Click &quot;Add Case Study&quot; to get started.
             </p>
-            <Button onClick={onAddProject} className="mt-4">
-              <Plus className="mr-1.5 h-4 w-4" />
+            <Button 
+              variant="outline" 
+              onClick={onAddProject} 
+              className="case-study-add-btn mt-4 border-primary text-primary hover:bg-primary/10 hover:text-primary transition-all duration-200"
+            >
+              <Plus className="mr-1.5 h-4 w-4 text-primary" />
               Add Case Study
             </Button>
           </div>

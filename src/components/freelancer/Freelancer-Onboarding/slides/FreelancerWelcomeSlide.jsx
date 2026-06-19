@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  ArrowRight, 
   Lock 
 } from 'lucide-react'
 
@@ -189,10 +188,9 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
         <button
           type="button"
           onClick={onContinue}
-          className="h-11 sm:h-12 px-10 sm:px-12 rounded-full bg-primary text-white keep-white dark:text-black font-semibold shadow-lg shadow-primary/10 hover:bg-primary/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base cursor-pointer"
+          className="h-11 sm:h-12 px-10 sm:px-12 rounded-full bg-primary text-white keep-white dark:text-black font-semibold shadow-lg shadow-primary/10 hover:bg-primary/95 hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex items-center justify-center text-sm sm:text-base cursor-pointer"
         >
           <span className="text-white keep-white dark:text-black">Continue</span>
-          <ArrowRight className="h-4 w-4 text-white keep-white dark:text-black" />
         </button>
         
         {/* Helper lock text */}

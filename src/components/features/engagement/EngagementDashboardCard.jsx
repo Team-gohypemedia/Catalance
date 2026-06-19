@@ -281,7 +281,7 @@ const EngagementDashboardCard = () => {
                 className="h-11 rounded-xl bg-primary px-6 font-black text-primary-foreground transition-all hover:scale-[1.02] active:scale-[0.98]"
                 onClick={() => navigate("/freelancer/growth-quest")}
               >
-                {completed ? "View Progress Hub" : "Start Quest →"}
+                {completed ? "View Progress Hub" : "Start Quest"}
               </Button>
             </div>
           </div>
@@ -346,7 +346,7 @@ const EngagementDashboardCard = () => {
               onClick={() => navigate("/freelancer/growth-quest")}
               className="text-xs font-black text-primary transition-colors hover:text-primary/80"
             >
-              Analyze Hub →
+              Analyze Hub
             </button>
           </div>
         </div>

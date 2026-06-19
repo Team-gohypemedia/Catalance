@@ -289,7 +289,7 @@ const AdminEngagementOverview = () => {
                       className="mt-2 w-full rounded-xl bg-primary py-6 font-black text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                       onClick={() => navigate("/admin/engagement/questions")}
                     >
-                      Open Review Queue →
+                      Open Review Queue
                     </Button>
                   </CardContent>
                 </Card>

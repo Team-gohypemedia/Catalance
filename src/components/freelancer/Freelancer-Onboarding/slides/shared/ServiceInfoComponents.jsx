@@ -71,6 +71,11 @@ const StepperItem = ({
         transition={{ type: "spring", stiffness: 380, damping: 30 }}
       />
     )}
+    {isCompleted && (
+      <span className="relative z-10 mr-1.5 flex size-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0">
+        <Check className="size-2.5 stroke-[3.5]" />
+      </span>
+    )}
     <span className={cn("relative z-10", isActive ? "!text-white keep-white dark:!text-black" : "")}>{step.label}</span>
   </button>
 );

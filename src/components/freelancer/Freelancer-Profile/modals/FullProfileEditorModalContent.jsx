@@ -483,22 +483,37 @@ const FullProfileEditorModalContent = ({
       ) : null}
 
       {!isFocusedSection ? (
-      <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+      <div className="rounded-xl border border-border/70 bg-muted/20 p-4 space-y-2">
         <Label
           htmlFor="full-professional-bio"
           className="text-xs uppercase tracking-[0.2em] text-muted-foreground"
         >
           Professional Bio
         </Label>
-        <Textarea
-          id="full-professional-bio"
-          name="professionalBio"
-          value={fullProfileForm.professionalBio}
-          onChange={handleFullProfileFieldChange}
-          rows={5}
-          placeholder="Tell clients about your strengths, execution style, and outcomes..."
-          className="mt-2 min-h-[120px] resize-y bg-background/70"
-        />
+        <div className="relative">
+          <Textarea
+            id="full-professional-bio"
+            name="professionalBio"
+            value={fullProfileForm.professionalBio}
+            onChange={handleFullProfileFieldChange}
+            rows={5}
+            placeholder="Tell clients about your strengths, execution style, and outcomes..."
+            className={`mt-2 min-h-[120px] resize-y bg-background/70 pb-9 pr-14 ${
+              String(fullProfileForm.professionalBio || "").trim().split(/\s+/).filter(Boolean).length > 50
+                ? "border-destructive/75 focus-visible:ring-destructive/20 text-destructive"
+                : ""
+            }`}
+          />
+          <span
+            className={`absolute right-3.5 bottom-3.5 text-[11px] font-normal transition-colors pointer-events-none ${
+              String(fullProfileForm.professionalBio || "").trim().split(/\s+/).filter(Boolean).length > 50
+                ? "text-destructive"
+                : "text-black/20 dark:text-white/20"
+            }`}
+          >
+            {String(fullProfileForm.professionalBio || "").trim().split(/\s+/).filter(Boolean).length} / 50 words
+          </span>
+        </div>
       </div>
       ) : null}
 

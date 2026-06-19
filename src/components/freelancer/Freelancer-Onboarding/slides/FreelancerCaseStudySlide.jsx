@@ -287,11 +287,22 @@ const FreelancerCaseStudySlide = ({
         </div>
 
         {/* Stepper */}
-        <div className="mx-auto w-full max-w-3xl">
+        <div className="mx-auto w-full max-w-3xl relative flex items-center justify-center">
           <ServiceInfoStepper
             activeStepId="caseStudy"
             onStepChange={onServiceStepChange}
           />
+          {onSkipServices && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSkipServices?.()}
+              className="onboarding-skip-btn absolute right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+            >
+              Skip this step
+            </Button>
+          )}
         </div>
 
         {/* Step Content */}
@@ -305,42 +316,16 @@ const FreelancerCaseStudySlide = ({
                   </h2>
                 </div>
 
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onSkipServices?.()}
-                  className={cn(
-                    ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
-                    "shrink-0 whitespace-nowrap px-3 py-2 text-sm sm:hidden",
-                  )}
-                >
-                  Skip
-                </Button>
-
                 <div className="hidden sm:flex sm:flex-nowrap sm:items-center sm:justify-end sm:gap-3">
                   <button
                     type="button"
                     onClick={onAddCaseStudy}
                     disabled={isCaseStudyLimitReached}
-                    className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
+                    className="case-study-add-btn inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl border border-primary bg-transparent px-4 text-sm font-semibold whitespace-nowrap text-primary transition-all duration-200 hover:bg-primary/10 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted sm:w-auto"
                   >
-                    <Plus className="h-4 w-4 text-inherit keep-white" />
+                    <Plus className="h-4 w-4 text-primary" />
                     {caseStudyContent?.addButtonLabel || "Add Case Study"}
                   </button>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onSkipServices?.()}
-                    className={cn(
-                      ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
-                      "shrink-0 whitespace-nowrap px-3 py-2 text-sm sm:px-6 sm:py-0 sm:text-base",
-                    )}
-                  >
-                    Skip
-                  </Button>
                 </div>
               </div>
 
@@ -355,9 +340,9 @@ const FreelancerCaseStudySlide = ({
                 type="button"
                 onClick={onAddCaseStudy}
                 disabled={isCaseStudyLimitReached}
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-primary px-4 text-sm font-semibold whitespace-nowrap text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted"
+                className="case-study-add-btn inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-primary bg-transparent px-4 text-sm font-semibold whitespace-nowrap text-primary transition-all duration-200 hover:bg-primary/10 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-muted"
               >
-                <Plus className="h-4 w-4 text-inherit keep-white" />
+                <Plus className="h-4 w-4 text-primary" />
                 {caseStudyContent?.addButtonLabel || "Add Case Study"}
               </button>
             </div>

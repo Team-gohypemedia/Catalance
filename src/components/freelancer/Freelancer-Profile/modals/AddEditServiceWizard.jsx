@@ -979,9 +979,9 @@ const AddEditServiceWizard = ({
                   type="button"
                   onClick={handleAddCaseStudy}
                   disabled={caseStudies.length >= MAX_ONBOARDING_CASE_STUDIES}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/25 bg-primary/10 px-4 text-sm font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/14 disabled:cursor-not-allowed disabled:border-border disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card"
+                  className="case-study-add-btn inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary bg-transparent px-4 text-sm font-semibold text-primary transition-all duration-200 hover:bg-primary/10 disabled:cursor-not-allowed disabled:border-border disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card"
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-4 w-4 text-primary" />
                   Add Case Study
                 </button>
               </div>
