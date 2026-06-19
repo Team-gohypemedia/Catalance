@@ -31,6 +31,10 @@ import { useNotifications } from "@/shared/context/NotificationContext";
 import { downloadInvoicePdf } from "@/shared/lib/invoice-pdf";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
@@ -73,8 +77,7 @@ const formatMonthLabel = (value, variant = "short") => {
   return date.toLocaleDateString("en-IN", { month: variant });
 };
 
-const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+const getDisplayName = (user) => resolveUserDisplayName(user, "Client");
 
 const getInitials = (value = "") => {
   const parts = String(value).trim().split(/\s+/).filter(Boolean);
@@ -1293,6 +1296,7 @@ const ClientPaymentsContent = () => {
           profile={{
             avatar: user?.avatar,
             name: headerDisplayName,
+            email: resolveUserSecondaryLabel(user),
             initial: getInitials(headerDisplayName),
           }}
           activeWorkspaceKey="payments"

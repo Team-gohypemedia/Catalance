@@ -38,6 +38,10 @@ import {
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   toUniqueSkillNames,
@@ -2135,14 +2139,11 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     return "dashboard";
   }, [location.pathname]);
   const headerProfile = useMemo(() => {
-    const displayName =
-      effectiveUser?.fullName ||
-      effectiveUser?.name ||
-      effectiveUser?.email ||
-      "Freelancer";
+    const displayName = resolveUserDisplayName(effectiveUser, "Freelancer");
 
     return {
       name: displayName,
+      email: resolveUserSecondaryLabel(effectiveUser),
       avatar: effectiveUser?.avatar || "",
       initial: String(displayName).charAt(0).toUpperCase(),
       available: effectiveUser?.available,

@@ -14,6 +14,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { getSession } from "@/shared/lib/auth-storage";
 import { createMarketplaceChatRequest } from "@/shared/lib/marketplace-chat-requests";
+import { resolveUserDisplayName } from "@/shared/lib/user-display";
 
 const normalizeText = (value = "") => String(value || "").replace(/\s+/g, " ").trim();
 const asArray = (value) => (Array.isArray(value) ? value : []);
@@ -100,8 +101,7 @@ const getPositiveKeywords = (serviceDetails = {}, freelancer = {}) => {
   return result.slice(0, 8);
 };
 
-const getDisplayName = (user = {}) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+const getDisplayName = (user = {}) => resolveUserDisplayName(user, "Client");
 
 const getClientBusinessName = (user = {}) =>
   user?.companyName || user?.businessName || user?.brandName || "";

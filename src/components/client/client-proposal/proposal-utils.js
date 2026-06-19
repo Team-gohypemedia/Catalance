@@ -10,6 +10,7 @@ import {
   isFreelancerServiceAligned,
   resolveFreelancerMatchPercent,
 } from "@/shared/lib/proposal-match";
+import { resolveUserDisplayName } from "@/shared/lib/user-display";
 
 export const MIN_FREELANCER_MATCH_SCORE = 50;
 export const PROPOSAL_BLOCKED_STATUSES = new Set(["pending", "accepted", "sent"]);
@@ -236,8 +237,7 @@ export const formatProposalDate = (value) => {
   });
 };
 
-export const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+export const getDisplayName = (user) => resolveUserDisplayName(user, "Client");
 
 export const getInitials = (value = "") => {
   const parts = String(value)

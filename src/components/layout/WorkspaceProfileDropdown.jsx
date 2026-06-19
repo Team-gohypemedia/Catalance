@@ -21,6 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
+import { resolveUserSecondaryLabel } from "@/shared/lib/user-display";
 import { cn } from "@/shared/lib/utils";
 
 const tileClasses =
@@ -68,6 +69,7 @@ const WorkspaceProfileDropdown = ({
     switchLabel,
   } = useDashboardSwitcher({ currentDashboard });
   const isFreelancer = currentDashboardLabel === "Freelancer";
+  const secondaryLabel = resolveUserSecondaryLabel(profile);
 
   const closeDropdown = () => setOpen(false);
 
@@ -133,9 +135,11 @@ const WorkspaceProfileDropdown = ({
               <p className="truncate text-[0.98rem] font-semibold leading-none tracking-[-0.04em] text-foreground sm:text-[1.05rem]">
                 {displayName}
               </p>
-              <p className="mt-1 truncate text-[0.78rem] font-medium tracking-[-0.02em] text-muted-foreground sm:text-[0.82rem]">
-                {profile?.email}
-              </p>
+              {secondaryLabel ? (
+                <p className="mt-1 truncate text-[0.78rem] font-medium tracking-[-0.02em] text-muted-foreground sm:text-[0.82rem]">
+                  {secondaryLabel}
+                </p>
+              ) : null}
             </div>
           </div>
 

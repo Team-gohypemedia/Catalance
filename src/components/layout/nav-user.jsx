@@ -28,6 +28,10 @@ import {
 } from "@/components/ui/sidebar";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useAuth } from "@/shared/context/AuthContext";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel
+} from "@/shared/lib/user-display";
 
 const getInitials = (value) => {
   if (!value) {
@@ -64,8 +68,8 @@ export function NavUser({ user = null }) {
     return null;
   }
 
-  const displayName = activeUser.fullName ?? activeUser.name ?? "Catalance";
-  const displayEmail = activeUser.email ?? "user@example.com";
+  const displayName = resolveUserDisplayName(activeUser, "Catalance");
+  const displayEmail = resolveUserSecondaryLabel(activeUser);
   const avatarSrc = activeUser.avatar;
   const initials = getInitials(displayName);
 
@@ -93,7 +97,7 @@ export function NavUser({ user = null }) {
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                 <span className="truncate font-medium">{displayName}</span>
-                <span className="truncate text-xs">{displayEmail}</span>
+                {displayEmail ? <span className="truncate text-xs">{displayEmail}</span> : null}
               </div>
               <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
@@ -111,7 +115,7 @@ export function NavUser({ user = null }) {
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{displayName}</span>
-                  <span className="truncate text-xs">{displayEmail}</span>
+                  {displayEmail ? <span className="truncate text-xs">{displayEmail}</span> : null}
                 </div>
               </div>
             </DropdownMenuLabel>
