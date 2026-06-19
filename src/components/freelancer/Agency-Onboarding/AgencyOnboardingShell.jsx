@@ -3696,7 +3696,7 @@ const AgencyOnboardingShell = ({
 
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
-      <main className="relative flex h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
+      <main className="fixed inset-0 flex flex-col overflow-hidden bg-transparent z-10">
       <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
         <div
           className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"

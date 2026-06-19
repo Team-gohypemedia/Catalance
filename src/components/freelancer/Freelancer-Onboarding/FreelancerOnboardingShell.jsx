@@ -3973,7 +3973,7 @@ const FreelancerOnboardingShell = () => {
 
   return (
     <DarkGradientBg className="text-neutral-900 dark:text-[#f1f5f9]">
-      <main className="onboarding-radius-10 relative flex h-screen flex-col overflow-hidden bg-transparent h-[100dvh]">
+      <main className="onboarding-radius-10 fixed inset-0 flex flex-col overflow-hidden bg-transparent z-10">
         {/* Fixed Background container - placed here so it doesn't move or clip on scroll */}
         <div
           aria-hidden="true"
@@ -4081,7 +4081,7 @@ const FreelancerOnboardingShell = () => {
       <div className="contents">
         <section
           ref={onboardingScrollContainerRef}
-          className="subtle-scrollbar relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
+          className="subtle-scrollbar relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
         >
           <div className={`min-h-full flex flex-col px-4 sm:px-6 lg:px-8 ${
             currentSlide?.id === "individualProof"
