@@ -1634,16 +1634,15 @@ const roundBudgetStep = (amount = 0) => {
 
 const buildBudgetRangeLabel = (minAmount = 0, maxAmount = 0, currencyCode = "INR") => {
     const normalizedCurrency = normalizeBudgetCurrencyCode(currencyCode);
-    const formattedMin = formatServiceBudgetAmount(roundBudgetStep(minAmount), normalizedCurrency);
     const formattedMax = formatServiceBudgetAmount(roundBudgetStep(maxAmount), normalizedCurrency);
-    if (!formattedMin || !formattedMax) return "";
-    return `${formattedMin} - ${formattedMax}`;
+    if (!formattedMax) return "";
+    return `Within ${formattedMax}`;
 };
 
 const buildBudgetCeilingLabel = (minAmount = 0, currencyCode = "INR") => {
     const normalizedCurrency = normalizeBudgetCurrencyCode(currencyCode);
     const formattedMin = formatServiceBudgetAmount(roundBudgetStep(minAmount), normalizedCurrency);
-    return formattedMin ? `Over ${formattedMin}` : "";
+    return formattedMin ? `${formattedMin}+` : "";
 };
 
 const buildBudgetRuntimeOptions = ({

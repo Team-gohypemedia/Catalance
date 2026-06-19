@@ -497,8 +497,8 @@ test("builds deterministic INR budget options without dollar labels", () => {
 
   assert.equal(options.length >= 4, true);
   assert.equal(options.some((option) => /\$/.test(option.label)), false);
-  assert.equal(options[0].label, "INR 10,000 - INR 25,000");
-  assert.equal(options[options.length - 1].label, "Over INR 2,50,000");
+  assert.equal(options[0].label, "Within INR 25,000");
+  assert.equal(options[options.length - 1].label, "INR 2,50,000+");
 });
 
 test("captures a website brief from the same message as the brand name", () => {
