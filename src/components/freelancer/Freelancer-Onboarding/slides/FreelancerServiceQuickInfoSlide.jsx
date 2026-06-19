@@ -213,9 +213,9 @@ const CompactMediaCard = ({ item, previewUrl, index, onRemove }) => (
   <div className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-border bg-black shadow-sm">
     {previewUrl ? (
       item.isVideo ? (
-        <video src={previewUrl} className="h-full w-full object-cover" muted playsInline autoPlay loop preload="metadata" />
+        <video src={previewUrl} className="h-full w-full object-contain" muted playsInline autoPlay loop preload="metadata" />
       ) : (
-        <img src={previewUrl} alt={item.name} className="h-full w-full object-cover" />
+        <img src={previewUrl} alt={item.name} className="h-full w-full object-contain" />
       )
     ) : (
       <div className="flex h-full w-full items-center justify-center bg-card text-muted-foreground/50">

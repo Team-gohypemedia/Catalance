@@ -137,7 +137,7 @@ const MediaCard = ({ item, previewUrl, index, onRemove }) => (
       item.isVideo ? (
         <video
           src={previewUrl}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
           muted
           playsInline
           autoPlay
@@ -148,7 +148,7 @@ const MediaCard = ({ item, previewUrl, index, onRemove }) => (
         <img
           src={previewUrl}
           alt={item.name}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-contain"
         />
       )
     ) : (

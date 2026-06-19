@@ -68,6 +68,7 @@ const CategoryMultiSelect = ({
   const [requestingType, setRequestingType] = useState("");
 
   const containerRef = useRef(null);
+  const triggerRowRef = useRef(null);
   const popupRef = useRef(null);
   const searchInputRef = useRef(null);
   const browseSearchInputRef = useRef(null);
@@ -456,23 +457,23 @@ const CategoryMultiSelect = ({
     if (!isBrowseOpen || typeof window === "undefined") return undefined;
 
     const updatePopupPosition = () => {
-      const triggerElement = containerRef.current;
+      const triggerElement = triggerRowRef.current;
       if (!triggerElement) return;
       const rect = triggerElement.getBoundingClientRect();
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
       const margin = 12;
-      const gap = 8;
+      const gap = 4;
       const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin - gap);
       const spaceAbove = Math.max(0, rect.top - margin - gap);
-      const preferredMaxHeight = 440;
+      const preferredMaxHeight = 320;
       const shouldOpenAbove = spaceBelow < preferredMaxHeight && spaceAbove > spaceBelow;
       const nextHeight = Math.max(
         Math.min(preferredMaxHeight, shouldOpenAbove ? spaceAbove : spaceBelow),
         0,
       );
       const nextWidth = Math.min(
-        Math.max(rect.width, 860),
+        Math.max(rect.width, 560),
         viewportWidth - margin * 2,
       );
       const nextLeft = Math.min(
@@ -773,6 +774,7 @@ const CategoryMultiSelect = ({
       <div className="relative">
         {/* â”€â”€ Trigger row: text search input + Browse button â”€â”€ */}
         <div
+          ref={triggerRowRef}
           className={cn(
             "flex h-10 w-full items-center rounded-xl border bg-card transition-colors",
             hasError
@@ -882,11 +884,11 @@ const CategoryMultiSelect = ({
                         >
                           <span
                             className={cn(
-                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                              "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border",
                               isSelected ? "border-primary bg-primary" : "border-border",
                             )}
                           >
-                            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                            {isSelected && <Check className="h-3 w-3 text-white" />}
                           </span>
                           <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
                           <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -933,11 +935,11 @@ const CategoryMultiSelect = ({
                         >
                           <span
                             className={cn(
-                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border",
+                              "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border",
                               isSelected ? "border-primary bg-primary" : "border-border",
                             )}
                           >
-                            {isSelected && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                            {isSelected && <Check className="h-3 w-3 text-white" />}
                           </span>
                           <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
                           <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -1012,42 +1014,42 @@ const CategoryMultiSelect = ({
                 style={popupStyle || undefined}
                 onClick={(event) => event.stopPropagation()}
               >
-                <div className="border-b border-border p-2.5">
+                <div className="border-b border-border px-2.5 py-2">
                   <input
                     ref={browseSearchInputRef}
                     type="text"
                     value={browseSearchQuery}
                     onChange={(event) => setBrowseSearchQuery(event.target.value)}
                     placeholder="Search categories..."
-                    className="h-10 w-full rounded-lg border border-input bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                    className="h-8 w-full rounded-lg border border-border/50 bg-muted/40 px-3 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border focus:bg-card"
                   />
                 </div>
 
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
                   {/* Categories column */}
                   <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border md:border-b-0 md:border-r md:border-r-border">
-                    <div className="shrink-0 border-b border-border px-4 py-3">
+                    <div className="shrink-0 border-b border-border px-3 py-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                           Categories
                         </p>
-                        <p className="text-[11px] text-muted-foreground/80">
+                        <p className="text-[10px] text-muted-foreground/80">
                           {selectedOptions.length} selected
                         </p>
                       </div>
                     </div>
 
-                    <div className="min-h-0 flex-1 overflow-y-auto subtle-scrollbar px-4 py-3">
+                    <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden px-2 py-1.5">
                       {isLoading ? (
-                        <div className="px-3 py-2 text-sm text-muted-foreground/60">
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground/60">
                           {loadingMessage}
                         </div>
                       ) : options.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-muted-foreground/60">
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground/60">
                           {emptyMessage}
                         </div>
                       ) : filteredBrowseOptions.length === 0 ? (
-                        <div className="px-3 py-2 text-sm text-muted-foreground/60">
+                        <div className="px-2 py-1.5 text-xs text-muted-foreground/60">
                           {noResultsMessage}
                         </div>
                       ) : (
@@ -1055,12 +1057,12 @@ const CategoryMultiSelect = ({
                           const isSelected = selectedSet.has(String(option.value));
                           const isActive = activeCategoryValue === String(option.value);
                           return (
-                            <div key={option.value} className="relative my-1 w-full">
+                            <div key={option.value} className="relative my-0.5 w-full">
                               <button
                                 type="button"
                                 onClick={() => toggleOption(option.value)}
                                 className={cn(
-                                  "flex min-w-0 w-full items-center gap-2 rounded-lg border px-4 py-3 pr-12 text-left text-sm transition-colors",
+                                  "flex min-w-0 w-full items-center gap-2 rounded-lg border px-3 py-2 pr-9 text-left text-xs transition-colors",
                                   isActive
                                     ? "border-primary bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(var(--brand-rgb),0.25)]"
                                     : isSelected
@@ -1069,7 +1071,7 @@ const CategoryMultiSelect = ({
                                 )}
                                 aria-pressed={isSelected}
                               >
-                                <span className="min-w-0 flex-1 truncate font-medium">
+                                <span className="min-w-0 flex-1 truncate">
                                   {option.label}
                                 </span>
                               </button>
@@ -1078,14 +1080,14 @@ const CategoryMultiSelect = ({
                                   type="button"
                                   onClick={() => removeOption(option.value)}
                                   className={cn(
-                                    "absolute right-1 top-1/2 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent shadow-none transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0",
+                                    "absolute right-0.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent shadow-none transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0",
                                     isActive
                                       ? "text-primary-foreground hover:text-primary-foreground/90"
                                       : "text-muted-foreground hover:text-foreground",
                                   )}
                                   aria-label={`Remove ${option.label}`}
                                 >
-                                  <X className="h-4 w-4 stroke-[2.5]" />
+                                  <X className="h-3 w-3 stroke-[2.5]" />
                                 </button>
                               ) : null}
                             </div>
@@ -1099,31 +1101,31 @@ const CategoryMultiSelect = ({
                   <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                     {activeCategoryValue ? (
                       <>
-                        <div className="shrink-0 border-b border-border px-4 py-3">
+                        <div className="shrink-0 border-b border-border px-3 py-2">
                           <div className="flex items-center justify-between">
-                            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                               Skills
                             </p>
-                            <p className="text-[11px] text-muted-foreground/80">
+                            <p className="text-[10px] text-muted-foreground/80">
                               {activeSelectionCount} selected
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-3">
-                          <div className="min-h-0 flex-1 overflow-y-auto subtle-scrollbar pr-0">
-                            <div className="flex flex-col gap-2">
+                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-1.5">
+                          <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden pr-0">
+                            <div className="flex flex-col gap-1">
                               {isToolsLoading &&
                               activeToolOptions.length === 0 &&
                               activeSuggestedSkills.length === 0 &&
                               activeVisibleCustomSkills.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Loading skills...</p>
+                                <p className="text-xs text-muted-foreground">Loading skills...</p>
                               ) : activeToolOptions.length > 0 ||
                                 activeVisibleCustomSkills.length > 0 ? (
                                 <>
                                   {activeVisibleCustomSkills.length > 0 ? (
-                                    <div className="space-y-2">
-                                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground px-1 pt-1">
                                         Resume Skills
                                       </p>
                                       {activeVisibleCustomSkills.map((skill) => (
@@ -1131,21 +1133,21 @@ const CategoryMultiSelect = ({
                                           key={skill}
                                           type="button"
                                           onClick={() => handleToggleSuggestedSkill(skill)}
-                                          className="flex w-full items-center justify-between rounded-xl border border-primary/60 bg-primary/10 px-4 py-3 text-left text-sm text-primary transition-colors hover:bg-primary/15"
+                                          className="flex w-full items-center justify-between rounded-lg border border-primary/60 bg-primary/10 px-3 py-2 text-left text-xs text-primary transition-colors hover:bg-primary/15"
                                           aria-pressed
                                         >
-                                          <span className="min-w-0 flex-1 truncate font-medium">
+                                          <span className="min-w-0 flex-1 truncate">
                                             {skill}
                                           </span>
-                                          <Check className="ml-3 h-4 w-4 shrink-0 text-primary" />
+                                          <Check className="ml-2 h-3 w-3 shrink-0 text-primary" />
                                         </button>
                                       ))}
                                     </div>
                                   ) : null}
                                   {activeToolOptions.length > 0 ? (
-                                    <div className="space-y-2">
+                                    <div className="space-y-1">
                                       {activeVisibleCustomSkills.length > 0 ? (
-                                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground px-1 pt-1">
                                           Marketplace Skills
                                         </p>
                                       ) : null}
@@ -1157,18 +1159,18 @@ const CategoryMultiSelect = ({
                                             type="button"
                                             onClick={() => handleToggleTool(tool.id)}
                                             className={cn(
-                                              "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                                              "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors",
                                               isSelected
                                                 ? "border-primary/60 bg-primary/10 text-primary"
                                                 : "border-border bg-muted text-foreground hover:border-primary/50 hover:bg-muted/80",
                                             )}
                                             aria-pressed={isSelected}
                                           >
-                                            <span className="min-w-0 flex-1 truncate font-medium">
+                                            <span className="min-w-0 flex-1 truncate">
                                               {tool.label}
                                             </span>
                                             {isSelected && (
-                                              <Check className="ml-3 h-4 w-4 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
+                                              <Check className="ml-2 h-3 w-3 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
                                             )}
                                           </button>
                                         );
@@ -1187,24 +1189,24 @@ const CategoryMultiSelect = ({
                                       type="button"
                                       onClick={() => handleToggleSuggestedSkill(skill)}
                                       className={cn(
-                                        "flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors",
+                                        "flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-xs transition-colors",
                                         isSelected
                                           ? "border-primary/60 bg-primary/10 text-primary"
                                           : "border-border bg-muted text-foreground hover:border-primary/50 hover:bg-muted/80",
                                       )}
                                       aria-pressed={isSelected}
                                     >
-                                      <span className="min-w-0 flex-1 truncate font-medium">
+                                      <span className="min-w-0 flex-1 truncate">
                                         {skill}
                                       </span>
                                       {isSelected && (
-                                        <Check className="ml-3 h-4 w-4 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
+                                        <Check className="ml-2 h-3 w-3 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
                                       )}
                                     </button>
                                   );
                                 })
                               ) : (
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-xs text-muted-foreground">
                                   {activeToolOptions.length === 0
                                     ? toolFetchError ||
                                       "No preset skills found for this sub-category."
@@ -1219,7 +1221,7 @@ const CategoryMultiSelect = ({
                               {activeSelectedToolEntries.map((tool) => (
                                 <span
                                   key={tool.id}
-                                  className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                  className="flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                                 >
                                   {tool.label}
                                   <button
@@ -1234,7 +1236,7 @@ const CategoryMultiSelect = ({
                               {activeSelectedCustomSkills.map((skill) => (
                                 <span
                                   key={skill}
-                                  className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                  className="flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
                                 >
                                   {skill}
                                   <button

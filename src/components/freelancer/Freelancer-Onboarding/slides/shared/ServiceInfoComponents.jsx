@@ -302,18 +302,6 @@ export const CustomSelect = ({
         style={isCenteredPopup ? undefined : attachedPopupStyle}
         onClick={(e) => e.stopPropagation()}
       >
-        {isSearchable ? (
-          <div className="px-2.5 pt-2.5 pb-2">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder={searchPlaceholder}
-              className="h-9 w-full rounded-lg border border-border/50 bg-muted/40 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border focus:bg-card"
-            />
-          </div>
-        ) : null}
         <div
           className={cn(
             "flex flex-col gap-0.5 p-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden",
@@ -355,28 +343,58 @@ export const CustomSelect = ({
  
   return (
     <div className="relative">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={handleTriggerClick}
-        className={cn(
-          "flex h-12 w-full items-center justify-between rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 transition-colors hover:border-border/80 font-normal",
-          value ? "text-foreground" : "text-muted-foreground/50",
-          hasError
-            ? "border-destructive/70 ring-1 ring-destructive/20"
-            : isOpen && "border-primary/50 ring-1 ring-primary/20",
-          className,
-        )}
-        aria-invalid={hasError}
-      >
-        <span className="text-[14px] leading-5 font-normal">{selectedOption?.label || placeholder}</span>
-        <ChevronDown
+      {/* When searchable and open: show an input inside the trigger */}
+      {isOpen && isSearchable ? (
+        <div
+          ref={triggerRef}
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-200",
-            isOpen && "rotate-180"
+            "flex h-12 w-full items-center justify-between rounded-xl border bg-card px-4 transition-colors",
+            hasError
+              ? "border-destructive/70 ring-1 ring-destructive/20"
+              : "border-primary/50 ring-1 ring-primary/20",
+            className,
           )}
-        />
-      </button>
+        >
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder={searchPlaceholder}
+            className="h-full flex-1 bg-transparent text-[14px] leading-5 text-foreground outline-none placeholder:text-muted-foreground/50"
+          />
+          <button
+            type="button"
+            onClick={() => setIsOpen(false)}
+            className="ml-2 shrink-0"
+          >
+            <ChevronDown className="h-4 w-4 text-muted-foreground rotate-180 transition-transform duration-200" />
+          </button>
+        </div>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={handleTriggerClick}
+          className={cn(
+            "flex h-12 w-full items-center justify-between rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 transition-colors hover:border-border/80 font-normal",
+            value ? "text-foreground" : "text-muted-foreground/50",
+            hasError
+              ? "border-destructive/70 ring-1 ring-destructive/20"
+              : isOpen && "border-primary/50 ring-1 ring-primary/20",
+            className,
+          )}
+          aria-invalid={hasError}
+        >
+          <span className="text-[14px] leading-5 font-normal">{selectedOption?.label || placeholder}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200",
+              isOpen && "rotate-180"
+            )}
+          />
+        </button>
+      )}
 
       {popupContent && typeof document !== "undefined"
         ? createPortal(popupContent, document.body)
