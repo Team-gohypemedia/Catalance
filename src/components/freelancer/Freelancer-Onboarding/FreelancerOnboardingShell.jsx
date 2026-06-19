@@ -4078,7 +4078,7 @@ const FreelancerOnboardingShell = () => {
           ref={onboardingScrollContainerRef}
           className="subtle-scrollbar relative z-10 min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
         >
-          <div className={`min-h-full px-4 sm:px-6 lg:px-8 ${
+          <div className={`min-h-full flex flex-col px-4 sm:px-6 lg:px-8 ${
             currentSlide?.id === "individualProof"
               ? "py-2 sm:py-3 lg:py-4 pb-2 sm:pb-3 lg:pb-4"
               : `py-4 sm:py-6 lg:py-8 ${isFooterHidden ? 'pb-4 sm:pb-6 lg:pb-8' : 'pb-24'}`
@@ -4090,7 +4090,7 @@ const FreelancerOnboardingShell = () => {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
-                className="w-full"
+                className="w-full my-auto"
               >
                 <ActiveSlide
                   slide={currentSlide}

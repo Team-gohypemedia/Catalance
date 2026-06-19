@@ -256,6 +256,7 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
   const filesRef = useRef(Array.isArray(files) ? files : []);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     filesRef.current = Array.isArray(files) ? files : [];
@@ -379,35 +380,44 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
 
       {/* Empty State */}
       {!hasMedia ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className={cn(
-                "group flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-300 cursor-pointer",
-                hasError ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
-              )}
-            >
-              <div className={cn("flex h-10 w-10 items-center justify-center rounded-xl border transition-colors", "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary")}>
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <div
+            onClick={() => setIsOpen(true)}
+            className={cn(
+              "group flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-300 cursor-pointer",
+              hasError ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
+            )}
+          >
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-xl border transition-colors",
+                  "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary",
+                )}
+              >
                 <Plus className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-foreground">Upload images or video</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
-              </div>
-            </button>
-          </DropdownMenuTrigger>
+              </button>
+            </DropdownMenuTrigger>
+            <div>
+              <p className="text-sm font-medium text-foreground">Upload images or video</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
+            </div>
+          </div>
           <DropdownMenuContent align="center" className="w-56 rounded-xl border-border bg-card text-foreground shadow-lg">
             <DropdownMenuItem
               onClick={openImagePicker}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent"
+              className="cursor-pointer"
             >
               <Image className="h-4 w-4 text-muted-foreground" />
               <span>Upload Image</span>
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={openVideoPicker}
-              className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent"
+              className="cursor-pointer"
             >
               <Play className="h-4 w-4 text-muted-foreground" />
               <span>Upload Video</span>
@@ -442,7 +452,7 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
                 <DropdownMenuItem
                   disabled={!canAddImage}
                   onClick={openImagePicker}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                  className="cursor-pointer"
                 >
                   <Image className="h-4 w-4 text-muted-foreground" />
                   <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
@@ -450,7 +460,7 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
                 <DropdownMenuItem
                   disabled={!canAddVideo}
                   onClick={openVideoPicker}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                  className="cursor-pointer"
                 >
                   <Play className="h-4 w-4 text-muted-foreground" />
                   <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>

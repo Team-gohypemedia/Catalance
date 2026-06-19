@@ -570,7 +570,7 @@ const UploadArea = ({
                 <DropdownMenuItem
                   disabled={!canAddImage}
                   onClick={openImagePicker}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                  className="cursor-pointer"
                 >
                   <Image className="h-4 w-4 text-muted-foreground" />
                   <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
@@ -578,7 +578,7 @@ const UploadArea = ({
                 <DropdownMenuItem
                   disabled={!canAddVideo}
                   onClick={openVideoPicker}
-                  className="flex items-center gap-2 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent focus:bg-accent disabled:opacity-40 disabled:pointer-events-none"
+                  className="cursor-pointer"
                 >
                   <Play className="h-4 w-4 text-muted-foreground" />
                   <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
