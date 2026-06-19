@@ -2932,6 +2932,7 @@ const GuestAIDemo = () => {
     const [selectedOptions, setSelectedOptions] = useState([]);
     const [pendingOptionFollowup, setPendingOptionFollowup] = useState(null);
     const [isRecommendationPanelOpen, setIsRecommendationPanelOpen] = useState(false);
+    const [usedRecommendationKey, setUsedRecommendationKey] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
     const [sidebarSize, setSidebarSize] = useState(() => readStoredSidebarSize());
@@ -3370,6 +3371,12 @@ const GuestAIDemo = () => {
         notice: contextualPendingOptionNotice,
         placeholder: contextualPendingOptionPlaceholder,
     });
+    const activeRecommendationKey = `${pendingOptionFollowup?.questionKey || ''}::${pendingOptionFollowup?.optionValue || ''}`;
+    const isCurrentRecommendationUsed = Boolean(
+        activeRecommendationKey
+        && usedRecommendationKey
+        && activeRecommendationKey === usedRecommendationKey
+    );
     const shouldForceRecommendationPopup = Boolean(inputConfig?.showRecommendationPopup);
     const shouldDisableAutoRecommendationPopup = Boolean(inputConfig?.disableAutoRecommendationPopup);
     const shouldAutoRecommendQuestion = !latestAssistantIsProposal
@@ -3387,6 +3394,12 @@ const GuestAIDemo = () => {
     useEffect(() => {
         if (!pendingOptionFollowup) {
             setIsRecommendationPanelOpen(false);
+        }
+    }, [pendingOptionFollowup]);
+
+    useEffect(() => {
+        if (!pendingOptionFollowup) {
+            setUsedRecommendationKey('');
         }
     }, [pendingOptionFollowup]);
 
@@ -3566,6 +3579,16 @@ const GuestAIDemo = () => {
         setSelectedOptions([]);
         handleSendMessage(null, resolvedValue, { ignorePendingOptionFollowup: true });
     };
+
+    const applyPendingRecommendation = useCallback(() => {
+        if (!pendingRecommendedAnswer) return;
+        setInput((current) => current.trim() ? current : pendingRecommendedAnswer);
+        setIsRecommendationPanelOpen(false);
+        if (activeRecommendationKey) {
+            setUsedRecommendationKey(activeRecommendationKey);
+        }
+        requestAnimationFrame(() => focusMessageInput());
+    }, [activeRecommendationKey, focusMessageInput, pendingRecommendedAnswer]);
 
     useEffect(() => {
         fetchServices();
@@ -6222,9 +6245,16 @@ const GuestAIDemo = () => {
                                     {contextualPendingOptionNotice}
                                 </p>
                                 {pendingRecommendedAnswer && (
-                                    <p className={`mt-2 text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    <button
+                                        type="button"
+                                        className={`mt-2 block w-full rounded-lg border px-2.5 py-2 text-left text-xs font-medium transition-colors ${isDark
+                                            ? 'border-white/10 text-slate-300 hover:border-primary/40 hover:text-white'
+                                            : 'border-slate-200 text-slate-600 hover:border-primary/40 hover:text-slate-900'
+                                            }`}
+                                        onClick={applyPendingRecommendation}
+                                    >
                                         Suggested reply: {pendingRecommendedAnswer}
-                                    </p>
+                                    </button>
                                 )}
                             </div>
                             <Button
@@ -6258,11 +6288,7 @@ const GuestAIDemo = () => {
                                 <button
                                     type="button"
                                     className={`text-xs font-semibold ${isDark ? 'text-primary hover:text-primary/80' : 'text-primary hover:text-primary/80'}`}
-                                    onClick={() => {
-                                        setInput((current) => current.trim() ? current : pendingRecommendedAnswer);
-                                        setIsRecommendationPanelOpen(false);
-                                        requestAnimationFrame(() => focusMessageInput());
-                                    }}
+                                    onClick={applyPendingRecommendation}
                                 >
                                     Use suggestion
                                 </button>
@@ -6383,6 +6409,27 @@ const GuestAIDemo = () => {
                                     className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full md:h-9 md:w-9 ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/5'}`}
                                 >
                                     {isListening ? <MicOff className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" /> : <Mic className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />}
+                                </Button>
+                            )}
+                            {isPendingOptionFollowup && (
+                                <Button
+                                    size="icon"
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => setIsRecommendationPanelOpen((current) => !current)}
+                                    className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full border md:h-9 md:w-9 ${isCurrentRecommendationUsed
+                                        ? isDark
+                                            ? 'border-white/10 text-slate-500 hover:bg-white/10 hover:text-slate-300'
+                                            : 'border-slate-300 text-slate-400 hover:bg-black/5 hover:text-slate-600'
+                                        : isRecommendationPanelOpen
+                                            ? 'border-primary bg-primary text-primary-foreground'
+                                            : isDark
+                                                ? 'border-white/10 bg-[#2F2F2F] text-[#ffd54a] hover:bg-[#383838]'
+                                                : 'border-slate-200 bg-white text-primary hover:bg-primary/5'
+                                        }`}
+                                    aria-label={isRecommendationPanelOpen ? 'Hide recommendation helper' : 'Show recommendation helper'}
+                                >
+                                    <Lightbulb className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />
                                 </Button>
                             )}
                             <Button
