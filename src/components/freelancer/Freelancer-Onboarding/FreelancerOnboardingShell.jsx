@@ -1920,6 +1920,10 @@ const FreelancerOnboardingShell = () => {
   }, [currentServiceVisualsForm?.mediaFiles]);
 
   const isCaseStudyIncomplete = useMemo(() => {
+    if (isCaseStudyEffectivelyEmpty(currentCaseStudyForm)) {
+      return false;
+    }
+
     const hasTitle = String(currentCaseStudyForm?.title || "").trim().length > 0;
     const hasDescription =
       String(currentCaseStudyForm?.description || "").trim().length > 0;
@@ -1937,14 +1941,7 @@ const FreelancerOnboardingShell = () => {
       hasTimeline &&
       hasBudget
     );
-  }, [
-    currentCaseStudyForm?.budget,
-    currentCaseStudyForm?.description,
-    currentCaseStudyForm?.niche,
-    currentCaseStudyForm?.role,
-    currentCaseStudyForm?.timeline,
-    currentCaseStudyForm?.title,
-  ]);
+  }, [currentCaseStudyForm]);
 
   const isContinueDisabled = isBaseContinueDisabled;
 
@@ -3017,6 +3014,39 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
+    if (currentSlide.id === "caseStudy") {
+      if (currentActiveCaseStudyId) {
+        clearServiceStepValidationErrors("caseStudy");
+        updateCurrentServiceDraft((draft) => {
+          const remainingCaseStudies = (draft.caseStudies || []).filter(
+            (caseStudy) => String(caseStudy?.id || "").trim() !== String(currentActiveCaseStudyId).trim(),
+          );
+
+          const replacementCaseStudy = createEmptyServiceCaseStudy();
+          const nextCaseStudies = remainingCaseStudies.length > 0
+            ? remainingCaseStudies
+            : [replacementCaseStudy];
+          const nextActiveId = remainingCaseStudies.length > 0
+            ? remainingCaseStudies[0]?.id || null
+            : replacementCaseStudy.id;
+
+          return {
+            ...draft,
+            caseStudies: nextCaseStudies,
+            activeCaseStudyId: nextActiveId,
+          };
+        });
+      }
+
+      const nextSlideIndex = onboardingSlides.findIndex(
+        (slide) => slide.id === "serviceReview",
+      );
+      if (nextSlideIndex >= 0) {
+        setCurrentSlideIndex(nextSlideIndex);
+      }
+      return;
+    }
+
     serviceSkipReturnRef.current = {
       slideIndex: currentSlideIndex,
       serviceIndex: currentServiceIndex,
@@ -3344,14 +3374,15 @@ const FreelancerOnboardingShell = () => {
       // Determine max unlocked step:
       // quickInfo (0) is always available
       // caseStudy (1) is available when quickInfo is complete (info + pricing + visuals)
-      // preview (2) is available when caseStudy is complete
+      // preview (2) is available when caseStudy is complete or empty/skipped
       const quickInfoComplete =
         !isServiceInfoIncomplete && !isServicePricingIncomplete && !isServiceVisualsIncomplete;
       let maxUnlockedServiceStepOrder = 0;
       if (quickInfoComplete) {
         maxUnlockedServiceStepOrder = 1;
       }
-      if (quickInfoComplete && !isCaseStudyIncomplete) {
+      const isCaseStudyEmpty = isCaseStudyEffectivelyEmpty(currentCaseStudyForm);
+      if (quickInfoComplete && (!isCaseStudyIncomplete || isCaseStudyEmpty)) {
         maxUnlockedServiceStepOrder = 2;
       }
 
