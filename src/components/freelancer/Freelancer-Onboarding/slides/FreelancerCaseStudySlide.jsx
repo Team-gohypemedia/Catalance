@@ -30,7 +30,7 @@ import {
 const CASE_STUDY_BANNER_MAX_BYTES = 4.5 * 1024 * 1024;
 
 const ONBOARDING_PAGE_TITLE_CLASS =
-  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+  "text-balance text-xl font-semibold leading-[1.12] tracking-[-0.03em] sm:text-[34px] md:text-[40px]";
 const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
@@ -291,7 +291,23 @@ const FreelancerCaseStudySlide = ({
         {/* Heading */}
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
-            {caseStudyContent?.headingTitle || "Tell Us About Your Previous Work"}
+            {(() => {
+              const headingText = caseStudyContent?.headingTitle || "Tell Us About Your Previous Work";
+              const matchIdx = headingText.toLowerCase().lastIndexOf("previous work");
+              if (matchIdx >= 0) {
+                const mainPart = headingText.slice(0, matchIdx);
+                const highlightPart = headingText.slice(matchIdx);
+                return (
+                  <>
+                    <span>{mainPart}</span>
+                    <span className="text-primary">
+                      {highlightPart}
+                    </span>
+                  </>
+                );
+              }
+              return <span>{headingText}</span>;
+            })()}
           </h1>
         </div>
 
@@ -307,9 +323,9 @@ const FreelancerCaseStudySlide = ({
               variant="ghost"
               size="sm"
               onClick={() => onSkipServices?.()}
-              className="onboarding-skip-btn sm:absolute sm:right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+              className="onboarding-skip-btn sm:absolute sm:right-0 self-end sm:self-auto shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
             >
-              Skip this step
+              Skip this
             </Button>
           )}
         </div>

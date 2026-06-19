@@ -926,7 +926,26 @@ const FreelancerServiceQuickInfoSlide = ({
         {/* Page Title */}
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
-            {applyServiceTemplate(serviceInfoContent?.headingTitleTemplate, serviceName)}
+            {(() => {
+              const headingText = applyServiceTemplate(
+                serviceInfoContent?.headingTitleTemplate || "Fill Your {serviceName} Service Info",
+                serviceName,
+              );
+              const matchIdx = headingText.toLowerCase().lastIndexOf("service info");
+              if (matchIdx >= 0) {
+                const mainPart = headingText.slice(0, matchIdx);
+                const highlightPart = headingText.slice(matchIdx);
+                return (
+                  <>
+                    <span>{mainPart}</span>
+                    <span className="text-primary">
+                      {highlightPart}
+                    </span>
+                  </>
+                );
+              }
+              return <span>{headingText}</span>;
+            })()}
           </h1>
         </div>
 
@@ -936,17 +955,6 @@ const FreelancerServiceQuickInfoSlide = ({
             activeStepId="quickInfo"
             onStepChange={onServiceStepChange}
           />
-          {onSkipServices && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onSkipServices?.()}
-              className="onboarding-skip-btn sm:absolute sm:right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
-            >
-              Skip this step
-            </Button>
-          )}
         </div>
 
         {/* Content */}

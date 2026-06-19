@@ -626,7 +626,7 @@ function PhoneRoleOnboarding() {
 
             <label className="block space-y-0.5 text-left">
               <span className={fieldLabelClassName}>
-                Phone number
+                Phone number <span className="text-red-500 font-normal text-xs ml-1">(required)</span>
               </span>
               <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
                 <Select

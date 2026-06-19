@@ -1814,10 +1814,26 @@ const FreelancerServiceInfoSlide = ({
       <div className="w-full space-y-8">
         <div className="text-center">
           <h1 className="text-xl md:text-4xl lg:text-5xl font-medium">
-            {applyServiceTemplate(
-              serviceInfoContent?.headingTitleTemplate,
-              serviceName,
-            )}
+            {(() => {
+              const headingText = applyServiceTemplate(
+                serviceInfoContent?.headingTitleTemplate,
+                serviceName,
+              );
+              const matchIdx = headingText.toLowerCase().lastIndexOf("service info");
+              if (matchIdx >= 0) {
+                const mainPart = headingText.slice(0, matchIdx);
+                const highlightPart = headingText.slice(matchIdx);
+                return (
+                  <>
+                    <span>{mainPart}</span>
+                    <span className="text-primary">
+                      {highlightPart}
+                    </span>
+                  </>
+                );
+              }
+              return <span>{headingText}</span>;
+            })()}
           </h1>
         </div>
 
