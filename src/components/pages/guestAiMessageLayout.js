@@ -26,6 +26,8 @@ export const normalizeMarkdownContent = (content = "") =>
 
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
+const REQUEST_PROMPT_LINE_REGEX =
+  /^(?:please\s+)?(?:tell\s+me|share|describe|explain|outline|list|provide|let\s+me\s+know|walk\s+me\s+through|help\s+me\s+understand)\b/i;
 const OPTION_PROMPT_CUE_REGEX =
   /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
 
@@ -98,7 +100,28 @@ const dedupeOptionEntries = (optionEntries = []) => {
 export const splitContextAndQuestion = (text = "") => {
   const source = repairBrokenTechTokens(String(text || "")).trim();
   if (!source) return { contextText: "", questionText: "" };
-  if (!source.includes("?")) return { contextText: source, questionText: "" };
+  if (!source.includes("?")) {
+    const protectedSource = protectInlineDotTokens(source);
+    const sentenceMatches =
+      protectedSource.match(/[^.!?\n]+[.!?]+(?:["')\]]+)?/g) || [protectedSource];
+    const restoredSentences = sentenceMatches
+      .map((sentence) => restoreProtectedInlineDots(sentence.trim()))
+      .filter(Boolean);
+    const lastSentence = restoredSentences[restoredSentences.length - 1] || "";
+
+    if (REQUEST_PROMPT_LINE_REGEX.test(lastSentence)) {
+      const contextText = restoredSentences
+        .slice(0, -1)
+        .join("\n\n")
+        .trim();
+      return {
+        contextText,
+        questionText: lastSentence,
+      };
+    }
+
+    return { contextText: source, questionText: "" };
+  }
 
   const protectedSource = protectInlineDotTokens(source);
   const sentenceMatches =
