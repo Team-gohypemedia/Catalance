@@ -947,8 +947,11 @@ function PhoneRoleOnboarding() {
 
             {formErrors.submit && <p className="mt-2 text-xs text-red-400">{formErrors.submit}</p>}
 
-            {/* CTA */}
-            <div className="mt-4">
+            {/* CTA & Security Note (Sticky on mobile) */}
+            <div className={cn(
+              "sticky bottom-0 z-20 -mx-6 mt-4 px-6 pb-6 pt-4 sm:-mx-7 sm:px-7 sm:pb-7 rounded-b-3xl",
+              isDark ? "bg-[#18181b]/95 backdrop-blur-xl" : "bg-white/95 backdrop-blur-xl"
+            )}>
               <button
                 type="submit"
                 disabled={isSaving}
@@ -960,14 +963,13 @@ function PhoneRoleOnboarding() {
               >
                 {isSaving ? <Loader2 className="size-4 animate-spin text-white keep-white" /> : null}
                 {isSaving ? "Saving..." : "Continue"}
-
               </button>
-            </div>
 
-            {/* Security note */}
-            <div className="mt-3.5 flex items-center justify-center gap-2">
-              <Lock className={cn("size-3.5", isDark ? "text-white/30" : "text-black/30")} />
-              <p className={cn("text-[0.72rem]", isDark ? "text-white/30" : "text-black/35")}>Your information is secure and will never be shared.</p>
+              {/* Security note */}
+              <div className="mt-3.5 flex items-center justify-center gap-2">
+                <Lock className={cn("size-3.5", isDark ? "text-white/30" : "text-black/30")} />
+                <p className={cn("text-[0.72rem]", isDark ? "text-white/30" : "text-black/35")}>Your information is secure and will never be shared.</p>
+              </div>
             </div>
           </form>
         </main>
