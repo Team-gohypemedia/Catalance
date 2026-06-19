@@ -2,18 +2,9 @@ import { startTransition, useCallback, useEffect, useMemo, useRef, useState } fr
 import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
-import Settings from "lucide-react/dist/esm/icons/settings";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
 import { DarkGradientBg } from "@/components/elegant-dark-pattern";
 import {
@@ -3739,60 +3730,6 @@ const AgencyOnboardingShell = ({
                 <ChevronLeft className="h-4 w-4" />
               </Button>
           )}
-
-          <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-            <SheetTrigger asChild>
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-                aria-label={`Onboarding settings for slide ${currentSlideIndex + 1} of ${totalSlides}`}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="w-[92vw] border-white/10 bg-card p-0 text-foreground sm:max-w-sm"
-            >
-              <SheetHeader className="border-b border-white/10 px-5 py-4 text-left">
-                <SheetTitle className="text-primary">Onboarding settings</SheetTitle>
-                <SheetDescription className="text-white/60">
-                  Manage the current onboarding session.
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="space-y-4 px-5 py-5">
-                <div className="rounded-2xl border border-white/10 bg-background/40 p-4">
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-white/45">
-                    Current progress
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-white">
-                    Slide {currentSlideIndex + 1} of {totalSlides}
-                  </p>
-                  <p className="mt-1 text-sm text-white/60">
-                    {currentSlide.title || "Onboarding"}
-                  </p>
-                </div>
-
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleResetOnboarding}
-                  disabled={isResettingOnboarding || isProfileSaving}
-                  className="h-auto w-full justify-start rounded-2xl px-4 py-3 text-left"
-                >
-                  Reset onboarding
-                </Button>
-
-                <p className="text-sm leading-6 text-white/55">
-                  This restarts the onboarding flow from the first slide and clears
-                  the current in-progress form values in this session.
-                </p>
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
       </header>
 

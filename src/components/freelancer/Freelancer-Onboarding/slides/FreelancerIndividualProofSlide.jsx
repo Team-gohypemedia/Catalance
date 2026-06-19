@@ -249,7 +249,7 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
       <div className="absolute bottom-0 right-0 w-[260px] h-[260px] sm:w-[360px] sm:h-[360px] bg-primary/[0.04] dark:bg-primary/[0.01] rounded-full blur-[80px] pointer-events-none z-0" />
 
       {/* Semicircle Dotted Arc Wrapper */}
-      <div className="relative w-full max-w-[340px] sm:max-w-[480px] md:max-w-[820px] mx-auto pt-12 sm:pt-16 md:pt-20 pb-2 z-20">
+      <div className="relative w-full max-w-[340px] sm:max-w-[480px] md:max-w-[820px] mx-auto pt-8 sm:pt-10 md:pt-12 pb-2 z-20">
         {/* Dotted Arch Line - placed fully inside container to prevent top cropping */}
         <div className="absolute top-2 sm:top-3 md:top-4 left-0 w-full h-[100px] sm:h-[130px] md:h-[160px] border-t-2 border-dashed border-neutral-200 dark:border-neutral-850 rounded-t-full pointer-events-none z-0" />
         
@@ -272,15 +272,12 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
         <FloatingAvatar testimonial={testimonials[3]} delay={2.4} x="90%" y="48%" scale={0.95} isDark={isDark} className="block" />
 
         {/* Centered Heading Section */}
-        <div className="relative z-10 max-w-[200px] sm:max-w-[340px] md:max-w-[440px] mx-auto mt-4 md:mt-5">
+        <div className="relative z-10 max-w-[200px] sm:max-w-[340px] md:max-w-[600px] lg:max-w-none mx-auto mt-1.5 md:mt-2">
           <h1 className="leading-tight flex flex-col items-center select-none">
             <span className="text-primary font-black text-3xl sm:text-5xl md:text-[2.75rem] tracking-tight">10,000+</span>
             <span className="font-bold text-lg sm:text-2xl md:text-[1.85rem] mt-0.5 text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-none">freelancers are already</span>
             <span className="font-bold text-lg sm:text-2xl md:text-[1.85rem] mt-0.5 text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-none">earning on Catalance</span>
           </h1>
-          <p className="text-[#475569] dark:text-[#94A3B8] text-[10.5px] sm:text-xs md:text-xs max-w-[300px] md:max-w-[340px] mx-auto mt-1.5 font-medium leading-relaxed">
-            Join a growing community of professionals and build the freelance career you deserve.
-          </p>
         </div>
       </div>
 

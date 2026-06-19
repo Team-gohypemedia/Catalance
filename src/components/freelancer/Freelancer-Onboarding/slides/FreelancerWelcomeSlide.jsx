@@ -74,7 +74,7 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
         </h1>
 
         {/* Subheading */}
-        <div className="text-neutral-900/60 dark:text-neutral-400 text-xs sm:text-sm lg:text-base max-w-2xl leading-relaxed font-medium">
+        <div className="text-neutral-900/60 dark:text-neutral-400 text-xs sm:text-sm lg:text-base max-w-none leading-relaxed font-medium">
           Join thousands of freelancers who are earning on their terms and building the life they want.
         </div>
       </div>
@@ -146,15 +146,15 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
                 >
                   {/* Avatar image with fallback */}
                   <div className="relative h-10 w-10 sm:h-11 sm:w-11 rounded-full border-2 border-primary/20 overflow-hidden bg-muted flex items-center justify-center shrink-0">
+                    <span className="text-xs font-bold text-muted-foreground uppercase">{testimonials[activeReviewIdx].initials}</span>
                     {testimonials[activeReviewIdx].image ? (
                       <img 
                         src={testimonials[activeReviewIdx].image} 
                         alt={testimonials[activeReviewIdx].name}
-                        className="h-full w-full object-cover"
+                        className="absolute inset-0 h-full w-full object-cover"
                         onError={(e) => { e.target.style.display = 'none' }}
                       />
                     ) : null}
-                    <span className="text-xs font-bold text-muted-foreground uppercase">{testimonials[activeReviewIdx].initials}</span>
                   </div>
                   
                   {/* Author metadata */}

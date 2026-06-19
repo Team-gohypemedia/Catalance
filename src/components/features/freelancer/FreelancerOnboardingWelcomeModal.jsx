@@ -85,17 +85,19 @@ const FreelancerOnboardingWelcomeModal = ({
             {welcomeHighlights.map((item) => (
               <div
                 key={item.title}
-                className="flex flex-col items-center rounded-[10px] border border-border bg-card px-2 py-4 text-center shadow-sm"
+                className="flex flex-row sm:flex-col items-center sm:items-center rounded-[10px] border border-border bg-card px-4 py-3 sm:px-2 sm:py-4 text-left sm:text-center shadow-sm gap-3 sm:gap-0"
               >
-                <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 mb-1">
+                <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 shrink-0 sm:mb-1">
                   <item.icon className="size-4 text-primary" />
                 </div>
-                <p className="mt-2 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-foreground">
-                  {item.title}
-                </p>
-                <p className="mt-1.5 text-[0.75rem] leading-relaxed text-muted-foreground px-1">
-                  {item.description}
-                </p>
+                <div className="flex flex-col sm:items-center w-full">
+                  <p className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-foreground sm:mt-2">
+                    {item.title}
+                  </p>
+                  <p className="mt-0.5 text-[0.75rem] leading-tight sm:leading-relaxed text-muted-foreground sm:mt-1.5 sm:px-1">
+                    {item.description}
+                  </p>
+                </div>
               </div>
             ))}
           </div>

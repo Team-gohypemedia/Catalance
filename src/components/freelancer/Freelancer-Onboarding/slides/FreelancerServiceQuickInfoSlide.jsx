@@ -942,9 +942,9 @@ const FreelancerServiceQuickInfoSlide = ({
               variant="ghost"
               size="sm"
               onClick={() => onSkipServices?.()}
-              className="onboarding-skip-btn sm:absolute sm:right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+              className="onboarding-skip-btn sm:absolute sm:right-0 self-end sm:self-auto shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
             >
-              Skip this step
+              Skip this service
             </Button>
           )}
         </div>
