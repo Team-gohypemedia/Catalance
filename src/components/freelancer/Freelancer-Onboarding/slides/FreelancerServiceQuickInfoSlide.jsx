@@ -266,7 +266,19 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
   const filesRef = useRef(Array.isArray(files) ? files : []);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [isOpen, setIsOpen] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleOutsideClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [showDropdown]);
 
   useEffect(() => {
     filesRef.current = Array.isArray(files) ? files : [];
@@ -390,93 +402,118 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
 
       {/* Empty State */}
       {!hasMedia ? (
-        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-          <div
-            onClick={() => setIsOpen(true)}
-            className={cn(
-              "group flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-300 cursor-pointer",
-              hasError ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
-            )}
-          >
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl border transition-colors",
-                  "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary",
-                )}
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <div>
-              <p className="text-sm font-medium text-foreground">Upload images or video</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
+        <div
+          ref={dropdownRef}
+          onClick={() => setShowDropdown((prev) => !prev)}
+          className={cn(
+            "group flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-all duration-300 cursor-pointer outline-none focus:ring-1 focus:ring-primary/20",
+            hasError ? "border-destructive/40 bg-destructive/5" : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
+          )}
+        >
+          <div className="relative">
+            <div
+              className={cn(
+                "flex h-10 w-10 items-center justify-center rounded-xl border transition-colors",
+                "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary",
+              )}
+            >
+              <Plus className="h-5 w-5" />
             </div>
+            {showDropdown && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 w-[180px] rounded-xl border border-border bg-card text-foreground shadow-lg p-1 z-50 flex flex-col"
+              >
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(false);
+                    openImagePicker();
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground cursor-pointer w-full transition-colors"
+                >
+                  <Image className="h-4 w-4 text-muted-foreground" />
+                  <span>Upload Image</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDropdown(false);
+                    openVideoPicker();
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground cursor-pointer w-full transition-colors"
+                >
+                  <Play className="h-4 w-4 text-muted-foreground" />
+                  <span>Upload Video</span>
+                </button>
+              </div>
+            )}
           </div>
-          <DropdownMenuContent align="center" className="w-56 rounded-xl border-border bg-card text-foreground shadow-lg">
-            <DropdownMenuItem
-              onClick={openImagePicker}
-              className="cursor-pointer"
-            >
-              <Image className="h-4 w-4 text-muted-foreground" />
-              <span>Upload Image</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={openVideoPicker}
-              className="cursor-pointer"
-            >
-              <Play className="h-4 w-4 text-muted-foreground" />
-              <span>Upload Video</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Upload images or video</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
+          </div>
+        </div>
       ) : (
         <div className="grid grid-cols-3 gap-2">
           {resolvedPreviewItems.map((item, index) => (
             <CompactMediaCard key={item.id} item={item} previewUrl={item.previewUrl} index={index} onRemove={removeFile} />
           ))}
           {totalCount < maxTotal && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted/20 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  ) : (
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
-                      <Plus className="h-3.5 w-3.5" />
+            <div
+              ref={dropdownRef}
+              onClick={() => setShowDropdown((prev) => !prev)}
+              className="group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border bg-muted/20 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+            >
+              {isUploading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              ) : (
+                <div className="relative">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                    <Plus className="h-3.5 w-3.5" />
+                  </div>
+                  
+                  {showDropdown && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-[calc(100%+4px)] left-1/2 -translate-x-1/2 w-[180px] rounded-xl border border-border bg-card text-foreground shadow-lg p-1 z-50 flex flex-col"
+                    >
+                      <button
+                        type="button"
+                        disabled={!canAddImage}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDropdown(false);
+                          openImagePicker();
+                        }}
+                        className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none cursor-pointer w-full transition-colors"
+                      >
+                        <Image className="h-4 w-4 text-muted-foreground" />
+                        <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canAddVideo}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDropdown(false);
+                          openVideoPicker();
+                        }}
+                        className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none cursor-pointer w-full transition-colors"
+                      >
+                        <Play className="h-4 w-4 text-muted-foreground" />
+                        <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
+                      </button>
                     </div>
                   )}
-                  <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">
-                    {isUploading ? "Uploading..." : `Upload (${totalCount}/${maxTotal})`}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-56 rounded-xl border-border bg-card text-foreground shadow-lg">
-                <DropdownMenuItem
-                  disabled={!canAddImage}
-                  onClick={openImagePicker}
-                  className="cursor-pointer"
-                >
-                  <Image className="h-4 w-4 text-muted-foreground" />
-                  <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!canAddVideo}
-                  onClick={openVideoPicker}
-                  className="cursor-pointer"
-                >
-                  <Play className="h-4 w-4 text-muted-foreground" />
-                  <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </div>
+              )}
+              <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground">
+                {isUploading ? "Uploading..." : `Upload (${totalCount}/${maxTotal})`}
+              </span>
+            </div>
           )}
         </div>
       )}
@@ -1009,13 +1046,12 @@ const FreelancerServiceQuickInfoSlide = ({
               <AnimatePresence initial={false}>
                 {expandedSections[2] && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
+                    initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+                    animate={{ height: "auto", opacity: 1, transitionEnd: { overflow: "visible" } }}
+                    exit={{ height: 0, opacity: 0, overflow: "hidden" }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
-                    className="overflow-hidden"
                   >
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 pt-4">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 pt-4">
                       {/* Experience Level */}
                       {infoFieldMap.experience?.visible !== false && (
                         <div className="space-y-1">
@@ -1066,11 +1102,10 @@ const FreelancerServiceQuickInfoSlide = ({
               <AnimatePresence initial={false}>
                 {expandedSections[3] && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
+                    initial={{ height: 0, opacity: 0, overflow: "hidden" }}
+                    animate={{ height: "auto", opacity: 1, transitionEnd: { overflow: "visible" } }}
+                    exit={{ height: 0, opacity: 0, overflow: "hidden" }}
                     transition={{ duration: 0.2, ease: "easeInOut" }}
-                    className="overflow-hidden"
                   >
                     <div className="space-y-4 pt-4">
                       <CompactUploadArea

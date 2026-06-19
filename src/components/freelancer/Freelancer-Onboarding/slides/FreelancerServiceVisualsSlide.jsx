@@ -10,12 +10,6 @@ import { resolveAvatarUrl } from "@/components/freelancer/Freelancer-Profile/fre
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   DEFAULT_FREELANCER_ONBOARDING_CONTENT,
   resolveServiceVisualFields,
 } from "@/shared/lib/freelancer-onboarding-content";
@@ -217,7 +211,19 @@ const UploadArea = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
-  const [showUploadOptions, setShowUploadOptions] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    if (!showDropdown) return;
+    const handleOutsideClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [showDropdown]);
 
   useEffect(() => {
     filesRef.current = Array.isArray(files) ? files : [];
@@ -295,13 +301,13 @@ const UploadArea = ({
   const openImagePicker = useCallback((e) => {
     if (e) e.stopPropagation();
     imageInputRef.current?.click();
-    setShowUploadOptions(false);
+    setShowDropdown(false);
   }, []);
 
   const openVideoPicker = useCallback((e) => {
     if (e) e.stopPropagation();
     videoInputRef.current?.click();
-    setShowUploadOptions(false);
+    setShowDropdown(false);
   }, []);
 
   const openAnyPicker = useCallback((e) => {
@@ -467,28 +473,63 @@ const UploadArea = ({
       {/* ─── Media Grid ─── */}
       {!hasMedia ? (
         /* Empty state: Large drop zone */
-        <div className="relative flex justify-center">
-          <button
-            type="button"
-            onClick={() => setShowUploadOptions(!showUploadOptions)}
+        <div className="relative flex justify-center w-full" ref={dropdownRef}>
+          <div
+            onClick={() => setShowDropdown((prev) => !prev)}
             className={cn(
-              "group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-all duration-300",
+              "group flex w-full flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed px-6 py-12 text-center transition-all duration-300 cursor-pointer",
               isDragOver
                 ? "border-primary bg-primary/5"
-                : showUploadOptions
+                : showDropdown
                   ? "border-primary/40 bg-primary/5"
                   : hasError
                     ? "border-destructive/40 bg-destructive/5 hover:border-destructive/60"
                     : "border-border bg-muted/20 hover:border-primary/40 hover:bg-primary/5",
             )}
           >
-            <div className={cn(
-              "flex h-14 w-14 items-center justify-center rounded-2xl border transition-colors",
-              isDragOver || showUploadOptions
-                ? "border-primary/50 bg-primary/10 text-primary"
-                : "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary",
-            )}>
-              <Plus className={cn("h-6 w-6 transition-transform duration-200", showUploadOptions ? "rotate-45" : "")} />
+            <div className="relative">
+              <div className={cn(
+                "flex h-14 w-14 items-center justify-center rounded-2xl border transition-colors",
+                isDragOver || showDropdown
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground group-hover:border-primary/30 group-hover:bg-primary/10 group-hover:text-primary",
+              )}>
+                <Plus className={cn("h-6 w-6 transition-transform duration-200", showDropdown ? "rotate-45" : "")} />
+              </div>
+              
+              {showDropdown && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 w-[180px] rounded-xl border border-border bg-card text-foreground shadow-lg p-1 z-50 flex flex-col"
+                >
+                  <button
+                    type="button"
+                    disabled={!canAddImage}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDropdown(false);
+                      openImagePicker();
+                    }}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none cursor-pointer w-full transition-colors"
+                  >
+                    <Image className="h-4 w-4 text-muted-foreground" />
+                    <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!canAddVideo}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowDropdown(false);
+                      openVideoPicker();
+                    }}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none cursor-pointer w-full transition-colors"
+                  >
+                    <Play className="h-4 w-4 text-muted-foreground" />
+                    <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
+                  </button>
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-base font-semibold text-foreground">
@@ -498,32 +539,7 @@ const UploadArea = ({
                 Drag & drop or click to browse. Max {MAX_IMAGES} images + {MAX_VIDEOS} video.
               </p>
             </div>
-          </button>
-          
-          {showUploadOptions && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex w-48 flex-col gap-1 p-2 bg-card border border-border/80 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] animate-in fade-in zoom-in-95 duration-200 dark-card">
-              {canAddImage && (
-                <button
-                  type="button"
-                  onClick={openImagePicker}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-all duration-200 hover:bg-muted"
-                >
-                  <Image className="h-4 w-4 text-muted-foreground" />
-                  <span>Image ad</span>
-                </button>
-              )}
-              {canAddVideo && (
-                <button
-                  type="button"
-                  onClick={openVideoPicker}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-foreground transition-all duration-200 hover:bg-muted"
-                >
-                  <Play className="h-4 w-4 text-muted-foreground" />
-                  <span>Video ad</span>
-                </button>
-              )}
-            </div>
-          )}
+          </div>
         </div>
       ) : (
         /* Media grid with thumbnails */
@@ -548,43 +564,58 @@ const UploadArea = ({
 
           {/* Add more slots */}
           {totalCount < maxTotal && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  ) : (
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
-                      <Plus className="h-4 w-4" />
+            <div
+              ref={dropdownRef}
+              onClick={() => setShowDropdown((prev) => !prev)}
+              className="group relative flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border bg-muted/30 text-center transition-all duration-200 hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+            >
+              {isUploading ? (
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              ) : (
+                <div className="relative">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors group-hover:bg-primary/15">
+                    <Plus className="h-4 w-4" />
+                  </div>
+                  
+                  {showDropdown && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-[calc(100%+4px)] left-1/2 -translate-x-1/2 w-[180px] rounded-xl border border-border bg-card text-foreground shadow-lg p-1 z-50 flex flex-col"
+                    >
+                      <button
+                        type="button"
+                        disabled={!canAddImage}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDropdown(false);
+                          openImagePicker();
+                        }}
+                        className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none cursor-pointer w-full transition-colors"
+                      >
+                        <Image className="h-4 w-4 text-muted-foreground" />
+                        <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!canAddVideo}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDropdown(false);
+                          openVideoPicker();
+                        }}
+                        className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-left hover:bg-accent hover:text-accent-foreground disabled:opacity-50 disabled:pointer-events-none cursor-pointer w-full transition-colors"
+                      >
+                        <Play className="h-4 w-4 text-muted-foreground" />
+                        <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
+                      </button>
                     </div>
                   )}
-                  <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
-                    {isUploading ? "Uploading..." : `Upload (${totalCount}/${maxTotal})`}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-56 rounded-xl border-border bg-card text-foreground shadow-lg">
-                <DropdownMenuItem
-                  disabled={!canAddImage}
-                  onClick={openImagePicker}
-                  className="cursor-pointer"
-                >
-                  <Image className="h-4 w-4 text-muted-foreground" />
-                  <span>Upload Image ({imageCount}/{MAX_IMAGES})</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  disabled={!canAddVideo}
-                  onClick={openVideoPicker}
-                  className="cursor-pointer"
-                >
-                  <Play className="h-4 w-4 text-muted-foreground" />
-                  <span>Upload Video ({videoCount}/{MAX_VIDEOS})</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </div>
+              )}
+              <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                {isUploading ? "Uploading..." : `Upload (${totalCount}/${maxTotal})`}
+              </span>
+            </div>
           )}
         </div>
       )}
