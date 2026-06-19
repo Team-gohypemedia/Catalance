@@ -690,6 +690,41 @@ const FreelancerServiceQuickInfoSlide = ({
     3: false,
   });
 
+  const hasAutoExpandedSec2 = useRef(false);
+  const hasAutoExpandedSec3 = useRef(false);
+
+  useEffect(() => {
+    const isSec1Filled = 
+      Boolean(serviceInfoForm.title?.trim()) &&
+      Boolean(activeSkillCategoryId) &&
+      normalizedSubcategories.length > 0 &&
+      Boolean(servicePricingForm.description?.trim());
+
+    if (isSec1Filled && !hasAutoExpandedSec2.current) {
+      setExpandedSections((prev) => ({ ...prev, 2: true }));
+      hasAutoExpandedSec2.current = true;
+    }
+  }, [
+    serviceInfoForm.title,
+    activeSkillCategoryId,
+    normalizedSubcategories.length,
+    servicePricingForm.description,
+  ]);
+
+  useEffect(() => {
+    const isSec2Filled = 
+      Boolean(serviceInfoForm.experience?.trim()) &&
+      Boolean(servicePricingForm.priceRange?.trim());
+
+    if (isSec2Filled && !hasAutoExpandedSec3.current) {
+      setExpandedSections((prev) => ({ ...prev, 3: true }));
+      hasAutoExpandedSec3.current = true;
+    }
+  }, [
+    serviceInfoForm.experience,
+    servicePricingForm.priceRange,
+  ]);
+
   const toggleSection = (sectionId) => {
     setExpandedSections((prev) => ({
       ...prev,

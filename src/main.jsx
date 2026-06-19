@@ -19,7 +19,7 @@ createRoot(document.getElementById("root")).render(
         <NotificationProvider>
           <ThemeProvider defaultTheme="light" storageKey="catalance-theme">
             <App />
-            <Toaster richColors position="top-right" />
+            <Toaster richColors position="bottom-right" />
           </ThemeProvider>
         </NotificationProvider>
       </AuthProvider>

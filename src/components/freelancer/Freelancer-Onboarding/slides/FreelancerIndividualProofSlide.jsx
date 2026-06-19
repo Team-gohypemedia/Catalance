@@ -231,6 +231,17 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
   const { theme } = useTheme();
   const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        onContinue()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onContinue])
+
   return (
     <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 pt-2 pb-2 text-center sm:px-6 sm:pt-3 md:px-8 md:pt-4">
       {/* Background Peach Glows - for light theme visual alignment */}

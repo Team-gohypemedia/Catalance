@@ -53,6 +53,17 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        onContinue()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [onContinue])
+
   return (
     <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-1 lg:py-2 flex flex-col items-center justify-center">
       <div className="flex flex-col items-center text-center mb-1 lg:mb-2 max-w-4xl">

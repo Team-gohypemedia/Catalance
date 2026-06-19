@@ -256,7 +256,14 @@ function PhoneRoleOnboarding() {
           : "Enter a valid email address or leave it empty.";
       }
 
-      if (phoneDigits.length < 6) {
+      if (countryCode === "IN") {
+        if (phoneDigits.length !== 10) {
+          return "Enter a valid 10-digit phone number to continue.";
+        }
+        if (!/^[6-9]/.test(phoneDigits)) {
+          return "Indian phone numbers must start with 6, 7, 8, or 9.";
+        }
+      } else if (phoneDigits.length < 6) {
         return "Enter a valid phone number to continue.";
       }
     }
@@ -674,7 +681,15 @@ function PhoneRoleOnboarding() {
                       if (digits.startsWith("0") && digits.length === 11) {
                         digits = digits.slice(1);
                       }
-                      setPhoneNumber(digits.slice(0, 15));
+                      if (countryCode === "IN") {
+                        if (/^[^6-9]/.test(digits)) {
+                          toast.error("Indian phone numbers must start with 6, 7, 8, or 9.");
+                        }
+                        digits = digits.replace(/^[^6-9]+/, "");
+                        setPhoneNumber(digits.slice(0, 10));
+                      } else {
+                        setPhoneNumber(digits.slice(0, 15));
+                      }
                       setFormErrors({});
                     }}
                     placeholder="1234567890"

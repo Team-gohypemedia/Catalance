@@ -23,6 +23,9 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
       agreementNode.scrollTop + agreementNode.clientHeight >=
       agreementNode.scrollHeight - 8;
     setHasReachedEnd(reachedEnd);
+    if (reachedEnd) {
+      setIsAgreementChecked(true);
+    }
   };
 
   useEffect(() => {
@@ -33,6 +36,7 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
 
     if (agreementNode.scrollHeight <= agreementNode.clientHeight + 8) {
       setHasReachedEnd(true);
+      setIsAgreementChecked(true);
     }
   }, []);
 
