@@ -303,20 +303,20 @@ export const CustomSelect = ({
         onClick={(e) => e.stopPropagation()}
       >
         {isSearchable ? (
-          <div className="border-b border-border p-2.5">
+          <div className="px-2.5 pt-2.5 pb-2">
             <input
               ref={searchInputRef}
               type="text"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder={searchPlaceholder}
-              className="h-10 w-full rounded-lg border border-border bg-card px-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              className="h-9 w-full rounded-lg border border-border/50 bg-muted/40 px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-border focus:bg-card"
             />
           </div>
         ) : null}
         <div
           className={cn(
-            "flex flex-col gap-1 p-1 overflow-y-auto subtle-scrollbar",
+            "flex flex-col gap-0.5 p-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden",
             isCenteredPopup ? "max-h-[min(60vh,320px)]" : "",
           )}
           style={isCenteredPopup ? undefined : { maxHeight: `${attachedPopupMaxHeight}px` }}
@@ -331,20 +331,20 @@ export const CustomSelect = ({
                   setIsOpen(false);
                 }}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
+                  "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
                   value === option.value
-                    ? "border-primary/60 bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
-                    : "border-transparent text-foreground hover:border-border hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
               >
-                <span className="min-w-0 truncate font-medium">{option.label}</span>
+                <span className="min-w-0 truncate">{option.label}</span>
                 {value === option.value ? (
-                  <Check className="ml-1 h-4 w-4 shrink-0 text-primary-foreground" />
+                  <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
                 ) : null}
               </button>
             ))
           ) : (
-            <div className="px-4 py-3 text-sm text-muted-foreground">
+            <div className="px-3 py-2 text-sm text-muted-foreground">
               {normalizedOptions.length > 0 ? "No results found" : "No options available"}
             </div>
           )}

@@ -459,25 +459,37 @@ const FreelancerCaseStudySlide = ({
               <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                 {fieldMap.description?.label || caseStudyContent?.fields?.description?.label || "Description"}
               </label>
-              <textarea
-                value={caseStudyForm.description}
-                onChange={(e) =>
-                  onCaseStudyFieldChange("description", e.target.value)
-                }
-                placeholder={
-                  fieldMap.description?.placeholder ||
-                  caseStudyContent?.fields?.description?.placeholder ||
-                  "Briefly describe the project and its goals..."
-                }
-                rows={4}
-                className={cn(
-                  "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:ring-1",
-                  descriptionError
-                    ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
-                    : "border-border focus:border-primary/50 focus:ring-primary/20",
-                )}
-                aria-invalid={Boolean(descriptionError)}
-              />
+              <div className="relative">
+                <textarea
+                  value={caseStudyForm.description}
+                  onChange={(e) =>
+                    onCaseStudyFieldChange("description", e.target.value)
+                  }
+                  placeholder={
+                    fieldMap.description?.placeholder ||
+                    caseStudyContent?.fields?.description?.placeholder ||
+                    "Briefly describe the project and its goals..."
+                  }
+                  rows={2}
+                  className={cn(
+                    "w-full resize-y h-[72px] min-h-[60px] rounded-xl border bg-card px-4 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:font-normal focus:ring-1 pb-9 pr-14 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden",
+                    (descriptionError || String(caseStudyForm.description || "").trim().split(/\s+/).filter(Boolean).length > 150)
+                      ? "border-destructive/70 focus:border-destructive/60 focus:ring-destructive/20"
+                      : "border-border focus:border-primary/50 focus:ring-primary/20",
+                  )}
+                  aria-invalid={Boolean(descriptionError)}
+                />
+                <span
+                  className={cn(
+                    "absolute right-3.5 bottom-3.5 text-[11px] font-normal transition-colors pointer-events-none",
+                    String(caseStudyForm.description || "").trim().split(/\s+/).filter(Boolean).length > 150
+                      ? "text-destructive"
+                      : "text-black/20 dark:text-white/20",
+                  )}
+                >
+                  {String(caseStudyForm.description || "").trim().split(/\s+/).filter(Boolean).length} / 150 words
+                </span>
+              </div>
               {descriptionError ? (
                 <p className="mt-1 text-sm text-destructive">{descriptionError}</p>
               ) : null}
