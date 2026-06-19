@@ -3207,7 +3207,7 @@ const FreelancerOnboardingShell = () => {
         setCurrentServiceIndex((currentIndex) =>
           Math.min(currentIndex + 1, selectedServices.length - 1),
         );
-        setCurrentSlideIndex(serviceSetupSlideIndex);
+        setCurrentSlideIndex(quickInfoSlideIndex);
         return;
       }
 
