@@ -1424,8 +1424,8 @@ const AssistantMessageBody = ({
                                         : 'border-black/10 bg-white hover:border-black/20 hover:bg-slate-50'
                                     }`}
                             >
-                                <span className={`mt-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
-                                    {isMultiInput ? '□' : isSingleChoiceInput ? '○' : option.number}
+                                <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[10px] font-bold keep-white shadow-sm ${isDark ? 'border-white/15 bg-white/5 text-slate-100' : 'border-slate-300 bg-white text-slate-700'}`}>
+                                    {option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
@@ -1436,8 +1436,8 @@ const AssistantMessageBody = ({
                                 key={`${option.number}-${option.text}`}
                                 className={`flex items-start gap-2 rounded-xl border px-2.5 py-1.5 ${isDark ? 'border-white/15 bg-white/[0.045]' : 'border-black/10 bg-white'}`}
                             >
-                                <span className={`mt-0.5 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full text-[10px] font-semibold keep-white ${isDark ? 'bg-white/15 text-slate-100' : 'bg-slate-900 text-white'}`}>
-                                    {isMultiInput ? '□' : isSingleChoiceInput ? '○' : option.number}
+                                <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[10px] font-bold keep-white shadow-sm ${isDark ? 'border-white/15 bg-white/5 text-slate-100' : 'border-slate-300 bg-white text-slate-700'}`}>
+                                    {option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
                                     <ReactMarkdown>{option.text}</ReactMarkdown>
