@@ -466,7 +466,8 @@ const CategoryMultiSelect = ({
       const gap = 4;
       const spaceBelow = Math.max(0, viewportHeight - rect.bottom - margin - gap);
       const spaceAbove = Math.max(0, rect.top - margin - gap);
-      const preferredMaxHeight = 320;
+      const isMobile = viewportWidth < 768;
+      const preferredMaxHeight = isMobile ? 420 : 340;
       const shouldOpenAbove = spaceBelow < preferredMaxHeight && spaceAbove > spaceBelow;
       const nextHeight = Math.max(
         Math.min(preferredMaxHeight, shouldOpenAbove ? spaceAbove : spaceBelow),
@@ -1027,7 +1028,10 @@ const CategoryMultiSelect = ({
 
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
                   {/* Categories column */}
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border md:border-b-0 md:border-r md:border-r-border">
+                  <div className={cn(
+                    "flex min-h-0 min-w-0 flex-col border-b border-border md:border-b-0 md:border-r md:border-r-border",
+                    activeCategoryValue ? "h-[140px] shrink-0 md:h-auto md:flex-1" : "flex-1"
+                  )}>
                     <div className="shrink-0 border-b border-border px-3 py-2">
                       <div className="flex items-center justify-between">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -1098,7 +1102,10 @@ const CategoryMultiSelect = ({
                   </div>
 
                   {/* Skills column */}
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                  <div className={cn(
+                    "flex min-h-0 min-w-0 flex-col",
+                    activeCategoryValue ? "flex-1" : "shrink-0 md:flex-1"
+                  )}>
                     {activeCategoryValue ? (
                       <>
                         <div className="shrink-0 border-b border-border px-3 py-2">
@@ -1148,11 +1155,13 @@ const CategoryMultiSelect = ({
                                     <div className="space-y-1">
                                       {activeVisibleCustomSkills.length > 0 ? (
                                         <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground px-1 pt-1">
-                                          Marketplace Skills
+                                          Preset Skills
                                         </p>
                                       ) : null}
                                       {activeToolOptions.map((tool) => {
-                                        const isSelected = activeSelectedToolIdSet.has(tool.id);
+                                        const isSelected = activeSelectedToolIds.includes(
+                                          tool.id,
+                                        );
                                         return (
                                           <button
                                             key={tool.id}
@@ -1253,7 +1262,7 @@ const CategoryMultiSelect = ({
                         </div>
                       </>
                     ) : (
-                      <div className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-muted-foreground">
+                      <div className="flex items-center justify-center px-4 py-3 md:flex-1 md:py-8 text-sm text-muted-foreground text-center">
                         Select a category to manage its skills.
                       </div>
                     )}

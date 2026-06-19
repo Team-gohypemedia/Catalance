@@ -296,7 +296,7 @@ const FreelancerCaseStudySlide = ({
         </div>
 
         {/* Stepper */}
-        <div className="mx-auto w-full max-w-3xl relative flex items-center justify-center">
+        <div className="mx-auto w-full max-w-3xl relative flex flex-col sm:flex-row items-center sm:justify-center gap-4 sm:gap-0">
           <ServiceInfoStepper
             activeStepId="caseStudy"
             onStepChange={onServiceStepChange}
@@ -307,7 +307,7 @@ const FreelancerCaseStudySlide = ({
               variant="ghost"
               size="sm"
               onClick={() => onSkipServices?.()}
-              className="onboarding-skip-btn absolute right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+              className="onboarding-skip-btn sm:absolute sm:right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
             >
               Skip this step
             </Button>

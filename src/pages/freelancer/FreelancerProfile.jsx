@@ -7,6 +7,7 @@ import X from "lucide-react/dist/esm/icons/x";
 import MoreHorizontal from "lucide-react/dist/esm/icons/more-horizontal";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import { toast } from "sonner";
 import Loader from "@/components/common/Loader";
@@ -4638,7 +4639,7 @@ const FreelancerProfile = () => {
               disabled={deleting || deleteConfirmText.toLowerCase() !== "delete"}
               className="bg-red-600 hover:bg-red-700 text-white"
             >
-              {deleting ? <Loader className="mr-2 size-4 animate-spin" /> : null}
+              {deleting ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
               {deleting ? "Deleting..." : "Delete Account"}
             </AlertDialogAction>
           </AlertDialogFooter>

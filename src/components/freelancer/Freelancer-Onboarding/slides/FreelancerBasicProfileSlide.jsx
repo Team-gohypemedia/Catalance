@@ -729,18 +729,17 @@ const FreelancerBasicProfileSlide = ({
                 const isChecked = fieldValue.includes(option.value);
 
                 return (
-                  <button
+                  <div
                     key={`${field.id}-${option.value}`}
-                    type="button"
                     onClick={() => toggleLanguage(field, option.value)}
-                    className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                    className="flex w-full cursor-pointer items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                   >
                     <Checkbox
                       checked={isChecked}
                       className="pointer-events-none border-input data-[state=checked]:border-primary data-[state=checked]:bg-primary"
                     />
                     <span className="truncate">{option.label}</span>
-                  </button>
+                  </div>
                 );
               })}
             </div>
