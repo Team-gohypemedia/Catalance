@@ -6,7 +6,6 @@ import {
   ShieldCheck, 
   TrendingUp, 
   Headphones, 
-  Heart, 
   Lock, 
   Check 
 } from "lucide-react";
@@ -275,7 +274,7 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
         <div className="relative z-10 max-w-[200px] sm:max-w-[340px] md:max-w-[600px] lg:max-w-none mx-auto mt-1.5 md:mt-2">
           <h1 className="leading-tight flex flex-col items-center select-none">
             <span className="text-primary font-black text-3xl sm:text-5xl md:text-[2.75rem] tracking-tight">10,000+</span>
-            <span className="font-bold text-lg sm:text-2xl md:text-[1.85rem] mt-0.5 text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-none">freelancers are already</span>
+            <span className="font-bold text-lg sm:text-2xl md:text-[1.85rem] mt-2.5 sm:mt-3.5 md:mt-4 text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-none">freelancers are already</span>
             <span className="font-bold text-lg sm:text-2xl md:text-[1.85rem] mt-0.5 text-[#0F172A] dark:text-[#F8FAFC] tracking-tight leading-none">earning on Catalance</span>
           </h1>
         </div>
@@ -332,13 +331,6 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
         </div>
       </div>
 
-      {/* Heart Divider with Horizontal Dotted Line */}
-      <div className="relative w-full hidden md:flex items-center justify-center my-2 z-10">
-        <div className="absolute left-0 right-0 border-t border-dashed border-neutral-200 dark:border-neutral-800 w-1/3 mx-auto" />
-        <div className="relative w-7 h-7 rounded-full bg-white dark:bg-neutral-900 border border-neutral-200/60 dark:border-neutral-850 flex items-center justify-center shadow-sm z-10">
-          <Heart className="h-3.5 w-3.5 text-primary fill-primary" />
-        </div>
-      </div>
 
       {/* Continue Action Block */}
       <div className="flex flex-col items-center mt-6 w-full z-10">

@@ -12,7 +12,7 @@ import {
 import { ServiceInfoStepper, CustomSelect } from "./shared/ServiceInfoComponents";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
-  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+  "text-balance text-2xl font-semibold leading-[1.12] tracking-[-0.03em] sm:text-[34px] md:text-[40px]";
 const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
