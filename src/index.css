@@ -1129,6 +1129,15 @@ html.dark .onboarding-skip-btn:hover {
   background-color: transparent !important;
 }
 
+/* --- iOS Focus Zoom Fix --- */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 
 
 
