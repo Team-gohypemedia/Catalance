@@ -4,6 +4,7 @@ import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Info from "lucide-react/dist/esm/icons/info";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
@@ -111,6 +112,7 @@ const FileUploadButton = ({
   onChange,
   hasError = false,
   accept = undefined,
+  isLoading = false,
 }) => {
   const inputRef = useRef(null);
 
@@ -118,9 +120,10 @@ const FileUploadButton = ({
     <div className="relative">
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
+        onClick={() => !isLoading && inputRef.current?.click()}
+        disabled={isLoading}
         className={cn(
-          "flex h-10 w-full items-center justify-start gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors",
+          "flex h-10 w-full items-center justify-start gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors disabled:cursor-not-allowed disabled:opacity-70",
           file ? "text-foreground" : "text-muted-foreground",
           hasError
             ? "border-destructive/70 hover:border-destructive/80"
@@ -128,16 +131,22 @@ const FileUploadButton = ({
         )}
         aria-invalid={hasError}
       >
-        <Upload className="h-4 w-4" />
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+        ) : (
+          <Upload className="h-4 w-4" />
+        )}
         <span className="truncate">
-          {file 
-            ? typeof file === "string" 
-              ? "File Uploaded" 
-              : file.name 
-            : "Upload file"}
+          {isLoading
+            ? "Uploading..."
+            : file
+              ? typeof file === "string"
+                ? "File Uploaded"
+                : file.name
+              : "Upload file"}
         </span>
       </button>
-      {file && (
+      {file && !isLoading && (
         <button
           type="button"
           onClick={() => onChange(null)}

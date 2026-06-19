@@ -4334,36 +4334,112 @@ const buildSessionStartPrefillBridge = ({
     return firstName ? `Nice to meet you, ${firstName}.` : "";
 };
 
-const matchesLogicRule = (answerValue, rule = {}) => {
-    const condition = normalizeTextToken(rule.condition || "equals");
-    const ruleValue = normalizeTextToken(rule.value || "");
-    if (!ruleValue) return false;
+const buildComparableLogicTokens = ({
+    question = null,
+    answerValue = "",
+    runtimeOptionsByQuestionSlug = {},
+    answersBySlug = {},
+} = {}) => {
+    const tokens = new Set(extractAnswerTokens(answerValue));
 
-    const tokens = extractAnswerTokens(answerValue);
-    const joined = tokens.join(" ");
+    if (question) {
+        const normalizedAnswer = normalizeAnswerForQuestion(
+            question,
+            answerValue,
+            runtimeOptionsByQuestionSlug
+        );
+        extractAnswerTokens(normalizedAnswer).forEach((token) => {
+            if (token) tokens.add(token);
+        });
+
+        const matchedOptions = findMatchingOptionsFromText(
+            answerValue,
+            getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug, answersBySlug)
+        );
+        matchedOptions.forEach((option) => {
+            getComparableOptionAliases(option)
+                .map((alias) => normalizeTextToken(alias))
+                .filter(Boolean)
+                .forEach((alias) => tokens.add(alias));
+        });
+    }
+
+    return Array.from(tokens);
+};
+
+const matchesLogicRule = (answerValue, rule = {}, {
+    question = null,
+    runtimeOptionsByQuestionSlug = {},
+    answersBySlug = {},
+} = {}) => {
+    const condition = normalizeTextToken(rule.condition || "equals");
+    const questionScopedOptions = question
+        ? getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug, answersBySlug)
+        : [];
+    const valueTokens = buildComparableLogicTokens({
+        question,
+        answerValue,
+        runtimeOptionsByQuestionSlug,
+        answersBySlug,
+    });
+    const ruleTokens = new Set(extractAnswerTokens(rule.value || ""));
+
+    if (questionScopedOptions.length > 0) {
+        findMatchingOptionsFromText(rule.value || "", questionScopedOptions).forEach((option) => {
+            getComparableOptionAliases(option)
+                .map((alias) => normalizeTextToken(alias))
+                .filter(Boolean)
+                .forEach((alias) => ruleTokens.add(alias));
+        });
+    }
+
+    const normalizedRuleTokens = Array.from(ruleTokens).filter(Boolean);
+    if (normalizedRuleTokens.length === 0) return false;
+
+    const joined = valueTokens.join(" ");
 
     if (condition === "equals") {
-        return tokens.includes(ruleValue);
+        return normalizedRuleTokens.some((ruleToken) => valueTokens.includes(ruleToken));
     }
 
     if (condition === "not_equals") {
-        return !tokens.includes(ruleValue);
+        return !normalizedRuleTokens.some((ruleToken) => valueTokens.includes(ruleToken));
     }
 
     if (condition === "contains") {
-        return tokens.some((token) => token.includes(ruleValue)) || joined.includes(ruleValue);
+        return normalizedRuleTokens.some((ruleToken) =>
+            valueTokens.some((token) => token.includes(ruleToken) || ruleToken.includes(token))
+            || joined.includes(ruleToken)
+        );
     }
 
     return false;
 };
 
-const resolveNextQuestionIndex = (questions = [], currentIndex = 0, answerValue = "") => {
+const resolveNextQuestionIndex = (questions = [], currentIndex = 0, answerValue = "", {
+    answersBySlug = {},
+    runtimeOptionsByQuestionSlug = {},
+} = {}) => {
     const currentQuestion = questions[currentIndex];
     if (!currentQuestion) return currentIndex + 1;
 
     if (Array.isArray(currentQuestion.logic)) {
         for (const rule of currentQuestion.logic) {
-            if (!matchesLogicRule(answerValue, rule)) continue;
+            const sourceQuestionIndex = rule?.field
+                ? findQuestionIndex(questions, String(rule.field || "").trim())
+                : currentIndex;
+            const sourceQuestion = sourceQuestionIndex >= 0
+                ? questions[sourceQuestionIndex]
+                : currentQuestion;
+            const sourceAnswer = rule?.field && sourceQuestion?.slug
+                ? answersBySlug?.[sourceQuestion.slug]
+                : answerValue;
+
+            if (!matchesLogicRule(sourceAnswer, rule, {
+                question: sourceQuestion,
+                runtimeOptionsByQuestionSlug,
+                answersBySlug,
+            })) continue;
             if (!rule?.nextQuestionSlug) continue;
             const targetIndex = findQuestionIndex(questions, rule.nextQuestionSlug);
             if (targetIndex !== -1) return targetIndex;
@@ -6000,7 +6076,9 @@ const applyExtractedAnswerUpdates = ({
     return { answersBySlug: nextAnswers, updatedSlugs };
 };
 
-const findNextUnansweredStep = (questions = [], answersBySlug = {}) => {
+const findNextUnansweredStep = (questions = [], answersBySlug = {}, {
+    runtimeOptionsByQuestionSlug = {},
+} = {}) => {
     if (!Array.isArray(questions) || questions.length === 0) return 0;
 
     let step = 0;
@@ -6019,7 +6097,10 @@ const findNextUnansweredStep = (questions = [], answersBySlug = {}) => {
             return step;
         }
 
-        step = resolveNextQuestionIndex(questions, step, answer);
+        step = resolveNextQuestionIndex(questions, step, answer, {
+            answersBySlug,
+            runtimeOptionsByQuestionSlug,
+        });
     }
 
     return questions.length;
@@ -6876,7 +6957,9 @@ const buildDiscoveryCoverageSummary = ({
 
     const totalCount = safeQuestions.length;
     const answeredCount = answeredQuestions.length;
-    const nextQuestionIndex = findNextUnansweredStep(safeQuestions, answersBySlug);
+    const nextQuestionIndex = findNextUnansweredStep(safeQuestions, answersBySlug, {
+        runtimeOptionsByQuestionSlug,
+    });
     const nextQuestion = nextQuestionIndex < totalCount ? safeQuestions[nextQuestionIndex] : null;
     const totalTarget = totalCount > 0 ? Math.min(totalCount, Math.max(3, Math.ceil(totalCount * 0.35))) : 0;
     const criticalTarget = criticalCount > 0 ? Math.min(criticalCount, Math.max(2, Math.ceil(criticalCount * 0.5))) : 0;
@@ -7387,7 +7470,9 @@ export const guestChat = asyncHandler(async (req, res) => {
             correctedRuntimeOptionsByQuestionSlug = clearRuntimeOptionsByIndexes(correctedRuntimeOptionsByQuestionSlug, questions, dependentIndexes);
         }
         
-        const correctionNextStep = findNextUnansweredStep(questions, correctedAnswersBySlug);
+        const correctionNextStep = findNextUnansweredStep(questions, correctedAnswersBySlug, {
+            runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug,
+        });
         let correctedPayload = buildPersistedAnswersPayload(correctedAnswersBySlug, questions, {
             runtimeOptionsByQuestionSlug: correctedRuntimeOptionsByQuestionSlug,
             existingPayload: session.answers || {}
@@ -8404,7 +8489,10 @@ export const guestChat = asyncHandler(async (req, res) => {
                 let conversationalRuntimeOptionsByQuestionSlug = { ...sessionRuntimeOptionsByQuestionSlug };
                 const conversationalNextStep = findNextUnansweredStep(
                     questions,
-                    conversationalAnswersBySlug
+                    conversationalAnswersBySlug,
+                    {
+                        runtimeOptionsByQuestionSlug: conversationalRuntimeOptionsByQuestionSlug,
+                    }
                 );
                 let conversationalPersistedAnswers = buildPersistedAnswersPayload(
                     conversationalAnswersBySlug,
@@ -8782,7 +8870,9 @@ export const guestChat = asyncHandler(async (req, res) => {
             safeUpdatedAnswersBySlug[pc.slug] = pc.previousValue;
         }
 
-        const nextStep = findNextUnansweredStep(questions, safeUpdatedAnswersBySlug);
+        const nextStep = findNextUnansweredStep(questions, safeUpdatedAnswersBySlug, {
+            runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+        });
         let persistedAnswers = buildPersistedAnswersPayload(safeUpdatedAnswersBySlug, questions, {
             runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
             existingPayload: session.answers || {}
@@ -8845,7 +8935,9 @@ export const guestChat = asyncHandler(async (req, res) => {
 
     const nextStep = isFlowEndingQuestionResponseMode(currentQuestion)
         ? questions.length
-        : findNextUnansweredStep(questions, updatedAnswersBySlug);
+        : findNextUnansweredStep(questions, updatedAnswersBySlug, {
+            runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
+        });
     let persistedAnswers = buildPersistedAnswersPayload(updatedAnswersBySlug, questions, {
         runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
         existingPayload: session.answers || {}
@@ -9327,6 +9419,7 @@ export const __testables = {
     normalizeAnswerForQuestion,
     parseKnownBrandAffiliationResponse,
     parseAdminControlText,
+    resolveNextQuestionIndex,
     shouldReplaceBudgetFallbackQuestion,
     shouldReplaceMismatchedQuestionReply,
     shouldUseConversationalRecovery,

@@ -42,6 +42,7 @@ const {
   normalizeAnswerForQuestion,
   parseKnownBrandAffiliationResponse,
   parseAdminControlText,
+  resolveNextQuestionIndex,
   shouldReplaceBudgetFallbackQuestion,
   shouldReplaceMismatchedQuestionReply,
   shouldUseConversationalRecovery,
@@ -253,6 +254,116 @@ test("maps admin-configured aliases back to the canonical option value", () => {
     normalizeAnswerForQuestion(mappedQuestion, "cross platform", {}),
     "both"
   );
+});
+
+test("resolves branching from AI-generated option labels back to the canonical option path", () => {
+  const questions = [
+    {
+      slug: "service_type",
+      text: "Which service do you need?",
+      type: "single_select",
+      options: [
+        { label: "Website SEO", value: "Website SEO" },
+        { label: "Google Business Profile (GMB) Optimization", value: "GMB" },
+        { label: "Both Website SEO & GMB", value: "Both" },
+      ],
+      logic: [
+        {
+          value: "Google Business Profile (GMB) Optimization",
+          condition: "equals",
+          nextQuestionSlug: "gmb_status",
+        },
+      ],
+    },
+    {
+      slug: "website_url",
+      text: "What is your website URL?",
+      type: "input",
+    },
+    {
+      slug: "gmb_status",
+      text: "Do you already have a Google Business Profile?",
+      type: "single_select",
+      options: [
+        { label: "Yes", value: "Yes" },
+        { label: "No", value: "No" },
+      ],
+    },
+  ];
+
+  const nextIndex = resolveNextQuestionIndex(questions, 0, "GMB", {
+    answersBySlug: { service_type: "GMB" },
+    runtimeOptionsByQuestionSlug: {
+      service_type: [
+        { label: "Local SEO & Google Business Profile (GMB) Optimization", value: "GMB" },
+        { label: "Full Website SEO (on-page & technical)", value: "Website SEO" },
+        { label: "SEO + GMB end-to-end", value: "Both" },
+      ],
+    },
+  });
+
+  assert.equal(nextIndex, 2);
+});
+
+test("supports branching rules that depend on another answered field", () => {
+  const questions = [
+    {
+      slug: "service_type",
+      text: "Which service do you need?",
+      type: "single_select",
+      options: [
+        { label: "Website SEO", value: "Website SEO" },
+        { label: "Google Business Profile (GMB) Optimization", value: "GMB" },
+        { label: "Both Website SEO & GMB", value: "Both" },
+      ],
+    },
+    {
+      slug: "seo_goal",
+      text: "What is your primary goal from SEO?",
+      type: "single_select",
+      options: [
+        { label: "More Leads", value: "More Leads" },
+        { label: "More Sales", value: "More Sales" },
+      ],
+      logic: [
+        {
+          field: "service_type",
+          value: "Both",
+          condition: "equals",
+          nextQuestionSlug: "gmb_status",
+        },
+      ],
+      nextQuestionSlug: "estimated_budget",
+    },
+    {
+      slug: "estimated_budget",
+      text: "What is your budget?",
+      type: "input",
+    },
+    {
+      slug: "gmb_status",
+      text: "Do you already have a Google Business Profile?",
+      type: "single_select",
+      options: [
+        { label: "Yes", value: "Yes" },
+        { label: "No", value: "No" },
+      ],
+    },
+  ];
+
+  const nextIndex = resolveNextQuestionIndex(questions, 1, "More Leads", {
+    answersBySlug: {
+      service_type: "Both",
+      seo_goal: "More Leads",
+    },
+    runtimeOptionsByQuestionSlug: {
+      service_type: [
+        { label: "SEO + GMB end-to-end", value: "Both" },
+      ],
+    },
+  });
+
+  assert.equal(nextIndex, 3);
 });
 
 test("merges service and question admin controls with question overrides first", () => {
