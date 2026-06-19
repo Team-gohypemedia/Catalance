@@ -13,6 +13,10 @@ import ProjectRedirectCard from "@/components/client/client-dashboard/ProjectRed
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 import { cn } from "@/shared/lib/utils";
 import {
   buildProjectCardModel,
@@ -31,8 +35,7 @@ const projectFilterKeys = new Set(projectFilterOptions.map((option) => option.ke
 const activeProjectCardClassName = "w-full";
 const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
 
-const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+const getDisplayName = (user) => resolveUserDisplayName(user, "Client");
 
 const getInitials = (value = "") => {
   const parts = String(value)
@@ -294,10 +297,11 @@ const ClientProjectsPage = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
           <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[94%] xl:max-w-none">
-            <ClientWorkspaceHeader
+        <ClientWorkspaceHeader
               profile={{
                 avatar: user?.avatar,
                 name: headerDisplayName,
+                email: resolveUserSecondaryLabel(user),
                 initial: getInitials(headerDisplayName),
               }}
               activeWorkspaceKey="projects"

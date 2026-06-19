@@ -62,6 +62,12 @@ import {
   getAdminFreelancerOnboardingContent,
   updateAdminFreelancerOnboardingContent,
 } from "../controllers/freelancerOnboardingContent.controller.js";
+import {
+  listUserRequests,
+  approveUserRequest,
+  rejectUserRequest,
+} from "../controllers/userRequest.controller.js";
+
 const router = Router();
 
 router.use(requireAuth, requireAdmin);
@@ -139,6 +145,10 @@ router.get("/blogs", getAdminBlogs);
 router.get("/blogs/:blogId", getAdminBlogById);
 router.post("/blogs", upsertAdminBlog);
 router.delete("/blogs/:blogId", deleteAdminBlog);
+
+router.get("/user-requests", listUserRequests);
+router.patch("/user-requests/:id/approve", approveUserRequest);
+router.patch("/user-requests/:id/reject", rejectUserRequest);
 
 router.use("/engagement", adminEngagementRouter);
 

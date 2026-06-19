@@ -5574,25 +5574,25 @@ const GuestAIDemo = () => {
                                     </div>
 
                                     {/* Comparison Table */}
-                                    <div className="max-w-2xl mx-auto">
+                                    <div className="mx-auto w-full max-w-6xl">
                                         {/* Column Headers */}
                                         <div className="grid grid-cols-2 rounded-2xl overflow-hidden mb-0 shadow-sm">
                                             {/* Catalance header */}
-                                            <div className="bg-primary flex items-center justify-center gap-1.5 py-2 px-4">
+                                            <div className="bg-primary flex items-center justify-center gap-2 py-3 px-5 sm:py-4 sm:px-6">
                                                 <img
                                                     src={cataLogo}
                                                     alt="Catalance logo"
-                                                    className="h-4 w-4 object-contain invert dark:invert-0"
+                                                    className="h-4 w-4 sm:h-5 sm:w-5 object-contain invert dark:invert-0"
                                                 />
-                                                <span className="!text-white dark:!text-black font-bold text-xs sm:text-sm">Catalance</span>
+                                                <span className="!text-white dark:!text-black font-bold text-sm sm:text-base">Catalance</span>
                                             </div>
                                             {/* VS badge & Other Platforms header */}
-                                            <div className="bg-[#e8e5e0] dark:bg-[#2a2520] flex items-center justify-center gap-1.5 py-2 px-4 relative">
-                                                <div className="absolute left-0 -translate-x-1/2 w-6 h-6 rounded-full bg-[#f5f1ec] dark:bg-[#1a1512] border border-[#ddd9d3] dark:border-white/10 flex items-center justify-center z-10">
-                                                    <span className="text-[7px] font-extrabold text-[#888] uppercase">vs</span>
+                                            <div className="bg-[#e8e5e0] dark:bg-[#2a2520] flex items-center justify-center gap-2 py-3 px-5 sm:py-4 sm:px-6 relative">
+                                                <div className="absolute left-0 -translate-x-1/2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#f5f1ec] dark:bg-[#1a1512] border border-[#ddd9d3] dark:border-white/10 flex items-center justify-center z-10">
+                                                    <span className="text-[8px] font-extrabold text-[#888] uppercase">vs</span>
                                                 </div>
-                                                <Users className="w-3.5 h-3.5 text-[#888] dark:text-slate-400" />
-                                                <span className="text-[#555] dark:text-slate-300 font-semibold text-xs sm:text-sm">Other Platforms</span>
+                                                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#888] dark:text-slate-400" />
+                                                <span className="text-[#555] dark:text-slate-300 font-semibold text-sm sm:text-base">Other Platforms</span>
                                             </div>
                                         </div>
 
@@ -5634,23 +5634,23 @@ const GuestAIDemo = () => {
                                             ].map((row, idx) => (
                                                 <div key={idx} className="grid grid-cols-2">
                                                     {/* Catalance column */}
-                                                    <div className="flex items-start gap-2 py-2 px-3 sm:px-4 border-r border-[#e8e0d5] dark:border-white/10">
-                                                        <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-primary/10 flex items-center justify-center">
-                                                            <Check className="w-2.5 h-2.5 text-primary" strokeWidth={3} />
+                                                    <div className="flex items-start gap-3 py-3 px-4 sm:gap-4 sm:py-4 sm:px-6 border-r border-[#e8e0d5] dark:border-white/10">
+                                                        <div className="mt-0.5 shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                                            <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary" strokeWidth={3} />
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.catalance.title}</p>
-                                                            <p className="text-[10px] text-[#7a6a55] dark:text-zinc-200 mt-0.5 leading-relaxed">{row.catalance.desc}</p>
+                                                            <p className="text-sm sm:text-base font-bold text-[#1a1209] dark:text-white leading-snug">{row.catalance.title}</p>
+                                                            <p className="text-xs sm:text-sm text-[#7a6a55] dark:text-zinc-200 mt-1 leading-relaxed">{row.catalance.desc}</p>
                                                         </div>
                                                     </div>
                                                     {/* Other platforms column */}
-                                                    <div className="flex items-start gap-2 py-2 px-3 sm:px-4">
-                                                        <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-red-100/80 dark:bg-red-900/20 flex items-center justify-center">
-                                                            <X className="w-2.5 h-2.5 text-red-500" strokeWidth={3} />
+                                                    <div className="flex items-start gap-3 py-3 px-4 sm:gap-4 sm:py-4 sm:px-6">
+                                                        <div className="mt-0.5 shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100/80 dark:bg-red-900/20 flex items-center justify-center">
+                                                            <X className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-500" strokeWidth={3} />
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.other.title}</p>
-                                                            <p className="text-[10px] text-[#7a6a55] dark:text-zinc-200 mt-0.5 leading-relaxed">{row.other.desc}</p>
+                                                            <p className="text-sm sm:text-base font-bold text-[#1a1209] dark:text-white leading-snug">{row.other.title}</p>
+                                                            <p className="text-xs sm:text-sm text-[#7a6a55] dark:text-zinc-200 mt-1 leading-relaxed">{row.other.desc}</p>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -5974,25 +5974,25 @@ const GuestAIDemo = () => {
                                 </div>
 
                                 {/* Comparison Table */}
-                                <div className="max-w-2xl mx-auto">
+                                <div className="mx-auto w-full max-w-6xl">
                                     {/* Column Headers */}
                                     <div className="grid grid-cols-2 rounded-2xl overflow-hidden mb-0 shadow-sm">
                                         {/* Catalance header */}
-                                        <div className="bg-primary flex items-center justify-center gap-1.5 py-2 px-4">
+                                        <div className="bg-primary flex items-center justify-center gap-2 py-3 px-5 sm:py-4 sm:px-6">
                                             <img
                                                 src={cataLogo}
                                                 alt="Catalance logo"
-                                                className="h-4 w-4 object-contain invert dark:invert-0"
+                                                className="h-4 w-4 sm:h-5 sm:w-5 object-contain invert dark:invert-0"
                                             />
-                                            <span className="!text-white dark:!text-black font-bold text-xs sm:text-sm">Catalance</span>
+                                            <span className="!text-white dark:!text-black font-bold text-sm sm:text-base">Catalance</span>
                                         </div>
                                         {/* VS badge & Other Platforms header */}
-                                        <div className="bg-[#e8e5e0] dark:bg-[#2a2520] flex items-center justify-center gap-1.5 py-2 px-4 relative">
-                                            <div className="absolute left-0 -translate-x-1/2 w-6 h-6 rounded-full bg-[#f5f1ec] dark:bg-[#1a1512] border border-[#ddd9d3] dark:border-white/10 flex items-center justify-center z-10">
-                                                <span className="text-[7px] font-extrabold text-[#888] uppercase">vs</span>
+                                        <div className="bg-[#e8e5e0] dark:bg-[#2a2520] flex items-center justify-center gap-2 py-3 px-5 sm:py-4 sm:px-6 relative">
+                                            <div className="absolute left-0 -translate-x-1/2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#f5f1ec] dark:bg-[#1a1512] border border-[#ddd9d3] dark:border-white/10 flex items-center justify-center z-10">
+                                                <span className="text-[8px] font-extrabold text-[#888] uppercase">vs</span>
                                             </div>
-                                            <Users className="w-3.5 h-3.5 text-[#888] dark:text-slate-400" />
-                                            <span className="text-[#555] dark:text-slate-300 font-semibold text-xs sm:text-sm">Other Platforms</span>
+                                            <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[#888] dark:text-slate-400" />
+                                            <span className="text-[#555] dark:text-slate-300 font-semibold text-sm sm:text-base">Other Platforms</span>
                                         </div>
                                     </div>
 
@@ -6034,23 +6034,23 @@ const GuestAIDemo = () => {
                                         ].map((row, idx) => (
                                             <div key={idx} className="grid grid-cols-2">
                                                 {/* Catalance column */}
-                                                <div className="flex items-start gap-2 py-2 px-3 sm:px-4 border-r border-[#e8e0d5] dark:border-white/10">
-                                                    <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-primary/10 flex items-center justify-center">
-                                                        <Check className="w-2.5 h-2.5 text-primary" strokeWidth={3} />
+                                                <div className="flex items-start gap-3 py-3 px-4 sm:gap-4 sm:py-4 sm:px-6 border-r border-[#e8e0d5] dark:border-white/10">
+                                                    <div className="mt-0.5 shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                                        <Check className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary" strokeWidth={3} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.catalance.title}</p>
-                                                        <p className="text-[10px] text-[#7a6a55] dark:text-zinc-200 mt-0.5 leading-relaxed">{row.catalance.desc}</p>
+                                                        <p className="text-sm sm:text-base font-bold text-[#1a1209] dark:text-white leading-snug">{row.catalance.title}</p>
+                                                        <p className="text-xs sm:text-sm text-[#7a6a55] dark:text-zinc-200 mt-1 leading-relaxed">{row.catalance.desc}</p>
                                                     </div>
                                                 </div>
                                                 {/* Other platforms column */}
-                                                <div className="flex items-start gap-2 py-2 px-3 sm:px-4">
-                                                    <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-red-100/80 dark:bg-red-900/20 flex items-center justify-center">
-                                                        <X className="w-2.5 h-2.5 text-red-500" strokeWidth={3} />
+                                                <div className="flex items-start gap-3 py-3 px-4 sm:gap-4 sm:py-4 sm:px-6">
+                                                    <div className="mt-0.5 shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-red-100/80 dark:bg-red-900/20 flex items-center justify-center">
+                                                        <X className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-red-500" strokeWidth={3} />
                                                     </div>
                                                     <div>
-                                                        <p className="text-xs font-bold text-[#1a1209] dark:text-white leading-snug">{row.other.title}</p>
-                                                        <p className="text-[10px] text-[#7a6a55] dark:text-zinc-200 mt-0.5 leading-relaxed">{row.other.desc}</p>
+                                                        <p className="text-sm sm:text-base font-bold text-[#1a1209] dark:text-white leading-snug">{row.other.title}</p>
+                                                        <p className="text-xs sm:text-sm text-[#7a6a55] dark:text-zinc-200 mt-1 leading-relaxed">{row.other.desc}</p>
                                                     </div>
                                                 </div>
                                             </div>

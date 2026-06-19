@@ -26,6 +26,10 @@ import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { formatINR } from "@/shared/lib/currency";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
@@ -54,8 +58,7 @@ const projectFilterOptions = [
 ];
 const projectFilterKeys = new Set(projectFilterOptions.map((option) => option.key));
 
-const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+const getDisplayName = (user) => resolveUserDisplayName(user, "Client");
 
 const getInitials = (value = "") => {
   const parts = String(value)
@@ -1419,6 +1422,7 @@ const ClientProjects = () => {
           profile={{
             avatar: user?.avatar,
             name: headerDisplayName,
+            email: resolveUserSecondaryLabel(user),
             initial: getInitials(headerDisplayName),
           }}
           activeWorkspaceKey="projects"

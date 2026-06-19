@@ -47,6 +47,7 @@ import {
   readMarketplaceChatRequests,
   removeMarketplaceChatRequest,
 } from "@/shared/lib/marketplace-chat-requests";
+import { resolveUserDisplayName } from "@/shared/lib/user-display";
 import { cn } from "@/shared/lib/utils";
 
 const SERVICE_LABEL = "Project Chat";
@@ -133,8 +134,7 @@ const toDisplayTitleCase = (value = "") =>
     .toLowerCase()
     .replace(/(^|[\s/-])([a-z])/g, (match, prefix, char) => `${prefix}${char.toUpperCase()}`);
 
-const getDisplayName = (user = {}) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Freelancer";
+const getDisplayName = (user = {}) => resolveUserDisplayName(user, "Freelancer");
 
 const resolveProjectBusinessName = (project = {}, acceptedProposal = null) =>
   getFirstNonEmptyText(
@@ -1227,9 +1227,7 @@ const FreelancerChatContent = () => {
 
   const syncMarketplaceRequests = useCallback(() => {
     const currentUserId = normalizeIdentifier(user?.id || user?.sub || user?.userId);
-    const currentFreelancerLabel = normalizeComparableText(
-      user?.fullName || user?.name || user?.email || "",
-    );
+    const currentFreelancerLabel = normalizeComparableText(resolveUserDisplayName(user, ""));
     const allRequests = readMarketplaceChatRequests();
     const matchesFreelancer = (request) => {
       const requestFreelancerId = normalizeIdentifier(
@@ -1308,7 +1306,7 @@ const FreelancerChatContent = () => {
       conversationId,
       typing: true,
       userId: user?.id || socketRef.current.id,
-      userName: user?.fullName || user?.name || user?.email || "Someone"
+      userName: resolveUserDisplayName(user, "Someone")
     };
     socketRef.current.emit("chat:typing", payload);
     if (typingTimeoutRef.current) {
@@ -1446,7 +1444,7 @@ const FreelancerChatContent = () => {
           // Dedupe by project (not by client)
           if (seen.has(sharedKey)) continue;
           seen.add(sharedKey);
-          const clientName = owner.fullName || owner.name || owner.email || "Client";
+          const clientName = resolveUserDisplayName(owner, "Client");
           const businessName = resolveProjectBusinessName(item.project, item);
           const serviceType = resolveProjectServiceType(item.project, item) || SERVICE_LABEL;
           const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";

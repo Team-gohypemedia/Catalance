@@ -512,7 +512,10 @@ export const syncDraftSubcategories = (draft = {}, selectedSubCategoryValues = [
 
       const subCategoryId = parseCatalogSubcategoryId(selectionKey);
       if (!subCategoryId) {
-        return null;
+        return createCustomServiceSubcategory({
+          label: selectionKey,
+          subCategoryKey: selectionKey,
+        });
       }
 
       return {
@@ -785,24 +788,6 @@ const buildServicePricingValidationErrors = (normalizedDraft, fields = []) => {
     if (wordCount > 150) {
       errors.description = "Service description cannot exceed 150 words.";
     }
-  }
-
-  const deliveryTimeline = String(normalizedDraft.deliveryTimeline || "").trim();
-  if (
-    fieldMap.deliveryTimeline?.visible !== false &&
-    fieldMap.deliveryTimeline?.required !== false &&
-    !deliveryTimeline
-  ) {
-    errors.deliveryTimeline = "Please select a delivery timeline.";
-  }
-
-  const priceRange = String(normalizedDraft.priceRange || "").trim();
-  if (
-    fieldMap.priceRange?.visible !== false &&
-    fieldMap.priceRange?.required !== false &&
-    !priceRange
-  ) {
-    errors.priceRange = "Please set a service price.";
   }
 
   return {

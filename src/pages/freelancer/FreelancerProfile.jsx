@@ -40,6 +40,10 @@ import ProfileImageCropDialog from "@/components/features/freelancer/onboarding/
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
+import {
   getServiceLabel,
   createServiceDetail,
   getTechStackOptions,
@@ -759,7 +763,10 @@ const FreelancerProfile = () => {
 
         const loadedPersonal = {
           name: normalized.personal?.name ?? user?.fullName ?? user?.name ?? "",
-          email: normalized.personal?.email ?? user?.email ?? "",
+          email:
+            normalized.personal?.email ??
+            resolveUserSecondaryLabel(user) ??
+            "",
           phone: normalized.personal?.phone ?? "",
           location:
             normalized.personal?.location || identityFallbackLocation || "",
@@ -892,7 +899,7 @@ const FreelancerProfile = () => {
         if (active) {
           const fallbackPersonal = {
             name: user?.fullName ?? user?.name ?? "",
-            email: user?.email ?? "",
+            email: resolveUserSecondaryLabel(user) ?? "",
             phone: "",
             location: "",
             headline: "",
@@ -3418,8 +3425,8 @@ const FreelancerProfile = () => {
   const headerProfile = useMemo(
     () => ({
       avatar: profilePhotoUrl || resolveAvatarUrl(user?.avatar),
-      name: user?.fullName || user?.name || personal.name || "Freelancer",
-      email: user?.email || personal.email || "",
+      name: resolveUserDisplayName(user, "") || personal.name || "Freelancer",
+      email: resolveUserSecondaryLabel(user) || personal.email || "",
       initial: initials,
       available:
         typeof personal.openToWork === "boolean"

@@ -43,6 +43,10 @@ import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceH
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
+import {
   Accordion,
   AccordionContent,
   AccordionItem,
@@ -1401,7 +1405,7 @@ const ProjectDashboard = () => {
           content: userMessage.text,
           service: serviceKey,
           senderRole: "CLIENT",
-          senderName: user?.fullName || user?.name || user?.email || "Client",
+          senderName: resolveUserDisplayName(user, "Client"),
           skipAssistant: true, // Force persistence to DB
         }),
       });
@@ -1481,7 +1485,7 @@ const ProjectDashboard = () => {
             content: textContent,
             service: serviceKey,
             senderRole: "CLIENT",
-            senderName: user?.fullName || user?.name || user?.email || "Client",
+            senderName: resolveUserDisplayName(user, "Client"),
             attachment, // Send attachment metadata with URL
             skipAssistant: true,
           }),
@@ -2638,7 +2642,8 @@ const ProjectDashboard = () => {
           <ClientWorkspaceHeader
             profile={{
               avatar: user?.avatar,
-              name: String(user?.fullName || user?.name || "Client").trim() || "Client",
+              name: resolveUserDisplayName(user, "Client"),
+              email: resolveUserSecondaryLabel(user),
             }}
             activeWorkspaceKey="projects"
             primaryActionLabel="Projects"
@@ -2657,7 +2662,8 @@ const ProjectDashboard = () => {
           <ClientWorkspaceHeader
             profile={{
               avatar: user?.avatar,
-              name: String(user?.fullName || user?.name || "Client").trim() || "Client",
+              name: resolveUserDisplayName(user, "Client"),
+              email: resolveUserSecondaryLabel(user),
             }}
             activeWorkspaceKey="projects"
             primaryActionLabel="Projects"

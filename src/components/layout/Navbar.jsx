@@ -27,6 +27,10 @@ import WorkspaceProfileDropdown from "@/components/layout/WorkspaceProfileDropdo
 import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 
 const buildNavItems = ({
   isFreelancer = false,
@@ -117,8 +121,7 @@ const getActiveNavKey = (items = [], currentPath = "") => {
   return activeItem?.key || null;
 };
 
-const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Profile";
+const getDisplayName = (user) => resolveUserDisplayName(user, "Profile");
 
 const getInitials = (value) => {
   const parts = String(value || "")
@@ -142,7 +145,7 @@ const AuthButtons = ({ showAuthenticatedNav, currentDashboard, user }) => {
           displayName={displayName}
           profile={{
             avatar: user?.avatar || "",
-            email: user?.email || "",
+            email: resolveUserSecondaryLabel(user),
             isVerified: Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
           }}
           profileInitial={getInitials(displayName)}
@@ -235,7 +238,7 @@ const Navbar = () => {
           displayName={displayName}
           profile={{
             avatar: user?.avatar || "",
-            email: user?.email || "",
+            email: resolveUserSecondaryLabel(user),
             isVerified: Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
             openToWork:
               typeof user?.freelancerProfile?.openToWork === "boolean"

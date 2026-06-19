@@ -3,6 +3,10 @@ import isSameDay from "date-fns/isSameDay";
 import isToday from "date-fns/isToday";
 import isYesterday from "date-fns/isYesterday";
 import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
+import {
+  resolveUserDisplayName,
+  resolveUserPhoneNumber,
+} from "@/shared/lib/user-display";
 
 export const SERVICE_LABEL = "Project Chat";
 export const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
@@ -72,8 +76,7 @@ export const getFirstNonEmptyText = (...values) => {
   return "";
 };
 
-export const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+export const getDisplayName = (user) => resolveUserDisplayName(user, "Client");
 
 export const getUserBusinessName = (user) =>
   getFirstNonEmptyText(user?.companyName, user?.businessName, user?.brandName);
@@ -335,7 +338,8 @@ const matchesCurrentUserName = (message, currentUser) => {
     currentUser?.fullName,
     currentUser?.name,
     currentUser?.email,
-    currentUser?.email ? currentUser.email.split("@")[0] : "",
+    resolveUserDisplayName(currentUser, ""),
+    resolveUserPhoneNumber(currentUser),
   ]
     .map(normalizeName)
     .filter(Boolean);

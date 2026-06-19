@@ -62,17 +62,6 @@ const EXPERIENCE_OPTIONS = [
   { value: "veteran", label: "Veteran (10+ years)" },
 ];
 
-const DELIVERY_TIMELINE_OPTIONS = [
-  { value: "1_week", label: "1 Week" },
-  { value: "2_weeks", label: "2 Weeks" },
-  { value: "3_weeks", label: "3 Weeks" },
-  { value: "4_weeks", label: "4 Weeks" },
-  { value: "6_weeks", label: "6 Weeks" },
-  { value: "8_weeks", label: "8 Weeks" },
-  { value: "12_weeks", label: "12 Weeks" },
-  { value: "ongoing", label: "Ongoing / Retainer" },
-];
-
 const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
 const MAX_MEDIA_FILE_SIZE_BYTES = 4.5 * 1024 * 1024;
@@ -80,6 +69,27 @@ const MAX_MEDIA_FILE_SIZE_BYTES = 4.5 * 1024 * 1024;
 const toPositiveInteger = (value) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getConfiguredCategoryOptionValue = (option = {}) => {
+  const explicitValue = String(option?.value || "").trim();
+  if (explicitValue) return explicitValue;
+  const id = toPositiveInteger(option?.subCategoryId || option?.id);
+  return id ? `catalog:${id}` : "";
+};
+
+const normalizeConfiguredCategoryOption = (option = {}) => {
+  const value = getConfiguredCategoryOptionValue(option);
+  const id = toPositiveInteger(option?.subCategoryId || option?.id);
+  const label = String(option?.label || option?.name || option?.title || value || "").trim();
+  if (!value || !label) return null;
+  return {
+    ...option,
+    id,
+    subCategoryId: id,
+    value,
+    label,
+  };
 };
 
 const buildStringSignature = (values = []) => normalizeStringArray(values).join("|");
@@ -544,11 +554,6 @@ const FreelancerServiceQuickInfoSlide = ({
     return Object.fromEntries(resolvedPricingFields.map((field) => [field.id, field]));
   }, [resolvedPricingFields]);
 
-  const deliveryTimelineOptions =
-    pricingFieldMap.deliveryTimeline?.options ||
-    pricingContent?.fields?.deliveryTimeline?.options ||
-    DELIVERY_TIMELINE_OPTIONS;
-
   /* ─── Category state ─── */
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
@@ -603,7 +608,9 @@ const FreelancerServiceQuickInfoSlide = ({
   const configuredCategoryOptions = useMemo(() => {
     const fields = resolvedInfoFields;
     const catField = fields.find((f) => f.id === "categories");
-    return Array.isArray(catField?.options) && catField.options.length > 0 ? catField.options : [];
+    return Array.isArray(catField?.options) && catField.options.length > 0
+      ? catField.options.map(normalizeConfiguredCategoryOption).filter(Boolean)
+      : [];
   }, [resolvedInfoFields]);
 
   const normalizedSubcategories = useMemo(
@@ -639,7 +646,6 @@ const FreelancerServiceQuickInfoSlide = ({
   const titleError = String(serviceInfoValidationErrors.title || "").trim();
   const categoryError = String(serviceInfoValidationErrors.category || "").trim();
   const experienceError = String(serviceInfoValidationErrors.experience || "").trim();
-  const deliveryTimelineError = String(servicePricingValidationErrors.deliveryTimeline || "").trim();
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
 
   const [expandedSections, setExpandedSections] = useState({
@@ -657,7 +663,7 @@ const FreelancerServiceQuickInfoSlide = ({
   const sec2ErrorVal = String(servicePricingValidationErrors.priceRange || "").trim();
 
   useEffect(() => {
-    const hasSec2Error = Boolean(experienceError || sec2ErrorVal || deliveryTimelineError);
+    const hasSec2Error = Boolean(experienceError || sec2ErrorVal);
     const hasSec3Error = Boolean(mediaFilesError);
 
     if (hasSec2Error || hasSec3Error) {
@@ -669,7 +675,6 @@ const FreelancerServiceQuickInfoSlide = ({
   }, [
     experienceError,
     sec2ErrorVal,
-    deliveryTimelineError,
     mediaFilesError,
   ]);
 
@@ -740,13 +745,26 @@ const FreelancerServiceQuickInfoSlide = ({
   const handleSelectedCategoriesChange = (nextValues) => {
     if (configuredCategoryOptions.length > 0) {
       const normalizedNextValues = normalizeStringArray(nextValues);
-      const labelByValue = new Map(configuredCategoryOptions.map((option) => [option.value, option.label]));
+      const optionByValue = new Map(configuredCategoryOptions.map((option) => [option.value, option]));
       onUpdateServiceDraft((draft) => {
         const existingSubcategories = Array.isArray(draft?.subcategories) ? draft.subcategories : [];
         const existingByKey = new Map(existingSubcategories.map((entry) => [getSubcategorySelectionKey(entry), entry]));
         const nextSubcategories = normalizedNextValues.map((value) => {
           const existingEntry = existingByKey.get(value);
-          return { subCategoryId: null, subCategoryKey: value, label: labelByValue.get(value) || existingEntry?.label || value, isCustom: true, selectedToolIds: [], customSkillNames: normalizeStringArray(existingEntry?.customSkillNames) };
+          const configuredOption = optionByValue.get(value);
+          const subCategoryId = toPositiveInteger(configuredOption?.subCategoryId || configuredOption?.id);
+          return {
+            subCategoryId,
+            subCategoryKey: subCategoryId ? `catalog:${subCategoryId}` : value,
+            label: configuredOption?.label || existingEntry?.label || value,
+            isCustom: !subCategoryId,
+            selectedToolIds: subCategoryId
+              ? (Array.isArray(existingEntry?.selectedToolIds) ? existingEntry.selectedToolIds : [])
+                  .map(toPositiveInteger)
+                  .filter(Boolean)
+              : [],
+            customSkillNames: normalizeStringArray(existingEntry?.customSkillNames),
+          };
         });
         return { ...draft, subcategories: nextSubcategories, activeSkillCategory: nextSubcategories.some((e) => e.subCategoryKey === draft?.activeSkillCategory) ? draft.activeSkillCategory : nextSubcategories[0]?.subCategoryKey || null };
       });
@@ -756,27 +774,6 @@ const FreelancerServiceQuickInfoSlide = ({
   };
 
   const handleSubcategorySkillChange = (subCategoryKey, nextSelection = {}) => {
-    if (configuredCategoryOptions.length > 0) {
-      const normalizedCustomSkills = normalizeStringArray(
-        Array.isArray(nextSelection?.customSkillNames) ? nextSelection.customSkillNames : [],
-      );
-
-      onUpdateServiceDraft((draft) => ({
-        ...draft,
-        subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
-          (entry) =>
-            entry?.subCategoryKey === subCategoryKey
-              ? {
-                  ...entry,
-                  selectedToolIds: [],
-                  customSkillNames: normalizedCustomSkills,
-                }
-              : entry,
-        ),
-      }));
-      return;
-    }
-
     const normalizedToolIds = normalizeStringArray(
       Array.isArray(nextSelection?.selectedToolIds)
         ? nextSelection.selectedToolIds
@@ -789,6 +786,23 @@ const FreelancerServiceQuickInfoSlide = ({
         ? nextSelection.customSkillNames
         : [],
     );
+
+    if (configuredCategoryOptions.length > 0) {
+      onUpdateServiceDraft((draft) => ({
+        ...draft,
+        subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
+          (entry) =>
+            entry?.subCategoryKey === subCategoryKey
+              ? {
+                  ...entry,
+                  selectedToolIds: toPositiveInteger(entry?.subCategoryId) ? normalizedToolIds : [],
+                  customSkillNames: normalizedCustomSkills,
+                }
+              : entry,
+        ),
+      }));
+      return;
+    }
 
     onUpdateServiceDraft((draft) => ({
       ...draft,
@@ -1031,23 +1045,6 @@ const FreelancerServiceQuickInfoSlide = ({
                         )
                       }
 
-                      {/* Delivery Timeline */}
-                      {pricingFieldMap.deliveryTimeline?.visible !== false && (
-                        <div className="space-y-1">
-                          <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
-                            {pricingFieldMap.deliveryTimeline?.label || "Delivery Timeline"}
-                          </label>
-                          <CustomSelect
-                            value={servicePricingForm.deliveryTimeline || ""}
-                            onChange={(value) => onServicePricingFieldChange("deliveryTimeline", value)}
-                            options={deliveryTimelineOptions}
-                            placeholder={pricingFieldMap.deliveryTimeline?.placeholder || "Select delivery time"}
-                            hasError={Boolean(deliveryTimelineError)}
-                            className="h-10"
-                          />
-                          {deliveryTimelineError && <p className="mt-1 text-xs text-destructive">{deliveryTimelineError}</p>}
-                        </div>
-                      )}
                     </div>
                   </motion.div>
                 )}

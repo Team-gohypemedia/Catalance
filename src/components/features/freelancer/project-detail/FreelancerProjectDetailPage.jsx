@@ -40,6 +40,10 @@ import { ProjectNotepad } from "@/components/ui/notepad";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { useAuth } from "@/shared/context/AuthContext";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -943,7 +947,7 @@ const FreelancerProjectDetailContent = () => {
           service: serviceKey,
           senderRole: "FREELANCER",
           senderName:
-            user?.fullName || user?.name || user?.email || "Freelancer",
+            resolveUserDisplayName(user, "Freelancer"),
           skipAssistant: true, // Persist to DB
         }),
       });
@@ -1015,7 +1019,7 @@ const FreelancerProjectDetailContent = () => {
             service: serviceKey,
             senderRole: "FREELANCER",
             senderName:
-              user?.fullName || user?.name || user?.email || "Freelancer",
+              resolveUserDisplayName(user, "Freelancer"),
             attachment,
             skipAssistant: true,
           }),
@@ -1554,7 +1558,8 @@ const FreelancerProjectDetailContent = () => {
           <FreelancerWorkspaceHeader
             profile={{
               avatar: user?.avatar,
-              name: String(user?.fullName || user?.name || "Freelancer").trim() || "Freelancer",
+              name: resolveUserDisplayName(user, "Freelancer"),
+              email: resolveUserSecondaryLabel(user),
               available: user?.available,
               openToWork:
                 typeof user?.freelancerProfile?.openToWork === "boolean"
@@ -1582,7 +1587,8 @@ const FreelancerProjectDetailContent = () => {
           <FreelancerWorkspaceHeader
             profile={{
               avatar: user?.avatar,
-              name: String(user?.fullName || user?.name || "Freelancer").trim() || "Freelancer",
+              name: resolveUserDisplayName(user, "Freelancer"),
+              email: resolveUserSecondaryLabel(user),
               available: user?.available,
               openToWork:
                 typeof user?.freelancerProfile?.openToWork === "boolean"

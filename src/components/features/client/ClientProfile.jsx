@@ -45,6 +45,10 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
@@ -69,8 +73,7 @@ const emptyFormData = Object.freeze({
   avatar: "",
 });
 
-const getDisplayName = (user) =>
-  user?.fullName || user?.name || user?.email?.split("@")[0] || "Client";
+const getDisplayName = (user) => resolveUserDisplayName(user, "Client");
 
 const getInitials = (value = "") => {
   const parts = String(value)
@@ -176,7 +179,7 @@ const buildProfileStateFromUser = (user) => {
   return {
     formData: {
       fullName: user?.fullName || user?.name || metadata.fullName || "",
-      email: user?.email || metadata.email || "",
+      email: resolveUserSecondaryLabel(user) || metadata.email || "",
       bio: bioText,
       companyName: user?.companyName || metadata.companyName || "",
       phoneNumber:
@@ -977,6 +980,7 @@ const ClientProfileContent = () => {
           profile={{
             avatar: user?.avatar,
             name: headerDisplayName,
+            email: resolveUserSecondaryLabel(user),
             initial: getInitials(headerDisplayName),
           }}
           activeWorkspaceKey="profile"

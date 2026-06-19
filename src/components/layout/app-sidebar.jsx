@@ -233,6 +233,12 @@ const navConfigs = {
       icon: CheckCircle,
       isActive: true,
     },
+    {
+      title: "User Requests",
+      url: "/admin/user-requests",
+      icon: MessageSquare,
+      isActive: true,
+    },
   ],
 };
 

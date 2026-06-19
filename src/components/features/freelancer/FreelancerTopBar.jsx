@@ -4,6 +4,10 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import {
+  resolveUserDisplayName,
+  resolveUserSecondaryLabel,
+} from "@/shared/lib/user-display";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 
 const buildFreelancerProjectDestination = (projectId = "") => {
@@ -119,14 +123,11 @@ export const FreelancerTopBar = () => {
     return "dashboard";
   }, [pathname]);
   const profile = useMemo(() => {
-    const displayName =
-      sessionUser?.fullName ||
-      sessionUser?.name ||
-      sessionUser?.email ||
-      "Freelancer";
+    const displayName = resolveUserDisplayName(sessionUser, "Freelancer");
 
     return {
       name: displayName,
+      email: resolveUserSecondaryLabel(sessionUser),
       avatar: sessionUser?.avatar || "",
       initial: String(displayName).charAt(0).toUpperCase(),
       available: sessionUser?.available,
