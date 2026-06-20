@@ -18,6 +18,7 @@ const {
   buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
   stripAdminDirectiveLines,
+  rewriteSinceLeadInSentences,
   stripAllNumberedOptionLines,
   extractNumberedOptionLabelsFromMessage,
   messageUsesExpectedOptionLabels,
@@ -800,6 +801,30 @@ test("strips admin directive lines from assistant output before returning it", (
       "Thanks for sharing.",
       "Tell us a little about your business.",
     ].join("\n")
+  );
+});
+
+test("rewrites repetitive since lead-ins into more natural sentences", () => {
+  assert.equal(
+    rewriteSinceLeadInSentences([
+      "Got it, an e-commerce website.",
+      "",
+      "Since the store setup can vary a lot, it helps if I understand your brand a bit.",
+      "",
+      "What’s your name?",
+    ].join("\n")),
+    [
+      "Got it, an e-commerce website.",
+      "",
+      "The store setup can vary a lot, so it helps if I understand your brand a bit.",
+      "",
+      "What’s your name?",
+    ].join("\n")
+  );
+
+  assert.equal(
+    rewriteSinceLeadInSentences("Since you want an e-commerce website, The product type and audience will shape the design."),
+    "You want an e-commerce website, so the product type and audience will shape the design."
   );
 });
 

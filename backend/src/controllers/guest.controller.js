@@ -5383,6 +5383,7 @@ ${responseLengthRule}
 - Use simple English with clear sentences.
 - Keep the tone polite, friendly, and enthusiastic in every response.
 - Avoid repeating the same idea in multiple lines.
+- Avoid starting bridge or context sentences with the word "Since".
 - IMPORTANT: If 'side_reply' asks a different question or lists different options than the 'Required next question', you MUST ignore the conflicting parts of 'side_reply' and ONLY ask the 'Required next question'.
 - In normal guided flow, avoid phrases like "I recommend", "best option", "people usually choose", or "people often lean toward" unless the user explicitly asks for a recommendation.
 - Do not skip or replace the required next question.
@@ -7038,6 +7039,38 @@ const stripQuestionnairePhrasing = (text = "") => {
     return cleaned.trim();
 };
 
+const lowercaseMidSentenceStart = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+
+    return source.replace(/^(The|This|That|It|We|You|Your|Our|A|An)\b/, (match) => match.toLowerCase());
+};
+
+const uppercaseSentenceStart = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+
+    return source.replace(/^[a-z]/, (match) => match.toUpperCase());
+};
+
+const rewriteSinceLeadInSentences = (text = "") => {
+    const source = String(text || "");
+    if (!source.trim()) return "";
+
+    return source.replace(
+        /(^|\n\n)(Since\s+([^,\n]+),\s*([^\n]+))/g,
+        (_, prefix, _fullMatch, reason, remainder) => {
+            const normalizedReason = uppercaseSentenceStart(reason);
+            const normalizedRemainder = lowercaseMidSentenceStart(remainder);
+            if (!normalizedReason || !normalizedRemainder) {
+                return `${prefix}${String(_fullMatch || "").trim()}`;
+            }
+
+            return `${prefix}${normalizedReason}, so ${normalizedRemainder}`;
+        }
+    ).trim();
+};
+
 const buildConversationalServiceReply = async ({
     service = {},
     currentQuestion = null,
@@ -7139,8 +7172,10 @@ Return plain text only.
         });
         let cleanedMessage = stripAdminDirectiveLines(
             stripQuestionStepLabels(
-                stripQuestionnairePhrasing(
-                    stripNameNotedRecap(String(aiResponse?.message || "").trim())
+                rewriteSinceLeadInSentences(
+                    stripQuestionnairePhrasing(
+                        stripNameNotedRecap(String(aiResponse?.message || "").trim())
+                    )
                 )
             )
         );
@@ -8614,10 +8649,12 @@ export const guestChat = asyncHandler(async (req, res) => {
 
                 conversationalResponse = stripAdminDirectiveLines(
                     stripQuestionStepLabels(
-                        stripNameNotedRecap(
-                            buildFriendlyMessage(
-                                conversationalResponse,
-                                [attachmentInsightNote, urlInsightNote].filter(Boolean).join(" ")
+                        rewriteSinceLeadInSentences(
+                            stripNameNotedRecap(
+                                buildFriendlyMessage(
+                                    conversationalResponse,
+                                    [attachmentInsightNote, urlInsightNote].filter(Boolean).join(" ")
+                                )
                             )
                         )
                     )
@@ -9080,6 +9117,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     }
 
     responseContent = stripNameNotedRecap(responseContent);
+    responseContent = rewriteSinceLeadInSentences(responseContent);
     responseContent = stripQuestionStepLabels(responseContent);
     responseContent = stripAdminDirectiveLines(responseContent);
 
@@ -9407,6 +9445,7 @@ export const __testables = {
     getDisplayedQuestionOptions,
     getBudgetMinimumValidationResult,
     getQuestionAdminControls,
+    rewriteSinceLeadInSentences,
     getSemanticDependentIndexesForChanges,
     getQuestionIdentityType,
     getFastLocalValidationResult,
