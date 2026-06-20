@@ -43,4 +43,18 @@ Can you tell me a bit more about your website idea - for example, who you're tar
     expect(parsed.questionText).not.toBe(")?");
     expect(parsed.contextText).toContain("Since gohype is a footwear e-commerce brand");
   });
+
+  it("keeps wrapped comma continuations inside the same question", () => {
+    const parsed = parseAssistantMessageLayout(`Got it, GoHype is a solid name for a clothing brand.
+
+Since you mentioned a clothing website in Next.js, it'll help to understand the concept a bit more so we design it right for your audience.
+
+Tell me a little about your website - what kind of clothing brand is GoHype (streetwear, ethnic, luxury, basics, etc.)
+, and how do you imagine the site feeling for visitors?`);
+
+    expect(parsed.contextText).toContain("Since you mentioned a clothing website in Next.js");
+    expect(parsed.questionText).toContain("what kind of clothing brand is GoHype");
+    expect(parsed.questionText).toContain(", and how do you imagine the site feeling for visitors?");
+    expect(parsed.questionText).not.toBe(", and how do you imagine the site feeling for visitors?");
+  });
 });

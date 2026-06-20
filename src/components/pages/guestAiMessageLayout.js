@@ -47,6 +47,17 @@ export const protectInlineDotTokens = (text = "") =>
 export const restoreProtectedInlineDots = (text = "") =>
   String(text || "").replaceAll(INLINE_DOT_PLACEHOLDER, ".");
 
+const ABBREVIATION_DOT_PLACEHOLDER = "__ABBR_DOT__";
+
+const protectSentenceBreakAbbreviations = (text = "") =>
+  String(text || "").replace(
+    /\b(Dr|Mr|Mrs|Ms|e\.g|i\.e|etc)\.(?=(?:["')\]]|\s))/gi,
+    (_, value) => `${value}${ABBREVIATION_DOT_PLACEHOLDER}`,
+  );
+
+const restoreSentenceBreakAbbreviations = (text = "") =>
+  String(text || "").replaceAll(ABBREVIATION_DOT_PLACEHOLDER, ".");
+
 export const forceSentenceBreaks = (text = "") => {
   const source = repairBrokenTechTokens(String(text || ""));
   if (!source) return source;
@@ -55,10 +66,10 @@ export const forceSentenceBreaks = (text = "") => {
     return source;
   }
 
-  return source
-    .replace(/\b(Dr|Mr|Mrs|Ms|e\.g|i\.e)\.\s/g, "$1_PROTECT_")
+  return restoreSentenceBreakAbbreviations(
+    protectSentenceBreakAbbreviations(source)
     .replace(/([a-z0-9][.?!])\s+(?=[A-Z])/g, "$1\n\n")
-    .replace(/_PROTECT_/g, ". ");
+  );
 };
 
 const normalizeInlineOptions = (text = "") =>
@@ -66,6 +77,11 @@ const normalizeInlineOptions = (text = "") =>
     .replace(/\?\s*(\d+)\.\s+/g, "?\n$1. ")
     .replace(/:\s*(\d+)\.\s+/g, ":\n$1. ")
     .replace(/([^\n])\s+(\d+)\.\s+(?=[A-Za-z])/g, "$1\n$2. ");
+
+const normalizeWrappedQuestionContinuations = (text = "") =>
+  String(text || "")
+    .replace(/\n\s*([,;:])\s*/g, " $1 ")
+    .replace(/[ \t]{2,}/g, " ");
 
 const hasNestedOptionMarker = (text = "") => /\b\d+\.\s+\S/.test(String(text || ""));
 
@@ -101,11 +117,13 @@ export const splitContextAndQuestion = (text = "") => {
   const source = repairBrokenTechTokens(String(text || "")).trim();
   if (!source) return { contextText: "", questionText: "" };
   if (!source.includes("?")) {
-    const protectedSource = protectInlineDotTokens(source);
+    const protectedSource = protectSentenceBreakAbbreviations(protectInlineDotTokens(source));
     const sentenceMatches =
       protectedSource.match(/[^.!?\n]+[.!?]+(?:["')\]]+)?/g) || [protectedSource];
     const restoredSentences = sentenceMatches
-      .map((sentence) => restoreProtectedInlineDots(sentence.trim()))
+      .map((sentence) =>
+        restoreProtectedInlineDots(restoreSentenceBreakAbbreviations(sentence.trim())),
+      )
       .filter(Boolean);
     const lastSentence = restoredSentences[restoredSentences.length - 1] || "";
 
@@ -123,7 +141,7 @@ export const splitContextAndQuestion = (text = "") => {
     return { contextText: source, questionText: "" };
   }
 
-  const protectedSource = protectInlineDotTokens(source);
+  const protectedSource = protectSentenceBreakAbbreviations(protectInlineDotTokens(source));
   const sentenceMatches =
     protectedSource.match(/[^.!?\n]+[.!?]+(?:["')\]]+)?/g) || [protectedSource];
   let questionIdx = -1;
@@ -145,12 +163,16 @@ export const splitContextAndQuestion = (text = "") => {
       return { contextText: source, questionText: "" };
     }
     return {
-      contextText: restoreProtectedInlineDots(lines.slice(0, -1).join("\n\n").trim()),
-      questionText: restoreProtectedInlineDots(lastLine),
+      contextText: restoreProtectedInlineDots(
+        restoreSentenceBreakAbbreviations(lines.slice(0, -1).join("\n\n").trim()),
+      ),
+      questionText: restoreProtectedInlineDots(restoreSentenceBreakAbbreviations(lastLine)),
     };
   }
 
-  const questionText = restoreProtectedInlineDots(sentenceMatches[questionIdx].trim());
+  const questionText = restoreProtectedInlineDots(
+    restoreSentenceBreakAbbreviations(sentenceMatches[questionIdx].trim()),
+  );
   const contextText = sentenceMatches
     .filter((_, idx) => idx !== questionIdx)
     .map((sentence) => sentence.trim())
@@ -158,15 +180,20 @@ export const splitContextAndQuestion = (text = "") => {
     .join("\n\n")
     .trim();
 
-  return { contextText: restoreProtectedInlineDots(contextText), questionText };
+  return {
+    contextText: restoreProtectedInlineDots(restoreSentenceBreakAbbreviations(contextText)),
+    questionText,
+  };
 };
 
 export const parseAssistantMessageLayout = (
   content = "",
   { forceInteractiveOptions = false } = {},
 ) => {
-  const normalized = normalizeInlineOptions(
-    repairBrokenTechTokens(normalizeMarkdownContent(content).replace(/\r/g, "").trim()),
+  const normalized = normalizeWrappedQuestionContinuations(
+    normalizeInlineOptions(
+      repairBrokenTechTokens(normalizeMarkdownContent(content).replace(/\r/g, "").trim()),
+    ),
   );
   if (!normalized) {
     return { contextText: "", questionText: "", options: [] };
