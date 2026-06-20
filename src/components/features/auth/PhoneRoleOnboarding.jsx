@@ -626,7 +626,7 @@ function PhoneRoleOnboarding() {
 
             <label className="block space-y-0.5 text-left">
               <span className={fieldLabelClassName}>
-                Phone number <span className="text-red-500 font-normal text-xs ml-1">(required)</span>
+                Phone number <span className="text-muted-foreground font-normal text-xs ml-1">(required)</span>
               </span>
               <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
                 <Select
@@ -702,7 +702,7 @@ function PhoneRoleOnboarding() {
           </div>
 
           {formErrors.details && (
-            <p className="text-xs text-destructive">{formErrors.details}</p>
+            <p className="text-xs text-red-500">{formErrors.details}</p>
           )}
         </div>
       );
@@ -779,7 +779,7 @@ function PhoneRoleOnboarding() {
             })}
           </div>
           {formErrors.role && (
-            <p className="text-xs text-destructive">{formErrors.role}</p>
+            <p className="text-xs text-red-500">{formErrors.role}</p>
           )}
         </div>
       );
@@ -945,7 +945,7 @@ function PhoneRoleOnboarding() {
 
             {renderSlideContent()}
 
-            {formErrors.submit && <p className="mt-2 text-xs text-destructive">{formErrors.submit}</p>}
+            {formErrors.submit && <p className="mt-2 text-xs text-red-500">{formErrors.submit}</p>}
 
             {/* CTA & Security Note (Sticky on mobile) */}
             <div className={cn(
@@ -992,7 +992,7 @@ function PhoneRoleOnboarding() {
       <div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-6xl items-center justify-center">
         <div className="w-full pt-4">
           {renderSlideContent()}
-          {formErrors.submit && <p className="mt-3 text-xs text-destructive">{formErrors.submit}</p>}
+          {formErrors.submit && <p className="mt-3 text-xs text-red-500">{formErrors.submit}</p>}
         </div>
       </div>
     </main>
