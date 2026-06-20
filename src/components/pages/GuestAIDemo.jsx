@@ -1268,6 +1268,7 @@ const appendSpeechTranscript = (
         .trim();
 
 const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
+const NONE_LIKE_OPTION_REGEX = /^(?:none|none of the above|none above|nothing yet|nothing available|no assets yet|no materials yet)$/i;
 const AUTO_HELPER_QUESTION_REGEX = /\b(budget|price|pricing|cost|timeline|ready|launch|deadline|when would you like|when do you want|how soon)\b/i;
 const AUTO_RECOMMEND_OPTION_VALUE = 'Recommend best option';
 const RECOMMENDATION_ACCEPTANCE_PATTERNS = [
@@ -3569,19 +3570,30 @@ const GuestAIDemo = () => {
         if (!resolvedValue) return;
 
         const needsFreeformFollowup = requiresFreeformOptionFollowup(resolvedValue);
+        const isNoneLikeOption = NONE_LIKE_OPTION_REGEX.test(String(resolvedValue || '').trim());
 
         if (isMultiInput) {
+            if (isNoneLikeOption) {
+                setPendingOptionFollowup(null);
+                setSelectedOptions([resolvedValue]);
+                handleSendMessage(null, [resolvedValue], { ignorePendingOptionFollowup: true });
+                return;
+            }
+
             const alreadySelected = optionIsSelected(resolvedValue);
             setSelectedOptions((prev) => {
+                const withoutNoneLike = prev.filter(
+                    (value) => !NONE_LIKE_OPTION_REGEX.test(String(value || '').trim())
+                );
                 const alreadyChosen = prev.some(
                     (v) => normalizeOptionToken(v) === normalizeOptionToken(resolvedValue)
                 );
                 if (alreadyChosen) {
-                    return prev.filter(
+                    return withoutNoneLike.filter(
                         (v) => normalizeOptionToken(v) !== normalizeOptionToken(resolvedValue)
                     );
                 }
-                return [...prev, resolvedValue];
+                return [...withoutNoneLike, resolvedValue];
             });
 
             if (needsFreeformFollowup) {
