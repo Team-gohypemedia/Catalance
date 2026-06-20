@@ -4058,37 +4058,12 @@ const FreelancerOnboardingShell = () => {
           />
           <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(135deg,rgba(255,196,123,0.05)_0%,transparent_18%,transparent_82%,rgba(255,196,123,0.05)_100%)]" />
         </div>
-        <header className={`relative z-20 shrink-0 border-b border-white/8 bg-card ${isFirstSlide ? 'block' : 'hidden sm:block'}`}>
-        <div
-          className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
-          style={{ width: `${progressValue}%` }}
-        />
-        <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
-          {isFirstSlide ? (
-              <Button
-                asChild
-                variant="secondary"
-                className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-              >
-                <Link to={FREELANCER_DASHBOARD_PATH} replace>
-                  <ChevronLeft className="h-4 w-4" />
-                  Back to dashboard
-                </Link>
-              </Button>
-          ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                onClick={handleBack}
-                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-                aria-label="Back to dashboard"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-          )}
+        <div className="absolute top-0 left-0 right-0 h-1 z-30">
+          <div
+            className="h-full bg-[var(--primary)] transition-all duration-300"
+            style={{ width: `${progressValue}%` }}
+          />
         </div>
-      </header>
 
       <div className="contents">
         <section
