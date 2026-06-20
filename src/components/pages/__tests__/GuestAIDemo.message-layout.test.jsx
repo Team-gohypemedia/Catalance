@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   parseAssistantMessageLayout,
+  repairSplitStrongEmphasis,
   splitContextAndQuestion,
 } from "@/components/pages/guestAiMessageLayout";
 
@@ -56,5 +57,19 @@ Tell me a little about your website - what kind of clothing brand is GoHype (str
     expect(parsed.questionText).toContain("what kind of clothing brand is GoHype");
     expect(parsed.questionText).toContain(", and how do you imagine the site feeling for visitors?");
     expect(parsed.questionText).not.toBe(", and how do you imagine the site feeling for visitors?");
+  });
+
+  it("repairs strong markers that accidentally split a word", () => {
+    expect(
+      repairSplitStrongEmphasis("**Nice, a fashion e-commerce site is a gre**at space to be in."),
+    ).toBe("**Nice, a fashion e-commerce site is a great** space to be in.");
+
+    const parsed = parseAssistantMessageLayout(`**Nice, a fashion e-commerce site is a gre**at space to be in.
+
+Since you'll be selling products online, we can structure it around smooth browsing, filters, and a clean checkout.
+
+To get things rolling, could you share your name?`);
+
+    expect(parsed.contextText).toContain("**Nice, a fashion e-commerce site is a great** space to be in.");
   });
 });

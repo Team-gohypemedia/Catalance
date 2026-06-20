@@ -18,8 +18,25 @@ const stripInlineOptionListTail = (value = "") => {
   return text;
 };
 
+export const repairSplitStrongEmphasis = (text = "") => {
+  let current = String(text || "");
+  if (!current.includes("**")) return current;
+
+  let previous = "";
+  while (current !== previous) {
+    previous = current;
+    current = current
+      .replace(/\b([A-Za-z]+)\*\*([A-Za-z][^*\n]*?)\*\*/g, (_, prefix, emphasized) => `**${prefix}${emphasized}**`)
+      .replace(/\*\*([^*\n]*?[A-Za-z])\*\*([A-Za-z]+)\b/g, (_, emphasized, suffix) => `**${emphasized}${suffix}**`);
+  }
+
+  return current;
+};
+
 export const normalizeMarkdownContent = (content = "") =>
-  stripQuestionStepLabels(String(content))
+  repairSplitStrongEmphasis(
+    stripQuestionStepLabels(String(content))
+  )
     .replace(/^```(?:markdown)?\s*/i, "")
     .replace(/\s*```$/i, "")
     .trim();
