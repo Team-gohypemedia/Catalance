@@ -40,7 +40,7 @@ const CompactEarningsSummary = ({
 }) => (
   <section className="w-full min-w-0">
     <div className="mb-4 sm:mb-5">
-      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
+      <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
         Earnings
       </h2>
     </div>

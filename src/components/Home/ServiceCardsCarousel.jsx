@@ -62,7 +62,7 @@ const HOME_SERVICES = [
   },
   {
     id: "seo",
-    title: "SEO/GMB",
+    title: "SEO / GMB",
     icon: LineChart,
     cardBg: "#eff0eb",
     illustrationUrl: "https://assets.catalance.in/lite%20service%20icons/seo.png",

@@ -121,27 +121,35 @@ const normalizeMarketplaceFiltersPayload = (value) => {
   return { services, niches };
 };
 
-const serializeMarketplaceFilterData = ({ services, niches }) => ({
-  services: services.map((service) => ({
-    id: service.id,
-    key: normalizeServiceKey(service.name),
-    name: service.name,
-    subCategories: (Array.isArray(service.subCategories) ? service.subCategories : []).map(
-      (subCategory) => ({
-        id: subCategory.id,
-        name: subCategory.name,
-        tools: (Array.isArray(subCategory.tools) ? subCategory.tools : []).map((tool) => ({
-          id: tool.id,
-          name: tool.name,
-        })),
-      }),
-    ),
-  })),
-  niches: niches.map((niche) => ({
-    id: niche.id,
-    name: niche.name,
-  })),
-});
+const serializeMarketplaceFilterData = ({ services, niches }) => {
+  const filteredServices = services.filter(
+    (service) => service.name !== "Influencer Marketing" && service.name !== "UGC Marketing" && service.name !== "AI Video Generation"
+  );
+  return {
+    services: filteredServices.map((service) => {
+      const displayName = service.name === "SEO" ? "SEO / GMB" : service.name;
+      return {
+        id: service.id,
+        key: normalizeServiceKey(service.name),
+        name: displayName,
+        subCategories: (Array.isArray(service.subCategories) ? service.subCategories : []).map(
+          (subCategory) => ({
+            id: subCategory.id,
+            name: subCategory.name,
+            tools: (Array.isArray(subCategory.tools) ? subCategory.tools : []).map((tool) => ({
+              id: tool.id,
+              name: tool.name,
+            })),
+          }),
+        ),
+      };
+    }),
+    niches: niches.map((niche) => ({
+      id: niche.id,
+      name: niche.name,
+    })),
+  };
+};
 
 const loadMarketplaceFilterData = async () => {
   const [services, niches] = await Promise.all([

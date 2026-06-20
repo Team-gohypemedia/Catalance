@@ -41,7 +41,7 @@ const CATEGORY_ALIAS_MAP = new Map([
 ]);
 
 const FILTER_SERVICE_KEY_BY_NAME = new Map([
-  ["Branding", "branding"],
+  ["Branding Kit", "branding"],
   ["Website Development", "web_development"],
   ["SEO", "seo"],
   ["Social Media Management", "social_media_marketing"],
@@ -58,9 +58,9 @@ const FILTER_SERVICE_KEY_BY_NAME = new Map([
   ["WhatsApp Chatbot", "whatsapp_chatbot"],
   ["Creative & Design", "creative_design"],
   ["3D Modeling", "3d_modeling"],
-  ["CGI / VFX", "cgi_videos"],
+  ["3D Animation/CGI Videos/VFX", "cgi_videos"],
   ["CRM & ERP", "crm_erp"],
-  ["Voice AI / AI Calling", "voice_agent"],
+  ["Voice Agent", "voice_agent"],
 ]);
 
 const TECH_ALIAS_MAP = new Map([
@@ -2449,16 +2449,23 @@ export const getMarketplaceFilterServices = asyncHandler(async (_req, res) => {
     orderBy: { name: "asc" },
   });
 
+  const filteredServices = services.filter(
+    (service) => service.name !== "Influencer Marketing" && service.name !== "UGC Marketing" && service.name !== "AI Video Generation"
+  );
+
   res.json({
-    data: services.map((service) => ({
-      id: service.id,
-      key:
-        FILTER_SERVICE_KEY_BY_NAME.get(service.name) ||
-        normalizeCategory(service.name) ||
-        normalizeSlug(service.name),
-      name: service.name,
-      label: service.name,
-    })),
+    data: filteredServices.map((service) => {
+      const displayName = service.name === "SEO" ? "SEO / GMB" : service.name;
+      return {
+        id: service.id,
+        key:
+          FILTER_SERVICE_KEY_BY_NAME.get(service.name) ||
+          normalizeCategory(service.name) ||
+          normalizeSlug(service.name),
+        name: displayName,
+        label: displayName,
+      };
+    }),
   });
 });
 

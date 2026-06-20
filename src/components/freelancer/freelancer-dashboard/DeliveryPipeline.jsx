@@ -335,7 +335,7 @@ const DeliveryPipeline = ({
   return (
     <section className="w-full min-w-0">
       <div className="mb-4 hidden items-center justify-between gap-4 sm:mb-5 sm:flex">
-        <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
+        <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
           Delivery Pipeline
         </h2>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -392,7 +392,7 @@ const DeliveryPipeline = ({
           <div className="flex flex-col gap-4 sm:hidden">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="text-[1rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
+                <h2 className="text-[22px] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
                   Delivery Pipeline
                 </h2>
               </div>

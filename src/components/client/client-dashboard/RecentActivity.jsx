@@ -214,7 +214,7 @@ const RecentActivity = memo(function RecentActivity({
   return (
     <section className={cn("flex h-full w-full min-w-0 flex-col", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] text-foreground sm:text-[1.65rem]">
+        <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] text-foreground">
           Recent Activity
         </h2>
         {!resolvedIsLoading ? (

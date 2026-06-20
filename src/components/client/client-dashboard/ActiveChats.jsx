@@ -118,7 +118,7 @@ const ActiveChats = memo(function ActiveChats({
     <section className={cn("w-full min-w-0", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+          <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
             Active Chats
           </h2>
         </div>

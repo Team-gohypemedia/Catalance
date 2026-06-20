@@ -47,7 +47,7 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
           >
             Initial Payment Pending
           </Badge>
-          <h3 className="mt-5 text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
+          <h3 className="mt-5 text-[22px] sm:text-[clamp(1.8rem,3vw,2.5rem)] font-semibold tracking-[-0.04em] text-foreground">
             Progress unlocks after the first payment
           </h3>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
@@ -513,7 +513,7 @@ export const ProjectProgressSection = ({
   return (
     <section className="mt-14 sm:mt-16">
       <div className="mb-4 flex flex-col gap-4 sm:mb-5 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <h2 className="min-w-0 text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+        <h2 className="min-w-0 text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
           Project Progress
         </h2>
 

@@ -361,16 +361,8 @@ const FeaturedProjectsSection = ({
             </span>
             <h4 className="text-base font-semibold text-foreground">No featured case studies yet</h4>
             <p className="mt-1 max-w-md text-sm text-muted-foreground">
-              No case studies added yet. Click &quot;Add Case Study&quot; to get started.
+              Showcase your best work by adding a case study using the button above.
             </p>
-            <Button 
-              variant="outline" 
-              onClick={onAddProject} 
-              className="case-study-add-btn mt-4 border-primary text-primary hover:bg-primary/10 hover:text-primary transition-all duration-200"
-            >
-              <Plus className="mr-1.5 h-4 w-4 text-primary" />
-              Add Case Study
-            </Button>
           </div>
         )}
       </section>

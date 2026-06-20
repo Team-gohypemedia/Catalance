@@ -187,7 +187,7 @@ const GROWTH_QUEST_SERVICE_FALLBACKS = [
   "Social Media Marketing",
   "Video Services",
   "Writing & Content",
-  "3D Animation/CGI Videos",
+  "3D Animation/CGI Videos/VFX",
   "Influencer Marketing",
   "SEO / GMB",
 ];

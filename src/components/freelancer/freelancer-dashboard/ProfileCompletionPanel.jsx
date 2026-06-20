@@ -28,19 +28,19 @@ const ProfileCompletionPanel = ({
     <section>
       <FreelancerDashboardPanel className="p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <h2 className="min-w-0 text-[1.2rem] font-semibold leading-[1.08] tracking-[-0.03em] dark:text-white text-[#1C1B1F] sm:text-[1.35rem] lg:text-[1.55rem]">
+          <h2 className="min-w-0 text-[22px] sm:text-[1.35rem] lg:text-[1.55rem] font-semibold leading-[1.08] tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
             {isComplete
               ? "Your Catalance profile is ready"
               : "Finish setting up your Catalance profile"}
           </h2>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:w-auto lg:justify-end lg:gap-4">
+          <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-end lg:gap-4">
             <span className="text-sm font-bold text-[var(--primary)]">
               {completionPercent}% Complete
             </span>
             <button
               type="button"
-              className="h-10 w-full rounded-full bg-[var(--primary)] px-5 text-xs font-semibold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80 sm:w-auto"
+              className="h-11 min-w-[180px] rounded-xl bg-[var(--primary)] px-6 text-sm font-bold text-white dark:text-[#1C1B1F] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98"
               onClick={onOpenProfile}
             >
               {isComplete ? "Open Profile" : "Finish Setup"}

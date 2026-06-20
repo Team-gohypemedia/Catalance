@@ -2041,12 +2041,12 @@ const FreelancerChatContent = () => {
           <section className="mt-7 flex flex-col gap-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 className="text-3xl font-semibold tracking-[-0.04em] text-foreground sm:text-4xl md:text-[3.4rem]">
+                <h1 className="text-[22px] font-semibold tracking-[-0.04em] text-foreground sm:text-4xl md:text-[3.4rem]">
                   Messages
                 </h1>
               </div>
 
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-start md:justify-end">
                 <div className="inline-flex items-center rounded-full border border-border bg-background p-1 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
                   <button
                     type="button"

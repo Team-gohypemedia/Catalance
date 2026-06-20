@@ -8,7 +8,7 @@ const MessagesHeaderTabs = React.memo(function MessagesHeaderTabs({
   requestsCount = 0,
 }) {
   return (
-    <div className="flex items-center justify-end">
+    <div className="flex items-center justify-start lg:justify-end">
       <div className="inline-flex items-center rounded-full border border-border bg-background p-1 shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
         <button
           type="button"

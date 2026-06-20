@@ -1,5 +1,5 @@
 const rawServicePositiveKeywordsByName = {
-  Branding: [
+  "Branding Kit": [
     "Logo Design",
     "Brand Identity",
     "Brand Strategy",
@@ -282,7 +282,7 @@ const rawServicePositiveKeywordsByName = {
     "High Poly",
     "3D Printing Ready",
   ],
-  "CGI / VFX": [
+  "3D Animation/CGI Videos/VFX": [
     "Visual Effects",
     "Compositing",
     "Green Screen",
@@ -316,7 +316,7 @@ const rawServicePositiveKeywordsByName = {
     "Business Intelligence",
     "Custom CRM Development",
   ],
-  "Voice AI / AI Calling": [
+  "Voice Agent": [
     "AI Voice Agent",
     "Voice Bot",
     "IVR System",

@@ -232,7 +232,7 @@ export const ROLE_OPTIONS = [
 export const SERVICE_OPTIONS = [
     { value: "branding", label: "Branding", icon: Sparkles },
     { value: "web_development", label: "Web Development", icon: Globe },
-    { value: "seo", label: "SEO", icon: Search },
+    { value: "seo", label: "SEO / GMB", icon: Search },
     { value: "social_media_marketing", label: "Social Media Management", icon: Share2 },
     { value: "paid_advertising", label: "Performance Marketing / Paid Ads", icon: TrendingUp },
     { value: "app_development", label: "App Development", icon: Smartphone },

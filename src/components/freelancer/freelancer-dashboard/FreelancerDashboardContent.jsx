@@ -1378,7 +1378,7 @@ const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) =>
   return (
     <section className="w-full min-w-0">
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
+        <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
           Recent Activity
         </h2>
         <button
@@ -1514,7 +1514,7 @@ const FreelancerCompactEarningsSummary = ({
 }) => (
   <section className="w-full min-w-0">
     <div className="mb-4 sm:mb-5">
-      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
+      <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
         Earnings
       </h2>
     </div>
@@ -1955,7 +1955,7 @@ const FreelancerPendingProposalsSection = ({
     <section className={cn("w-full min-w-0", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
+          <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             Pending Proposals
           </h2>
         </div>
@@ -1985,7 +1985,7 @@ const FreelancerPendingProposalsSection = ({
             <button
               type="button"
               onClick={onOpenAll}
-              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-primary/80 sm:min-w-0"
+              className="mt-6 inline-flex h-11 min-w-[180px] items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-bold text-black dark:text-[#1C1B1F] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98"
             >
               View Proposals
             </button>
@@ -2037,7 +2037,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => {
       )}
     >
       <div className="flex flex-1 flex-col items-center text-center">
-        <h3 className="text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+        <h3 className="text-[22px] sm:text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
           {item.title}
         </h3>
 
@@ -3800,7 +3800,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
               {dashboardDateLabel}
             </p>
             <div className="order-2 min-w-0 lg:order-1">
-              <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] !dark:text-white text-[#1C1B1F]">
+              <h1 className="text-[22px] sm:text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] !dark:text-white text-[#1C1B1F]">
                 {greeting}, {firstName}
               </h1>
             </div>
@@ -3904,7 +3904,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             <div className="mb-6 flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+                  <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
                     Active Projects
                   </h2>
                   <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
@@ -4053,7 +4053,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 <>
                   <section className="w-full min-w-0">
                     <div className="mb-4 sm:mb-5">
-                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
+                      <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F]">
                         Active Chats
                       </h2>
                     </div>
@@ -4121,7 +4121,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
 
                   <section className="w-full min-w-0">
                     <div className="mb-4 sm:mb-5 flex items-center justify-between gap-3">
-                      <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
+                      <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F]">
                         Client Reviews
                       </h2>
                       {clientReviewsMeta.reviewCount > 0 ? (
@@ -4206,7 +4206,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           ) : (
           <section className="w-full min-w-0">
             <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-              <h2 className="text-[1.45rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F] sm:text-[1.65rem]">
+              <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
                 Delivery Pipeline
               </h2>
               <div className="ml-auto flex items-center gap-2 sm:gap-3">

@@ -455,7 +455,7 @@ const DraftProposalRow = memo(function DraftProposalRow({ item }) {
         
         {/* Top Header Section */}
         <div className="flex flex-col gap-2">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">{item.title || parsedData.businessName || "Proposal"}</h2>
+          <h2 className="text-[22px] sm:text-3xl font-bold tracking-tight text-foreground">{item.title || parsedData.businessName || "Proposal"}</h2>
           <div className="flex flex-wrap items-center gap-4 text-[0.85rem] font-medium text-muted-foreground">
             {parsedData.clientName && (
               <div className="flex items-center gap-1.5">
@@ -1188,7 +1188,7 @@ const Proposals = memo(function Proposals({
       <section className={cn("w-full min-w-0", className)}>
         <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
           <div className="min-w-0">
-            <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+            <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
               Proposals
             </h2>
           </div>
@@ -1221,7 +1221,7 @@ const Proposals = memo(function Proposals({
               <button
                 type="button"
                 onClick={handleOpenQuickProject}
-                className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414] sm:min-w-0"
+                className="mt-6 inline-flex h-11 min-w-[180px] items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98 dark:text-[#141414]"
               >
                 Create New Proposal
               </button>

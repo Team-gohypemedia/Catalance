@@ -53,7 +53,7 @@ const ClientReviewsPanel = ({ reviews = [], meta = {}, isLoading = false }) => {
   return (
     <section className="w-full min-w-0">
       <div className="mb-6 flex items-center justify-between gap-3">
-        <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
+        <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
           Client Reviews
         </h2>
         {reviewCount > 0 ? (

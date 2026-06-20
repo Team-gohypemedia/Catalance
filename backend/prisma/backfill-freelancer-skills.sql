@@ -4,9 +4,9 @@
 WITH service_key_map AS (
   SELECT *
   FROM (VALUES
-    ('branding', 'Branding'),
-    ('branding_kit', 'Branding'),
-    ('brand_identity', 'Branding'),
+    ('branding', 'Branding Kit'),
+    ('branding_kit', 'Branding Kit'),
+    ('brand_identity', 'Branding Kit'),
 
     ('web_development', 'Web Development'),
     ('website_development', 'Web Development'),
@@ -45,16 +45,16 @@ WITH service_key_map AS (
     ('creative_design', 'Creative & Design'),
 
     ('3d_modeling', '3D Modeling'),
-    ('cgi_videos', 'CGI / VFX'),
-    ('cgi_video_services', 'CGI / VFX'),
-    ('cgi_vfx', 'CGI / VFX'),
+    ('cgi_videos', '3D Animation/CGI Videos/VFX'),
+    ('cgi_video_services', '3D Animation/CGI Videos/VFX'),
+    ('cgi_vfx', '3D Animation/CGI Videos/VFX'),
 
     ('crm_erp', 'CRM & ERP'),
     ('crm_and_erp_solutions', 'CRM & ERP'),
 
-    ('voice_agent', 'Voice AI / AI Calling'),
-    ('voice_agent_ai_calling', 'Voice AI / AI Calling'),
-    ('voice_ai_ai_calling', 'Voice AI / AI Calling')
+    ('voice_agent', 'Voice Agent'),
+    ('voice_agent_ai_calling', 'Voice Agent'),
+    ('voice_ai_ai_calling', 'Voice Agent')
   ) AS t(service_key, service_name)
 ),
 marketplace_service_rows AS (

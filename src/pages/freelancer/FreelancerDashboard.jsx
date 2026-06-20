@@ -271,7 +271,6 @@ const FreelancerDashboard = () => {
               onStartOnboarding={() =>
                 navigate(FREELANCER_ONBOARDING_PATH)
               }
-              onClose={() => setIsWelcomeDismissed(true)}
             />
           </div>
         </div>

@@ -15,9 +15,9 @@ async function main() {
   const ugcMarketing = find("UGC Marketing");
   const whatsappChatbot = find("WhatsApp Chatbot");
   const modeling3d = find("3D Modeling");
-  const cgiVfx = find("CGI / VFX");
+  const cgiVfx = find("3D Animation/CGI Videos/VFX");
   const crmErp = find("CRM & ERP");
-  const voiceAi = find("Voice AI / AI Calling");
+  const voiceAi = find("Voice Agent");
 
   const keywordMap = {};
 

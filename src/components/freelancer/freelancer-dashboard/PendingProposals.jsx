@@ -63,7 +63,7 @@ export const FreelancerPendingProposalsSkeleton = () => (
 const FreelancerPendingProposalRow = ({ item }) => (
   <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
     <div className="min-w-0 w-full">
-      <p className="min-w-0 truncate text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+      <p className="min-w-0 truncate text-[22px] sm:text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
         {item.title}
       </p>
 
@@ -184,7 +184,7 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) =>
     <section className={cn("w-full min-w-0", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
+          <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             Pending Proposals
           </h2>
         </div>
@@ -214,7 +214,7 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) =>
             <button
               type="button"
               onClick={onOpenAll}
-              className="mt-6 inline-flex min-w-[200px] items-center justify-center rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80 sm:min-w-0"
+              className="mt-6 inline-flex h-11 min-w-[180px] items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-bold text-white dark:text-[#1C1B1F] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98"
             >
               View Proposals
             </button>

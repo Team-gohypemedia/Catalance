@@ -1,7 +1,7 @@
 -- Marketplace hierarchy seed (idempotent, non-destructive)
 
-INSERT INTO services (name) VALUES ('Branding') ON CONFLICT (name) DO NOTHING;
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+INSERT INTO services (name) VALUES ('Branding Kit') ON CONFLICT (name) DO NOTHING;
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Logo Design' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -9,7 +9,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Logo Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Logo Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Illustrator' FROM sub
@@ -18,7 +18,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Logo Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Logo Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Photoshop' FROM sub
@@ -27,7 +27,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Logo Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Logo Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'CorelDRAW' FROM sub
@@ -36,7 +36,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Logo Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Logo Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Figma' FROM sub
@@ -45,13 +45,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Logo Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Logo Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Canva' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Brand Identity' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -59,7 +59,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Identity'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Identity'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Illustrator' FROM sub
@@ -68,7 +68,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Identity'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Identity'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Photoshop' FROM sub
@@ -77,7 +77,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Identity'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Identity'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Figma' FROM sub
@@ -86,13 +86,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Identity'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Identity'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'InDesign' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Brand Guidelines' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -100,7 +100,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Guidelines'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Guidelines'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'InDesign' FROM sub
@@ -109,13 +109,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Guidelines'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Guidelines'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Figma' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Packaging Design' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -123,7 +123,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Packaging Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Packaging Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Illustrator' FROM sub
@@ -132,7 +132,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Packaging Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Packaging Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Photoshop' FROM sub
@@ -141,13 +141,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Packaging Design'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Packaging Design'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'CorelDRAW' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Typography' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -155,7 +155,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Typography'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Typography'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Adobe Fonts' FROM sub
@@ -164,13 +164,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Typography'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Typography'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Google Fonts' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Color Systems' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -178,7 +178,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Color Systems'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Color Systems'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Adobe Color' FROM sub
@@ -187,13 +187,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Color Systems'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Color Systems'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Coolors' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Brand Assets & Mockups' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -201,7 +201,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Assets & Mockups'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Assets & Mockups'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Placeit' FROM sub
@@ -210,7 +210,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Assets & Mockups'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Assets & Mockups'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Smartmockups' FROM sub
@@ -219,13 +219,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Brand Assets & Mockups'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Brand Assets & Mockups'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Mockup World' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Branding')
+WITH svc AS (SELECT id FROM services WHERE name = 'Branding Kit')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Iconography' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -233,7 +233,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Iconography'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Iconography'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Illustrator' FROM sub
@@ -242,7 +242,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Iconography'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Iconography'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Figma' FROM sub
@@ -251,7 +251,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Branding' AND sc.name = 'Iconography'
+  WHERE s.name = 'Branding Kit' AND sc.name = 'Iconography'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Noun Project' FROM sub
@@ -3811,8 +3811,8 @@ INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Unity' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-INSERT INTO services (name) VALUES ('CGI / VFX') ON CONFLICT (name) DO NOTHING;
-WITH svc AS (SELECT id FROM services WHERE name = 'CGI / VFX')
+INSERT INTO services (name) VALUES ('3D Animation/CGI Videos/VFX') ON CONFLICT (name) DO NOTHING;
+WITH svc AS (SELECT id FROM services WHERE name = '3D Animation/CGI Videos/VFX')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, '3D Tools' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -3820,7 +3820,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = '3D Tools'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = '3D Tools'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Blender' FROM sub
@@ -3829,7 +3829,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = '3D Tools'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = '3D Tools'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Cinema 4D' FROM sub
@@ -3838,7 +3838,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = '3D Tools'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = '3D Tools'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Maya' FROM sub
@@ -3847,13 +3847,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = '3D Tools'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = '3D Tools'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Houdini' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'CGI / VFX')
+WITH svc AS (SELECT id FROM services WHERE name = '3D Animation/CGI Videos/VFX')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Rendering' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -3861,7 +3861,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Rendering'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Rendering'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Octane' FROM sub
@@ -3870,7 +3870,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Rendering'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Rendering'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Redshift' FROM sub
@@ -3879,13 +3879,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Rendering'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Rendering'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Arnold' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'CGI / VFX')
+WITH svc AS (SELECT id FROM services WHERE name = '3D Animation/CGI Videos/VFX')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Compositing' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -3893,7 +3893,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Compositing'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Compositing'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Nuke' FROM sub
@@ -3902,13 +3902,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Compositing'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Compositing'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'After Effects' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'CGI / VFX')
+WITH svc AS (SELECT id FROM services WHERE name = '3D Animation/CGI Videos/VFX')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Tracking' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -3916,13 +3916,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Tracking'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Tracking'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'PFTrack' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'CGI / VFX')
+WITH svc AS (SELECT id FROM services WHERE name = '3D Animation/CGI Videos/VFX')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Simulation' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -3930,13 +3930,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Simulation'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Simulation'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Houdini' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'CGI / VFX')
+WITH svc AS (SELECT id FROM services WHERE name = '3D Animation/CGI Videos/VFX')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Editing' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -3944,7 +3944,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'CGI / VFX' AND sc.name = 'Editing'
+  WHERE s.name = '3D Animation/CGI Videos/VFX' AND sc.name = 'Editing'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'DaVinci Resolve' FROM sub
@@ -4075,8 +4075,8 @@ INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Freshsales' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-INSERT INTO services (name) VALUES ('Voice AI / AI Calling') ON CONFLICT (name) DO NOTHING;
-WITH svc AS (SELECT id FROM services WHERE name = 'Voice AI / AI Calling')
+INSERT INTO services (name) VALUES ('Voice Agent') ON CONFLICT (name) DO NOTHING;
+WITH svc AS (SELECT id FROM services WHERE name = 'Voice Agent')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Voice API' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -4084,7 +4084,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'Voice API'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'Voice API'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Twilio' FROM sub
@@ -4093,13 +4093,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'Voice API'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'Voice API'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Exotel' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Voice AI / AI Calling')
+WITH svc AS (SELECT id FROM services WHERE name = 'Voice Agent')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Speech Processing' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -4107,7 +4107,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'Speech Processing'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'Speech Processing'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Deepgram' FROM sub
@@ -4116,13 +4116,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'Speech Processing'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'Speech Processing'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'AssemblyAI' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Voice AI / AI Calling')
+WITH svc AS (SELECT id FROM services WHERE name = 'Voice Agent')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Calling Systems' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -4130,7 +4130,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'Calling Systems'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'Calling Systems'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Aircall' FROM sub
@@ -4139,13 +4139,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'Calling Systems'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'Calling Systems'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Dialpad' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Voice AI / AI Calling')
+WITH svc AS (SELECT id FROM services WHERE name = 'Voice Agent')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'Call Tracking' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -4153,13 +4153,13 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'Call Tracking'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'Call Tracking'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'CallRail' FROM sub
 ON CONFLICT (sub_category_id, name) DO NOTHING;
 
-WITH svc AS (SELECT id FROM services WHERE name = 'Voice AI / AI Calling')
+WITH svc AS (SELECT id FROM services WHERE name = 'Voice Agent')
 INSERT INTO sub_categories (service_id, name)
 SELECT svc.id, 'IVR Systems' FROM svc
 ON CONFLICT (service_id, name) DO NOTHING;
@@ -4167,7 +4167,7 @@ WITH sub AS (
   SELECT sc.id
   FROM sub_categories sc
   JOIN services s ON s.id = sc.service_id
-  WHERE s.name = 'Voice AI / AI Calling' AND sc.name = 'IVR Systems'
+  WHERE s.name = 'Voice Agent' AND sc.name = 'IVR Systems'
 )
 INSERT INTO tools (sub_category_id, name)
 SELECT sub.id, 'Knowlarity' FROM sub

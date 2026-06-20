@@ -36,7 +36,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => (
     className={`flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 sm:p-5 xl:p-6 ${className}`.trim()}
   >
     <div className="flex flex-1 flex-col items-center text-center">
-      <h3 className="text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+      <h3 className="text-[22px] sm:text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
         {item.title}
       </h3>
 
@@ -82,7 +82,7 @@ const ActiveProjects = ({
     <div className="mb-6 flex items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
+          <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
             Active Projects
           </h2>
           <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">

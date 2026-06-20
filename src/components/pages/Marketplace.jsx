@@ -46,7 +46,7 @@ import { useTheme } from "@/components/providers/theme-provider";
 const FALLBACK_CATEGORIES = [
   ["Website Development", "web_development", Code2, "Products and storefronts"],
   ["AI Automation", "ai_automation", Bot, "Agents and workflows"],
-  ["SEO", "seo", LineChart, "Organic growth"],
+  ["SEO / GMB", "seo", LineChart, "Organic growth"],
   ["Lead Generation", "lead_generation", Rocket, "Outbound and funnels"],
   ["CRM & ERP", "crm_erp", Workflow, "Ops systems"],
   ["Voice Agent", "voice_agent", MessageSquare, "AI calling"],
@@ -265,7 +265,7 @@ const FALLBACK_OPEN_PROJECTS = [
   {
     id: "fallback-project-4",
     title: "SEO content cluster for HR-tech product launch campaign",
-    serviceName: "SEO",
+    serviceName: "SEO / GMB",
     timeline: "6-8 weeks",
     budgetLabel: "Rs. 1,10,000",
     summary: "Looking for technical SEO and topic clusters aligned to buyer-intent keywords.",

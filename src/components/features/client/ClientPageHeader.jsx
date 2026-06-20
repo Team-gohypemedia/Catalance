@@ -54,7 +54,7 @@ const ClientPageHeader = ({
       <div className="max-w-[40rem]">
         <h1
           className={cn(
-            "text-3xl font-semibold leading-[1.1] tracking-[-0.04em] text-foreground sm:text-4xl md:text-[2.8rem]",
+            "text-[22px] font-semibold leading-[1.1] tracking-[-0.04em] text-foreground sm:text-4xl md:text-[2.8rem]",
             titleClassName,
           )}
         >

@@ -724,7 +724,7 @@ const FreelancerPayments = () => {
               <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8")}>
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">
+                    <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
                       Wallet Balance
                     </h2>
                     <p className="mt-2 text-sm text-muted-foreground">
@@ -819,7 +819,7 @@ const FreelancerPayments = () => {
 
               <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7")}>
                 <div className="mb-6">
-                  <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">
+                  <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
                     Pending Milestones
                   </h2>
                   <p className="mt-2 text-sm text-muted-foreground">
@@ -942,7 +942,7 @@ const FreelancerPayments = () => {
 
             <div className="space-y-6">
               <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6")}>
-                <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">
+                <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
                   Payment Methods
                 </h2>
                 <div className="mt-6 space-y-4">
@@ -968,7 +968,7 @@ const FreelancerPayments = () => {
               <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6")}>
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">
+                    <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
                       Monthly Earnings
                     </h2>
                     <p className="mt-2 text-sm text-muted-foreground">

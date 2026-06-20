@@ -1076,7 +1076,7 @@ const FreelancerProjectsContent = () => {
           <section className="space-y-5">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
               <div>
-                <h1 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-foreground">
+                <h1 className="text-[22px] sm:text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-foreground">
                   Project Workspace
                 </h1>
               </div>

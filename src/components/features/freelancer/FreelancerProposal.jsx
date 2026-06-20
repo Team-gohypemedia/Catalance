@@ -861,7 +861,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
             <section>
               <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                 <div>
-                  <h2 className="text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-foreground">
+                  <h2 className="text-[22px] sm:text-[clamp(2rem,4vw,3rem)] font-bold tracking-[-0.75px] text-foreground">
                     My Proposals
                   </h2>
                 </div>

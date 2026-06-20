@@ -47,7 +47,7 @@ const GROWTH_QUEST_SERVICE_OPTIONS = Object.freeze([
   "Social Media Marketing (Organic)",
   "Video Services",
   "Writing & Content",
-  "3D Animation/CGI Videos",
+  "3D Animation/CGI Videos/VFX",
   "Influencer Marketing",
   "SEO / GMB"
 ]);

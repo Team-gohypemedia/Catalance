@@ -166,7 +166,7 @@ test("keeps delivery timeline separate from video duration and collapses ranges 
     markdown: `
 Client Name: Developers Gohype
 Business Name: Cleclo
-Service Type: 3d Animation/CGI Videos
+Service Type: 3D Animation/CGI Videos/VFX
 Project Overview: Create ad creative videos for a clothing brand.
 Primary Objectives:
 - Create high impact paid ad visuals
@@ -179,7 +179,7 @@ Budget: INR 15,000 per video
     proposalContext: {
       clientName: "Developers Gohype",
       companyName: "Cleclo",
-      serviceName: "3d Animation/CGI Videos",
+      serviceName: "3D Animation/CGI Videos/VFX",
       serviceQuestionAnswers: [
         {
           slug: "duration",
@@ -193,7 +193,7 @@ Budget: INR 15,000 per video
         }
       ]
     },
-    selectedServiceName: "3d Animation/CGI Videos"
+    selectedServiceName: "3D Animation/CGI Videos/VFX"
   });
 
   assert.match(normalized, /^Launch Timeline: 2 weeks$/m);

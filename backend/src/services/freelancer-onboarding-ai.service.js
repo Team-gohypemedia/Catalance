@@ -498,12 +498,14 @@ const getResumeAutofillCatalog = async () => {
   }, new Map());
 
   return {
-    services: services.map((service) => ({
-      id: Number(service.id),
-      name: normalizeText(service.name),
-      key: normalizeText(service.name),
-      subCategories: subCategoriesByServiceId.get(Number(service.id)) || [],
-    })),
+    services: services
+      .filter((service) => service.name !== "Influencer Marketing" && service.name !== "UGC Marketing" && service.name !== "AI Video Generation")
+      .map((service) => ({
+        id: Number(service.id),
+        name: normalizeText(service.name),
+        key: normalizeText(service.name),
+        subCategories: subCategoriesByServiceId.get(Number(service.id)) || [],
+      })),
     niches: (Array.isArray(niches) ? niches : [])
       .map((entry) => normalizeText(entry?.name))
       .filter(Boolean),

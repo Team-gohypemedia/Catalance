@@ -359,7 +359,7 @@ const ActiveProjectPaymentsPanel = ({
   if (!project) {
     return (
       <div className="rounded-[24px] border border-border bg-card p-5 sm:p-6">
-        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Active Project Payments</h2>
+        <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">Active Project Payments</h2>
         <div className="mt-5 rounded-[18px] border border-dashed border-border bg-muted/50 p-5 text-center sm:p-6">
           <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-muted text-primary">
             <CreditCard className="size-6" />
@@ -405,7 +405,7 @@ const ActiveProjectPaymentsPanel = ({
 
   return (
     <div className="rounded-[24px] border border-border bg-card p-5 sm:p-6">
-      <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Active Project Payments</h2>
+      <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">Active Project Payments</h2>
 
       <div className="mt-5 rounded-[18px] border border-white/[0.05] bg-card p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)] sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -1366,7 +1366,7 @@ const ClientPaymentsContent = () => {
                   <div className="flex-1 rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
                     <div className="flex flex-col gap-3">
                       <div className="space-y-2">
-                        <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[2rem]">Project billing</h2>
+                        <h2 className="text-[22px] sm:text-[2rem] font-semibold tracking-[-0.03em] text-foreground">Project billing</h2>
                         <p className="text-sm text-muted-foreground">
                           {selectedProject
                             ? `Showing every invoice, paid amount, and outstanding balance for ${selectedProject.projectLabel}.`
@@ -1387,7 +1387,7 @@ const ClientPaymentsContent = () => {
 
                 <div className="space-y-6">
                   <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">
+                    <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
                       Recent Transactions
                     </h2>
 
@@ -1424,7 +1424,7 @@ const ClientPaymentsContent = () => {
                   </div>
 
                   <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Billing tools</h2>
+                    <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">Billing tools</h2>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Quick access to payment methods, invoices, and escrow visibility.
                     </p>
@@ -1457,7 +1457,7 @@ const ClientPaymentsContent = () => {
                   </div>
 
                   <div className="rounded-[24px] border border-white/[0.05] bg-card p-5 sm:p-6">
-                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.03em] text-foreground sm:text-[1.8rem]">Monthly spend</h2>
+                    <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">Monthly spend</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {selectedProject
                         ? `Showing spend only for ${selectedProject.title}.`
