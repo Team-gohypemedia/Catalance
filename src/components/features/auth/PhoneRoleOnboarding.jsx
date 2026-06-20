@@ -9,7 +9,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import ProfilePhotoCameraDialog from "@/components/common/ProfilePhotoCameraDialog";
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
 import { useAuth } from "@/shared/context/AuthContext";
-import { updateProfile } from "@/shared/lib/api-client";
+import { updateProfile, requestWhatsappOtp, verifyWhatsappOtp } from "@/shared/lib/api-client";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { COUNTRY_CODES } from "@/shared/data/countryCodes";
 import {
   CLIENT_DASHBOARD,
@@ -227,6 +233,26 @@ function PhoneRoleOnboarding() {
   const deviceInputRef = useRef(null);
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
+
+  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [isResending, setIsResending] = useState(false);
+  const [resendCooldownAt, setResendCooldownAt] = useState(null);
+  const [resendCooldownSeconds, setResendCooldownSeconds] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = Date.now();
+      if (resendCooldownAt && now < resendCooldownAt) {
+        setResendCooldownSeconds(Math.ceil((resendCooldownAt - now) / 1000));
+      } else {
+        setResendCooldownSeconds(0);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldownAt]);
+
   useEffect(() => {
     document.documentElement.classList.add("onboarding-page");
     return () => document.documentElement.classList.remove("onboarding-page");
@@ -390,6 +416,52 @@ function PhoneRoleOnboarding() {
 
     setFormErrors({});
 
+    if (slide.id === "details" && phoneDigits && (phoneDigits !== normalizePhoneNumber(initialPhoneValue) || !initialPhoneValue)) {
+      if (!isOtpStep) {
+        setIsSaving(true);
+        const toastId = toast.loading("Sending WhatsApp code...");
+        try {
+          await requestWhatsappOtp({
+            countryCode: selectedCountry.dialCode,
+            phoneNumber: phoneDigits,
+          });
+          setResendCooldownAt(Date.now() + 60 * 1000); // 1 minute cooldown
+          toast.success(`6-digit WhatsApp code sent!`, { id: toastId });
+          setIsOtpStep(true);
+          setOtpError("");
+          setOtp("");
+        } catch (error) {
+          toast.error(error?.message || "Failed to send WhatsApp code.", { id: toastId });
+        } finally {
+          setIsSaving(false);
+        }
+        return;
+      } else {
+        if (!otp || otp.length < 6) {
+          setOtpError("Please enter the 6-digit WhatsApp code.");
+          return;
+        }
+        setIsSaving(true);
+        const toastId = toast.loading("Verifying code...");
+        try {
+          await verifyWhatsappOtp({
+            countryCode: selectedCountry.dialCode,
+            phoneNumber: phoneDigits,
+            otp,
+          });
+          toast.success("Phone verified!", { id: toastId });
+          setOtpError("");
+        } catch (error) {
+          const errMsg = error?.message || "Invalid or expired WhatsApp code.";
+          setOtpError(errMsg);
+          toast.error(errMsg, { id: toastId });
+          setIsSaving(false);
+          return;
+        }
+        setIsSaving(false);
+      }
+    }
+
     if (!isLastSlide && !hasLockedRole) {
       setIsTransitioning(true);
       const progressToastId = toast.loading("Preparing the next step...");
@@ -474,235 +546,323 @@ function PhoneRoleOnboarding() {
     setActiveSlide((current) => Math.max(current - 1, 0));
   };
 
+  const handleResendOtp = async () => {
+    if (resendCooldownSeconds > 0 || isResending || isSaving) return;
+
+    setIsResending(true);
+    setOtpError("");
+    const toastId = toast.loading("Resending WhatsApp code...");
+
+    try {
+      await requestWhatsappOtp({
+        countryCode: selectedCountry.dialCode,
+        phoneNumber: phoneDigits,
+      });
+      setResendCooldownAt(Date.now() + 60 * 1000); // 1 minute cooldown
+      toast.success(`6-digit WhatsApp code resent!`, { id: toastId });
+    } catch (error) {
+      toast.error(error?.message || "Failed to resend WhatsApp code.", { id: toastId });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const renderSlideContent = () => {
     if (slide.id === "details") {
       return (
         <div className="space-y-2.5">
-          <div className="flex h-full flex-col items-center text-center">
-            <div className="flex flex-col items-center gap-2 md:pt-1 lg:gap-2 lg:pt-0">
-              <div className="relative w-fit">
-                <Popover open={isPhotoMenuOpen} onOpenChange={setIsPhotoMenuOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      disabled={isSaving}
-                      aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
-                      className="group relative flex size-24 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-black/10 dark:border-white/20 bg-black/5 dark:bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-background sm:size-28"
-                    >
-                      {hasProfilePhoto ? (
-                        <img
-                          src={profileImage}
-                          alt="Profile preview"
-                          className="size-full object-cover"
-                          onError={() => setProfileImage("")}
-                        />
-                      ) : (
-                        <Camera className="size-7 transition group-hover:scale-[1.04]" />
-                      )}
-                    </button>
-                  </PopoverTrigger>
-
-                  <PopoverContent
-                    align="center"
-                    sideOffset={10}
-                    className="w-56 rounded-[18px] border border-black/10 dark:border-white/10 bg-white dark:bg-[#161616] p-1 text-black dark:text-white shadow-2xl backdrop-blur-xl"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsPhotoMenuOpen(false);
-                        setIsCameraOpen(true);
-                      }}
-                      disabled={isSaving}
-                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Camera className="size-4 text-primary" />
-                      <span>Take a picture</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsPhotoMenuOpen(false);
-                        deviceInputRef.current?.click();
-                      }}
-                      disabled={isSaving}
-                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      <Upload className="size-4 text-primary" />
-                      <span>Choose from device</span>
-                    </button>
-                  </PopoverContent>
-                </Popover>
-
-                <input
-                  ref={deviceInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleProfileImageChange}
-                  disabled={isSaving}
-                />
-
-                {hasProfilePhoto ? (
-                  <button
-                    type="button"
-                    onClick={handleProfileImageRemove}
-                    aria-label="Remove profile photo"
-                    className="absolute right-0 top-0 flex size-7 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-white dark:bg-[#101010] text-black/75 dark:text-white/75 shadow-md transition-colors hover:border-black/20 dark:hover:border-white/20 hover:text-black dark:hover:text-white"
-                  >
-                    <X className="size-3" />
-                  </button>
-                ) : null}
-
-                <ProfilePhotoCameraDialog
-                  open={isCameraOpen}
-                  onOpenChange={setIsCameraOpen}
-                  onCapture={handleProfileImageSelect}
-                />
+          {isOtpStep ? (
+            <div className="flex flex-col items-center justify-center space-y-6 py-6">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-2 text-black dark:text-white">Verify your phone</h3>
+                <p className="text-sm text-black/60 dark:text-white/60">
+                  Enter the 6-digit WhatsApp code sent to<br/>
+                  <span className="font-medium text-black dark:text-white">+{selectedCountry?.dialCode?.replace(/\D/g, "")} {phoneDigits}</span>
+                </p>
               </div>
-
-              <div className="space-y-0.5">
-                <p className={cn(fieldLabelClassName, "text-black dark:text-white mb-0")}>
-                  Profile Photo
-                </p>
-                <p className="text-xs text-black/55 dark:text-white/55">
-                  JPG, PNG or GIF. Max 5MB.
-                </p>
+              <div className="flex flex-col items-center w-full max-w-[380px] mx-auto">
+                <InputOTP
+                  maxLength={6}
+                  pattern={REGEXP_ONLY_DIGITS}
+                  value={otp}
+                  onChange={(val) => {
+                    setOtp(val);
+                    setOtpError("");
+                  }}
+                  disabled={isSaving}
+                  autoFocus
+                  containerClassName="w-full justify-center px-2"
+                >
+                  <InputOTPGroup className="justify-center">
+                    <InputOTPSlot index={0} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
+                    <InputOTPSlot index={1} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
+                    <InputOTPSlot index={2} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
+                    <InputOTPSlot index={3} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
+                    <InputOTPSlot index={4} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
+                    <InputOTPSlot index={5} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
+                  </InputOTPGroup>
+                </InputOTP>
+                {otpError && (
+                  <p className="mt-3 text-sm font-medium text-red-500">{otpError}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsOtpStep(false);
+                    setOtpError("");
+                    setOtp("");
+                  }}
+                  disabled={isSaving || isResending}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Change phone number
+                </button>
+                <span className="text-black/20 dark:text-white/20">|</span>
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldownSeconds > 0 || isSaving || isResending}
+                  className="text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:hover:no-underline"
+                >
+                  {isResending
+                    ? "Resending..."
+                    : resendCooldownSeconds > 0
+                      ? `Resend in ${resendCooldownSeconds}s`
+                      : "Resend code"}
+                </button>
               </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="flex h-full flex-col items-center text-center">
+                <div className="flex flex-col items-center gap-2 md:pt-1 lg:gap-2 lg:pt-0">
+                  <div className="relative w-fit">
+                    <Popover open={isPhotoMenuOpen} onOpenChange={setIsPhotoMenuOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          disabled={isSaving}
+                          aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
+                          className="group relative flex size-24 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-black/10 dark:border-white/20 bg-black/5 dark:bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-background sm:size-28"
+                        >
+                          {hasProfilePhoto ? (
+                            <img
+                              src={profileImage}
+                              alt="Profile preview"
+                              className="size-full object-cover"
+                              onError={() => setProfileImage("")}
+                            />
+                          ) : (
+                            <Camera className="size-7 transition group-hover:scale-[1.04]" />
+                          )}
+                        </button>
+                      </PopoverTrigger>
 
-          <ProfileImageCropDialog
-            key={profileImageCropSession}
-            open={isProfileCropOpen}
-            file={pendingProfileImageFile}
-            maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
-            onApply={handleProfileImageCropped}
-            onCancel={handleProfileImageCropCancel}
-          />
-
-          <div className="grid gap-3">
-            <label className="block space-y-0.5 text-left">
-              <span className={fieldLabelClassName}>
-                Full name
-              </span>
-              <div className="relative">
-                <Input
-                  type="text"
-                  autoComplete="name"
-                  value={fullName}
-                  disabled={isSaving}
-                  onChange={(event) => {
-                    setFullName(event.target.value);
-                    setFormErrors({});
-                  }}
-                  placeholder="Enter your full name"
-                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                />
-                <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
-              </div>
-            </label>
-
-            <label className="block space-y-0.5 text-left">
-              <span className={fieldLabelClassName}>
-                {isEmailRequired ? "Email address" : "Email address (optional)"}
-              </span>
-              <div className="relative">
-                <Input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  disabled={isSaving || isEmailLocked}
-                  onChange={(event) => {
-                    setEmail(event.target.value);
-                    setFormErrors({});
-                  }}
-                  placeholder="Enter your email address"
-                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                />
-                <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
-              </div>
-            </label>
-
-            <label className="block space-y-0.5 text-left">
-              <span className={fieldLabelClassName}>
-                Phone number <span className="text-muted-foreground font-normal text-xs ml-1">(required)</span>
-              </span>
-              <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
-                <Select
-                  value={countryCode}
-                  onValueChange={(value) => {
-                    setCountryCode(value);
-                    setFormErrors({});
-                  }}
-                  disabled={isSaving}
-                >
-                  <SelectTrigger
-                    type="button"
-                    aria-label="Select country code"
-                    className="!h-10 w-full cursor-pointer rounded-md border-black/15 dark:border-white/10 bg-black/[0.03] dark:bg-[#171717] px-2.5 text-black dark:text-white"
-                  >
-                    <div className="pointer-events-none flex items-center justify-center select-none">
-                      <FlagIcon code={selectedCountry.code} className="h-5 w-5" />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent
-                    position="popper"
-                    sideOffset={8}
-                    className="z-[60] min-w-[18rem] border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] text-black dark:text-white shadow-2xl sm:min-w-[26rem]"
-                  >
-                    {COUNTRY_OPTIONS.map((option) => (
-                      <SelectItem
-                        key={option.code}
-                        value={option.code}
-                        className="group cursor-pointer text-black dark:text-white data-[highlighted]:bg-black/5 dark:data-[highlighted]:bg-white/5 data-[highlighted]:text-black dark:data-[highlighted]:text-white pr-8 group-data-[state=checked]:pr-14"
+                      <PopoverContent
+                        align="center"
+                        sideOffset={10}
+                        className="w-56 rounded-[18px] border border-black/10 dark:border-white/10 bg-white dark:bg-[#161616] p-1 text-black dark:text-white shadow-2xl backdrop-blur-xl"
                       >
-                        <span className="flex w-full items-center gap-0">
-                          <FlagIcon code={option.code} className="h-5 w-5" />
-                          <span className="min-w-0 flex-1 truncate text-[13px] ml-3">{option.label}</span>
-                          <span className="text-black/45 dark:text-white/45 text-[13px] absolute right-3 group-data-[state=checked]:right-8">
-                            +{option.dialCode.replace(/\D/g, "")}
-                          </span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsPhotoMenuOpen(false);
+                            setIsCameraOpen(true);
+                          }}
+                          disabled={isSaving}
+                          className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Camera className="size-4 text-primary" />
+                          <span>Take a picture</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsPhotoMenuOpen(false);
+                            deviceInputRef.current?.click();
+                          }}
+                          disabled={isSaving}
+                          className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          <Upload className="size-4 text-primary" />
+                          <span>Choose from device</span>
+                        </button>
+                      </PopoverContent>
+                    </Popover>
 
-                <div className="relative">
-                  <Input
-                    type="tel"
-                    inputMode="numeric"
-                    autoComplete="tel"
-                    value={phoneNumber}
-                    disabled={isSaving}
-                    onChange={(event) => {
-                      let digits = event.target.value.replace(/\D/g, "");
-                      if (digits.startsWith("0") && digits.length === 11) {
-                        digits = digits.slice(1);
-                      }
-                      if (countryCode === "IN") {
-                        if (/^[^6-9]/.test(digits)) {
-                          toast.error("Indian phone numbers must start with 6, 7, 8, or 9.", { id: "invalid-in-phone" });
-                        }
-                        digits = digits.replace(/^[^6-9]+/, "");
-                        setPhoneNumber(digits.slice(0, 10));
-                      } else {
-                        setPhoneNumber(digits.slice(0, 15));
-                      }
-                      setFormErrors({});
-                    }}
-                    placeholder="1234567890"
-                    className="!h-10 w-full rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                  />
-                  <Phone className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+                    <input
+                      ref={deviceInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleProfileImageChange}
+                      disabled={isSaving}
+                    />
+
+                    {hasProfilePhoto ? (
+                      <button
+                        type="button"
+                        onClick={handleProfileImageRemove}
+                        aria-label="Remove profile photo"
+                        className="absolute right-0 top-0 flex size-7 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-white dark:bg-[#101010] text-black/75 dark:text-white/75 shadow-md transition-colors hover:border-black/20 dark:hover:border-white/20 hover:text-black dark:hover:text-white"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    ) : null}
+
+                    <ProfilePhotoCameraDialog
+                      open={isCameraOpen}
+                      onOpenChange={setIsCameraOpen}
+                      onCapture={handleProfileImageSelect}
+                    />
+                  </div>
+
+                  <div className="space-y-0.5">
+                    <p className={cn(fieldLabelClassName, "text-black dark:text-white mb-0")}>
+                      Profile Photo
+                    </p>
+                    <p className="text-xs text-black/55 dark:text-white/55">
+                      JPG, PNG or GIF. Max 5MB.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </label>
-          </div>
 
-          {formErrors.details && (
-            <p className="text-xs text-red-500">{formErrors.details}</p>
+              <ProfileImageCropDialog
+                key={profileImageCropSession}
+                open={isProfileCropOpen}
+                file={pendingProfileImageFile}
+                maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
+                onApply={handleProfileImageCropped}
+                onCancel={handleProfileImageCropCancel}
+              />
+
+              <div className="grid gap-3">
+                <label className="block space-y-0.5 text-left">
+                  <span className={fieldLabelClassName}>
+                    Full name
+                  </span>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      autoComplete="name"
+                      value={fullName}
+                      disabled={isSaving}
+                      onChange={(event) => {
+                        setFullName(event.target.value);
+                        setFormErrors({});
+                      }}
+                      placeholder="Enter your full name"
+                      className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                    />
+                    <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+                  </div>
+                </label>
+
+                <label className="block space-y-0.5 text-left">
+                  <span className={fieldLabelClassName}>
+                    {isEmailRequired ? "Email address" : "Email address (optional)"}
+                  </span>
+                  <div className="relative">
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      disabled={isSaving || isEmailLocked}
+                      onChange={(event) => {
+                        setEmail(event.target.value);
+                        setFormErrors({});
+                      }}
+                      placeholder="Enter your email address"
+                      className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                    />
+                    <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+                  </div>
+                </label>
+
+                <label className="block space-y-0.5 text-left">
+                  <span className={fieldLabelClassName}>
+                    Phone number <span className="text-muted-foreground font-normal text-xs ml-1">(required)</span>
+                  </span>
+                  <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
+                    <Select
+                      value={countryCode}
+                      onValueChange={(value) => {
+                        setCountryCode(value);
+                        setFormErrors({});
+                      }}
+                      disabled={isSaving}
+                    >
+                      <SelectTrigger
+                        type="button"
+                        aria-label="Select country code"
+                        className="!h-10 w-full cursor-pointer rounded-md border-black/15 dark:border-white/10 bg-black/[0.03] dark:bg-[#171717] px-2.5 text-black dark:text-white"
+                      >
+                        <div className="pointer-events-none flex items-center justify-center select-none">
+                          <FlagIcon code={selectedCountry.code} className="h-5 w-5" />
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent
+                        position="popper"
+                        sideOffset={8}
+                        className="z-[60] min-w-[18rem] border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] text-black dark:text-white shadow-2xl sm:min-w-[26rem]"
+                      >
+                        {COUNTRY_OPTIONS.map((option) => (
+                          <SelectItem
+                            key={option.code}
+                            value={option.code}
+                            className="group cursor-pointer text-black dark:text-white data-[highlighted]:bg-black/5 dark:data-[highlighted]:bg-white/5 data-[highlighted]:text-black dark:data-[highlighted]:text-white pr-8 group-data-[state=checked]:pr-14"
+                          >
+                            <span className="flex w-full items-center gap-0">
+                              <FlagIcon code={option.code} className="h-5 w-5" />
+                              <span className="min-w-0 flex-1 truncate text-[13px] ml-3">{option.label}</span>
+                              <span className="text-black/45 dark:text-white/45 text-[13px] absolute right-3 group-data-[state=checked]:right-8">
+                                +{option.dialCode.replace(/\D/g, "")}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="relative">
+                      <Input
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel"
+                        value={phoneNumber}
+                        disabled={isSaving}
+                        onChange={(event) => {
+                          let digits = event.target.value.replace(/\D/g, "");
+                          if (digits.startsWith("0") && digits.length === 11) {
+                            digits = digits.slice(1);
+                          }
+                          if (countryCode === "IN") {
+                            if (/^[^6-9]/.test(digits)) {
+                              toast.error("Indian phone numbers must start with 6, 7, 8, or 9.", { id: "invalid-in-phone" });
+                            }
+                            digits = digits.replace(/^[^6-9]+/, "");
+                            setPhoneNumber(digits.slice(0, 10));
+                          } else {
+                            setPhoneNumber(digits.slice(0, 15));
+                          }
+                          setFormErrors({});
+                        }}
+                        placeholder="1234567890"
+                        className="!h-10 w-full rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                      />
+                      <Phone className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {formErrors.details && (
+                <p className="text-xs text-red-500">{formErrors.details}</p>
+              )}
+            </>
           )}
         </div>
       );

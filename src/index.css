@@ -710,7 +710,7 @@ html.onboarding-page:not(.dark) main [class*="bg-[#2a2a2a]"]:hover {
 }
 
 /* Inputs, textareas, selects */
-html.onboarding-page:not(.dark) main input,
+html.onboarding-page:not(.dark) main input:not([data-input-otp]):not([data-input-otp-input]),
 html.onboarding-page:not(.dark) main select,
 html.onboarding-page:not(.dark) main textarea,
 html.onboarding-page:not(.dark) main [class*="SelectTrigger"] {
@@ -729,7 +729,7 @@ html.onboarding-page:not(.dark) main [class*="focus:bg-white/10"] * {
   color: #1C1B1F !important;
 }
 
-html.onboarding-page:not(.dark) main input::placeholder,
+html.onboarding-page:not(.dark) main input:not([data-input-otp]):not([data-input-otp-input])::placeholder,
 html.onboarding-page:not(.dark) main textarea::placeholder {
   color: #000000 !important;
   opacity: 0.65 !important;
@@ -1143,3 +1143,15 @@ html.dark .onboarding-skip-btn:hover {
 
 
 
+
+/* Ensure InputOTP invisible input is never styled by global input rules */
+input[data-input-otp],
+input[data-input-otp="true"],
+input[data-input-otp-input] {
+  color: transparent !important;
+  background-color: transparent !important;
+  caret-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
