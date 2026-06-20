@@ -1268,6 +1268,7 @@ const appendSpeechTranscript = (
         .trim();
 
 const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
+const NONE_LIKE_OPTION_REGEX = /^(?:none|none of the above|none above|nothing yet|nothing available|no assets yet|no materials yet)$/i;
 const AUTO_HELPER_QUESTION_REGEX = /\b(budget|price|pricing|cost|timeline|ready|launch|deadline|when would you like|when do you want|how soon)\b/i;
 const AUTO_RECOMMEND_OPTION_VALUE = 'Recommend best option';
 const RECOMMENDATION_ACCEPTANCE_PATTERNS = [
@@ -1380,7 +1381,7 @@ const AssistantMessageBody = ({
         forceInteractiveOptions,
     });
     const hasStructuredQuestion = Boolean(questionText) || options.length > 0;
-    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[13px] leading-normal prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0.5 prose-strong:font-semibold prose-headings:font-semibold ${isDark
+    const assistantMarkdownClassName = `prose prose-sm max-w-none break-words text-[13px] leading-normal prose-p:my-0.5 prose-ul:my-0.5 prose-ol:my-0.5 prose-li:my-0.5 prose-strong:font-normal prose-headings:font-normal ${isDark
         ? 'prose-invert prose-p:text-slate-100 prose-li:text-slate-100 prose-headings:text-white prose-a:text-primary'
         : 'prose-p:text-slate-700 prose-li:text-slate-700 prose-headings:text-slate-900 prose-a:text-primary'
         }`;
@@ -1495,6 +1496,12 @@ const stripMarkdownDecorators = (value = '') =>
     String(value)
         .replace(/\*\*/g, '')
         .replace(/`/g, '')
+        .trim();
+
+const toSingleLinePlaceholder = (value = '') =>
+    String(value || '')
+        .replace(/\r?\n+/g, ' ')
+        .replace(/\s{2,}/g, ' ')
         .trim();
 
 const normalizeHelperIntentText = (value = '') =>
@@ -2933,6 +2940,7 @@ const GuestAIDemo = () => {
     const [pendingOptionFollowup, setPendingOptionFollowup] = useState(null);
     const [isRecommendationPanelOpen, setIsRecommendationPanelOpen] = useState(false);
     const [usedRecommendationKey, setUsedRecommendationKey] = useState('');
+    const [attentionRecommendationKey, setAttentionRecommendationKey] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
     const [sidebarSize, setSidebarSize] = useState(() => readStoredSidebarSize());
@@ -3365,7 +3373,13 @@ const GuestAIDemo = () => {
             ? ((pendingOptionFollowup?.autoSuggestion || isNotSureFollowup) ? "Asking AI for a recommendation..." : "Asking AI for advice...")
             : (pendingOptionFollowup?.notice || contextualPendingOptionHelperCopy.notice || pendingOptionNotice)
     );
-    const contextualPendingOptionPlaceholder = stripMarkdownDecorators(pendingOptionFollowup?.loadingAdvice ? "Please wait..." : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder));
+    const contextualPendingOptionPlaceholder = toSingleLinePlaceholder(
+        stripMarkdownDecorators(
+            pendingOptionFollowup?.loadingAdvice
+                ? "Please wait..."
+                : (pendingOptionFollowup?.placeholder || contextualPendingOptionHelperCopy.placeholder || pendingOptionPlaceholder)
+        )
+    );
     const pendingRecommendedAnswer = resolvePendingRecommendedAnswer({
         pendingFollowup: pendingOptionFollowup,
         notice: contextualPendingOptionNotice,
@@ -3376,6 +3390,13 @@ const GuestAIDemo = () => {
         activeRecommendationKey
         && usedRecommendationKey
         && activeRecommendationKey === usedRecommendationKey
+    );
+    const shouldPulseRecommendationBulb = Boolean(
+        isPendingOptionFollowup
+        && activeRecommendationKey
+        && attentionRecommendationKey === activeRecommendationKey
+        && !isRecommendationPanelOpen
+        && !isCurrentRecommendationUsed
     );
     const shouldForceRecommendationPopup = Boolean(inputConfig?.showRecommendationPopup);
     const shouldDisableAutoRecommendationPopup = Boolean(inputConfig?.disableAutoRecommendationPopup);
@@ -3402,6 +3423,25 @@ const GuestAIDemo = () => {
             setUsedRecommendationKey('');
         }
     }, [pendingOptionFollowup]);
+
+    useEffect(() => {
+        if (!isPendingOptionFollowup || !activeRecommendationKey || isCurrentRecommendationUsed) {
+            setAttentionRecommendationKey('');
+            return;
+        }
+        setAttentionRecommendationKey(activeRecommendationKey);
+    }, [
+        activeRecommendationKey,
+        isCurrentRecommendationUsed,
+        isPendingOptionFollowup,
+    ]);
+
+    useEffect(() => {
+        if (!isRecommendationPanelOpen || !activeRecommendationKey) return;
+        setAttentionRecommendationKey((current) => (
+            current === activeRecommendationKey ? '' : current
+        ));
+    }, [activeRecommendationKey, isRecommendationPanelOpen]);
 
     const optionIsSelected = (value = '') =>
         selectedOptions.some((selected) => normalizeOptionToken(selected) === normalizeOptionToken(value));
@@ -3496,7 +3536,7 @@ const GuestAIDemo = () => {
                     ...current,
                     loadingAdvice: false,
                     notice: stripMarkdownDecorators(data?.notice || fallbackNotice),
-                    placeholder: stripMarkdownDecorators(data?.placeholder || fallbackPlaceholder),
+                    placeholder: toSingleLinePlaceholder(stripMarkdownDecorators(data?.placeholder || fallbackPlaceholder)),
                     recommendedAnswer: stripMarkdownDecorators(String(data?.recommendedAnswer || localRecommendedAnswer || '').trim()),
                 };
             });
@@ -3510,7 +3550,7 @@ const GuestAIDemo = () => {
                     ...current,
                     loadingAdvice: false,
                     notice: stripMarkdownDecorators(fallbackNotice),
-                    placeholder: stripMarkdownDecorators(fallbackPlaceholder),
+                    placeholder: toSingleLinePlaceholder(stripMarkdownDecorators(fallbackPlaceholder)),
                     recommendedAnswer: stripMarkdownDecorators(String(current?.recommendedAnswer || localRecommendedAnswer || '').trim()),
                 };
             });
@@ -3530,19 +3570,30 @@ const GuestAIDemo = () => {
         if (!resolvedValue) return;
 
         const needsFreeformFollowup = requiresFreeformOptionFollowup(resolvedValue);
+        const isNoneLikeOption = NONE_LIKE_OPTION_REGEX.test(String(resolvedValue || '').trim());
 
         if (isMultiInput) {
+            if (isNoneLikeOption) {
+                setPendingOptionFollowup(null);
+                setSelectedOptions([resolvedValue]);
+                handleSendMessage(null, [resolvedValue], { ignorePendingOptionFollowup: true });
+                return;
+            }
+
             const alreadySelected = optionIsSelected(resolvedValue);
             setSelectedOptions((prev) => {
+                const withoutNoneLike = prev.filter(
+                    (value) => !NONE_LIKE_OPTION_REGEX.test(String(value || '').trim())
+                );
                 const alreadyChosen = prev.some(
                     (v) => normalizeOptionToken(v) === normalizeOptionToken(resolvedValue)
                 );
                 if (alreadyChosen) {
-                    return prev.filter(
+                    return withoutNoneLike.filter(
                         (v) => normalizeOptionToken(v) !== normalizeOptionToken(resolvedValue)
                     );
                 }
-                return [...prev, resolvedValue];
+                return [...withoutNoneLike, resolvedValue];
             });
 
             if (needsFreeformFollowup) {
@@ -4283,7 +4334,7 @@ const GuestAIDemo = () => {
                 )
                 : [{
                     role: 'assistant',
-                    content: sanitizeAssistantContent(data.message || `Hello! I see you're interested in **${service.name}**.`),
+                    content: sanitizeAssistantContent(data.message || `Hello! I see you're interested in ${service.name}.`),
                     thinkingMeta: completedThinkingMeta,
                 }];
 
@@ -6370,12 +6421,12 @@ const GuestAIDemo = () => {
                                     }}
                                     rows={1}
                                     placeholder={composerPlaceholder}
-                                    className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] w-full resize-none bg-transparent px-[clamp(0.75rem,3vw,1rem)] py-[clamp(0.65rem,2.8vw,0.75rem)] text-[clamp(0.95rem,3.6vw,1rem)] outline-none md:min-h-[44px] md:px-4 md:py-3 md:text-base ${isDark
+                                    className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] w-full resize-none overflow-y-hidden bg-transparent px-[clamp(0.75rem,3vw,1rem)] py-[clamp(0.65rem,2.8vw,0.75rem)] text-[clamp(0.95rem,3.6vw,1rem)] outline-none placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap md:min-h-[44px] md:px-4 md:py-3 md:text-base ${isDark
                                         ? 'text-white placeholder:text-slate-400'
                                         : 'text-slate-900 placeholder:text-slate-500'
                                         }`}
                                     disabled={isTyping || isUploadingAttachment}
-                                    style={{ overflowY: 'auto' }}
+                                    style={{ overflowY: input.trim() ? 'auto' : 'hidden' }}
                                 />
                             </div>
                         </div>
@@ -6416,13 +6467,22 @@ const GuestAIDemo = () => {
                                     size="icon"
                                     type="button"
                                     variant="ghost"
-                                    onClick={() => setIsRecommendationPanelOpen((current) => !current)}
+                                    onClick={() => {
+                                        setAttentionRecommendationKey((current) => (
+                                            current === activeRecommendationKey ? '' : current
+                                        ));
+                                        setIsRecommendationPanelOpen((current) => !current);
+                                    }}
                                     className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full border md:h-9 md:w-9 ${isCurrentRecommendationUsed
                                         ? isDark
                                             ? 'border-white/10 text-slate-500 hover:bg-white/10 hover:text-slate-300'
                                             : 'border-slate-300 text-slate-400 hover:bg-black/5 hover:text-slate-600'
                                         : isRecommendationPanelOpen
                                             ? 'border-primary bg-primary text-primary-foreground'
+                                            : shouldPulseRecommendationBulb
+                                                ? isDark
+                                                    ? 'border-[#ffd54a] bg-[#3b3200] text-[#ffd54a] shadow-[0_0_0_1px_rgba(255,213,74,0.35),0_0_18px_rgba(255,213,74,0.45)] animate-pulse'
+                                                    : 'border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_rgba(217,105,42,0.18),0_0_18px_rgba(217,105,42,0.28)] animate-pulse'
                                             : isDark
                                                 ? 'border-white/10 bg-[#2F2F2F] text-[#ffd54a] hover:bg-[#383838]'
                                                 : 'border-slate-200 bg-white text-primary hover:bg-primary/5'
@@ -6885,7 +6945,7 @@ const GuestAIDemo = () => {
                                                     ? 'bg-[#2F2F2F] text-white'
                                                     : 'bg-[#F0F0F0] text-slate-900'
                                                 }`}>
-                                                <div className={`prose prose-sm max-w-none prose-p:my-0 prose-strong:font-semibold ${isDark ? 'prose-invert' : ''}`}>
+                                                <div className={`prose prose-sm max-w-none prose-p:my-0 prose-strong:font-normal prose-headings:font-normal ${isDark ? 'prose-invert' : ''}`}>
                                                     <ReactMarkdown>{messageContent}</ReactMarkdown>
                                                 </div>
                                             </div>

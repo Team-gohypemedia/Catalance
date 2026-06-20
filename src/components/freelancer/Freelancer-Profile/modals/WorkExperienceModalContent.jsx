@@ -47,7 +47,7 @@ const WorkExperienceModalContent = ({
               }))
             }
             placeholder="e.g. Full Stack & AI Developer"
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
+            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:text-[13px] focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
           />
         </label>
 
@@ -64,7 +64,7 @@ const WorkExperienceModalContent = ({
               }))
             }
           >
-            <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none dark:bg-background">
+            <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
               <SelectValue placeholder="Select employment type" />
             </SelectTrigger>
             <SelectContent>
@@ -97,7 +97,7 @@ const WorkExperienceModalContent = ({
               }))
             }
             placeholder="e.g. Go Hype Media"
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
+            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:text-[13px] focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
           />
         </label>
 
@@ -138,7 +138,7 @@ const WorkExperienceModalContent = ({
                   }))
                 }
               >
-                <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none dark:bg-background">
+                <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                   <SelectValue placeholder="Month*" />
                 </SelectTrigger>
                 <SelectContent>
@@ -166,7 +166,7 @@ const WorkExperienceModalContent = ({
                   }))
                 }
               >
-                <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none dark:bg-background">
+                <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                   <SelectValue placeholder="Year*" />
                 </SelectTrigger>
                 <SelectContent>
@@ -201,7 +201,7 @@ const WorkExperienceModalContent = ({
                     }))
                   }
                 >
-                  <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none dark:bg-background">
+                  <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                     <SelectValue placeholder="Month*" />
                   </SelectTrigger>
                   <SelectContent>
@@ -229,7 +229,7 @@ const WorkExperienceModalContent = ({
                     }))
                   }
                 >
-                  <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none dark:bg-background">
+                  <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                     <SelectValue placeholder="Year*" />
                   </SelectTrigger>
                   <SelectContent>
@@ -257,7 +257,7 @@ const WorkExperienceModalContent = ({
               }))
             }
             placeholder="South Delhi, Delhi, India"
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
+            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:text-[13px] focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
           />
         </label>
 
@@ -274,7 +274,7 @@ const WorkExperienceModalContent = ({
               }))
             }
           >
-            <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none dark:bg-background">
+            <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
               <SelectValue placeholder="Select location type" />
             </SelectTrigger>
             <SelectContent>

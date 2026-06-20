@@ -406,6 +406,9 @@ function PhoneRoleOnboarding() {
   };
 
   const handleNext = async (roleOverride = selectedRole) => {
+    if (roleOverride && typeof roleOverride !== "string") {
+      roleOverride = selectedRole;
+    }
     if (isTransitioning || isSaving) return;
 
     const errorMessage = validateCurrentSlide(roleOverride);
@@ -1115,7 +1118,6 @@ function PhoneRoleOnboarding() {
               <button
                 type="submit"
                 disabled={isSaving}
-                onClick={handleNext}
                 className={cn(
                   "group flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[0.95rem] font-bold transition-all duration-200 keep-white",
                   "bg-primary text-white shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"

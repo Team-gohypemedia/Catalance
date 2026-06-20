@@ -2358,6 +2358,20 @@ const buildCapturedCustomOptionForQuestion = (question = {}, answersBySlug = {})
     });
 };
 
+const buildCustomRuntimeOptionCandidate = (question = {}, answersBySlug = {}) => {
+    const customAnswer = getCapturedCustomAnswerForQuestion(question, answersBySlug);
+    if (!customAnswer) return null;
+
+    return normalizeOptionObject({
+        label: customAnswer,
+        value: customAnswer,
+        canonicalLabel: customAnswer,
+        canonicalValue: customAnswer,
+        aliases: [customAnswer, "custom", "other"],
+        requiresFollowup: false,
+    });
+};
+
 const getCanonicalQuestionOptions = (question = {}, controls = null) => {
     if (!Array.isArray(question?.options)) return [];
     const adminControls = controls && typeof controls === "object"
@@ -5019,7 +5033,8 @@ const buildAiFirstRuntimeOptionPrompt = ({
     question = {},
     answersByQuestionText = {},
     answersBySlug = {},
-    allQuestions = []
+    allQuestions = [],
+    customRuntimeOptionCandidate = null,
 }) => {
     const adminControls = getQuestionAdminControls(question, servicePrompt);
     const answersContext = buildAnswersContextLines(answersByQuestionText, {
@@ -5053,6 +5068,9 @@ ${answersContext || "- none yet"}
 Saved AI memory:
 ${savedResponseContext || "- none yet"}
 
+Direct custom answer candidate for this question:
+${JSON.stringify(customRuntimeOptionCandidate?.label || "none")}
+
 ${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)", {
         maxResponseRules: 3,
         maxValidationRules: 3,
@@ -5069,6 +5087,7 @@ Task:
 6. If the context is too weak or generic, return an empty options array.
 7. Do not generate fake brands, impossible tools, or overly random niche options.
 8. If the user context clearly points to a region, stack, market, or integration type, let the options reflect that.
+9. If the direct custom answer candidate is specific and clearly relevant to this exact question, include it as one of the visible options.
 
 Return strict JSON only:
 {
@@ -5093,6 +5112,7 @@ const generateRuntimeOptionsForQuestion = async ({
     const questionType = normalizeTextToken(question?.type || "input");
     const adminControls = getQuestionAdminControls(question, servicePrompt);
     const canonicalOptions = getCanonicalQuestionOptions(question, adminControls);
+    const customRuntimeOptionCandidate = buildCustomRuntimeOptionCandidate(question, answersBySlug);
     if (!OPTION_QUESTION_TYPES.has(questionType)) {
         return [];
     }
@@ -5111,7 +5131,7 @@ const generateRuntimeOptionsForQuestion = async ({
         }
     }
 
-    if (canonicalOptions.length === 0) {
+    if (canonicalOptions.length === 0 && !customRuntimeOptionCandidate) {
         return [];
     }
 
@@ -5121,8 +5141,17 @@ const generateRuntimeOptionsForQuestion = async ({
         question,
         answersByQuestionText,
         answersBySlug,
-        allQuestions
+        allQuestions,
+        customRuntimeOptionCandidate,
     });
+
+    const fallbackOptions = applyAdminControlsToOptions(
+        mergeUniqueOptionsByValue(
+            customRuntimeOptionCandidate ? [customRuntimeOptionCandidate] : [],
+            canonicalOptions
+        ),
+        adminControls
+    );
 
     try {
         const response = await runTrackedAiCall({
@@ -5137,14 +5166,14 @@ const generateRuntimeOptionsForQuestion = async ({
 
         if (!response?.success) {
             console.log(`[Runtime Options] fallback=canonical reason=ai_failure question=${String(question?.slug || question?.text || "question").trim()}`);
-            return canonicalOptions;
+            return fallbackOptions;
         }
 
         const parsed = parseJsonObjectFromRaw(response.message);
         const rows = Array.isArray(parsed?.options) ? parsed.options : [];
         if (rows.length === 0) {
             console.log(`[Runtime Options] fallback=canonical reason=empty_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
-            return canonicalOptions;
+            return fallbackOptions;
         }
 
         const selectedOptions = rows
@@ -5164,13 +5193,16 @@ const generateRuntimeOptionsForQuestion = async ({
             .filter(Boolean);
 
         const finalOptions = applyAdminControlsToOptions(
-            mergeUniqueOptionsByValue(selectedOptions),
+            mergeUniqueOptionsByValue(
+                customRuntimeOptionCandidate ? [customRuntimeOptionCandidate] : [],
+                selectedOptions
+            ),
             adminControls
         );
 
         if (finalOptions.length < 2) {
             console.log(`[Runtime Options] fallback=canonical reason=weak_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
-            return canonicalOptions;
+            return fallbackOptions;
         }
 
         console.log(
@@ -5179,7 +5211,7 @@ const generateRuntimeOptionsForQuestion = async ({
         return finalOptions;
     } catch (error) {
         console.warn("[Runtime Options] Falling back to canonical options:", error?.message || error);
-        return canonicalOptions;
+        return fallbackOptions;
     }
 };
 
@@ -5383,6 +5415,7 @@ ${responseLengthRule}
 - Use simple English with clear sentences.
 - Keep the tone polite, friendly, and enthusiastic in every response.
 - Avoid repeating the same idea in multiple lines.
+- Avoid starting bridge or context sentences with the word "Since".
 - IMPORTANT: If 'side_reply' asks a different question or lists different options than the 'Required next question', you MUST ignore the conflicting parts of 'side_reply' and ONLY ask the 'Required next question'.
 - In normal guided flow, avoid phrases like "I recommend", "best option", "people usually choose", or "people often lean toward" unless the user explicitly asks for a recommendation.
 - Do not skip or replace the required next question.
@@ -7038,6 +7071,38 @@ const stripQuestionnairePhrasing = (text = "") => {
     return cleaned.trim();
 };
 
+const lowercaseMidSentenceStart = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+
+    return source.replace(/^(The|This|That|It|We|You|Your|Our|A|An)\b/, (match) => match.toLowerCase());
+};
+
+const uppercaseSentenceStart = (value = "") => {
+    const source = String(value || "").trim();
+    if (!source) return "";
+
+    return source.replace(/^[a-z]/, (match) => match.toUpperCase());
+};
+
+const rewriteSinceLeadInSentences = (text = "") => {
+    const source = String(text || "");
+    if (!source.trim()) return "";
+
+    return source.replace(
+        /(^|\n\n)(Since\s+([^,\n]+),\s*([^\n]+))/g,
+        (_, prefix, _fullMatch, reason, remainder) => {
+            const normalizedReason = uppercaseSentenceStart(reason);
+            const normalizedRemainder = lowercaseMidSentenceStart(remainder);
+            if (!normalizedReason || !normalizedRemainder) {
+                return `${prefix}${String(_fullMatch || "").trim()}`;
+            }
+
+            return `${prefix}${normalizedReason}, so ${normalizedRemainder}`;
+        }
+    ).trim();
+};
+
 const buildConversationalServiceReply = async ({
     service = {},
     currentQuestion = null,
@@ -7139,8 +7204,10 @@ Return plain text only.
         });
         let cleanedMessage = stripAdminDirectiveLines(
             stripQuestionStepLabels(
-                stripQuestionnairePhrasing(
-                    stripNameNotedRecap(String(aiResponse?.message || "").trim())
+                rewriteSinceLeadInSentences(
+                    stripQuestionnairePhrasing(
+                        stripNameNotedRecap(String(aiResponse?.message || "").trim())
+                    )
                 )
             )
         );
@@ -8614,10 +8681,12 @@ export const guestChat = asyncHandler(async (req, res) => {
 
                 conversationalResponse = stripAdminDirectiveLines(
                     stripQuestionStepLabels(
-                        stripNameNotedRecap(
-                            buildFriendlyMessage(
-                                conversationalResponse,
-                                [attachmentInsightNote, urlInsightNote].filter(Boolean).join(" ")
+                        rewriteSinceLeadInSentences(
+                            stripNameNotedRecap(
+                                buildFriendlyMessage(
+                                    conversationalResponse,
+                                    [attachmentInsightNote, urlInsightNote].filter(Boolean).join(" ")
+                                )
                             )
                         )
                     )
@@ -9080,6 +9149,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     }
 
     responseContent = stripNameNotedRecap(responseContent);
+    responseContent = rewriteSinceLeadInSentences(responseContent);
     responseContent = stripQuestionStepLabels(responseContent);
     responseContent = stripAdminDirectiveLines(responseContent);
 
@@ -9385,6 +9455,7 @@ export const __testables = {
     buildAdminControlSummaryText,
     buildBusinessNameGuardPrompt,
     buildBudgetRuntimeOptions,
+    buildCustomRuntimeOptionCandidate,
     buildDiscoveryCoverageSummary,
     buildCurrentQuestionValidationPrompt,
     buildSupplementalDescriptiveExtractions,
@@ -9407,6 +9478,7 @@ export const __testables = {
     getDisplayedQuestionOptions,
     getBudgetMinimumValidationResult,
     getQuestionAdminControls,
+    rewriteSinceLeadInSentences,
     getSemanticDependentIndexesForChanges,
     getQuestionIdentityType,
     getFastLocalValidationResult,

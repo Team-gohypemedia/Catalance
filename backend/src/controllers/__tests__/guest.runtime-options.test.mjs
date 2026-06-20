@@ -9,6 +9,7 @@ const {
   buildAdminControlSummaryText,
   buildBusinessNameGuardPrompt,
   buildBudgetRuntimeOptions,
+  buildCustomRuntimeOptionCandidate,
   buildDiscoveryCoverageSummary,
   buildCurrentQuestionValidationPrompt,
   buildSupplementalDescriptiveExtractions,
@@ -18,6 +19,7 @@ const {
   buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
   stripAdminDirectiveLines,
+  rewriteSinceLeadInSentences,
   stripAllNumberedOptionLines,
   extractNumberedOptionLabelsFromMessage,
   messageUsesExpectedOptionLabels,
@@ -507,6 +509,26 @@ test("keeps custom off-menu option answers as-is", () => {
   assert.equal(buildQuestionDisplayAnswer(durationQuestion, "4 months", {}), "4 months");
 });
 
+test("builds a custom runtime option candidate from a direct custom answer for the same question", () => {
+  const question = {
+    slug: "payment_gateway",
+    text: "Which payment method do you prefer right now?",
+    type: "single_select",
+    options: [
+      { label: "Razorpay", value: "razorpay" },
+      { label: "PayU", value: "payu" },
+      { label: "Cash on Delivery", value: "cod" },
+    ],
+  };
+
+  const customOption = buildCustomRuntimeOptionCandidate(question, {
+    payment_gateway_other: "Chinese payment gateway",
+  });
+
+  assert.equal(customOption.label, "Chinese payment gateway");
+  assert.equal(customOption.value, "Chinese payment gateway");
+});
+
 test("locks the chat to the originally selected service when another service is mentioned", () => {
   assert.equal(
     buildLockedServiceReply({
@@ -800,6 +822,30 @@ test("strips admin directive lines from assistant output before returning it", (
       "Thanks for sharing.",
       "Tell us a little about your business.",
     ].join("\n")
+  );
+});
+
+test("rewrites repetitive since lead-ins into more natural sentences", () => {
+  assert.equal(
+    rewriteSinceLeadInSentences([
+      "Got it, an e-commerce website.",
+      "",
+      "Since the store setup can vary a lot, it helps if I understand your brand a bit.",
+      "",
+      "What’s your name?",
+    ].join("\n")),
+    [
+      "Got it, an e-commerce website.",
+      "",
+      "The store setup can vary a lot, so it helps if I understand your brand a bit.",
+      "",
+      "What’s your name?",
+    ].join("\n")
+  );
+
+  assert.equal(
+    rewriteSinceLeadInSentences("Since you want an e-commerce website, The product type and audience will shape the design."),
+    "You want an e-commerce website, so the product type and audience will shape the design."
   );
 });
 
