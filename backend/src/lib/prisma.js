@@ -25,8 +25,8 @@ const DEFAULT_NEON_CONNECT_TIMEOUT_SECONDS = "30";
 const DEFAULT_NEON_POOL_TIMEOUT_SECONDS = "60";
 const DEFAULT_NEON_CONNECTION_LIMIT = "5";
 const DEFAULT_NEON_KEEPALIVE_IDLE = "10";
-const DEFAULT_TRANSIENT_RETRY_ATTEMPTS = 5;
-const DEFAULT_TRANSIENT_RETRY_BASE_DELAY_MS = 1000;
+const DEFAULT_TRANSIENT_RETRY_ATTEMPTS = env.NODE_ENV === "development" ? 2 : 5;
+const DEFAULT_TRANSIENT_RETRY_BASE_DELAY_MS = env.NODE_ENV === "development" ? 500 : 1000;
 const RETRYABLE_CONNECTIVITY_CODES = new Set(["P1001", "P1017"]);
 const WRITE_ACTIONS = new Set([
   "create",
@@ -346,3 +346,4 @@ if (!globalForPrisma.__prisma && PrismaClient) {
 
 export const prisma = globalForPrisma.__prisma;
 export { Prisma, prismaInitError };
+

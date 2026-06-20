@@ -8,6 +8,7 @@ import AdminRoute from "@/components/features/auth/AdminRoute";
 import ProtectedRoute from "@/components/features/auth/ProtectedRoute";
 import PublicRoute from "@/components/features/auth/PublicRoute";
 import CataButton from "@/components/common/CataButton";
+import FreelancerOnboardingPage from "@/pages/freelancer/FreelancerOnboarding.jsx";
 import {
   ACCOUNT_ONBOARDING_PATH,
   AGENCY_ONBOARDING_PATH,
@@ -118,9 +119,6 @@ const FreelancerChat = lazy(
 const FreelancerPayments = lazy(
   () => import("@/components/features/freelancer/FreelancerPayments"),
 );
-const FreelancerOnboardingPage = lazy(
-  () => import("@/pages/freelancer/FreelancerOnboarding.jsx"),
-);
 const AgencyOnboardingPage = lazy(
   () => import("@/pages/agency/AgencyOnboarding.jsx"),
 );
@@ -225,6 +223,7 @@ const DashboardRouteTransitionLoader = () => {
     }
 
     if (!isWorkspacePath(previousPath) && !isWorkspacePath(pathname)) {
+      setIsVisible(false);
       return undefined;
     }
 
@@ -921,3 +920,4 @@ const NotFound = () => (
 );
 
 export default App;
+

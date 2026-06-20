@@ -35,7 +35,7 @@ import { rememberDashboardFromPath } from "@/shared/lib/dashboard-preference";
 const AuthContext = createContext(null);
 AuthContext.displayName = "AuthContext";
 
-const VERIFY_TIMEOUT_MS = 10000;
+const VERIFY_TIMEOUT_MS = 5000;
 const PROTECTED_PATH_PREFIXES = [
   "/client",
   "/freelancer",
@@ -88,9 +88,7 @@ export const AuthProvider = ({ children }) => {
 
   const [user, setUser] = useState(initialSession.user);
   const [token, setToken] = useState(initialSession.token);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(
-    initialSession.hasStoredSession
-  );
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false);
   const [pendingLogoutOptions, setPendingLogoutOptions] = useState(null);
 
   const syncSession = useCallback((nextSession) => {
@@ -343,7 +341,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     hasBootstrappedRef.current = true;
-    void verifyUser({ useLoader: true });
+    void verifyUser({ useLoader: false });
   }, [verifyUser]);
 
   useEffect(() => {
@@ -454,4 +452,5 @@ export const useAuth = () => {
 };
 
 export const useOptionalAuth = () => useContext(AuthContext);
+
 

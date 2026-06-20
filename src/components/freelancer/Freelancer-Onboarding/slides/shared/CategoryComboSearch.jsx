@@ -241,11 +241,18 @@ const CategoryMultiSelect = ({
     const toolLabelById = new Map(
       activeToolOptions.map((tool) => [tool.id, tool.label]),
     );
+    const preFetchedOptions = allPreFetchedTools[activeCategoryValue] || [];
+    (Array.isArray(preFetchedOptions) ? preFetchedOptions : []).forEach((tool) => {
+        if (!toolLabelById.has(tool.id)) {
+            toolLabelById.set(toPositiveInteger(tool?.id), String(tool?.label || tool?.name || "").trim());
+        }
+    });
+
     return activeSelectedToolIds.map((toolId) => ({
       id: toolId,
-      label: toolLabelById.get(toolId) || `Skill ${toolId}`,
+      label: toolLabelById.get(toolId) || (isToolsLoading ? "Loading..." : `Skill ${toolId}`),
     }));
-  }, [activeSelectedToolIds, activeToolOptions]);
+  }, [activeSelectedToolIds, activeToolOptions, allPreFetchedTools, activeCategoryValue, isToolsLoading]);
 
   const activeSelectionCount =
     activeSelectedToolEntries.length + activeSelectedCustomSkills.length;
@@ -269,6 +276,12 @@ const CategoryMultiSelect = ({
           String(tool?.label || tool?.name || "").trim(),
         ]),
       );
+      
+      const preFetchedOptions = allPreFetchedTools[categoryKey] || [];
+      (Array.isArray(preFetchedOptions) ? preFetchedOptions : []).forEach((tool) => {
+          toolLabelById.set(toPositiveInteger(tool?.id), String(tool?.label || tool?.name || "").trim());
+      });
+
       const toolEntries = (Array.isArray(entry?.selectedToolIds) ? entry.selectedToolIds : [])
         .map((toolId) => {
           const normalizedToolId = toPositiveInteger(toolId);
@@ -278,7 +291,7 @@ const CategoryMultiSelect = ({
             categoryKey,
             categoryLabel,
             value: String(normalizedToolId),
-            label: toolLabelById.get(normalizedToolId) || `Skill ${normalizedToolId}`,
+            label: toolLabelById.get(normalizedToolId) || (isToolsLoading ? "Loading..." : `Skill ${normalizedToolId}`),
           };
         })
         .filter(Boolean);

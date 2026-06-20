@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
@@ -57,21 +57,21 @@ import {
 } from "./service-details";
 import { getOnboardingSlides as getOnboardingSlideSet } from "./constants";
 import AgencyOnboardingShell from "../Agency-Onboarding/AgencyOnboardingShell";
-import FreelancerWelcomeSlide from "./slides/FreelancerWelcomeSlide";
-import FreelancerWorkPreferenceSlide from "./slides/FreelancerWorkPreferenceSlide";
-import FreelancerIndividualProofSlide from "./slides/FreelancerIndividualProofSlide";
-import FreelancerBasicProfileSlide from "./slides/FreelancerBasicProfileSlide";
-import FreelancerServicesSlide from "./slides/FreelancerServicesSlide";
-import FreelancerServiceSetupSlide from "./slides/FreelancerServiceSetupSlide";
-import FreelancerServiceInfoSlide from "./slides/FreelancerServiceInfoSlide";
-import FreelancerServicePricingSlide from "./slides/FreelancerServicePricingSlide";
-import FreelancerServiceVisualsSlide from "./slides/FreelancerServiceVisualsSlide";
-import FreelancerServiceQuickInfoSlide from "./slides/FreelancerServiceQuickInfoSlide";
-import FreelancerCaseStudySlide from "./slides/FreelancerCaseStudySlide";
-import FreelancerServiceReviewSlide from "./slides/FreelancerServiceReviewSlide";
-import FreelancerAcceptInProgressProjectsSlide from "./slides/FreelancerAcceptInProgressProjectsSlide";
-import FreelancerDeliveryPolicySlide from "./slides/FreelancerDeliveryPolicySlide";
-import FreelancerCommunicationPolicySlide from "./slides/FreelancerCommunicationPolicySlide";
+const FreelancerWelcomeSlide = lazy(() => import("./slides/FreelancerWelcomeSlide"));
+const FreelancerWorkPreferenceSlide = lazy(() => import("./slides/FreelancerWorkPreferenceSlide"));
+const FreelancerIndividualProofSlide = lazy(() => import("./slides/FreelancerIndividualProofSlide"));
+const FreelancerBasicProfileSlide = lazy(() => import("./slides/FreelancerBasicProfileSlide"));
+const FreelancerServicesSlide = lazy(() => import("./slides/FreelancerServicesSlide"));
+const FreelancerServiceSetupSlide = lazy(() => import("./slides/FreelancerServiceSetupSlide"));
+const FreelancerServiceInfoSlide = lazy(() => import("./slides/FreelancerServiceInfoSlide"));
+const FreelancerServicePricingSlide = lazy(() => import("./slides/FreelancerServicePricingSlide"));
+const FreelancerServiceVisualsSlide = lazy(() => import("./slides/FreelancerServiceVisualsSlide"));
+const FreelancerServiceQuickInfoSlide = lazy(() => import("./slides/FreelancerServiceQuickInfoSlide"));
+const FreelancerCaseStudySlide = lazy(() => import("./slides/FreelancerCaseStudySlide"));
+const FreelancerServiceReviewSlide = lazy(() => import("./slides/FreelancerServiceReviewSlide"));
+const FreelancerAcceptInProgressProjectsSlide = lazy(() => import("./slides/FreelancerAcceptInProgressProjectsSlide"));
+const FreelancerDeliveryPolicySlide = lazy(() => import("./slides/FreelancerDeliveryPolicySlide"));
+const FreelancerCommunicationPolicySlide = lazy(() => import("./slides/FreelancerCommunicationPolicySlide"));
 import { useOnboardingTheme } from "./useOnboardingTheme";
 
 const slideRegistry = {
@@ -1154,6 +1154,13 @@ const FreelancerOnboardingShell = () => {
     () => resolveCaseStudyFields(currentServiceOnboardingContent),
     [currentServiceOnboardingContent],
   );
+  const isBasicProfileSlide = currentSlide.id === "basicProfile";
+  const shouldLoadServiceCatalog = isServicesSlide || currentSlide.id === "serviceSetup" || isServiceSectionSlide;
+  const shouldLoadOnboardingContent = currentSlide.id !== "welcome";
+  const shouldLoadNiches = isCaseStudySlide;
+  const shouldLoadStateOptions = isBasicProfileSlide;
+  const shouldCheckUsernameAvailability = isBasicProfileSlide;
+
   const activeOnboardingContent =
     currentSlide.id === "serviceSetup" || isServiceSectionSlide
     ? currentServiceOnboardingContent
@@ -1424,7 +1431,7 @@ const FreelancerOnboardingShell = () => {
   }, [dbServices, hasHydratedFromUser, onboardingDraftStorageKey, totalSlides, user]);
 
   useEffect(() => {
-    if (dbServices.length) {
+    if (!shouldLoadServiceCatalog || dbServices.length) {
       return undefined;
     }
 
@@ -1445,9 +1452,10 @@ const FreelancerOnboardingShell = () => {
     return () => {
       isCancelled = true;
     };
-  }, [dbServices.length]);
+  }, [dbServices.length, shouldLoadServiceCatalog]);
 
   useEffect(() => {
+    if (!shouldLoadOnboardingContent) return undefined;
     const controller = new AbortController();
 
     fetch(`${API_BASE_URL}/onboarding/freelancer-content?ts=${Date.now()}`, {
@@ -1473,10 +1481,10 @@ const FreelancerOnboardingShell = () => {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [shouldLoadOnboardingContent]);
 
   useEffect(() => {
-    if (dbNiches.length) {
+    if (!shouldLoadNiches || dbNiches.length) {
       return undefined;
     }
 
@@ -1497,7 +1505,7 @@ const FreelancerOnboardingShell = () => {
     return () => {
       isCancelled = true;
     };
-  }, [dbNiches.length]);
+  }, [dbNiches.length, shouldLoadNiches]);
 
   useEffect(() => {
     setCurrentServiceIndex((currentIndex) => {
@@ -1544,25 +1552,25 @@ const FreelancerOnboardingShell = () => {
 
       return nextDrafts;
     });
-  }, [dbServices, selectedServices]);
+  }, [dbServices, selectedServices, shouldLoadServiceCatalog]);
 
   useEffect(() => {
     const selectedServiceIds = normalizeDraftSkillList(selectedServices)
       .map((serviceKey) => getServiceCatalogMeta(dbServices, serviceKey).serviceId)
       .filter((serviceId) => Number.isInteger(serviceId) && serviceId > 0);
 
-    if (!selectedServiceIds.length) {
+    if (!shouldLoadServiceCatalog || !selectedServiceIds.length) {
       return;
     }
 
     void Promise.all(
       selectedServiceIds.map((serviceId) => fetchServicePositiveKeywords(serviceId)),
     );
-  }, [dbServices, selectedServices]);
+  }, [dbServices, selectedServices, shouldLoadServiceCatalog]);
 
   useEffect(() => {
     const serviceId = currentService?.id;
-    if (!serviceId) {
+    if (!shouldLoadServiceCatalog || !serviceId) {
       setSuggestedKeywords([]);
       setIsSuggestedKeywordsLoading(false);
       return;
@@ -1587,7 +1595,7 @@ const FreelancerOnboardingShell = () => {
     return () => {
       cancelled = true;
     };
-  }, [currentService?.id]);
+  }, [currentService?.id, shouldLoadServiceCatalog]);
 
   useEffect(() => {
     if (showAgencyFlow || !hasHydratedFromUser || !onboardingDraftStorageKey) {
@@ -1641,6 +1649,10 @@ const FreelancerOnboardingShell = () => {
   }, [basicProfileForm.profilePhoto]);
 
   useEffect(() => {
+    if (!shouldLoadStateOptions) {
+      setIsStateOptionsLoading(false);
+      return undefined;
+    }
     const selectedCountry = String(basicProfileForm.country || "").trim();
     if (!selectedCountry) {
       setStateOptions([]);
@@ -1687,7 +1699,7 @@ const FreelancerOnboardingShell = () => {
     return () => {
       isCancelled = true;
     };
-  }, [basicProfileForm.country]);
+  }, [basicProfileForm.country, shouldLoadStateOptions]);
 
   const syncUsernameErrorState = useCallback((message = "", usernameValue = "") => {
     const usernameField =
@@ -1778,6 +1790,10 @@ const FreelancerOnboardingShell = () => {
   }, [basicProfileFields, basicProfileForm.username, currentUsername, syncUsernameErrorState]);
 
   useEffect(() => {
+    if (!shouldCheckUsernameAvailability) {
+      setUsernameStatus("idle");
+      return undefined;
+    }
     const normalizedUsername = normalizeUsernameInput(basicProfileForm.username);
     const usernameField =
       basicProfileFields.find((field) => field.id === "username") || null;
@@ -1803,7 +1819,7 @@ const FreelancerOnboardingShell = () => {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [basicProfileFields, basicProfileForm.username, currentUsername, checkUsernameAvailability, syncUsernameErrorState]);
+  }, [basicProfileFields, basicProfileForm.username, currentUsername, checkUsernameAvailability, shouldCheckUsernameAvailability, syncUsernameErrorState]);
 
   const updateCurrentServiceDraft = useCallback((updater) => {
     if (!currentServiceKey) {
@@ -2997,7 +3013,7 @@ const FreelancerOnboardingShell = () => {
   };
 
   const ensureMarketplaceServicesLoaded = useCallback(async () => {
-    if (dbServices.length) {
+    if (!shouldLoadServiceCatalog || dbServices.length) {
       return dbServices;
     }
 
@@ -4039,7 +4055,7 @@ const FreelancerOnboardingShell = () => {
           />
           <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(135deg,rgba(255,196,123,0.05)_0%,transparent_18%,transparent_82%,rgba(255,196,123,0.05)_100%)]" />
         </div>
-        <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
+        <header className={`relative z-20 shrink-0 border-b border-white/8 bg-card ${isFirstSlide ? 'block' : 'hidden sm:block'}`}>
         <div
           className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
           style={{ width: `${progressValue}%` }}
@@ -4081,16 +4097,17 @@ const FreelancerOnboardingShell = () => {
               ? "py-2 sm:py-3 lg:py-4 pb-2 sm:pb-3 lg:pb-4"
               : `py-4 sm:py-6 lg:py-8 ${isFooterHidden ? 'pb-4 sm:pb-6 lg:pb-8' : 'pb-24'}`
           }`}>
-            <AnimatePresence initial={false} mode="wait">
-              <motion.div
-                key={currentSlide.id}
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
-                className="w-full my-auto"
-              >
-                <ActiveSlide
+            <Suspense fallback={<Loader className="flex-1 my-12" />}>
+              <AnimatePresence initial={false} mode="wait">
+                <motion.div
+                  key={currentSlide.id}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="w-full my-auto"
+                >
+                  <ActiveSlide
                   slide={currentSlide}
                   selectedWorkPreference={selectedWorkPreference}
                   onSelectWorkPreference={handleWorkPreferenceSelect}
@@ -4166,8 +4183,9 @@ const FreelancerOnboardingShell = () => {
                   continueButton={null}
                   onContinue={handleContinue}
                 />
-              </motion.div>
-            </AnimatePresence>
+                </motion.div>
+              </AnimatePresence>
+            </Suspense>
           </div>
         </section>
       </div>

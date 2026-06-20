@@ -212,6 +212,10 @@ export const NotificationProvider = ({ children }) => {
     () => getAudienceFromPathname(pathname),
     [pathname],
   );
+  const isOnboardingPath = useMemo(
+    () => String(pathname || "").includes("/onboarding"),
+    [pathname],
+  );
 
   // Add a new notification
   const addNotification = useCallback((notification) => {
@@ -442,7 +446,7 @@ export const NotificationProvider = ({ children }) => {
   useEffect(() => {
     // Wait for auth to finish loading before fetching notifications
     // This prevents 401 errors when the token is being verified
-    if (!isAuthenticated || isLoading) return;
+    if (isOnboardingPath || !isAuthenticated || isLoading) return;
 
     const fetchNotifications = async () => {
       try {
@@ -463,38 +467,24 @@ export const NotificationProvider = ({ children }) => {
     };
 
     fetchNotifications();
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, isOnboardingPath]);
 
   // Connect to socket.io for real-time notifications
   useEffect(() => {
-    console.log("[Notification] Checking connection prerequisites:", {
-      SOCKET_ENABLED,
-      SOCKET_IO_URL,
-      isAuthenticated,
-      userId: user?.id,
-    });
-
-    if (!SOCKET_ENABLED || !SOCKET_IO_URL || !isAuthenticated || !user?.id) {
-      console.log(
-        "[Notification] Prerequisites not met, skipping socket connection",
-      );
+    if (
+      isOnboardingPath ||
+      !SOCKET_ENABLED ||
+      !SOCKET_IO_URL ||
+      !isAuthenticated ||
+      !user?.id
+    ) {
       return;
     }
 
     // Avoid double connections
     if (connectedRef.current) {
-      console.log("[Notification] Already connected, skipping");
       return;
     }
-
-    console.log(
-      "[Notification] Connecting to:",
-      SOCKET_IO_URL,
-      "with userId:",
-      user.id,
-      "type:",
-      typeof user.id,
-    );
 
     const newSocket = io(SOCKET_IO_URL, {
       ...SOCKET_OPTIONS,
@@ -505,31 +495,21 @@ export const NotificationProvider = ({ children }) => {
     connectedRef.current = true;
 
     newSocket.on("connect", () => {
-      console.log(
-        "[Notification] ✅ Socket connected! Socket ID:",
-        newSocket.id,
-      );
       // Removed notification:join since we use Firebase Cloud Messaging now
     });
 
     // Listen for room join confirmation
     newSocket.on("notification:joined", ({ room, userId }) => {
       // Legacy - kept to prevent errors if server still emits it
-      console.log(
-        `[Notification] 🎉 Successfully joined room: ${room} for user: ${userId}`,
-      );
+      void room;
+      void userId;
     });
 
     newSocket.on("disconnect", () => {
-      console.log("[Notification] Socket disconnected");
       connectedRef.current = false;
     });
 
     newSocket.on("notification:new", (notification) => {
-      console.log(
-        "[Notification] 📨 Socket notification received:",
-        notification,
-      );
       addNotification(notification);
     });
 
@@ -545,7 +525,7 @@ export const NotificationProvider = ({ children }) => {
       setSocket(null);
       connectedRef.current = false;
     };
-  }, [isAuthenticated, user?.id, user?.role, addNotification]);
+  }, [isAuthenticated, isOnboardingPath, user?.id, user?.role, addNotification]);
 
   // Function to mark chat notifications as read (when opening Messages)
   const markChatAsRead = useCallback(() => {
@@ -662,3 +642,4 @@ export const useNotifications = () => {
 };
 
 export { NotificationContext };
+

@@ -3,7 +3,7 @@ import { cn } from "@/shared/lib/utils";
 import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
 const PAGE_TITLE_CLASS =
-  "text-balance text-[34px] font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[40px]";
+  "text-balance text-2xl font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[34px] md:text-[40px]";
 const SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
 
 const FreelancerDeliveryPolicySlide = ({ continueButton }) => (

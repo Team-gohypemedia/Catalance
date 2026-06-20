@@ -815,34 +815,33 @@ const FreelancerServiceQuickInfoSlide = ({
 
   /* ─── Category / Skill handlers ─── */
   const handleSelectedCategoriesChange = (nextValues) => {
-    if (configuredCategoryOptions.length > 0) {
-      const normalizedNextValues = normalizeStringArray(nextValues);
-      const optionByValue = new Map(configuredCategoryOptions.map((option) => [option.value, option]));
-      onUpdateServiceDraft((draft) => {
-        const existingSubcategories = Array.isArray(draft?.subcategories) ? draft.subcategories : [];
-        const existingByKey = new Map(existingSubcategories.map((entry) => [getSubcategorySelectionKey(entry), entry]));
-        const nextSubcategories = normalizedNextValues.map((value) => {
-          const existingEntry = existingByKey.get(value);
-          const configuredOption = optionByValue.get(value);
-          const subCategoryId = toPositiveInteger(configuredOption?.subCategoryId || configuredOption?.id);
-          return {
-            subCategoryId,
-            subCategoryKey: subCategoryId ? `catalog:${subCategoryId}` : value,
-            label: configuredOption?.label || existingEntry?.label || value,
-            isCustom: !subCategoryId,
-            selectedToolIds: subCategoryId
-              ? (Array.isArray(existingEntry?.selectedToolIds) ? existingEntry.selectedToolIds : [])
-                  .map(toPositiveInteger)
-                  .filter(Boolean)
-              : [],
-            customSkillNames: normalizeStringArray(existingEntry?.customSkillNames),
-          };
-        });
-        return { ...draft, subcategories: nextSubcategories, activeSkillCategory: nextSubcategories.some((e) => e.subCategoryKey === draft?.activeSkillCategory) ? draft.activeSkillCategory : nextSubcategories[0]?.subCategoryKey || null };
+    const normalizedNextValues = normalizeStringArray(nextValues);
+    const optionByValue = new Map(allCategoryOptions.map((option) => [option.value, option]));
+    onUpdateServiceDraft((draft) => {
+      const existingSubcategories = Array.isArray(draft?.subcategories) ? draft.subcategories : [];
+      const existingByKey = new Map(existingSubcategories.map((entry) => [getSubcategorySelectionKey(entry), entry]));
+      const nextSubcategories = normalizedNextValues.map((value) => {
+        const existingEntry = existingByKey.get(value);
+        const configuredOption = optionByValue.get(value);
+        let subCategoryId = toPositiveInteger(configuredOption?.subCategoryId || configuredOption?.id);
+        if (!subCategoryId && value.startsWith("catalog:")) {
+           subCategoryId = toPositiveInteger(value.replace("catalog:", ""));
+        }
+        return {
+          subCategoryId,
+          subCategoryKey: subCategoryId ? `catalog:${subCategoryId}` : value,
+          label: configuredOption?.label || existingEntry?.label || value,
+          isCustom: !subCategoryId,
+          selectedToolIds: subCategoryId
+            ? (Array.isArray(existingEntry?.selectedToolIds) ? existingEntry.selectedToolIds : [])
+                .map(toPositiveInteger)
+                .filter(Boolean)
+            : [],
+          customSkillNames: normalizeStringArray(existingEntry?.customSkillNames),
+        };
       });
-      return;
-    }
-    onUpdateServiceDraft((draft) => syncDraftSubcategories(draft, nextValues));
+      return { ...draft, subcategories: nextSubcategories, activeSkillCategory: nextSubcategories.some((e) => e.subCategoryKey === draft?.activeSkillCategory) ? draft.activeSkillCategory : nextSubcategories[0]?.subCategoryKey || null };
+    });
   };
 
   const handleSubcategorySkillChange = (subCategoryKey, nextSelection = {}) => {

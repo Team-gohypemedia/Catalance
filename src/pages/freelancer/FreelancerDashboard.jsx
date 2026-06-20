@@ -269,7 +269,7 @@ const FreelancerDashboard = () => {
             <FreelancerOnboardingWelcomeModal
               open={shouldShowOnboardingWelcome}
               onStartOnboarding={() =>
-                navigate(FREELANCER_ONBOARDING_PATH, { replace: true })
+                navigate(FREELANCER_ONBOARDING_PATH)
               }
               onClose={() => setIsWelcomeDismissed(true)}
             />

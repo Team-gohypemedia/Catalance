@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
+import Loader from "@/components/common/Loader";
 import { DarkGradientBg } from "@/components/elegant-dark-pattern";
 import {
   DEFAULT_BASIC_PROFILE_FIELDS,
@@ -56,24 +57,24 @@ import {
   AGENCY_SLIDE_IDS,
 } from "./agency-details";
 import { getOnboardingSlides as getOnboardingSlideSet } from "./constants";
-import FreelancerWelcomeSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWelcomeSlide";
-import FreelancerWorkPreferenceSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWorkPreferenceSlide";
-import FreelancerIndividualProofSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerIndividualProofSlide";
-import AgencyOverviewSlide from "./slides/AgencyOverviewSlide";
-import AgencyTeamSlide from "./slides/AgencyTeamSlide";
-import AgencyOperationsSlide from "./slides/AgencyOperationsSlide";
-import AgencyTrustSlide from "./slides/AgencyTrustSlide";
-import FreelancerBasicProfileSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerBasicProfileSlide";
-import FreelancerServicesSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicesSlide";
-import FreelancerServiceSetupSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceSetupSlide";
-import FreelancerServiceInfoSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceInfoSlide";
-import FreelancerServicePricingSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicePricingSlide";
-import FreelancerServiceVisualsSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceVisualsSlide";
-import FreelancerCaseStudySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCaseStudySlide";
-import AgencyServiceReviewSlide from "./slides/AgencyServiceReviewSlide";
-import FreelancerAcceptInProgressProjectsSlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerAcceptInProgressProjectsSlide";
-import FreelancerDeliveryPolicySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerDeliveryPolicySlide";
-import FreelancerCommunicationPolicySlide from "@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCommunicationPolicySlide";
+const FreelancerWelcomeSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWelcomeSlide"));
+const FreelancerWorkPreferenceSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerWorkPreferenceSlide"));
+const FreelancerIndividualProofSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerIndividualProofSlide"));
+const AgencyOverviewSlide = lazy(() => import("./slides/AgencyOverviewSlide"));
+const AgencyTeamSlide = lazy(() => import("./slides/AgencyTeamSlide"));
+const AgencyOperationsSlide = lazy(() => import("./slides/AgencyOperationsSlide"));
+const AgencyTrustSlide = lazy(() => import("./slides/AgencyTrustSlide"));
+const FreelancerBasicProfileSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerBasicProfileSlide"));
+const FreelancerServicesSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicesSlide"));
+const FreelancerServiceSetupSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceSetupSlide"));
+const FreelancerServiceInfoSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceInfoSlide"));
+const FreelancerServicePricingSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicePricingSlide"));
+const FreelancerServiceVisualsSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceVisualsSlide"));
+const FreelancerCaseStudySlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCaseStudySlide"));
+const AgencyServiceReviewSlide = lazy(() => import("./slides/AgencyServiceReviewSlide"));
+const FreelancerAcceptInProgressProjectsSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerAcceptInProgressProjectsSlide"));
+const FreelancerDeliveryPolicySlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerDeliveryPolicySlide"));
+const FreelancerCommunicationPolicySlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCommunicationPolicySlide"));
 import { useOnboardingTheme } from "../Freelancer-Onboarding/useOnboardingTheme";
 
 const slideRegistry = {
@@ -3836,16 +3837,17 @@ const AgencyOnboardingShell = ({
           className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
         >
           <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 pb-24">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentSlide.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="w-full"
-              >
-                <ActiveSlide
+            <Suspense fallback={<Loader className="flex-1 my-12" />}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentSlide.id}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3, ease: "easeInOut" }}
+                  className="w-full"
+                >
+                  <ActiveSlide
                   slide={currentSlide}
                   selectedWorkPreference={selectedWorkPreference}
                   onSelectWorkPreference={handleWorkPreferenceSelect}
@@ -3915,8 +3917,9 @@ const AgencyOnboardingShell = ({
                   user={user}
                   onSkipServices={handleSkipServicesSection}
                 />
-              </motion.div>
-            </AnimatePresence>
+                </motion.div>
+              </AnimatePresence>
+            </Suspense>
 
           </div>
         </section>
