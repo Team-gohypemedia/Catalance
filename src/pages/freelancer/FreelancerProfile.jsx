@@ -420,6 +420,15 @@ const FreelancerProfile = () => {
   const [isProjectCoverDragActive, setIsProjectCoverDragActive] = useState(false);
   const [editingProjectIndex, setEditingProjectIndex] = useState(null);
   const [caseStudyNicheOptions, setCaseStudyNicheOptions] = useState([]);
+  const handleRequestedNiche = useCallback((newNiche) => {
+    if (!newNiche) return;
+    setCaseStudyNicheOptions((prev) => {
+      if (prev.some((n) => String(n.value).toLowerCase() === String(newNiche.value).toLowerCase())) {
+        return prev;
+      }
+      return [...prev, newNiche];
+    });
+  }, []);
   const [serviceProfileForm, setServiceProfileForm] = useState(
     createInitialServiceProfileForm
   );
@@ -4434,6 +4443,7 @@ const FreelancerProfile = () => {
               serviceKeys: newProjectServiceKeys,
             }}
             nicheOptions={caseStudyNicheOptions}
+            onAddRequestedNiche={handleRequestedNiche}
             serviceOptions={linkableServiceOptions}
             onCaseStudyFieldChange={(field, value) => {
               if (field === "title") setNewProjectTitle(value);

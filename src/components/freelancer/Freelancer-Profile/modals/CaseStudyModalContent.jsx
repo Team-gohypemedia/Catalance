@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Check from "lucide-react/dist/esm/icons/check";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -6,6 +6,8 @@ import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
+import { toast } from "sonner";
+import { request } from "@/shared/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { CustomSelect } from "@/components/freelancer/Freelancer-Onboarding/slides/shared/ServiceInfoComponents";
@@ -240,7 +242,49 @@ const CaseStudyModalContent = ({
   onClose,
   isSaving = false,
   isEditing = false,
+  onAddRequestedNiche,
 }) => {
+  const [isRequestingNiche, setIsRequestingNiche] = useState(false);
+
+  const handleRequestNiche = async (requestName) => {
+    if (!requestName) return;
+
+    setIsRequestingNiche(true);
+    try {
+      const payload = await request("/user-requests", {
+        method: "POST",
+        body: JSON.stringify({
+          request: requestName,
+          requestedType: "niche",
+        }),
+      });
+
+      if (payload?.data?.status === "EXISTS" && payload?.data?.existingEntity) {
+        toast.success(`Niche "${requestName}" already exists. Selected it for you.`);
+        const existingVal = payload.data.existingEntity.value || payload.data.existingEntity.name;
+        onAddRequestedNiche?.({ value: existingVal, label: payload.data.existingEntity.label || payload.data.existingEntity.name });
+        onCaseStudyFieldChange("niche", existingVal);
+      } else {
+        toast.success(`"${requestName}" sent for admin review.`);
+        onAddRequestedNiche?.({ value: requestName, label: requestName });
+        onCaseStudyFieldChange("niche", requestName);
+      }
+    } catch (error) {
+      console.error("Failed to submit niche request:", error);
+      toast.error(error?.message || "Failed to request niche");
+    } finally {
+      setIsRequestingNiche(false);
+    }
+  };
+
+  const resolvedNicheOptions = useMemo(() => {
+    const options = Array.isArray(nicheOptions) ? nicheOptions : [];
+    if (caseStudyForm.niche && !options.some((o) => o.value === caseStudyForm.niche)) {
+      return [...options, { value: caseStudyForm.niche, label: caseStudyForm.niche }];
+    }
+    return options;
+  }, [nicheOptions, caseStudyForm.niche]);
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="max-h-[calc(100vh-7rem)] overflow-y-auto subtle-scrollbar pr-3">
@@ -291,10 +335,12 @@ const CaseStudyModalContent = ({
                 <CustomSelect
                   value={caseStudyForm.niche}
                   onChange={(val) => onCaseStudyFieldChange("niche", val)}
-                  options={nicheOptions}
-                  placeholder="select niche"
+                  options={resolvedNicheOptions}
+                  placeholder="Select niche"
                   isSearchable
                   searchPlaceholder="Search niches"
+                  onRequestMissingOption={handleRequestNiche}
+                  isRequestingOption={isRequestingNiche}
                 />
               </div>
 
