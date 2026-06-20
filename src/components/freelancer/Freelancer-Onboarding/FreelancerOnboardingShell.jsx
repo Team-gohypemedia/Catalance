@@ -3093,7 +3093,7 @@ const FreelancerOnboardingShell = () => {
         (slide) => slide.id === "serviceReview",
       );
       if (nextSlideIndex >= 0) {
-        setCurrentSlideIndex(nextSlideIndex);
+        navigateToSlideIndex(nextSlideIndex, currentServiceIndex);
       }
       return;
     }
@@ -3143,7 +3143,7 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
-    navigateToSlideIndex(Math.max(currentSlideIndex - 1, 0));
+    navigateToSlideIndex(Math.max(currentSlideIndex - 1, 0), currentServiceIndex);
   };
 
   const clearServiceStepValidationErrors = useCallback((stepId) => {
@@ -3315,7 +3315,10 @@ const FreelancerOnboardingShell = () => {
       return;
     }
 
-    navigateToSlideIndex(Math.min(currentSlideIndex + 1, totalSlides - 1));
+    navigateToSlideIndex(
+      Math.min(currentSlideIndex + 1, totalSlides - 1),
+      currentServiceIndex
+    );
   };
 
   const handleDeliveryPolicyAgree = () => {
@@ -3460,7 +3463,7 @@ const FreelancerOnboardingShell = () => {
         return;
       }
 
-      navigateToSlideIndex(nextSlideIndex);
+      navigateToSlideIndex(nextSlideIndex, currentServiceIndex);
     },
     [
       caseStudySlideIndex,

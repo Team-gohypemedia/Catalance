@@ -549,22 +549,26 @@ const AgencyServiceReviewSlide = ({
     };
   }, [selectedSubcategoryIdsSignature]);
 
-  const profilePhotoPreview = useMemo(
-    () => resolveProfilePhotoPreview(basicProfileForm?.profilePhoto),
-    [basicProfileForm?.profilePhoto],
-  );
+  const [profilePhotoPreview, setProfilePhotoPreview] = useState(null);
+  useEffect(() => {
+    const preview = resolveProfilePhotoPreview(basicProfileForm?.profilePhoto);
+    setProfilePhotoPreview(preview);
+    return () => {
+      preview?.revoke?.();
+    };
+  }, [basicProfileForm?.profilePhoto]);
 
-  useEffect(
-    () => () => {
-      profilePhotoPreview?.revoke?.();
-    },
-    [profilePhotoPreview],
-  );
+  const [mediaPreviews, setMediaPreviews] = useState([]);
+  useEffect(() => {
+    const previews = resolveServiceImagePreviews(serviceVisualsForm?.mediaFiles);
+    setMediaPreviews(previews);
+    return () => {
+      previews.forEach((preview) => {
+        preview?.revoke?.();
+      });
+    };
+  }, [serviceVisualsForm?.mediaFiles]);
 
-  const mediaPreviews = useMemo(
-    () => resolveServiceImagePreviews(serviceVisualsForm?.mediaFiles),
-    [serviceVisualsForm?.mediaFiles],
-  );
   const mediaPreview = mediaPreviews[activeMediaPreviewIndex] || null;
   const hasMultipleMediaPreviews = mediaPreviews.length > 1;
 
@@ -577,15 +581,6 @@ const AgencyServiceReviewSlide = ({
       return Math.min(currentIndex, mediaPreviews.length - 1);
     });
   }, [mediaPreviews.length]);
-
-  useEffect(
-    () => () => {
-      mediaPreviews.forEach((preview) => {
-        preview?.revoke?.();
-      });
-    },
-    [mediaPreviews],
-  );
 
   const handlePreviousMediaPreview = () => {
     setActiveMediaPreviewIndex((currentIndex) => {

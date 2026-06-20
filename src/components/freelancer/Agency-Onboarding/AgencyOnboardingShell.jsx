@@ -2945,7 +2945,7 @@ const AgencyOnboardingShell = ({
       return;
     }
 
-    navigateToSlideIndex(Math.max(currentSlideIndex - 1, 0));
+    navigateToSlideIndex(Math.max(currentSlideIndex - 1, 0), currentServiceIndex);
   };
 
   const clearServiceStepValidationErrors = useCallback((stepId) => {
@@ -3099,7 +3099,10 @@ const AgencyOnboardingShell = ({
       return;
     }
 
-    navigateToSlideIndex(Math.min(currentSlideIndex + 1, totalSlides - 1));
+    navigateToSlideIndex(
+      Math.min(currentSlideIndex + 1, totalSlides - 1),
+      currentServiceIndex
+    );
   };
 
   const handleDeliveryPolicyAgree = () => {
@@ -3238,7 +3241,7 @@ const AgencyOnboardingShell = ({
         return;
       }
 
-      navigateToSlideIndex(nextSlideIndex);
+      navigateToSlideIndex(nextSlideIndex, currentServiceIndex);
     },
     [
       caseStudySlideIndex,
