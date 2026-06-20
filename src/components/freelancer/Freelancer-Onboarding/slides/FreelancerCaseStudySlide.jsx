@@ -10,7 +10,9 @@ import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
+import { toast } from "sonner";
 
+import { request } from "@/shared/lib/api-client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -190,11 +192,44 @@ const FreelancerCaseStudySlide = ({
   onUploadMediaFile,
   continueButton,
   user,
+  onAddRequestedNiche,
 }) => {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState("");
   const titleInputRef = useRef(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const [isRequestingNiche, setIsRequestingNiche] = useState(false);
+
+  const handleRequestNiche = async (requestName) => {
+    if (!requestName) return;
+
+    setIsRequestingNiche(true);
+    try {
+      const payload = await request("/user-requests", {
+        method: "POST",
+        body: JSON.stringify({
+          request: requestName,
+          requestedType: "niche",
+        }),
+      });
+
+      if (payload?.data?.status === "EXISTS" && payload?.data?.existingEntity) {
+        toast.success(`Niche "${requestName}" already exists. Selected it for you.`);
+        const existingVal = payload.data.existingEntity.value || payload.data.existingEntity.name;
+        onAddRequestedNiche?.({ value: existingVal, label: payload.data.existingEntity.label || payload.data.existingEntity.name });
+        onCaseStudyFieldChange("niche", existingVal);
+      } else {
+        toast.success(`"${requestName}" sent for admin review.`);
+        onAddRequestedNiche?.({ value: requestName, label: requestName });
+        onCaseStudyFieldChange("niche", requestName);
+      }
+    } catch (error) {
+      console.error("Failed to submit niche request:", error);
+      toast.error(error?.message || "Failed to request niche");
+    } finally {
+      setIsRequestingNiche(false);
+    }
+  };
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -240,13 +275,25 @@ const FreelancerCaseStudySlide = ({
     fieldMap.timeline?.options ||
     caseStudyContent?.fields?.timeline?.options ||
     TIMELINE_OPTIONS;
-  const resolvedNicheOptions =
-    Array.isArray(fieldMap.niche?.options) && fieldMap.niche.options.length > 0
-      ? fieldMap.niche.options
-      : Array.isArray(caseStudyContent?.fields?.niche?.options) &&
-          caseStudyContent.fields.niche.options.length > 0
-        ? caseStudyContent.fields.niche.options
-        : nicheOptions;
+  const resolvedNicheOptions = useMemo(() => {
+    let options = [];
+    if (Array.isArray(fieldMap.niche?.options) && fieldMap.niche.options.length > 0) {
+      options = fieldMap.niche.options;
+    } else if (
+      Array.isArray(caseStudyContent?.fields?.niche?.options) &&
+      caseStudyContent.fields.niche.options.length > 0
+    ) {
+      options = caseStudyContent.fields.niche.options;
+    } else {
+      options = nicheOptions;
+    }
+
+    // Ensure the currently selected niche is always in the options list so the dropdown label resolves correctly
+    if (caseStudyForm.niche && !options.some((o) => o.value === caseStudyForm.niche)) {
+      return [...options, { value: caseStudyForm.niche, label: caseStudyForm.niche }];
+    }
+    return options;
+  }, [fieldMap.niche?.options, caseStudyContent?.fields?.niche?.options, nicheOptions, caseStudyForm.niche]);
   const activeCaseStudyLabel =
     toTitleCase(caseStudyForm?.title) ||
     `Case Study ${Number.isInteger(activeCaseStudyIndex) ? activeCaseStudyIndex + 1 : 1}`;
@@ -538,6 +585,8 @@ const FreelancerCaseStudySlide = ({
                   "Search niches"
                 }
                 hasError={Boolean(nicheError)}
+                onRequestMissingOption={handleRequestNiche}
+                isRequestingOption={isRequestingNiche}
                 className="h-10"
               />
               {nicheError ? (

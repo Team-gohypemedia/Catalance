@@ -1507,6 +1507,17 @@ const FreelancerOnboardingShell = () => {
     };
   }, [dbNiches.length, shouldLoadNiches]);
 
+  const handleRequestedNiche = useCallback((newNiche) => {
+    if (!newNiche) return;
+    setDbNiches((prev) => {
+      // Check if it already exists to avoid duplicates
+      if (prev.some((n) => String(n.value).toLowerCase() === String(newNiche.value).toLowerCase())) {
+        return prev;
+      }
+      return [...prev, newNiche];
+    });
+  }, []);
+
   useEffect(() => {
     setCurrentServiceIndex((currentIndex) => {
       if (selectedServices.length === 0) {
@@ -4150,6 +4161,7 @@ const FreelancerOnboardingShell = () => {
                   onActiveCaseStudyChange={handleActiveCaseStudyChange}
                   onUploadMediaFile={uploadServiceMediaFile}
                   caseStudyValidationErrors={caseStudyValidationErrors}
+                  onAddRequestedNiche={handleRequestedNiche}
                   acceptInProgressProjectsValue={acceptInProgressProjectsValue}
                   onAcceptInProgressProjectsChange={handleAcceptInProgressProjectsSelect}
                   onCommunicationPolicyReadinessChange={(isReady) =>

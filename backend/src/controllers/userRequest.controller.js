@@ -210,7 +210,7 @@ export const createUserRequest = async (req, res) => {
     }
 
     const normalizedRequestedType =
-      requestedType && ["category", "skill"].includes(String(requestedType).toLowerCase())
+      requestedType && ["category", "skill", "niche"].includes(String(requestedType).toLowerCase())
         ? String(requestedType).toLowerCase()
         : null;
 
@@ -244,6 +244,23 @@ export const createUserRequest = async (req, res) => {
           status: "EXISTS",
           existingType: "skill",
           existingEntity: existingTool,
+        },
+      });
+    }
+
+    // 2.5 Check if it already exists as a niche
+    const existingNiche = await prisma.marketplaceFilterNiche.findFirst({
+      where: { name: { equals: normalizedName, mode: "insensitive" } },
+    });
+
+    if ((!normalizedRequestedType || normalizedRequestedType === "niche") && existingNiche) {
+      return res.status(200).json({
+        success: true,
+        message: "This option already exists as a niche.",
+        data: {
+          status: "EXISTS",
+          existingType: "niche",
+          existingEntity: existingNiche,
         },
       });
     }

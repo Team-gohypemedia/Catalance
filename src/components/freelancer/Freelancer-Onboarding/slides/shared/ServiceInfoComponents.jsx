@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Info from "lucide-react/dist/esm/icons/info";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Plus from "lucide-react/dist/esm/icons/plus";
 
 import { cn } from "@/shared/lib/utils";
 import {
@@ -180,6 +182,8 @@ export const CustomSelect = ({
   isSearchable = false,
   searchPlaceholder = "Search...",
   viewportBottomOffset = 0,
+  onRequestMissingOption,
+  isRequestingOption = false,
   className = "",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -332,8 +336,27 @@ export const CustomSelect = ({
               </button>
             ))
           ) : (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              {normalizedOptions.length > 0 ? "No results found" : "No options available"}
+            <div className="flex flex-col gap-2 p-2 text-sm text-muted-foreground">
+              <div className="px-1">{normalizedOptions.length > 0 ? "No results found" : "No options available"}</div>
+              {onRequestMissingOption && searchQuery.trim() && (
+                <button
+                  type="button"
+                  disabled={isRequestingOption}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await onRequestMissingOption(searchQuery.trim());
+                    setIsOpen(false);
+                  }}
+                  className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2 text-left text-sm text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                >
+                  {isRequestingOption ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4" />
+                  )}
+                  <span className="min-w-0 truncate">Request "{searchQuery.trim()}"</span>
+                </button>
+              )}
             </div>
           )}
         </div>
