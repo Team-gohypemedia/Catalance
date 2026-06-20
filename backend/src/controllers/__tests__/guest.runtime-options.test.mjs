@@ -9,6 +9,7 @@ const {
   buildAdminControlSummaryText,
   buildBusinessNameGuardPrompt,
   buildBudgetRuntimeOptions,
+  buildCustomRuntimeOptionCandidate,
   buildDiscoveryCoverageSummary,
   buildCurrentQuestionValidationPrompt,
   buildSupplementalDescriptiveExtractions,
@@ -506,6 +507,26 @@ test("keeps custom off-menu option answers as-is", () => {
   assert.equal(buildQuestionDisplayAnswer(durationQuestion, "2 months", {}), "2 months");
   assert.equal(normalizeAnswerForQuestion(durationQuestion, "4 months", {}), "4 months");
   assert.equal(buildQuestionDisplayAnswer(durationQuestion, "4 months", {}), "4 months");
+});
+
+test("builds a custom runtime option candidate from a direct custom answer for the same question", () => {
+  const question = {
+    slug: "payment_gateway",
+    text: "Which payment method do you prefer right now?",
+    type: "single_select",
+    options: [
+      { label: "Razorpay", value: "razorpay" },
+      { label: "PayU", value: "payu" },
+      { label: "Cash on Delivery", value: "cod" },
+    ],
+  };
+
+  const customOption = buildCustomRuntimeOptionCandidate(question, {
+    payment_gateway_other: "Chinese payment gateway",
+  });
+
+  assert.equal(customOption.label, "Chinese payment gateway");
+  assert.equal(customOption.value, "Chinese payment gateway");
 });
 
 test("locks the chat to the originally selected service when another service is mentioned", () => {

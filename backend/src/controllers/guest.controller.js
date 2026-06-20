@@ -2358,6 +2358,20 @@ const buildCapturedCustomOptionForQuestion = (question = {}, answersBySlug = {})
     });
 };
 
+const buildCustomRuntimeOptionCandidate = (question = {}, answersBySlug = {}) => {
+    const customAnswer = getCapturedCustomAnswerForQuestion(question, answersBySlug);
+    if (!customAnswer) return null;
+
+    return normalizeOptionObject({
+        label: customAnswer,
+        value: customAnswer,
+        canonicalLabel: customAnswer,
+        canonicalValue: customAnswer,
+        aliases: [customAnswer, "custom", "other"],
+        requiresFollowup: false,
+    });
+};
+
 const getCanonicalQuestionOptions = (question = {}, controls = null) => {
     if (!Array.isArray(question?.options)) return [];
     const adminControls = controls && typeof controls === "object"
@@ -5019,7 +5033,8 @@ const buildAiFirstRuntimeOptionPrompt = ({
     question = {},
     answersByQuestionText = {},
     answersBySlug = {},
-    allQuestions = []
+    allQuestions = [],
+    customRuntimeOptionCandidate = null,
 }) => {
     const adminControls = getQuestionAdminControls(question, servicePrompt);
     const answersContext = buildAnswersContextLines(answersByQuestionText, {
@@ -5053,6 +5068,9 @@ ${answersContext || "- none yet"}
 Saved AI memory:
 ${savedResponseContext || "- none yet"}
 
+Direct custom answer candidate for this question:
+${JSON.stringify(customRuntimeOptionCandidate?.label || "none")}
+
 ${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when relevant)", {
         maxResponseRules: 3,
         maxValidationRules: 3,
@@ -5069,6 +5087,7 @@ Task:
 6. If the context is too weak or generic, return an empty options array.
 7. Do not generate fake brands, impossible tools, or overly random niche options.
 8. If the user context clearly points to a region, stack, market, or integration type, let the options reflect that.
+9. If the direct custom answer candidate is specific and clearly relevant to this exact question, include it as one of the visible options.
 
 Return strict JSON only:
 {
@@ -5093,6 +5112,7 @@ const generateRuntimeOptionsForQuestion = async ({
     const questionType = normalizeTextToken(question?.type || "input");
     const adminControls = getQuestionAdminControls(question, servicePrompt);
     const canonicalOptions = getCanonicalQuestionOptions(question, adminControls);
+    const customRuntimeOptionCandidate = buildCustomRuntimeOptionCandidate(question, answersBySlug);
     if (!OPTION_QUESTION_TYPES.has(questionType)) {
         return [];
     }
@@ -5111,7 +5131,7 @@ const generateRuntimeOptionsForQuestion = async ({
         }
     }
 
-    if (canonicalOptions.length === 0) {
+    if (canonicalOptions.length === 0 && !customRuntimeOptionCandidate) {
         return [];
     }
 
@@ -5121,8 +5141,17 @@ const generateRuntimeOptionsForQuestion = async ({
         question,
         answersByQuestionText,
         answersBySlug,
-        allQuestions
+        allQuestions,
+        customRuntimeOptionCandidate,
     });
+
+    const fallbackOptions = applyAdminControlsToOptions(
+        mergeUniqueOptionsByValue(
+            customRuntimeOptionCandidate ? [customRuntimeOptionCandidate] : [],
+            canonicalOptions
+        ),
+        adminControls
+    );
 
     try {
         const response = await runTrackedAiCall({
@@ -5137,14 +5166,14 @@ const generateRuntimeOptionsForQuestion = async ({
 
         if (!response?.success) {
             console.log(`[Runtime Options] fallback=canonical reason=ai_failure question=${String(question?.slug || question?.text || "question").trim()}`);
-            return canonicalOptions;
+            return fallbackOptions;
         }
 
         const parsed = parseJsonObjectFromRaw(response.message);
         const rows = Array.isArray(parsed?.options) ? parsed.options : [];
         if (rows.length === 0) {
             console.log(`[Runtime Options] fallback=canonical reason=empty_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
-            return canonicalOptions;
+            return fallbackOptions;
         }
 
         const selectedOptions = rows
@@ -5164,13 +5193,16 @@ const generateRuntimeOptionsForQuestion = async ({
             .filter(Boolean);
 
         const finalOptions = applyAdminControlsToOptions(
-            mergeUniqueOptionsByValue(selectedOptions),
+            mergeUniqueOptionsByValue(
+                customRuntimeOptionCandidate ? [customRuntimeOptionCandidate] : [],
+                selectedOptions
+            ),
             adminControls
         );
 
         if (finalOptions.length < 2) {
             console.log(`[Runtime Options] fallback=canonical reason=weak_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
-            return canonicalOptions;
+            return fallbackOptions;
         }
 
         console.log(
@@ -5179,7 +5211,7 @@ const generateRuntimeOptionsForQuestion = async ({
         return finalOptions;
     } catch (error) {
         console.warn("[Runtime Options] Falling back to canonical options:", error?.message || error);
-        return canonicalOptions;
+        return fallbackOptions;
     }
 };
 
@@ -9423,6 +9455,7 @@ export const __testables = {
     buildAdminControlSummaryText,
     buildBusinessNameGuardPrompt,
     buildBudgetRuntimeOptions,
+    buildCustomRuntimeOptionCandidate,
     buildDiscoveryCoverageSummary,
     buildCurrentQuestionValidationPrompt,
     buildSupplementalDescriptiveExtractions,
