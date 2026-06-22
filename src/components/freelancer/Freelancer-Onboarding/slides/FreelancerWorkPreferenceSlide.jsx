@@ -17,7 +17,7 @@ const FreelancerWorkPreferenceSlide = ({
   onSelectWorkPreference,
 }) => {
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6 py-6 sm:py-10">
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6 py-6 sm:py-10 mt-[20px] sm:mt-0">
       <div className="w-full">
         {/* Heading Section */}
         <div className="text-center mb-6 sm:mb-8">
@@ -88,7 +88,7 @@ const FreelancerWorkPreferenceSlide = ({
             </div>
 
             {/* Bottom Tag List */}
-            <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
+            <div className="flex flex-wrap justify-center gap-2 mt-4 sm:mt-5">
               {/* Tag 1 */}
               <div className={cn(
                 "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
@@ -195,7 +195,7 @@ const FreelancerWorkPreferenceSlide = ({
             </div>
 
             {/* Bottom Tag List */}
-            <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
+            <div className="flex flex-wrap justify-center gap-2 mt-4 sm:mt-5">
               {/* Tag 1 */}
               <div className={cn(
                 "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",

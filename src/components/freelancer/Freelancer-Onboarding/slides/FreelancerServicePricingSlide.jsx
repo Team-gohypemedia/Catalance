@@ -33,6 +33,8 @@ const textareaClassName =
   "w-full resize-none rounded-xl border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus:ring-1";
 
 const FreelancerServicePricingSlide = ({
+  totalSelectedServices = 1,
+  currentServiceIndex = 0,
   currentServiceName,
   onboardingContent,
   servicePricingFields = [],
@@ -139,9 +141,15 @@ const FreelancerServicePricingSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         <div className="text-center">
+          
+          {totalSelectedServices > 1 && (
+            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            </div>
+          )}
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             {applyServiceTemplate(pricingContent?.headingTitleTemplate, serviceName)}
           </h1>

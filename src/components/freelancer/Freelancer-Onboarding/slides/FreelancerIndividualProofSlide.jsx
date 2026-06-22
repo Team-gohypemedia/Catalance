@@ -242,7 +242,7 @@ const FreelancerIndividualProofSlide = ({ onContinue }) => {
   }, [onContinue])
 
   return (
-    <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 pt-2 pb-2 text-center sm:px-6 sm:pt-3 md:px-8 md:pt-4">
+    <section className="relative mx-auto flex w-full max-w-6xl flex-col items-center justify-center px-4 pt-2 pb-2 text-center sm:px-6 sm:pt-3 md:px-8 md:pt-4 mt-[20px] sm:mt-0">
       {/* Background Peach Glows - for light theme visual alignment */}
       <div className="absolute top-0 left-0 w-[260px] h-[260px] sm:w-[360px] sm:h-[360px] bg-primary/[0.04] dark:bg-primary/[0.01] rounded-full blur-[80px] pointer-events-none z-0" />
       <div className="absolute bottom-0 right-0 w-[260px] h-[260px] sm:w-[360px] sm:h-[360px] bg-primary/[0.04] dark:bg-primary/[0.01] rounded-full blur-[80px] pointer-events-none z-0" />

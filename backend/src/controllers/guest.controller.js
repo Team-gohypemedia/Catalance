@@ -1501,13 +1501,89 @@ const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
     return wordCount <= 8;
 };
 
-const buildServiceAwareOpeningMessage = (serviceName = "") => {
+const getServiceActionPhrasing = (service) => {
+    if (!service) return { verb: "build", target: "what you want to build" };
+
+    let serviceId = "";
+    let serviceName = "";
+
+    if (typeof service === "object") {
+        serviceId = String(service.id || service.slug || "").toLowerCase().trim();
+        serviceName = String(service.name || "").toLowerCase().trim();
+    } else if (typeof service === "string") {
+        serviceId = service.toLowerCase().trim();
+        serviceName = service.toLowerCase().trim();
+    }
+
+    // Services where "build" makes perfect sense:
+    const isBuildService = 
+        serviceId.includes("development") || 
+        serviceId.includes("software") || 
+        serviceId.includes("app") || 
+        serviceId.includes("website") ||
+        serviceName.includes("develop") ||
+        serviceName.includes("software") ||
+        serviceName.includes("app") ||
+        serviceName.includes("website");
+
+    if (isBuildService) {
+        return { verb: "build", target: "what you want to build" };
+    }
+
+    // Services related to marketing, ads, SEO, lead gen, etc.
+    const isMarketingOrAds =
+        serviceId.includes("advertising") ||
+        serviceId.includes("marketing") ||
+        serviceId.includes("seo") ||
+        serviceId.includes("lead_generation") ||
+        serviceId.includes("generation") ||
+        serviceName.includes("advertising") ||
+        serviceName.includes("marketing") ||
+        serviceName.includes("seo") ||
+        serviceName.includes("lead gen") ||
+        serviceName.includes("generation");
+
+    if (isMarketingOrAds) {
+        return { verb: "achieve", target: "what you want to achieve" };
+    }
+
+    // Services related to design, content, writing
+    const isDesignOrCreative =
+        serviceId.includes("design") ||
+        serviceId.includes("branding") ||
+        serviceId.includes("video") ||
+        serviceId.includes("writing") ||
+        serviceId.includes("content") ||
+        serviceName.includes("design") ||
+        serviceName.includes("brand") ||
+        serviceName.includes("video") ||
+        serviceName.includes("write") ||
+        serviceName.includes("content");
+
+    if (isDesignOrCreative) {
+        return { verb: "create", target: "what you want to create" };
+    }
+
+    // Default fallback
+    return { verb: "achieve", target: "your goals and requirements" };
+};
+
+const buildServiceAwareOpeningMessage = (service = null) => {
+    let serviceName = "";
+    if (service && typeof service === "object") {
+        serviceName = service.name || "";
+    } else if (typeof service === "string") {
+        serviceName = service;
+    }
+
     const normalizedServiceName = String(serviceName || "").trim().toLowerCase();
     const scopeLabel = normalizedServiceName
         ? `your ${normalizedServiceName} requirement`
         : "your requirement";
 
-    return `Hello! I'm CATA, here to help with ${scopeLabel}.\nTell me a bit about what you want to build, and I can help shape the scope or generate a proposal.`;
+    const phrasing = getServiceActionPhrasing(service);
+
+    return `Hello! I'm CATA, here to help with ${scopeLabel}.\nTell me a bit about ${phrasing.target}, and I can help shape the scope or generate a proposal.`;
 };
 
 const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
@@ -6740,7 +6816,7 @@ const buildServiceStartState = async ({
         )
         : `How can I help you regarding ${service?.name || "this service"}?`;
     let firstQuestion = isNameFirstQuestion && !startPrefillBridge
-        ? buildServiceAwareOpeningMessage(service.name)
+        ? buildServiceAwareOpeningMessage(service)
         : sanitizedAiFirstQuestion;
     if (!firstQuestion) {
         firstQuestion = startPrefillBridge
@@ -6756,7 +6832,7 @@ const buildServiceStartState = async ({
                 )
             )
             : (isNameFirstQuestion
-                ? buildServiceAwareOpeningMessage(service.name)
+                ? buildServiceAwareOpeningMessage(service)
                 : firstQuestionFallbackPrompt);
     }
 
@@ -6778,6 +6854,7 @@ const generateProposalResponseForSession = async ({
     persistedAnswers,
     userMessageForReasoning = "",
     userMessageText = "",
+    overrideAnswersBySlug = null,
     timingTracker = null,
 }) => {
     // Reload messages fresh from DB so we have the full conversation history.
@@ -6821,7 +6898,7 @@ const generateProposalResponseForSession = async ({
         questions,
         timingTracker,
     });
-    const proposalAnswersBySlug = mergeExtractedAnswers({
+    let proposalAnswersBySlug = mergeExtractedAnswers({
         baseAnswers: persistedAnswers.bySlug,
         extractedAnswers: extractedFromConversation,
         validSlugs: allQuestionSlugs,
@@ -6829,6 +6906,20 @@ const generateProposalResponseForSession = async ({
         runtimeOptionsByQuestionSlug,
         service
     });
+
+    // Apply explicit overrides last — these always win over transcript-extracted answers.
+    // This ensures post-proposal field changes (e.g. "change timeline to 1 month") are respected.
+    if (overrideAnswersBySlug && typeof overrideAnswersBySlug === "object") {
+        const overrideEntries = Object.entries(overrideAnswersBySlug)
+            .filter(([slug, value]) => allQuestionSlugs.has(slug) && value != null && String(value).trim());
+        if (overrideEntries.length > 0) {
+            for (const [slug, value] of overrideEntries) {
+                proposalAnswersBySlug[slug] = value;
+            }
+            console.log(`[Proposal Override] Applied ${overrideEntries.length} explicit override answer(s):`, Object.fromEntries(overrideEntries));
+        }
+    }
+
     const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions, {
         runtimeOptionsByQuestionSlug,
         existingPayload: session.answers || {}
@@ -7231,7 +7322,8 @@ Return plain text only.
             return "I have enough context to put the proposal together now.";
         }
         if (openingNameStep) {
-            return `Happy to help with ${service?.name || "this"}.\nTell me a bit about what you want to build, and I will guide you from there.`;
+            const phrasing = getServiceActionPhrasing(service);
+            return `Happy to help with ${service?.name || "this"}.\nTell me a bit about ${phrasing.target}, and I will guide you from there.`;
         }
         return nextQuestion
             ? (getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug).length > 0
@@ -7704,6 +7796,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             ),
             userMessageForReasoning: "",
             userMessageText: "",
+            overrideAnswersBySlug: proposedAnswersBySlug || null,
             timingTracker: requestTimingTracker,
         });
 
@@ -7770,13 +7863,61 @@ export const guestChat = asyncHandler(async (req, res) => {
                 responseMessage = `${postProposalBudgetAction.blockedMessage} If you still want another proposal, keep the budget at least ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")} and tell me when you are ready.`;
                 nextInputConfig = { type: "text", options: [] };
             } else {
+                // Extract ALL field changes from the message (timeline, budget, audience, etc.)
+                // so we can store them and apply them as overrides during proposal regeneration.
+                let generalExtractedAnswers = [];
+                try {
+                    generalExtractedAnswers = await extractAnswersFromMessage({
+                        serviceName: service.name,
+                        message: trimmedMessageText,
+                        questions,
+                        timingTracker: requestTimingTracker,
+                    });
+                } catch {
+                    generalExtractedAnswers = [];
+                }
+
+                const validSlugsForOverride = new Set(
+                    (Array.isArray(questions) ? questions : []).map((q) => q?.slug).filter(Boolean)
+                );
+
+                // Build merged proposed answers: start from existing, apply general extraction, then budget on top
+                let mergedProposedAnswersBySlug = { ...existingAnswersBySlug };
+                for (const extracted of generalExtractedAnswers) {
+                    const slug = String(extracted?.slug || "").trim();
+                    const answer = String(extracted?.answer || "").trim();
+                    const confidence = Number(extracted?.confidence || 0);
+                    if (slug && answer && validSlugsForOverride.has(slug) && confidence >= 0.85) {
+                        mergedProposedAnswersBySlug[slug] = answer;
+                    }
+                }
+                // Budget action answers override general extraction
+                if (postProposalBudgetAction?.proposedAnswersBySlug) {
+                    Object.assign(mergedProposedAnswersBySlug, postProposalBudgetAction.proposedAnswersBySlug);
+                }
+
+                // Only keep slugs that actually changed from existing answers
+                const changedProposedAnswersBySlug = Object.fromEntries(
+                    Object.entries(mergedProposedAnswersBySlug).filter(([slug, value]) => {
+                        const existing = String(existingAnswersBySlug[slug] || "").trim();
+                        const proposed = String(value || "").trim();
+                        return proposed && proposed !== existing;
+                    })
+                );
+
+                if (Object.keys(changedProposedAnswersBySlug).length > 0) {
+                    console.log(`[Post-Proposal Change Extraction] Captured ${Object.keys(changedProposedAnswersBySlug).length} field change(s):`, changedProposedAnswersBySlug);
+                }
+
                 nextAnswers = mergeAnswersUiState(nextAnswers, {
                     [PENDING_PROPOSAL_STATE_KEY]: {
                         action: "regenerate_current",
                         targetServiceSlug: service.slug,
                         targetServiceName: service.name,
                         sourceMessage: trimmedMessageText,
-                        proposedAnswersBySlug: postProposalBudgetAction?.proposedAnswersBySlug || null
+                        proposedAnswersBySlug: Object.keys(changedProposedAnswersBySlug).length > 0
+                            ? changedProposedAnswersBySlug
+                            : (postProposalBudgetAction?.proposedAnswersBySlug || null)
                     }
                 });
                 await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });

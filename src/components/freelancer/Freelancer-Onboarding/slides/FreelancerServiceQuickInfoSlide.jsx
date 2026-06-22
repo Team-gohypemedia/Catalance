@@ -534,6 +534,8 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
 /* ─────────────────────── Main Combined Slide ─────────────────────── */
 
 const FreelancerServiceQuickInfoSlide = ({
+  totalSelectedServices = 1,
+  currentServiceIndex = 0,
   currentServiceName,
   onboardingContent,
   // Service Info props
@@ -920,28 +922,36 @@ const FreelancerServiceQuickInfoSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[10px] sm:mt-0">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         {/* Page Title */}
         <div className="text-center">
+          
+          {totalSelectedServices > 1 && (
+            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            </div>
+          )}
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             {(() => {
               const headingText = applyServiceTemplate(
                 serviceInfoContent?.headingTitleTemplate || "Fill Your {serviceName} Service Info",
                 serviceName,
               );
-              const matchIdx = headingText.toLowerCase().lastIndexOf("service info");
-              if (matchIdx >= 0) {
-                const mainPart = headingText.slice(0, matchIdx);
-                const highlightPart = headingText.slice(matchIdx);
-                return (
-                  <>
-                    <span>{mainPart}</span>
-                    <span className="text-primary">
-                      {highlightPart}
-                    </span>
-                  </>
-                );
+              if (serviceName) {
+                const matchIdx = headingText.toLowerCase().indexOf(serviceName.toLowerCase());
+                if (matchIdx >= 0) {
+                  const before = headingText.slice(0, matchIdx);
+                  const highlightPart = headingText.slice(matchIdx, matchIdx + serviceName.length);
+                  const after = headingText.slice(matchIdx + serviceName.length);
+                  return (
+                    <>
+                      <span>{before}</span>
+                      <span className="text-primary">{highlightPart}</span>
+                      <span>{after}</span>
+                    </>
+                  );
+                }
               }
               return <span>{headingText}</span>;
             })()}

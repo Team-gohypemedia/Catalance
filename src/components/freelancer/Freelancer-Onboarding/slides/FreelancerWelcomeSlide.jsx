@@ -65,16 +65,16 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
   }, [onContinue])
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-1 lg:py-2 flex flex-col items-center justify-center">
+    <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-1 lg:py-2 flex flex-col items-center justify-center mt-[20px] sm:mt-0">
       <div className="flex flex-col items-center text-center mb-1 lg:mb-2 max-w-4xl">
 
         {/* Heading */}
-        <h1 className="text-2xl sm:text-3xl lg:text-[2.25rem] xl:text-[2.5rem] font-medium tracking-tight text-neutral-900 dark:text-white leading-tight mb-1">
+        <h1 className="text-2xl sm:text-3xl lg:text-[2.25rem] xl:text-[2.5rem] font-medium tracking-tight text-neutral-900 dark:text-white leading-tight mb-3 sm:mb-4">
           Turn Your Skills into <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Real Income</span>
         </h1>
 
         {/* Subheading */}
-        <div className="text-neutral-900/60 dark:text-neutral-400 text-xs sm:text-sm lg:text-base max-w-none leading-relaxed font-medium">
+        <div className="text-neutral-900/60 dark:text-neutral-400 text-xs sm:text-sm lg:text-base max-w-none mb-6 sm:mb-8 leading-relaxed font-medium">
           Join thousands of freelancers who are earning on their terms and building the life they want.
         </div>
       </div>

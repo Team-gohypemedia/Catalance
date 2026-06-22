@@ -272,7 +272,7 @@ const FreelancerBasicProfileSlide = ({
                   aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
                   aria-invalid={Boolean(profilePhotoError)}
                   className={cn(
-                    "group relative flex size-32 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-card sm:size-36",
+                    "group relative flex size-24 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-border bg-muted text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-card sm:size-28",
                     profilePhotoError &&
                       "border-destructive/80 hover:border-destructive/80 focus:ring-destructive/55",
                   )}
@@ -795,7 +795,7 @@ const FreelancerBasicProfileSlide = ({
   const remainingFields = visibleFields.filter((field) => !renderedFieldIds.has(field.id));
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5 mt-[10px] sm:mt-0">
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5 mt-[10px] mt-[20px] sm:mt-0">
       <div className="w-full max-w-2xl text-center">
         <h1 className="mb-1 text-xl font-medium text-foreground md:mb-2 md:text-4xl lg:mb-2 lg:text-5xl">
           {renderTitle(slideTitle)}
@@ -805,7 +805,7 @@ const FreelancerBasicProfileSlide = ({
         </p>
       </div>
 
-      <div className="relative w-full overflow-hidden rounded-[32px] border border-border bg-card px-3 py-4 shadow-[0_28px_100px_rgba(0,0,0,0.08)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-6 sm:py-7 lg:px-10 lg:py-9">
+      <div className="relative w-full overflow-hidden rounded-[10px] border border-border bg-card px-3 py-4 shadow-[0_28px_100px_rgba(0,0,0,0.08)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.34)] sm:px-6 sm:py-7 lg:px-10 lg:py-9">
         <div className="relative grid grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
           
           <div className="space-y-6 lg:space-y-8">
