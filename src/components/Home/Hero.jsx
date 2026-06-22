@@ -120,7 +120,7 @@ const Hero = () => {
   const starColor = isDarkMode ? "#F9D949" : "#D9692A";
 
   return (
-    <section className="relative flex w-full flex-col items-center overflow-hidden bg-background pt-32 pb-0">
+    <section className="relative flex w-full flex-col items-center overflow-hidden bg-background pt-[93px] sm:pt-32 pb-0">
       <div aria-hidden className="pointer-events-none absolute inset-0">
 
 
@@ -178,7 +178,7 @@ const Hero = () => {
           />
         </h1>
 
-        <p className="mt-3 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-foreground/80 dark:text-white/90 sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
+        <p className="mt-1.5 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-foreground/80 dark:text-white/90 sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
           Hire trusted experts focused on reliable and timely delivery.
         </p>
 
