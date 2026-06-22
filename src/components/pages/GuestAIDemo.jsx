@@ -5635,7 +5635,7 @@ const GuestAIDemo = () => {
                                                 <img
                                                     src={resolveServiceLogoSrc(feature, isDark)}
                                                     alt={feature.title || feature.name}
-                                                    className={`z-10 object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-110 ${isDark ? 'h-24 w-24' : 'h-28 w-28'}`}
+                                                    className="z-10 object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-110 h-24 w-24"
                                                 />
                                             </div>
 
@@ -6028,7 +6028,7 @@ const GuestAIDemo = () => {
                                                     <img
                                                         src={resolveServiceLogoSrc(feature, isDark)}
                                                         alt={feature.title || feature.name}
-                                                        className={`object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out ${isDark ? 'w-24 h-24' : 'w-28 h-28'}`}
+                                                        className="object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out w-24 h-24"
                                                     />
                                                 </div>
 

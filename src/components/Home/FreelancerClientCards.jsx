@@ -39,8 +39,8 @@ const FreelancerClientCards = () => {
   const brandColor = isDarkMode ? "#F9D949" : "#D9692A";
   
   const cardClassName = isDarkMode
-    ? "relative isolate flex min-h-[26rem] flex-col rounded-[2rem] border border-white/10 bg-white/5 px-6 pb-6 pt-6 text-left shadow-2xl backdrop-blur-xl transition-all duration-500 ease-in-out"
-    : "relative isolate flex min-h-[26rem] flex-col rounded-[2rem] border border-black/5 bg-white px-6 pb-6 pt-6 text-left shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-500 ease-in-out group-hover:!bg-[#D9692A] group-hover:border-transparent group-hover:shadow-[0_24px_80px_rgba(217,105,42,0.35)]";
+    ? "relative isolate flex min-h-0 sm:min-h-[26rem] flex-col rounded-[2rem] border border-white/10 bg-white/5 p-5 sm:p-6 text-left shadow-2xl backdrop-blur-xl transition-all duration-500 ease-in-out"
+    : "relative isolate flex min-h-0 sm:min-h-[26rem] flex-col rounded-[2rem] border border-black/5 bg-white p-5 sm:p-6 text-left shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-500 ease-in-out group-hover:!bg-[#D9692A] group-hover:border-transparent group-hover:shadow-[0_24px_80px_rgba(217,105,42,0.35)]";
 
   const textHeadingClass = isDarkMode
     ? "text-white"
@@ -96,24 +96,24 @@ const FreelancerClientCards = () => {
 
             <article className={`${cardClassName} z-10`}>
               <div className="relative z-10 flex h-full flex-col">
-                <div className="mb-11 flex items-center justify-between gap-4">
+                <div className="mb-6 sm:mb-11 flex items-center justify-between gap-4">
                   <Briefcase className={`size-7 ${iconClass}`} />
                   <span className={`text-sm font-semibold uppercase tracking-[0.28em] transition-colors duration-500 ease-in-out ${isDarkMode ? "text-white/50" : "text-[#1C1B1F]/50 group-hover:!text-white"}`}>
                     For Businesses
                   </span>
                 </div>
 
-                <h3 className={`max-w-xs text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`max-w-xs text-2xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Hire Reliable Talent Faster
                 </h3>
 
-                <div className="mt-6 space-y-4">
+                <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
                   {businessFeatures.map(({ icon: Icon, text }) => (
-                    <div key={text} className="flex items-center gap-4 group/feature">
+                    <div key={text} className="flex items-center gap-3 sm:gap-4 group/feature">
                       <div className={`flex size-9 shrink-0 items-center justify-center rounded-full ${iconContainerClass}`}>
                         <Icon className={`size-[1.1rem] ${iconClass}`} />
                       </div>
-                      <span className={`text-[1.05rem] font-medium leading-tight ${textFeatureClass}`}>
+                      <span className={`text-[1.05rem] font-normal sm:font-medium leading-tight ${textFeatureClass}`}>
                         {text}
                       </span>
                     </div>
@@ -122,7 +122,7 @@ const FreelancerClientCards = () => {
 
                 <Link
                   to="/service"
-                  className={`mt-8 flex items-center justify-center h-[3.75rem] rounded-2xl text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
+                  className={`mt-6 sm:mt-8 flex items-center justify-center h-[3.25rem] sm:h-[3.75rem] rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
                 >
                   Hire Now
                 </Link>
@@ -158,24 +158,24 @@ const FreelancerClientCards = () => {
 
             <article className={`${cardClassName} z-10`}>
               <div className="relative z-10 flex h-full flex-col">
-                <div className="mb-11 flex items-center justify-between gap-4">
+                <div className="mb-6 sm:mb-11 flex items-center justify-between gap-4">
                   <UserRoundSearch className={`size-7 ${iconClass}`} />
                   <span className={`text-sm font-semibold uppercase tracking-[0.28em] transition-colors duration-500 ease-in-out ${isDarkMode ? "text-white/50" : "text-[#1C1B1F]/50 group-hover:!text-white"}`}>
                     For Freelancers
                   </span>
                 </div>
 
-                <h3 className={`max-w-sm text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`max-w-sm text-2xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Grow Your Career with Trusted Clients
                 </h3>
 
-                <div className="mt-6 space-y-4">
+                <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
                   {freelancerFeatures.map(({ icon: Icon, text }) => (
-                    <div key={text} className="flex items-center gap-4 group/feature">
+                    <div key={text} className="flex items-center gap-3 sm:gap-4 group/feature">
                       <div className={`flex size-9 shrink-0 items-center justify-center rounded-full ${iconContainerClass}`}>
                         <Icon className={`size-[1.1rem] ${iconClass}`} />
                       </div>
-                      <span className={`text-[1.05rem] font-medium leading-tight ${textFeatureClass}`}>
+                      <span className={`text-[1.05rem] font-normal sm:font-medium leading-tight ${textFeatureClass}`}>
                         {text}
                       </span>
                     </div>
@@ -184,7 +184,7 @@ const FreelancerClientCards = () => {
 
                 <Link
                   to="/signup?role=freelancer"
-                  className={`mt-8 flex items-center justify-center h-[3.75rem] rounded-2xl text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
+                  className={`mt-6 sm:mt-8 flex items-center justify-center h-[3.25rem] sm:h-[3.75rem] rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
                 >
                   Get Hired Now
                 </Link>
