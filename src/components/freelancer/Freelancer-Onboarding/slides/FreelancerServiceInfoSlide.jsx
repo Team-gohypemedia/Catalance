@@ -1327,7 +1327,12 @@ const FreelancerServiceInfoSlide = ({
   const [displayedPlaceholder, setDisplayedPlaceholder] = useState("");
   
   const placeholders = useMemo(() => {
-    const key = String(serviceName || "").toLowerCase().trim();
+    let key = String(serviceName || "").toLowerCase().trim();
+    if (key === "mobile app development") {
+      key = "app development";
+    } else if (key === "social media marketing") {
+      key = "social media management";
+    }
     return SERVICE_PLACEHOLDERS[key] || [
       fieldMap.title?.placeholder ||
       serviceInfoContent?.fields?.title?.placeholder ||

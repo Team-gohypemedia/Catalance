@@ -22,6 +22,8 @@ const SERVICE_IMAGE_MAP_LIGHT = {
   "seo / gmb": `${BASE}/seo.gif`,
   "seo/gmb": `${BASE}/seo.gif`,
   "social media management": `${BASE}/social%20media.gif`,
+  "social media marketing": `${BASE}/social%20media.gif`,
+  "mobile app development": `${BASE}/app%20development.gif`,
   "software development": `${BASE}/software%20development.gif`,
   "video services": `${BASE}/video%20service.gif`,
   "web development": `${BASE}/web%20development.gif`,
@@ -55,6 +57,8 @@ const SERVICE_IMAGE_MAP_DARK = {
   "seo / gmb": `${BASE_DARK}/seo.gif`,
   "seo/gmb": `${BASE_DARK}/seo.gif`,
   "social media management": `${BASE_DARK}/social-media.gif`,
+  "social media marketing": `${BASE_DARK}/social-media.gif`,
+  "mobile app development": `${BASE_DARK}/app%20dev.gif`,
   "software development": `${BASE_DARK}/software%20dev.gif`,
   "video services": `${BASE_DARK}/video%20services.gif`,
   "web development": `${BASE_DARK}/software.gif`,
@@ -192,7 +196,11 @@ const FreelancerServicesSlide = ({
                       isSelected ? "text-primary" : "text-foreground"
                     )}
                   >
-                    {service.name}
+                    {service.name === "App Development"
+                      ? "Mobile App Development"
+                      : service.name === "Social Media Management"
+                      ? "Social Media Marketing"
+                      : service.name}
                   </span>
                 </button>
               );

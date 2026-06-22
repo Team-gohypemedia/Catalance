@@ -1041,9 +1041,14 @@ const AgencyOnboardingShell = ({
   );
   const currentServiceKey = selectedServices[currentServiceIndex] || "";
   const currentService = resolveServiceCatalogEntry(dbServices, currentServiceKey);
-  const currentServiceName = String(
-    currentService?.name || currentService?.label || "Service",
-  ).trim() || "Service";
+  const currentServiceName = (() => {
+    const rawName = String(
+      currentService?.name || currentService?.label || "Service",
+    ).trim() || "Service";
+    if (rawName === "App Development") return "Mobile App Development";
+    if (rawName === "Social Media Management") return "Social Media Marketing";
+    return rawName;
+  })();
   const currentServiceDraft = currentServiceKey
     ? normalizeServiceDraft(serviceDraftsByKey[currentServiceKey], {
         serviceKey: currentServiceKey,
