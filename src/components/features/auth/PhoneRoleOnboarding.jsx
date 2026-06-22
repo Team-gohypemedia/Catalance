@@ -989,11 +989,11 @@ function PhoneRoleOnboarding() {
         <main className="relative z-10 flex flex-1 items-center justify-center gap-12 px-6 py-6 lg:py-8 lg:px-16 xl:gap-20">
 
           {/* Left panel */}
-          <div className="hidden max-w-sm flex-1 lg:flex lg:flex-col">
+          <div className="hidden max-w-[420px] xl:max-w-md flex-1 lg:flex lg:flex-col">
             <div className={cn("mb-7 inline-flex w-fit items-center gap-1.5 rounded-full border px-3 py-1 text-[0.75rem] font-medium", isDark ? "border-white/10 bg-white/[0.05] text-white/60" : "border-black/[0.08] bg-white/70 text-black/50")}>
               <span className="text-primary">✦</span> Step 1 of 2
             </div>
-            <h1 className={cn("mb-4 text-[2.6rem] font-bold leading-[1.15] tracking-[-1px]", isDark ? "text-white" : "text-[#1C1B1F]")}>
+            <h1 className={cn("mb-4 text-4xl xl:text-[2.6rem] whitespace-nowrap font-bold leading-[1.15] tracking-[-1px]", isDark ? "text-white" : "text-[#1C1B1F]")}>
               Introduce <span className="text-primary">yourself</span> 👋
             </h1>
             <p className={cn("mb-9 text-[0.95rem] leading-relaxed", isDark ? "text-white/50" : "text-black/50")}>
@@ -1099,8 +1099,8 @@ function PhoneRoleOnboarding() {
             className={cn("w-full max-w-md rounded-3xl border p-6 sm:p-7 shadow-2xl shadow-black/5 dark:shadow-black/40", isDark ? "border-white/[0.07] bg-white/[0.04] backdrop-blur-xl" : "border-black/[0.06] bg-white")}
           >
             {/* Mobile heading */}
-            <div className="mb-4 lg:hidden">
-              <div className={cn("mb-2.5 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.75rem] font-medium", isDark ? "border-white/10 bg-white/[0.05] text-white/60" : "border-black/[0.08] bg-black/[0.04] text-black/50")}>
+            <div className="mb-4 text-center lg:hidden">
+              <div className={cn("mb-2.5 inline-flex items-center justify-center gap-1.5 rounded-full border px-3 py-1 text-[0.75rem] font-medium", isDark ? "border-white/10 bg-white/[0.05] text-white/60" : "border-black/[0.08] bg-black/[0.04] text-black/50")}>
                 <span className="text-primary">✦</span> Step 1 of 2
               </div>
               <h1 className={cn("text-2xl font-bold tracking-[-0.5px]", isDark ? "text-white" : "text-[#1C1B1F]")}>
