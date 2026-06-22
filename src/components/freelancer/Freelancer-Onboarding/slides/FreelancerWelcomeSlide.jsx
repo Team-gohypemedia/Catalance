@@ -69,7 +69,7 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
       <div className="flex flex-col items-center text-center mb-1 lg:mb-2 max-w-4xl">
 
         {/* Heading */}
-        <h1 className="text-2xl sm:text-3xl lg:text-[2.25rem] xl:text-[2.5rem] font-medium tracking-tight text-neutral-900 dark:text-white leading-tight mb-3 sm:mb-4">
+        <h1 className="text-[1.3rem] min-[400px]:text-2xl sm:text-3xl lg:text-[2.25rem] xl:text-[2.5rem] whitespace-nowrap font-medium tracking-tight text-neutral-900 dark:text-white leading-tight mb-3 sm:mb-4">
           Turn Your Skills into <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Real Income</span>
         </h1>
 
@@ -111,13 +111,13 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
           <div className="absolute -inset-4 bg-radial from-purple-500/5 to-transparent blur-2xl pointer-events-none rounded-[3rem]" />
           
           {/* Testimonial card */}
-          <div className="relative w-full max-w-md rounded-[2.25rem] border border-neutral-200/60 bg-white/95 dark:border-neutral-800 dark:bg-neutral-900/50 backdrop-blur-xl p-5 sm:p-6 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col justify-between min-h-[200px] sm:min-h-[230px]">
+          <div className="relative w-full max-w-md rounded-[2.25rem] border border-neutral-200/60 bg-white/95 dark:border-neutral-800 dark:bg-neutral-900/50 backdrop-blur-xl p-5 shadow-[0_12px_40px_rgba(0,0,0,0.03)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col justify-between min-h-[160px] sm:min-h-[180px]">
             
             {/* Purple quotes mark */}
             <div className="absolute top-2 left-4 text-[#6366F1] opacity-35 dark:opacity-45 text-6xl font-serif leading-none select-none">“</div>
             
             {/* Animated review quote */}
-            <div className="flex-1 flex items-center pt-5 pb-5 min-h-[100px] relative z-10">
+            <div className="flex-1 flex items-center pt-3 pb-3 min-h-[80px] relative z-10">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeReviewIdx}

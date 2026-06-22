@@ -342,7 +342,7 @@ const FreelancerCaseStudySlide = ({
         <div className="text-center">
           
           {totalSelectedServices > 1 && (
-            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+            <div className="mb-2 text-sm font-semibold tracking-wide text-foreground uppercase">
               Service {currentServiceIndex + 1} of {totalSelectedServices}
             </div>
           )}

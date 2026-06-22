@@ -948,8 +948,8 @@ const FreelancerServiceReviewSlide = ({
         <div className="text-center">
           
           {totalSelectedServices > 1 && (
-            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
-              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            <div className="mb-2 text-sm font-semibold tracking-wide text-foreground uppercase">
+             Service {currentServiceIndex + 1} of {totalSelectedServices}
             </div>
           )}
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>

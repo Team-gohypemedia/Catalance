@@ -617,6 +617,18 @@ const ChatArea = React.memo(function ChatArea({
                 <p className="mt-2 text-base text-muted-foreground">
                   Start a conversation with {conversationTitle} to discuss project requirements, timelines, and deliverables.
                 </p>
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleInputChange("Hi, I'd like to discuss the project requirements and timelines with you.");
+                      setTimeout(() => composerInputRef.current?.focus(), 0);
+                    }}
+                    className="rounded-full bg-[var(--primary)] px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--primary)]/90"
+                  >
+                    Start a conversation
+                  </button>
+                </div>
               </div>
             </div>
           ) : null}
