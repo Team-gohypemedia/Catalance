@@ -86,7 +86,7 @@ const ProjectProgressLockedCard = ({ project, onViewProject }) => (
       <button
         type="button"
         onClick={() => onViewProject?.(project.id)}
-        className="flex w-full items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto"
+        className="flex w-full items-center justify-center gap-1.5 rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414] sm:w-auto"
       >
         View Project
         <ChevronRight className="size-4 stroke-[2]" />
@@ -690,7 +690,7 @@ export const ProjectProgressSection = ({
                 <button
                   type="button"
                   onClick={onOpenQuickProject}
-                  className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/80 sm:w-auto"
+                  className="mt-6 inline-flex w-full items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414] sm:w-auto"
                 >
                   Start New Project
                 </button>

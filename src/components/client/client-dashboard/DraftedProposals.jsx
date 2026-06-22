@@ -1221,7 +1221,7 @@ const Proposals = memo(function Proposals({
               <button
                 type="button"
                 onClick={handleOpenQuickProject}
-                className="mt-6 inline-flex h-11 min-w-[180px] items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98 dark:text-[#141414]"
+                className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
               >
                 Create New Proposal
               </button>

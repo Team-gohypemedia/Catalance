@@ -114,7 +114,7 @@ const WishlistedFreelancers = memo(function WishlistedFreelancers({
             <button
               type="button"
               onClick={handleOpenMarketplace}
-              className="mt-5 inline-flex h-9 items-center justify-center rounded-xl bg-primary px-4 text-xs font-semibold uppercase tracking-[0.08em] text-primary-foreground transition-colors hover:bg-primary/80"
+              className="mt-5 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
             >
               Browse Marketplace
             </button>
