@@ -47,7 +47,7 @@ const FreelancerCommunicationPolicySlide = ({ onCommunicationPolicyReadinessChan
   }, [hasReachedEnd, isAgreementChecked, onCommunicationPolicyReadinessChange]);
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6">
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6 mt-[20px] sm:mt-0">
       <div className="w-full max-w-5xl space-y-6">
         <div className="space-y-2 text-center">
           <h1 className={cn(ONBOARDING_PAGE_TITLE_CLASS, "text-primary")}>

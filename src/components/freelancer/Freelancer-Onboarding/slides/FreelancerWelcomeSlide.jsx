@@ -65,7 +65,7 @@ const FreelancerWelcomeSlide = ({ onContinue }) => {
   }, [onContinue])
 
   return (
-    <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-1 lg:py-2 flex flex-col items-center justify-center">
+    <section className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-1 lg:py-2 flex flex-col items-center justify-center mt-[20px] sm:mt-0">
       <div className="flex flex-col items-center text-center mb-1 lg:mb-2 max-w-4xl">
 
         {/* Heading */}

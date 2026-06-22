@@ -156,7 +156,7 @@ const FreelancerServicesSlide = ({
   const services = Array.isArray(dbServices) ? dbServices : [];
 
   return (
-    <section className="mx-auto flex w-full max-w-[340px] flex-col items-center px-4 mt-[10px] sm:mt-0 sm:max-w-[600px] md:max-w-6xl md:px-0">
+    <section className="mx-auto flex w-full max-w-[340px] flex-col items-center px-4 mt-[10px] sm:max-w-[600px] md:max-w-6xl md:px-0 mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         <div className="text-center">
           <h1 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-medium text-foreground mb-1 md:mb-2 lg:mb-2 sm:whitespace-nowrap md:whitespace-normal">

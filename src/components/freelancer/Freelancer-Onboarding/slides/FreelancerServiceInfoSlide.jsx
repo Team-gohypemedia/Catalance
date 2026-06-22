@@ -1815,7 +1815,7 @@ const FreelancerServiceInfoSlide = ({
   };
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         <div className="text-center">
           <h1 className="text-xl md:text-4xl lg:text-5xl font-medium">
@@ -1824,18 +1824,20 @@ const FreelancerServiceInfoSlide = ({
                 serviceInfoContent?.headingTitleTemplate,
                 serviceName,
               );
-              const matchIdx = headingText.toLowerCase().lastIndexOf("service info");
-              if (matchIdx >= 0) {
-                const mainPart = headingText.slice(0, matchIdx);
-                const highlightPart = headingText.slice(matchIdx);
-                return (
-                  <>
-                    <span>{mainPart}</span>
-                    <span className="text-primary">
-                      {highlightPart}
-                    </span>
-                  </>
-                );
+              if (serviceName) {
+                const matchIdx = headingText.toLowerCase().indexOf(serviceName.toLowerCase());
+                if (matchIdx >= 0) {
+                  const before = headingText.slice(0, matchIdx);
+                  const highlightPart = headingText.slice(matchIdx, matchIdx + serviceName.length);
+                  const after = headingText.slice(matchIdx + serviceName.length);
+                  return (
+                    <>
+                      <span>{before}</span>
+                      <span className="text-primary">{highlightPart}</span>
+                      <span>{after}</span>
+                    </>
+                  );
+                }
               }
               return <span>{headingText}</span>;
             })()}

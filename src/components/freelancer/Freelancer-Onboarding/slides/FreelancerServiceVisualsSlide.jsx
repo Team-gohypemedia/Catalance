@@ -708,7 +708,7 @@ const FreelancerServiceVisualsSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">

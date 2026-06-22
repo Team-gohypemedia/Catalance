@@ -17,7 +17,7 @@ const FreelancerWorkPreferenceSlide = ({
   onSelectWorkPreference,
 }) => {
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6 py-6 sm:py-10">
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 text-center sm:min-h-[70vh] sm:px-6 py-6 sm:py-10 mt-[20px] sm:mt-0">
       <div className="w-full">
         {/* Heading Section */}
         <div className="text-center mb-6 sm:mb-8">

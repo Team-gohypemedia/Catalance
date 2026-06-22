@@ -139,7 +139,7 @@ const FreelancerServicePricingSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
