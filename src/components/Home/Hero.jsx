@@ -182,7 +182,7 @@ const Hero = () => {
           Hire trusted experts focused on reliable and timely delivery.
         </p>
 
-        <div className="mb-12 flex flex-col items-center justify-center gap-4 sm:flex-row w-full max-w-md mx-auto sm:max-w-none">
+        <div className="mb-6 sm:mb-12 flex flex-col items-center justify-center gap-4 sm:flex-row w-full max-w-md mx-auto sm:max-w-none">
           <Button
             asChild
             size="lg"
@@ -202,7 +202,7 @@ const Hero = () => {
       </div>
 
       {/* Integrated Brand Marquee at the bottom */}
-      <div className="relative z-20 w-full pt-10">
+      <div className="relative z-20 w-full pt-4 sm:pt-10">
         <BrandMarquee isIntegrated={true} />
       </div>
     </section>
