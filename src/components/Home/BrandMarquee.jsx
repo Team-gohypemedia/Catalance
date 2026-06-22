@@ -46,7 +46,7 @@ const BrandCard = ({ brand, isDark }) => {
         <img 
           src={brand.logo} 
           alt={brand.name} 
-          className="w-[100px] h-[50px] sm:w-[320px] sm:h-[160px] object-contain"
+          className="w-[160px] h-[80px] sm:w-[320px] sm:h-[160px] object-contain"
           style={!isDark && brand.isWhite ? { filter: "brightness(0)" } : {}}
         />
       </div>
@@ -66,14 +66,20 @@ const BrandMarquee = ({ isIntegrated = false }) => {
   return (
     <div className={cn(
       "relative w-full overflow-hidden mx-auto",
-      isIntegrated ? "py-2 sm:py-6" : "py-4 sm:py-12"
+      isIntegrated ? "py-2 sm:py-6" : "py-2 sm:py-6"
     )}>
 
 
-      <div className="relative z-10 mb-3 sm:mb-6 text-center">
-        <span className="text-[0.7rem] font-bold uppercase tracking-[0.4em] text-foreground/70 dark:text-white/60">
-          Trusted by Industry Leaders
-        </span>
+      <div className="relative z-10 mb-6 sm:mb-10 text-center flex flex-col items-center gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-px w-10 sm:w-16 bg-gradient-to-r from-transparent to-foreground/20 dark:to-white/50" />
+          <span className="text-[0.65rem] font-bold uppercase tracking-[0.35em] text-foreground/40 dark:text-white/70">Our Partners</span>
+          <div className="h-px w-10 sm:w-16 bg-gradient-to-l from-transparent to-foreground/20 dark:to-white/50" />
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground dark:text-white">
+          Trusted by{" "}
+          <span className="text-primary italic">Industry Leaders</span>
+        </h2>
       </div>
 
       <div className="relative z-10 flex flex-col gap-1 sm:gap-2">

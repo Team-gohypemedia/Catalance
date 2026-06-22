@@ -67,7 +67,7 @@ const FreelancerClientCards = () => {
     : "bg-[#D9692A] text-white keep-white border border-transparent group-hover:!bg-white group-hover:!text-[#D9692A] transition-colors duration-500 ease-in-out shadow-sm group-hover:shadow-lg";
 
   return (
-    <section className="relative flex w-full items-center justify-center overflow-hidden bg-[#fafaf9] dark:bg-[#020202] px-4 pt-10 pb-10 sm:pt-16 sm:pb-16 sm:px-6 lg:px-8 transition-colors duration-500">
+    <section className="relative flex w-full items-center justify-center overflow-hidden bg-[#fafaf9] dark:bg-[#020202] px-4 pt-4 pb-10 sm:pt-8 sm:pb-16 sm:px-6 lg:px-8 transition-colors duration-500">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(var(--brand-rgb),0.05),rgba(0,0,0,0)_50%)]"
@@ -75,14 +75,14 @@ const FreelancerClientCards = () => {
 
       <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col items-center">
         <div className="mx-auto w-full max-w-7xl text-center">
-          <h2 className="text-[2rem] font-bold leading-[1.1] tracking-tight text-[#1C1B1F] dark:text-white sm:text-[2.75rem] md:text-[3.2rem] lg:text-[3.8rem]">
+          <h2 className="text-[2rem] font-medium leading-[1.1] tracking-tight text-[#1C1B1F] dark:text-white sm:text-[2.75rem] md:text-[3.2rem] lg:text-[3.8rem]">
             Built for <span className="text-primary italic font-medium">Freelancers</span>
             <br className="sm:hidden" />
             <span className="mx-2 sm:mx-0"> & </span>
             <br className="sm:hidden" />
             <span className="text-primary italic font-medium">Business Owners</span>
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-balance text-sm font-medium leading-relaxed text-[#1C1B1F]/60 dark:text-white/60 sm:text-base md:text-lg">
+          <p className="mx-auto mt-4 max-w-2xl text-balance text-sm font-normal leading-relaxed text-[#1C1B1F]/60 dark:text-white/60 sm:text-base md:text-lg">
             Designed to support your growth at every stage of your professional journey.
           </p>
         </div>
@@ -107,7 +107,7 @@ const FreelancerClientCards = () => {
                   </span>
                 </div>
 
-                <h3 className={`max-w-xs text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`max-w-xs mx-auto text-center text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Hire Reliable Talent Faster
                 </h3>
 
@@ -169,7 +169,7 @@ const FreelancerClientCards = () => {
                   </span>
                 </div>
 
-                <h3 className={`max-w-sm text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`max-w-sm mx-auto text-center text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Work with Trusted Clients
                 </h3>
 

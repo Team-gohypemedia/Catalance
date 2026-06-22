@@ -204,7 +204,7 @@ const MadeOnCatalance = () => {
 
       <div className="relative mx-auto flex w-full max-w-7xl flex-col px-4 sm:px-6 lg:px-10">
         <header className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-          <h2 className="mt-1 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+          <h2 className="mt-1 text-[32px] font-medium tracking-tight sm:text-5xl lg:text-6xl">
             Made on <span className="text-primary italic font-medium">CATALANCE</span>
           </h2>
         </header>

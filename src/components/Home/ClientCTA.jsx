@@ -25,7 +25,7 @@ const ClientCTA = () => {
   }, [])
 
   return (
-    <section className="bg-background px-4 py-10 sm:px-6 sm:py-32 lg:px-8">
+    <section className="bg-background px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
       <div className="mx-auto max-w-[1240px]">
         <div className="relative overflow-hidden rounded-[2rem] border border-white/5 bg-background px-6 py-12 sm:px-10 sm:py-14 lg:min-h-[460px] lg:px-16">
           <div className="absolute inset-0 bg-background" />
@@ -67,7 +67,7 @@ const ClientCTA = () => {
 
           <div className="relative z-10 flex min-h-[360px] items-center justify-center">
             <div className="w-full max-w-[760px] text-center">
-              <h2 className="text-[3rem] font-semibold leading-[0.9] text-foreground sm:text-[4rem] lg:text-[5rem]">
+              <h2 className="text-[32px] font-semibold leading-[0.9] text-foreground sm:text-[4rem] lg:text-[5rem]">
                 <span className="block">Freelance services</span>
                 <span className="block">at your fingertips</span>
               </h2>
@@ -75,14 +75,14 @@ const ClientCTA = () => {
                 asChild
                 size="lg"
                 aria-label={CTA_WORDS.join(', ')}
-                className="mt-10 h-12 rounded-xl px-8 text-lg font-semibold !text-white keep-white shadow-[0_14px_36px_rgba(var(--brand-rgb), 0.22)]"
+                className="mt-10 h-12 rounded-xl px-8 text-lg font-semibold !text-white dark:!text-black shadow-[0_14px_36px_rgba(var(--brand-rgb), 0.22)]"
               >
                 <Link to="/service">
                   <span
                     aria-hidden="true"
-                    className="relative inline-grid h-[1.1em] min-w-[11ch] place-items-center overflow-hidden leading-none !text-current keep-white"
+                    className="relative inline-grid h-[1.1em] min-w-[11ch] place-items-center overflow-hidden leading-none !text-current"
                   >
-                    <span className="invisible col-start-1 row-start-1 !text-current keep-white">{CTA_LONGEST_WORD}</span>
+                    <span className="invisible col-start-1 row-start-1 !text-current">{CTA_LONGEST_WORD}</span>
                     <AnimatePresence initial={false} mode="sync">
                       <motion.span
                         key={CTA_WORDS[activeWordIndex]}
@@ -90,7 +90,7 @@ const ClientCTA = () => {
                         animate={{ y: '0%', opacity: 1 }}
                         exit={{ y: '-115%', opacity: 0 }}
                         transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-                        className="absolute inset-0 flex items-center justify-center whitespace-nowrap !text-current keep-white"
+                        className="absolute inset-0 flex items-center justify-center whitespace-nowrap !text-current"
                       >
                         {CTA_WORDS[activeWordIndex]}
                       </motion.span>

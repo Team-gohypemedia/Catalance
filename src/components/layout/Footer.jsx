@@ -39,7 +39,7 @@ const Footer = () => {
 
   return (
     <footer className="relative w-full overflow-hidden bg-background text-foreground">
-      <div className="relative z-10 mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-12">
         <div className="grid gap-14 lg:grid-cols-[0.95fr_1.9fr] lg:gap-10">
           <div className="flex flex-col gap-7">
             <Link className="flex w-fit items-center gap-2" to="/">
@@ -163,7 +163,7 @@ const Footer = () => {
           </div>
         </div>
 
-        <div className="mt-16 pt-12">
+        <div className="mt-10 pt-8">
           <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div className="max-w-md">
               <h3 className="text-2xl font-semibold tracking-tight text-foreground sm:text-[1.7rem]">

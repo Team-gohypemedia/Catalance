@@ -69,15 +69,7 @@ const HOME_SERVICES = [
     darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/seo%201.png",
     price: "₹15,000/- Month",
   },
-  {
-    id: "influencer_marketing",
-    title: "Influencer Marketing",
-    icon: Megaphone,
-    cardBg: "#eeefea",
-    illustrationUrl: "https://assets.catalance.in/lite%20service%20icons/influencer%20marketing.png",
-    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/influencer%20marketing%201.png",
-    price: "₹25,000/-",
-  },
+
   {
     id: "social_media_marketing",
     title: "Social Media Marketing",
@@ -87,15 +79,7 @@ const HOME_SERVICES = [
     darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/social%20media%20marketing%201.png",
     price: "₹15,000/- Month",
   },
-  {
-    id: "ugc_marketing",
-    title: "UGC",
-    icon: Camera,
-    cardBg: "#efefe9",
-    illustrationUrl: "https://assets.catalance.in/lite%20service%20icons/ucg%20marketing.png",
-    darkIllustrationUrl: "https://assets.catalance.in/dark%20theme%20icons/ucg%20marketing%201.png",
-    price: "₹18,000/-",
-  },
+
   {
     id: "creative_design",
     title: "Creative & Design",
@@ -282,14 +266,14 @@ const ServiceCardsCarousel = () => {
           <Button
             type="button"
             onClick={handleGetFreeProposal}
-            className="mt-8 h-12 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-7 sm:text-base"
+            className="mt-4 h-12 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-7 sm:text-base"
           >
             Get Your Free Proposal
           </Button>
         </div>
 
         {/* Scrollable list */}
-        <div 
+        <div
           className="relative w-full py-10"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}

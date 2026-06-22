@@ -354,10 +354,10 @@ const Testimonidals = () => {
   ], [])
 
   return (
-    <section className="relative overflow-hidden bg-background py-10 sm:py-32">
+    <section className="relative overflow-hidden bg-background pt-10 pb-6 sm:pt-12 sm:pb-16">
       {/* Header Section (Title & Badge) */}
-      <div className="relative z-20 mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-10 mb-8 sm:mb-12">
-          <div className={`inline-flex rounded-full border px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all mb-8 ${
+      <div className="relative z-20 mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-10 mb-4 sm:mb-8">
+          <div className={`inline-flex rounded-full border px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all mb-3 ${
             isDark 
               ? "border-white/10 bg-white/5 text-white/60 backdrop-blur-md" 
               : "border-black/5 bg-black/5 text-black/50"
@@ -365,14 +365,14 @@ const Testimonidals = () => {
             Expert Community
           </div>
 
-          <header className="mt-4 max-w-4xl mx-auto">
-            <h2 className={`text-6xl font-black tracking-tight text-balance sm:text-8xl ${
+          <header className="mt-1 max-w-4xl mx-auto">
+            <h2 className={`text-[32px] font-medium tracking-tight text-balance sm:text-8xl ${
               isDark ? "text-white" : "text-neutral-900"
             }`}>
               <span className="block">Don&apos;t Just Take Our</span>
               <span className="block text-primary italic font-medium">Word For It</span>
             </h2>
-            <p className={`mx-auto mt-8 max-w-2xl text-xl font-medium leading-relaxed ${
+            <p className={`mx-auto mt-4 max-w-2xl text-xl font-normal leading-relaxed ${
               isDark ? "text-white/50" : "text-neutral-500"
             }`}>
               Join thousands of experts who have already transformed their digital presence.
@@ -435,7 +435,7 @@ const Testimonidals = () => {
           </Carousel>
         </div>
 
-        <div className="mt-16 flex items-center justify-center gap-4 text-center sm:mt-20">
+        <div className="mt-8 flex items-center justify-center gap-4 text-center sm:mt-10">
           <div className="flex -space-x-3">
              {[testimonial1, testimonial2, testimonial3, testimonial4].map((img, i) => (
                <img key={i} src={img} className="size-10 rounded-full border-2 border-background object-cover" />
