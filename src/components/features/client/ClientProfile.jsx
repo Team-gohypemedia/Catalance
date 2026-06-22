@@ -1348,6 +1348,12 @@ const ClientProfileContent = () => {
             <Input
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !deleting && deleteConfirmText.toLowerCase() === "delete") {
+                  e.preventDefault();
+                  handleDeleteAccount();
+                }
+              }}
               placeholder="Type 'delete' here..."
               disabled={deleting}
             />
