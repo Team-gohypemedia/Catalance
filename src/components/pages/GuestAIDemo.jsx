@@ -158,7 +158,42 @@ const SERVICE_LOGO_ALIASES = {
 
 const isLogoUrl = (value = '') => /^(?:https?:\/\/|\/|data:image\/)/i.test(String(value || '').trim());
 
-const resolveServiceLogoSrc = (service = {}) => {
+const R2_LIGHT_LOGOS = {
+    '3d animation cgi videos vfx': 'https://assets.catalance.in/catamarket/3D%20AnimationCGI%20VideosVFX.png',
+    '3d animation cgi video vfx': 'https://assets.catalance.in/catamarket/3D%20AnimationCGI%20VideosVFX.png',
+    '3d animation': 'https://assets.catalance.in/catamarket/3D%20AnimationCGI%20VideosVFX.png',
+    'cgi video': 'https://assets.catalance.in/catamarket/3D%20AnimationCGI%20VideosVFX.png',
+    'cgi video services': 'https://assets.catalance.in/catamarket/3D%20AnimationCGI%20VideosVFX.png',
+    'cgi vfx': 'https://assets.catalance.in/catamarket/3D%20AnimationCGI%20VideosVFX.png',
+    'ai automation': 'https://assets.catalance.in/catamarket/AI%20Automation.png',
+    'ai video generation': 'https://assets.catalance.in/catamarket/AI%20Video%20Generation.png',
+    'branding kit': 'https://assets.catalance.in/catamarket/Branding%20Kit.png',
+    'branding and brand identity': 'https://assets.catalance.in/catamarket/Branding%20Kit.png',
+    'branding': 'https://assets.catalance.in/catamarket/Branding%20Kit.png',
+    'crm and erp solutions': 'https://assets.catalance.in/catamarket/CRM%20%26%20EPR%20.png',
+    'crm and erp integrated solutions': 'https://assets.catalance.in/catamarket/CRM%20%26%20EPR%20.png',
+    'crm erp integrated solutions': 'https://assets.catalance.in/catamarket/CRM%20%26%20EPR%20.png',
+    'creative and design': 'https://assets.catalance.in/catamarket/Creative%20%26%20Design.png',
+    'creative design': 'https://assets.catalance.in/catamarket/Creative%20%26%20Design.png',
+    'mobile app development': 'https://assets.catalance.in/catamarket/Mobile%20App%20Development.png',
+    'app development': 'https://assets.catalance.in/catamarket/Mobile%20App%20Development.png',
+    'paid advertising': 'https://assets.catalance.in/catamarket/paid%20advertising.png',
+    'paid ads': 'https://assets.catalance.in/catamarket/paid%20advertising.png',
+    'performance marketing': 'https://assets.catalance.in/catamarket/paid%20advertising.png',
+    'seo': 'https://assets.catalance.in/catamarket/seogmb.png',
+    'seo optimization': 'https://assets.catalance.in/catamarket/seogmb.png',
+    'seo and gmb': 'https://assets.catalance.in/catamarket/seogmb.png',
+    'social media marketing': 'https://assets.catalance.in/catamarket/social%20media%20marketing.png',
+    'social media management': 'https://assets.catalance.in/catamarket/social%20media%20marketing.png',
+    'video services': 'https://assets.catalance.in/catamarket/video%20services.png',
+    'voice agent': 'https://assets.catalance.in/catamarket/voice%20agent.png',
+    'website development': 'https://assets.catalance.in/catamarket/website%20development.png',
+    'web development': 'https://assets.catalance.in/catamarket/website%20development.png',
+    'writing and content': 'https://assets.catalance.in/catamarket/writing%20%26%20content.png',
+    'writing content': 'https://assets.catalance.in/catamarket/writing%20%26%20content.png',
+};
+
+const resolveServiceLogoSrc = (service = {}, isDark = false) => {
     const explicitLogo = [
         service.logo,
         service.logoUrl,
@@ -175,6 +210,20 @@ const resolveServiceLogoSrc = (service = {}) => {
         service.id,
         service.name,
     ];
+
+    if (!isDark) {
+        const r2Keys = Object.keys(R2_LIGHT_LOGOS);
+        for (const candidate of candidates) {
+            const normalized = normalizeServiceLogoKey(candidate);
+            if (!normalized) continue;
+
+            const mappedKey = SERVICE_LOGO_ALIASES[normalized] || normalized;
+            if (R2_LIGHT_LOGOS[mappedKey]) return R2_LIGHT_LOGOS[mappedKey];
+
+            const fuzzyKey = r2Keys.find((key) => key.includes(mappedKey) || mappedKey.includes(key));
+            if (fuzzyKey) return R2_LIGHT_LOGOS[fuzzyKey];
+        }
+    }
 
     for (const candidate of candidates) {
         const normalized = normalizeServiceLogoKey(candidate);
@@ -5584,9 +5633,9 @@ const GuestAIDemo = () => {
                                         <div className="relative z-10 flex h-full flex-col p-5">
                                             <div className="relative mb-3 flex h-32 w-full items-center justify-center">
                                                 <img
-                                                    src={resolveServiceLogoSrc(feature)}
+                                                    src={resolveServiceLogoSrc(feature, isDark)}
                                                     alt={feature.title || feature.name}
-                                                    className="z-10 h-24 w-24 object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-110"
+                                                    className={`z-10 object-contain drop-shadow-2xl transition-transform duration-500 ease-out group-hover:scale-110 ${isDark ? 'h-24 w-24' : 'h-28 w-28'}`}
                                                 />
                                             </div>
 
@@ -5977,9 +6026,9 @@ const GuestAIDemo = () => {
                                             <div className="flex flex-col h-full p-5 relative z-10">
                                                 <div className="h-32 w-full flex items-center justify-center mb-3 relative">
                                                     <img
-                                                        src={resolveServiceLogoSrc(feature)}
+                                                        src={resolveServiceLogoSrc(feature, isDark)}
                                                         alt={feature.title || feature.name}
-                                                        className="w-24 h-24 object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out"
+                                                        className={`object-contain drop-shadow-2xl z-10 group-hover:scale-110 transition-transform duration-500 ease-out ${isDark ? 'w-24 h-24' : 'w-28 h-28'}`}
                                                     />
                                                 </div>
 
