@@ -682,6 +682,8 @@ const UploadArea = ({
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerServiceVisualsSlide = ({
+  totalSelectedServices = 1,
+  currentServiceIndex = 0,
   onboardingContent,
   serviceVisualsForm,
   serviceVisualFields = [],
@@ -712,6 +714,12 @@ const FreelancerServiceVisualsSlide = ({
       <div className="w-full space-y-8">
         {/* Heading */}
         <div className="text-center">
+          
+          {totalSelectedServices > 1 && (
+            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            </div>
+          )}
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             {visualsContent?.headingTitle || "Add Media"}
           </h1>

@@ -421,6 +421,8 @@ const PreviewTag = ({ label, variant = "pill" }) => {
 
 const FreelancerServiceReviewSlide = ({
   currentService,
+  totalSelectedServices = 1,
+  currentServiceIndex = 0,
   currentServiceName,
   serviceDraft,
   basicProfileForm,
@@ -944,6 +946,12 @@ const FreelancerServiceReviewSlide = ({
     <section className="mx-auto flex w-full max-w-5xl flex-col items-center mt-[10px] mt-[20px] sm:mt-0">
       <div className="w-full space-y-4">
         <div className="text-center">
+          
+          {totalSelectedServices > 1 && (
+            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            </div>
+          )}
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Final </span>
             <span className="text-primary">Review</span>

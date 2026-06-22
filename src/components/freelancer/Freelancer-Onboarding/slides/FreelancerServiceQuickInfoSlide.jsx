@@ -534,6 +534,8 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
 /* ─────────────────────── Main Combined Slide ─────────────────────── */
 
 const FreelancerServiceQuickInfoSlide = ({
+  totalSelectedServices = 1,
+  currentServiceIndex = 0,
   currentServiceName,
   onboardingContent,
   // Service Info props
@@ -924,6 +926,12 @@ const FreelancerServiceQuickInfoSlide = ({
       <div className="w-full space-y-8">
         {/* Page Title */}
         <div className="text-center">
+          
+          {totalSelectedServices > 1 && (
+            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            </div>
+          )}
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             {(() => {
               const headingText = applyServiceTemplate(

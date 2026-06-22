@@ -88,7 +88,7 @@ const FreelancerWorkPreferenceSlide = ({
             </div>
 
             {/* Bottom Tag List */}
-            <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
+            <div className="flex flex-wrap justify-center gap-2 mt-4 sm:mt-5">
               {/* Tag 1 */}
               <div className={cn(
                 "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
@@ -195,7 +195,7 @@ const FreelancerWorkPreferenceSlide = ({
             </div>
 
             {/* Bottom Tag List */}
-            <div className="flex flex-wrap gap-2 mt-4 sm:mt-5">
+            <div className="flex flex-wrap justify-center gap-2 mt-4 sm:mt-5">
               {/* Tag 1 */}
               <div className={cn(
                 "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",

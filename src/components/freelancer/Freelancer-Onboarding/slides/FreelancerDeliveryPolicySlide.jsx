@@ -4,7 +4,7 @@ import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
 
 const PAGE_TITLE_CLASS =
   "text-balance text-2xl font-semibold leading-[1.08] tracking-[-0.04em] sm:text-[34px] md:text-[40px]";
-const SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
+const SECTION_TITLE_CLASS = "text-xl sm:text-2xl font-medium leading-tight tracking-[-0.02em]";
 
 const FreelancerDeliveryPolicySlide = ({ continueButton }) => (
   <section className="mx-auto flex min-h-[68vh] w-full max-w-6xl flex-col items-center justify-center px-4 sm:min-h-[70vh] sm:px-6 mt-[20px] sm:mt-0">
@@ -18,7 +18,7 @@ const FreelancerDeliveryPolicySlide = ({ continueButton }) => (
 
       <div className="rounded-2xl border border-border bg-card p-6 sm:p-7">
         <div className="space-y-2">
-          <h2 className={cn(SECTION_TITLE_CLASS,)}>Delivery &amp; Revision Policy</h2>
+          <h2 className={cn(SECTION_TITLE_CLASS, "whitespace-nowrap")}>Delivery &amp; Revision Policy</h2>
           <p className="text-base font-normal leading-7 text-muted-foreground">
             Catalance follows a structured delivery and revision process to maintain
             fairness, transparency, and dispute protection for both clients and

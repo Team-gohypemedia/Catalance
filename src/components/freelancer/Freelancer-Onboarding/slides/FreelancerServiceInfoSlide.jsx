@@ -1275,6 +1275,8 @@ const SERVICE_PLACEHOLDERS = {
 
 const FreelancerServiceInfoSlide = ({
   currentService,
+  totalSelectedServices = 1,
+  currentServiceIndex = 0,
   currentServiceName,
   onboardingContent,
   serviceInfoFields = [],
@@ -1818,6 +1820,12 @@ const FreelancerServiceInfoSlide = ({
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         <div className="text-center">
+          
+          {totalSelectedServices > 1 && (
+            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            </div>
+          )}
           <h1 className="text-xl md:text-4xl lg:text-5xl font-medium">
             {(() => {
               const headingText = applyServiceTemplate(

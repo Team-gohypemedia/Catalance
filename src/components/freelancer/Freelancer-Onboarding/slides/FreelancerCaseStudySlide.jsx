@@ -176,6 +176,8 @@ const FileUploadButton = ({
 /* ──────────────────── Main Slide ──────────────────── */
 
 const FreelancerCaseStudySlide = ({
+  totalSelectedServices = 1,
+  currentServiceIndex = 0,
   onboardingContent,
   caseStudyForm,
   caseStudyFields = [],
@@ -338,6 +340,12 @@ const FreelancerCaseStudySlide = ({
       <div className="w-full space-y-4">
         {/* Heading */}
         <div className="text-center">
+          
+          {totalSelectedServices > 1 && (
+            <div className="mb-2 text-sm font-semibold tracking-wide text-primary uppercase">
+              Service {currentServiceIndex + 1} of {totalSelectedServices}
+            </div>
+          )}
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             {(() => {
               const headingText = caseStudyContent?.headingTitle || "Tell Us About Your Previous Work";
