@@ -161,6 +161,9 @@ const AdminFreelancerOnboardingContent = lazy(
 const AdminBlogs = lazy(
   () => import("@/components/features/admin/AdminBlogs"),
 );
+const AdminContactInquiries = lazy(
+  () => import("@/components/features/admin/AdminContactInquiries"),
+);
 const AdminEngagementOverview = lazy(
   () => import("@/components/features/engagement/AdminEngagementOverview.jsx"),
 );
@@ -805,6 +808,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminBlogs />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/contact-inquiries"
+              element={
+                <AdminRoute>
+                  <AdminContactInquiries />
                 </AdminRoute>
               }
             />

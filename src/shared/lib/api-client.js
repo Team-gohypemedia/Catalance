@@ -116,7 +116,14 @@ export const request = async (path, options = {}) => {
   const payload = isJsonResponse ? await response.json().catch(() => null) : null;
 
   if (!response.ok) {
+    const flattenedFieldErrors =
+      payload?.issues?.fieldErrors && typeof payload.issues.fieldErrors === "object"
+        ? Object.values(payload.issues.fieldErrors)
+            .flat()
+            .filter(Boolean)
+        : [];
     const message =
+      flattenedFieldErrors[0] ||
       payload?.error?.message ||
       payload?.message ||
       payload?.data ||
@@ -252,10 +259,10 @@ export const verifyWhatsappOtp = ({ countryCode, phoneNumber, otp, role }) => {
   });
 };
 
-export const submitContactInquiry = ({ name, email, subject, message }) => {
+export const submitContactInquiry = ({ name, email, phone, subject, message }) => {
   return request("/contact/inquiry", {
     method: "POST",
-    body: JSON.stringify({ name, email, subject, message })
+    body: JSON.stringify({ name, email, phone, subject, message })
   });
 };
 

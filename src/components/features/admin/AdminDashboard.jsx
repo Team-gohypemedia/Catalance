@@ -33,6 +33,18 @@ import { AdminTopBar } from "./AdminTopBar";
 const formatINR = (value) =>
   `INR ${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
+const formatDateTime = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
 const getRecentMonthKeys = (count = 6) => {
   const keys = [];
   const now = new Date();
@@ -73,18 +85,20 @@ const AdminDashboard = () => {
   const [recentFreelancers, setRecentFreelancers] = useState([]);
   const [pendingFreelancers, setPendingFreelancers] = useState([]);
   const [recentClients, setRecentClients] = useState([]);
+  const [recentContactInquiries, setRecentContactInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [overrideLoadingId, setOverrideLoadingId] = useState(null);
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, disputesRes, freelancersRes, clientsRes, projectsRes] = await Promise.all([
+      const [statsRes, disputesRes, freelancersRes, clientsRes, projectsRes, contactInquiriesRes] = await Promise.all([
         authFetch("/admin/stats"),
         authFetch("/disputes"),
         authFetch("/admin/users?role=FREELANCER"),
         authFetch("/admin/users?role=CLIENT"),
         authFetch("/admin/projects"),
+        authFetch("/admin/contact-inquiries?limit=6"),
       ]);
 
       const statsData = await statsRes.json().catch(() => null);
@@ -92,6 +106,7 @@ const AdminDashboard = () => {
       const freelancersData = await freelancersRes.json().catch(() => null);
       const clientsData = await clientsRes.json().catch(() => null);
       const projectsData = await projectsRes.json().catch(() => null);
+      const contactInquiriesData = await contactInquiriesRes.json().catch(() => null);
 
       if (statsData?.data?.stats) {
         setStats(statsData.data.stats);
@@ -117,6 +132,10 @@ const AdminDashboard = () => {
       if (Array.isArray(clientsData?.data?.users)) {
         const activeClients = clientsData.data.users.filter((u) => u.status === "ACTIVE");
         setRecentClients(activeClients.slice(0, 4));
+      }
+
+      if (Array.isArray(contactInquiriesData?.data?.inquiries)) {
+        setRecentContactInquiries(contactInquiriesData.data.inquiries);
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
@@ -722,6 +741,72 @@ const AdminDashboard = () => {
                       </div>
                     ))
                   )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <div>
+                  <CardTitle>Recent Contact Inquiries</CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Latest messages submitted from the public contact page.
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Subject</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead className="text-right">Submitted</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        [...Array(3)].map((_, i) => (
+                          <TableRow key={i}>
+                            <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
+                            <TableCell><div className="h-4 w-32 animate-pulse rounded bg-muted" /></TableCell>
+                            <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
+                            <TableCell><div className="h-4 w-48 animate-pulse rounded bg-muted" /></TableCell>
+                            <TableCell><div className="ml-auto h-4 w-28 animate-pulse rounded bg-muted" /></TableCell>
+                          </TableRow>
+                        ))
+                      ) : recentContactInquiries.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                            No contact inquiries yet.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        recentContactInquiries.map((inquiry) => (
+                          <TableRow key={inquiry.id}>
+                            <TableCell className="font-medium">{inquiry.name}</TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <div className="text-sm">{inquiry.email}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {inquiry.phone || "No phone provided"}
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>{inquiry.subject}</TableCell>
+                            <TableCell className="max-w-[360px] whitespace-normal break-words text-muted-foreground">
+                              {inquiry.message}
+                            </TableCell>
+                            <TableCell className="text-right text-sm text-muted-foreground">
+                              {formatDateTime(inquiry.createdAt)}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>

@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   getDashboardStats,
+  getContactInquiries,
   getUsers,
   updateUserRole,
   updateUserStatus,
@@ -79,6 +80,7 @@ router.use((req, res, next) => {
 });
 
 router.get("/stats", getDashboardStats);
+router.get("/contact-inquiries", getContactInquiries);
 router.get(
   "/freelancer-onboarding",
   validateResource(listFreelancerOnboardingSchema),

@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 import { sendEmail } from "../lib/email-service.js";
+import { prisma } from "../lib/prisma.js";
 
 const CONTACT_RECIPIENT_EMAIL = "catalanceofficial@gmail.com";
 
@@ -12,25 +13,57 @@ const escapeHtml = (value = "") =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
+const extractLegacyPhoneFromMessage = (value = "") => {
+  const normalizedValue = String(value || "").trim();
+  const match = normalizedValue.match(/(?:^|\n)\s*Phone:\s*([^\n]+)\s*$/i);
+
+  if (!match) {
+    return {
+      message: normalizedValue,
+      phone: "",
+    };
+  }
+
+  return {
+    message: normalizedValue.replace(match[0], "").trim(),
+    phone: String(match[1] || "").trim(),
+  };
+};
+
 export const submitContactInquiryHandler = asyncHandler(async (req, res) => {
   const {
     name = "",
     email = "",
+    phone = "",
     subject = "",
     message = ""
   } = req.body || {};
 
   const normalizedName = String(name).trim();
   const normalizedEmail = String(email).trim().toLowerCase();
+  const normalizedPhone = String(phone).trim();
   const normalizedSubject = String(subject).trim();
-  const normalizedMessage = String(message).trim();
+  const { message: normalizedMessage, phone: extractedPhone } =
+    extractLegacyPhoneFromMessage(message);
+  const resolvedPhone = normalizedPhone || extractedPhone;
 
   if (!normalizedName || !normalizedEmail || !normalizedSubject || !normalizedMessage) {
     throw new AppError("All fields are required.", 400);
   }
 
+  const inquiry = await prisma.contactInquiry.create({
+    data: {
+      name: normalizedName,
+      email: normalizedEmail,
+      phone: resolvedPhone || null,
+      subject: normalizedSubject,
+      message: normalizedMessage,
+    },
+  });
+
   const safeName = escapeHtml(normalizedName);
   const safeEmail = escapeHtml(normalizedEmail);
+  const safePhone = escapeHtml(resolvedPhone);
   const safeSubject = escapeHtml(normalizedSubject);
   const safeMessage = escapeHtml(normalizedMessage).replace(/\n/g, "<br />");
   const submittedAt = new Date().toISOString();
@@ -43,6 +76,7 @@ export const submitContactInquiryHandler = asyncHandler(async (req, res) => {
       <p>You have received a new contact inquiry from the website.</p>
       <p><strong>Name:</strong> ${safeName}</p>
       <p><strong>Email:</strong> ${safeEmail}</p>
+      ${resolvedPhone ? `<p><strong>Phone:</strong> ${safePhone}</p>` : ""}
       <p><strong>Subject:</strong> ${safeSubject}</p>
       <p><strong>Submitted At (UTC):</strong> ${escapeHtml(submittedAt)}</p>
       <hr />
@@ -53,6 +87,7 @@ export const submitContactInquiryHandler = asyncHandler(async (req, res) => {
       "New Contact Inquiry",
       `Name: ${normalizedName}`,
       `Email: ${normalizedEmail}`,
+      ...(resolvedPhone ? [`Phone: ${resolvedPhone}`] : []),
       `Subject: ${normalizedSubject}`,
       `Submitted At (UTC): ${submittedAt}`,
       "",
@@ -62,14 +97,20 @@ export const submitContactInquiryHandler = asyncHandler(async (req, res) => {
   });
 
   if (!sent) {
-    throw new AppError(
-      "We could not send your message right now. Please try again in a moment.",
-      502
-    );
+    console.warn("[Contact] Inquiry saved but email delivery failed:", inquiry.id);
   }
 
   res.status(201).json({
     data: {
+      inquiry: {
+        id: inquiry.id,
+        name: inquiry.name,
+        email: inquiry.email,
+        phone: inquiry.phone,
+        subject: inquiry.subject,
+        message: inquiry.message,
+        createdAt: inquiry.createdAt,
+      },
       message: "Message sent successfully."
     }
   });

@@ -120,8 +120,9 @@ const Contact = () => {
       await submitContactInquiry({
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email.trim().toLowerCase(),
+        phone: formData.phone.trim(),
         subject: "Contact Inquiry",
-        message: `${formData.message.trim()}\n\nPhone: ${formData.phone}`,
+        message: formData.message.trim(),
       });
 
       toast.success("Message sent successfully.");
@@ -132,7 +133,6 @@ const Contact = () => {
         phone: "",
         message: "",
       });
-      setAgreed(false);
     } catch (error) {
       const message =
         error?.message ||

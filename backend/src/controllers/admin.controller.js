@@ -241,6 +241,18 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   }
 });
 
+export const getContactInquiries = asyncHandler(async (req, res) => {
+  const requestedLimit = Number(req.query.limit) || 20;
+  const limit = Math.min(Math.max(requestedLimit, 1), 100);
+
+  const inquiries = await prisma.contactInquiry.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+
+  res.json({ data: { inquiries } });
+});
+
 // Get all users with pagination and filtering
 export const getUsers = asyncHandler(async (req, res) => {
   try {

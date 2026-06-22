@@ -434,6 +434,20 @@ model BlogPost {
   @@index([featured, status, publishedAt])
 }
 
+model ContactInquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String
+  message   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([email, createdAt])
+}
+
 model Proposal {
   id                 String         @id @default(cuid())
   coverLetter        String         @db.Text
