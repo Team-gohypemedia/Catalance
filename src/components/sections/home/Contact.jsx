@@ -518,19 +518,7 @@ const Contact = () => {
                Our platform will help provide essential talent for your business needs, such as web development, design, marketing, and strategic growth.
             </p>
             
-            <div className={`mt-4 p-3 pl-5 md:pl-6 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 bg-white/5 dark:bg-white/5 light:bg-black/5 border ${borderColor} backdrop-blur-md max-w-2xl w-full relative z-10 transition-all duration-300 hover:border-neutral-500/20`}>
-               <span className={`text-xs md:text-sm font-medium text-center sm:text-left ${mutedText}`}>
-                 Click here to get started and level up your business operations.
-               </span>
-               <button className={`px-6 py-3 w-full sm:w-auto rounded-xl flex shrink-0 justify-center items-center gap-2 font-bold shadow-lg transition-all duration-300 transform hover:-translate-y-0.5 ${
-                  isDark 
-                    ? 'bg-primary text-primary-foreground hover:bg-yellow-400 hover:shadow-[0_0_20px_rgba(249,217,73,0.3)]' 
-                    : 'bg-[#D9692A] text-[#ffffff] hover:bg-[#bd5c25] hover:shadow-[0_0_20px_rgba(200, 80, 40,0.3)]'
-               }`}>
-                  Get Started <ArrowUpRight className="w-4 h-4 text-white"/>
-               </button>
-            </div>
-        </div>
+         </div>
 
       </div>
     </main>
