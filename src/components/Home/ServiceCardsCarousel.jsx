@@ -176,7 +176,6 @@ const HOME_SERVICE_CARDS = HOME_SERVICES.map((service, index) => ({
 }));
 
 const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, onSelect }) {
-  const IconComponent = service.icon;
   const imageUrl = isDark && service.darkIllustrationUrl ? service.darkIllustrationUrl : service.illustrationUrl;
 
   return (
@@ -184,31 +183,27 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, o
       type="button"
       onClick={() => onSelect(service)}
       aria-label={`Explore ${service.title}`}
-      className="group relative flex h-[24rem] w-[16rem] flex-shrink-0 flex-col justify-between overflow-hidden rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-card p-6 text-left shadow-[0_12px_30px_-15px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-[27rem] sm:w-[18rem] sm:rounded-[2.1rem]"
+      className="group relative flex h-[20rem] w-[16rem] flex-shrink-0 flex-col justify-between overflow-hidden rounded-[2rem] border border-black/[0.06] dark:border-white/[0.08] bg-card p-6 text-left shadow-[0_12px_30px_-15px_rgba(0,0,0,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_20px_40px_-15px_rgba(0,0,0,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 sm:h-[23rem] sm:w-[18rem] sm:rounded-[2.1rem]"
     >
-      {/* Top section: Icon and Title */}
+      {/* Top section: Title */}
       <div className="flex flex-col gap-3.5 relative z-10 w-full">
-        {/* Circular Icon Container */}
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/10 text-primary transition-transform duration-300 group-hover:scale-110">
-          <IconComponent className="h-5 w-5" />
-        </div>
 
         {/* Title */}
-        <h3 className="text-2xl font-bold tracking-tight text-foreground leading-tight">
+        <h3 className="text-2xl text-center font-bold tracking-tight text-foreground leading-tight">
           {service.title}
         </h3>
       </div>
 
       {/* Bottom section: 3D Illustration */}
-      <div className="relative w-full flex items-center justify-center h-48 sm:h-56 mt-auto">
+      <div className="relative w-full flex items-center justify-center h-40 sm:h-48 mt-auto">
         {/* Subtle drop shadow / glow behind image */}
-        <div className="absolute w-32 h-6 bg-black/[0.04] dark:bg-white/[0.04] blur-xl rounded-full bottom-2 transition-all duration-300 group-hover:scale-110 group-hover:opacity-60" />
+        <div className="absolute w-20 h-6 bg-black/[0.04] dark:bg-white/[0.04] blur-xl rounded-full bottom-2 transition-all duration-300 group-hover:scale-110 group-hover:opacity-60" />
 
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={service.title}
-            className={`h-full w-full object-contain select-none z-10 transition-transform duration-500 group-hover:scale-[1.08] group-hover:-translate-y-2 ${!isDark ? "mix-blend-multiply" : ""}`}
+            className={`h-full w-full object-contain select-none z-10 transition-transform duration-500 -translate-y-6 group-hover:scale-[1.08] group-hover:-translate-y-8 ${!isDark ? "mix-blend-multiply" : ""}`}
             loading={service.isPriority ? "eager" : "lazy"}
             draggable={false}
           />

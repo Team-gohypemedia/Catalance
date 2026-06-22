@@ -119,13 +119,14 @@ const FileUploadButton = ({
   const inputRef = useRef(null);
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <button
         type="button"
         onClick={() => !isLoading && inputRef.current?.click()}
         disabled={isLoading}
         className={cn(
-          "flex h-10 w-full items-center justify-start gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+          "flex h-10 w-full min-w-0 items-center justify-start gap-2 rounded-xl border bg-card px-4 !text-[14px] !leading-5 transition-colors disabled:cursor-not-allowed disabled:opacity-70",
+          file && !isLoading ? "pr-9" : "",
           file ? "text-foreground" : "text-muted-foreground",
           hasError
             ? "border-destructive/70 hover:border-destructive/80"
@@ -134,11 +135,11 @@ const FileUploadButton = ({
         aria-invalid={hasError}
       >
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
         ) : (
-          <Upload className="h-4 w-4" />
+          <Upload className="h-4 w-4 shrink-0" />
         )}
-        <span className="truncate">
+        <span className="min-w-0 truncate text-left">
           {isLoading
             ? "Uploading..."
             : file
@@ -334,7 +335,7 @@ const FreelancerCaseStudySlide = ({
 
   return (
     <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
-      <div className="w-full space-y-8">
+      <div className="w-full space-y-4">
         {/* Heading */}
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
@@ -698,9 +699,9 @@ const FreelancerCaseStudySlide = ({
             </div>
 
             {/* 2-column row: Project File, Banner Image */}
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-5 sm:grid-cols-2">
               {/* Project File */}
-              <div className="space-y-0">
+              <div className="min-w-0 space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   {fieldMap.projectFile?.label || caseStudyContent?.fields?.projectFile?.label ||
                     "Project File (Optional)"}
@@ -712,8 +713,8 @@ const FreelancerCaseStudySlide = ({
                   }
                 />
                 {projectFileMeta.name ? (
-                  <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
-                    <div className="min-w-0">
+                  <div className="mt-3 flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground">
                         {projectFileMeta.name}
                       </p>
@@ -721,7 +722,7 @@ const FreelancerCaseStudySlide = ({
                         Project file ready
                       </p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                       {projectFileMeta.url ? (
                         <a
                           href={projectFileMeta.url}
@@ -746,7 +747,7 @@ const FreelancerCaseStudySlide = ({
               </div>
 
               {/* Banner Image */}
-              <div className="space-y-0">
+              <div className="min-w-0 space-y-0">
                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                   Banner Image (Optional)
                 </label>
@@ -793,12 +794,12 @@ const FreelancerCaseStudySlide = ({
                   }}
                 />
                 {bannerPreviewUrl ? (
-                  <div className="mt-3 space-y-3">
-                    <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                  <div className="mt-3 min-w-0 space-y-3">
+                    <div className="w-full max-w-full overflow-hidden rounded-2xl border border-border bg-card">
                       <img
                         src={bannerPreviewUrl}
                         alt="Case study banner preview"
-                        className="aspect-[16/9] w-full object-cover"
+                        className="block aspect-[16/9] w-full max-w-full object-cover"
                       />
                     </div>
                     <div className="flex justify-end">
