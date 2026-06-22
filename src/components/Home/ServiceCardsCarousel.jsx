@@ -34,7 +34,7 @@ const HOME_SERVICES = [
     price: "₹45,000/-",
   },
   {
-    id: "app_development",
+    id: "app_dev",
     title: "Mobile App",
     icon: Smartphone,
     cardBg: "#f0f0ed",
@@ -151,7 +151,7 @@ const HOME_SERVICES = [
     price: "₹20,000/-",
   },
   {
-    id: "3d_services",
+    id: "cgi_video_services",
     title: "3D Animation",
     icon: Database,
     cardBg: "#f1f1ed",
