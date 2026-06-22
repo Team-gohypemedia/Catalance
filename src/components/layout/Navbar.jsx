@@ -267,7 +267,7 @@ const PublicMobileSidebar = ({ navItems, currentPath, _isHome }) => {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="w-full px-4 py-2 lg:hidden">
+    <div className="w-full border-b border-border/60 bg-background px-4 py-2 shadow-sm lg:hidden">
       <div className="flex w-full items-center justify-between gap-3">
         {/* NavbarLogo is itself a <Link to="/"> — no wrapper needed */}
         <NavbarLogo />

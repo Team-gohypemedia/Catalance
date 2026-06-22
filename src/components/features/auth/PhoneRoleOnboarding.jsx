@@ -208,6 +208,7 @@ function PhoneRoleOnboarding() {
   const [fullName, setFullName] = useState(() => getInitialName(user));
   const [email, setEmail] = useState(() => getInitialEmail(user));
   const initialPhoneValue = normalizePhoneNumber(user?.phoneNumber || user?.phone);
+  const isPhoneLocked = !isFromEmailAuth && Boolean(initialPhoneValue);
   const [countryCode, setCountryCode] = useState(() =>
     getInitialCountryCode(initialPhoneValue),
   );
@@ -419,7 +420,8 @@ function PhoneRoleOnboarding() {
 
     setFormErrors({});
 
-    if (slide.id === "details" && phoneDigits && (phoneDigits !== normalizePhoneNumber(initialPhoneValue) || !initialPhoneValue)) {
+    const currentFullPhone = normalizePhoneNumber((selectedCountry?.dialCode || "") + phoneDigits);
+    if (slide.id === "details" && phoneDigits && (currentFullPhone !== normalizePhoneNumber(initialPhoneValue) || !initialPhoneValue)) {
       if (!isOtpStep) {
         setIsSaving(true);
         const toastId = toast.loading("Sending WhatsApp code...");
@@ -796,7 +798,7 @@ function PhoneRoleOnboarding() {
                         setCountryCode(value);
                         setFormErrors({});
                       }}
-                      disabled={isSaving}
+                      disabled={isSaving || isPhoneLocked}
                     >
                       <SelectTrigger
                         type="button"
@@ -836,7 +838,7 @@ function PhoneRoleOnboarding() {
                         inputMode="numeric"
                         autoComplete="tel"
                         value={phoneNumber}
-                        disabled={isSaving}
+                        disabled={isSaving || isPhoneLocked}
                         onChange={(event) => {
                           let digits = event.target.value.replace(/\D/g, "");
                           if (digits.startsWith("0") && digits.length === 11) {
