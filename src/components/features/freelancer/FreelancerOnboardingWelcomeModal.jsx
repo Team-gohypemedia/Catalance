@@ -5,7 +5,7 @@ import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 import Rocket from "lucide-react/dist/esm/icons/rocket";
 import Clock from "lucide-react/dist/esm/icons/clock";
-import Truck from "lucide-react/dist/esm/icons/truck";
+import CircleDollarSign from "lucide-react/dist/esm/icons/circle-dollar-sign";
 import X from "lucide-react/dist/esm/icons/x";
 
 import { Button } from "@/components/ui/button";
@@ -24,19 +24,19 @@ const preventModalDismiss = (event) => {
 
 const welcomeHighlights = [
   {
-    title: "PROFILE",
-    description: "Tell us who you are and showcase your skills.",
+    title: "Registration",
+    description: "Set up your account and profile",
     icon: UserRound,
   },
   {
-    title: "SERVICES",
-    description: "Define what you offer and set your rates.",
+    title: "Freelancer Setup",
+    description: "Build your profile and stand out",
     icon: BriefcaseBusiness,
   },
   {
-    title: "DELIVERY",
-    description: "Setup your pipeline for client delivery.",
-    icon: Truck,
+    title: "Earning Gigs",
+    description: "Set your workflow for delivery",
+    icon: CircleDollarSign,
   },
 ];
 
@@ -68,7 +68,7 @@ const FreelancerOnboardingWelcomeModal = ({
           
           <div className="flex justify-center">
             <div className="flex size-12 items-center justify-center rounded-full bg-primary/10">
-              <Rocket className="size-5 text-primary" />
+              <Rocket className="size-5 text-foreground" />
             </div>
           </div>
 
@@ -88,10 +88,10 @@ const FreelancerOnboardingWelcomeModal = ({
                 className="flex flex-row sm:flex-col items-center sm:items-center rounded-[10px] border border-border bg-card px-4 py-3 sm:px-2 sm:py-4 text-left sm:text-center shadow-sm gap-3 sm:gap-0"
               >
                 <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 shrink-0 sm:mb-1">
-                  <item.icon className="size-4 text-primary" />
+                  <item.icon className="size-4 text-foreground" />
                 </div>
                 <div className="flex flex-col sm:items-center w-full">
-                  <p className="text-[0.7rem] font-bold uppercase tracking-[0.12em] text-foreground sm:mt-2">
+                  <p className="text-[0.8rem] sm:text-[0.85rem] font-bold text-foreground sm:mt-2">
                     {item.title}
                   </p>
                   <p className="mt-0.5 text-[0.75rem] leading-tight sm:leading-relaxed text-muted-foreground sm:mt-1.5 sm:px-1">
@@ -124,7 +124,7 @@ const FreelancerOnboardingWelcomeModal = ({
               <Clock className="size-3.5" />
               <span>Takes only a few minutes</span>
             </div>
-            <span className="text-muted-foreground/30 px-1">•</span>
+            <span className="text-primary px-1 font-bold">•</span>
             <div className="flex items-center gap-1.5">
               <ShieldCheck className="size-3.5" />
               <span>100% Secure</span>

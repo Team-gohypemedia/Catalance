@@ -1,10 +1,17 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/shared/lib/utils";
 import ProposalCardsCarousel from "./ProposalCardsCarousel.jsx";
 import { EmptyStateCard, ProposalLoadingState } from "./ProposalStates.jsx";
 import { proposalTabCopy } from "./proposal-utils.js";
+
+import ArrowUpNarrowWide from "lucide-react/dist/esm/icons/arrow-up-narrow-wide";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import Check from "lucide-react/dist/esm/icons/check";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import History from "lucide-react/dist/esm/icons/history";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
 
 const proposalTypeConfig = [
   { value: "freelancer", label: "Freelancer" },
@@ -55,6 +62,20 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
   } = actions;
   const [activeType, setActiveType] = useState("freelancer");
   const [hasSelectedType, setHasSelectedType] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = React.useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const activeTabLabel = statusTabConfig.find((item) => item.value === activeTab)?.label || "Draft";
 
   const proposalsByType = useMemo(
     () => buildProposalBucketsByType(grouped),
@@ -175,15 +196,8 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
         className="lg:items-start"
         titleClassName="text-[clamp(1.35rem,2.1vw,2.55rem)] leading-[0.98] tracking-[-0.05em] whitespace-nowrap"
         actions={
-          <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:flex-nowrap sm:justify-end sm:overflow-x-auto sm:[scrollbar-width:none] sm:[&::-webkit-scrollbar]:hidden lg:flex-nowrap lg:items-center">
-            <div
-              className={cn(
-                segmentedControlClassName,
-                "w-auto self-start shrink-0 sm:self-auto",
-              )}
-              role="tablist"
-              aria-label="Proposal type"
-            >
+          <div className="flex flex-col gap-3.5 items-end w-full sm:w-auto">
+            <div className="flex items-center gap-3">
               {proposalTypeConfig.map((item) => {
                 const isActive = item.value === activeType;
 
@@ -191,26 +205,24 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                   <button
                     key={item.value}
                     type="button"
-                    role="tab"
-                    aria-selected={isActive}
                     onClick={() => {
                       setHasSelectedType(true);
                       setActiveType(item.value);
                     }}
                     className={cn(
-                      "inline-flex h-10 min-w-0 flex-1 items-center justify-center rounded-full border border-transparent px-2.5 text-[clamp(0.62rem,1vw,0.88rem)] font-semibold leading-none tracking-[-0.02em] whitespace-nowrap shadow-none transition sm:h-11 sm:min-w-[6.5rem] sm:flex-none sm:px-4 sm:text-sm",
+                      "inline-flex h-[46px] items-center justify-center rounded-full px-6 text-[15px] font-semibold whitespace-nowrap transition-all duration-300",
                       isActive
-                        ? "border-primary/70 bg-primary text-primary-foreground"
-                        : "bg-transparent text-muted-foreground hover:text-foreground",
+                        ? "bg-primary text-primary-foreground shadow-[0_4px_12px_rgba(var(--brand-rgb),0.2)] dark:shadow-none"
+                        : "border border-border bg-card text-foreground hover:bg-muted/50 dark:hover:bg-zinc-800/50"
                     )}
                   >
                     <span>{item.label}</span>
                     <span
                       className={cn(
-                        "ml-1 hidden min-w-4 items-center justify-center rounded-full px-1.5 py-0.5 text-[8px] font-semibold leading-none xl:inline-flex",
+                        "ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold leading-none transition-colors duration-300",
                         isActive
-                          ? "bg-black/10 text-primary-foreground/80"
-                          : "bg-muted text-muted-foreground",
+                          ? "bg-white/20 text-primary-foreground"
+                          : "bg-muted text-foreground"
                       )}
                     >
                       {typeCounts[item.value] || 0}
@@ -220,35 +232,63 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
               })}
             </div>
 
-            <TabsList
-              className="flex h-auto w-full items-center justify-start gap-2 border-0 bg-transparent p-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:w-auto sm:justify-end"
-            >
-              {statusTabConfig.map((item) => {
-                const isStatusActive = item.value === activeTab;
+            {/* Custom status dropdown select */}
+            <div ref={dropdownRef} className="relative w-full sm:w-[14.5rem] shrink-0">
+              <button
+                type="button"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="flex h-[46px] w-full items-center justify-between rounded-[14px] border-2 border-primary bg-card px-4 text-[15px] font-semibold text-foreground transition hover:bg-muted/20"
+              >
+                <span className="flex items-center gap-2">
+                  <ArrowUpNarrowWide className="h-5 w-5 text-primary" />
+                  <span>{activeTabLabel}</span>
+                </span>
+                <ChevronDown className={cn("h-5 w-5 text-foreground transition-transform duration-200", dropdownOpen && "rotate-180")} />
+              </button>
 
-                return (
-                  <TabsTrigger
-                    key={item.value}
-                    value={item.value}
-                    className="h-9 shrink-0 rounded-full border border-border bg-card px-4 text-center text-xs font-semibold leading-none tracking-[-0.02em] whitespace-nowrap text-muted-foreground shadow-none transition hover:text-foreground sm:h-10 sm:px-5 sm:text-sm data-[state=active]:border-primary/40 data-[state=active]:!bg-primary/10 data-[state=active]:!text-primary data-[state=active]:shadow-none lg:h-11 lg:text-[0.92rem]"
-                  >
-                    <span className="inline-flex items-center justify-center gap-1.5">
-                      <span>{item.label}</span>
-                      <span
-                        className={cn(
-                          "hidden min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none xl:inline-flex",
-                          isStatusActive
-                            ? "bg-black/10 text-primary-foreground/80"
-                            : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {statusCounts[item.value] || 0}
-                      </span>
-                    </span>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+              {dropdownOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-full min-w-[14.5rem] rounded-[20px] border border-border bg-card p-2 shadow-[0_12px_32px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex flex-col gap-1">
+                    {statusTabConfig.map((item) => {
+                      const isStatusActive = item.value === activeTab;
+                      const Icon = item.value === "draft" ? FileText : item.value === "pending" ? History : XCircle;
+                      
+                      // Custom styles for icons
+                      const iconColor = item.value === "rejected" ? "text-destructive" : "text-primary";
+
+                      return (
+                        <button
+                          key={item.value}
+                          type="button"
+                          onClick={() => {
+                            setActiveTab(item.value);
+                            setDropdownOpen(false);
+                          }}
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-[12px] px-3.5 py-3 text-left text-sm font-semibold transition-colors duration-200",
+                            isStatusActive
+                              ? "bg-primary/10 text-foreground"
+                              : "bg-transparent text-foreground hover:bg-muted/50"
+                          )}
+                        >
+                          <span className="flex items-center gap-3">
+                            <Icon className={cn("h-5 w-5 shrink-0", iconColor)} />
+                            <span>{item.label}</span>
+                          </span>
+                          {isStatusActive ? (
+                            <Check className="h-[18px] w-[18px] text-primary" />
+                          ) : (
+                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold text-muted-foreground">
+                              {statusCounts[item.value] || 0}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         }
       />

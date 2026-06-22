@@ -1011,12 +1011,12 @@ const ServiceDetails = () => {
         </div>
 
         {/* ===== Why Businesses Choose Catalance ===== */}
-        <section id="why-choose-catalance" className="relative py-2 mt-6">
+        <section id="why-choose-catalance" className="relative py-2 mt-20 sm:mt-28 max-w-3xl mx-auto w-full">
           {/* Warm cream background card with adjusted height */}
-          <div className="relative rounded-3xl overflow-hidden border border-orange-100/60 dark:border-white/10 bg-[#FDF7F0] dark:bg-[#18130d] px-4 py-6 sm:px-8 sm:py-6">
+          <div className="relative rounded-3xl overflow-hidden border border-orange-100/60 dark:border-white/10 bg-[#FDF7F0] dark:bg-[#18130d] px-4 py-5 sm:px-6 sm:py-5">
 
             {/* Header */}
-            <div className="text-center mb-6 space-y-2">
+            <div className="text-center mb-4 space-y-2">
               <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-[1.1] text-[#1a1209] dark:text-white">
                 Why Businesses Choose <span className="text-primary">Catalance</span>
               </h2>
@@ -1100,7 +1100,7 @@ const ServiceDetails = () => {
                 ].map((row, idx) => (
                   <div key={idx} className="grid grid-cols-2">
                     {/* Catalance column */}
-                    <div className="flex items-start gap-2 py-2 px-3 sm:px-4 border-r border-[#e8e0d5] dark:border-white/10">
+                    <div className="flex items-start gap-2 py-1.5 px-3 sm:px-4 border-r border-[#e8e0d5] dark:border-white/10">
                       <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-primary/10 flex items-center justify-center">
                         <Check className="w-2.5 h-2.5 text-primary" strokeWidth={3} />
                       </div>
@@ -1110,7 +1110,7 @@ const ServiceDetails = () => {
                       </div>
                     </div>
                     {/* Other platforms column */}
-                    <div className="flex items-start gap-2 py-2 px-3 sm:px-4">
+                    <div className="flex items-start gap-2 py-1.5 px-3 sm:px-4">
                       <div className="mt-0.5 shrink-0 w-4.5 h-4.5 rounded-full bg-red-100/80 dark:bg-red-900/20 flex items-center justify-center">
                         <X className="w-2.5 h-2.5 text-red-500" strokeWidth={3} />
                       </div>
