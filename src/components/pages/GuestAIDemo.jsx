@@ -3715,6 +3715,7 @@ const GuestAIDemo = () => {
                 } else {
                     setPendingOptionFollowup({ optionValue: resolvedValue, loadingAdvice: true });
                     setInput('');
+                    setIsRecommendationPanelOpen(true);
                     fetchOptionAdvice(resolvedValue);
                     if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
                         window.requestAnimationFrame(() => focusMessageInput());
@@ -3728,6 +3729,7 @@ const GuestAIDemo = () => {
             setSelectedOptions([resolvedValue]);
             setPendingOptionFollowup({ optionValue: resolvedValue, loadingAdvice: true });
             setInput('');
+            setIsRecommendationPanelOpen(true);
             fetchOptionAdvice(resolvedValue);
             if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
                 window.requestAnimationFrame(() => focusMessageInput());
