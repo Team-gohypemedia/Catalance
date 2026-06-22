@@ -98,7 +98,7 @@ const FreelancerClientCards = () => {
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <Briefcase className={`size-7 ${iconClass}`} />
-                  <span className={`text-sm font-semibold uppercase tracking-[0.28em] ${textMutedClass}`}>
+                  <span className={`text-sm font-semibold uppercase tracking-[0.28em] transition-colors duration-500 ease-in-out ${isDarkMode ? "text-white/50" : "text-[#1C1B1F]/50 group-hover:!text-white"}`}>
                     For Businesses
                   </span>
                 </div>
@@ -160,7 +160,7 @@ const FreelancerClientCards = () => {
               <div className="relative z-10 flex h-full flex-col">
                 <div className="mb-11 flex items-center justify-between gap-4">
                   <UserRoundSearch className={`size-7 ${iconClass}`} />
-                  <span className={`text-sm font-semibold uppercase tracking-[0.28em] ${textMutedClass}`}>
+                  <span className={`text-sm font-semibold uppercase tracking-[0.28em] transition-colors duration-500 ease-in-out ${isDarkMode ? "text-white/50" : "text-[#1C1B1F]/50 group-hover:!text-white"}`}>
                     For Freelancers
                   </span>
                 </div>
