@@ -7623,7 +7623,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         }
 
         const targetServiceName = pendingProposalState.targetServiceName || service.name;
-        const confirmationPrompt = `Do you want me to generate a new ${targetServiceName} proposal now?`;
+        const confirmationPrompt = `Do you want me to generate an updated ${targetServiceName} proposal now?`;
         const intent = await determineConfirmationIntent({
             assistantPrompt: confirmationPrompt,
             userMessage: trimmedMessageText,
@@ -7653,7 +7653,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             });
             await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
 
-            const cancelMsg = "Alright, I will not generate a new proposal automatically. If you want another one for this service later, tell me and I will confirm first.";
+            const cancelMsg = "Alright, I will not generate an updated proposal automatically. If you want another one for this service later, tell me and I will confirm first.";
             await prisma.aiGuestMessage.create({ data: { sessionId, role: "assistant", content: cancelMsg } });
             const sessionReload = await prisma.aiGuestSession.findUnique({ where: { id: sessionId }, include: { messages: { orderBy: { createdAt: "asc" } } } });
             return res.json({
@@ -7781,7 +7781,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 });
                 await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
                 responseMessage = postProposalBudgetAction?.reply || responseMessage;
-                responseMessage = `${responseMessage}\n\nDo you want me to generate a new ${service.name} proposal now?`;
+                responseMessage = `${responseMessage}\n\nDo you want me to generate an updated ${service.name} proposal now?`;
                 nextInputConfig = { type: "text", options: ["Yes", "No"] };
             }
         }

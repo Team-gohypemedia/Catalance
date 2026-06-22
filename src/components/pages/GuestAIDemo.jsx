@@ -3359,7 +3359,25 @@ const GuestAIDemo = () => {
     const scrollToLatestMessage = useCallback(() => {
         const viewport = getScrollViewport();
         if (!viewport) return;
-        viewport.scrollTop = viewport.scrollHeight;
+        
+        const messageElements = document.querySelectorAll('.guest-ai-message');
+        const lastMessageElement = messageElements[messageElements.length - 1];
+
+        if (lastMessageElement) {
+            const viewportHeight = viewport.clientHeight;
+            const messageHeight = lastMessageElement.offsetHeight;
+            
+            if (messageHeight > viewportHeight * 0.6) {
+                const viewportRect = viewport.getBoundingClientRect();
+                const msgRect = lastMessageElement.getBoundingClientRect();
+                const relativeTop = msgRect.top - viewportRect.top + viewport.scrollTop;
+                viewport.scrollTo({ top: relativeTop - 20, behavior: 'smooth' });
+            } else {
+                viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+            }
+        } else {
+            viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
+        }
     }, [getScrollViewport]);
 
     const getVisibleMessageInput = useCallback(() => {
@@ -7082,7 +7100,7 @@ const GuestAIDemo = () => {
                                     key={messageKey}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="flex w-full justify-end"
+                                    className="flex w-full justify-end guest-ai-message"
                                 >
                                     <div className="flex max-w-[75%] flex-col items-end gap-2">
                                         {messageUrls.length > 0 && (
@@ -7148,7 +7166,7 @@ const GuestAIDemo = () => {
                                     key={messageKey}
                                     initial={{ opacity: 0, y: 10 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    className="flex w-full items-start gap-3"
+                                    className="flex w-full items-start gap-3 guest-ai-message"
                                 >
                                     {/* avatar */}
                                     <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
@@ -7265,7 +7283,7 @@ const GuestAIDemo = () => {
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
-                                className="flex w-full items-start gap-3"
+                                className="flex w-full items-start gap-3 guest-ai-message"
                             >
                                 <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${isDark ? 'bg-white/10' : 'bg-black/5'}`}>
                                     <img src={cataLogo} alt="AI logo" className="h-5 w-5 object-contain" />
