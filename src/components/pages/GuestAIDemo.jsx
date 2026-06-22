@@ -1316,10 +1316,34 @@ const appendSpeechTranscript = (
         .join(' ')
         .trim();
 
-const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
-const NONE_LIKE_OPTION_REGEX = /^(?:none|none of the above|none above|nothing yet|nothing available|no assets yet|no materials yet)$/i;
+const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help|guidance|decide for me|choose for me|open to recommendations?)\b/i;
 const AUTO_HELPER_QUESTION_REGEX = /\b(budget|price|pricing|cost|timeline|ready|launch|deadline|when would you like|when do you want|how soon)\b/i;
 const AUTO_RECOMMEND_OPTION_VALUE = 'Recommend best option';
+const EXCLUSIVE_NONE_LIKE_PHRASES = [
+    'none',
+    'none of these',
+    'none of the above',
+    'nothing yet',
+    'nothing available',
+    'not sure',
+    'not sure yet',
+    'unsure',
+    'undecided',
+    'undecided yet',
+    'havent decided',
+    'have not decided',
+    'dont know',
+    'do not know',
+    'dont know yet',
+    'do not know yet',
+    'no idea',
+    'no preference',
+    'no assets yet',
+    'no materials yet',
+    'none for now',
+    'nothing for now',
+];
+const EXCLUSIVE_NONE_LIKE_BLOCKLIST = /\bother\b/i;
 const RECOMMENDATION_ACCEPTANCE_PATTERNS = [
     /\b(?:ok|okay|sure|perfect|great|fine|nice|cool)\b/i,
     /\b(?:sounds good|sounds great|works for me|that works|makes sense)\b/i,
@@ -1567,6 +1591,18 @@ const extractOptionTextValue = (option = null) => {
     return String(option.label || option.value || option.text || '').trim();
 };
 
+const isNoneLikeSelectionOption = (value = '') => {
+    const normalized = normalizeHelperIntentText(String(value || '').replace(/[/'’]/g, ' '));
+    if (!normalized) return false;
+    if (EXCLUSIVE_NONE_LIKE_BLOCKLIST.test(normalized)) return false;
+    if (EXCLUSIVE_NONE_LIKE_PHRASES.includes(normalized)) return true;
+
+    return (
+        /\b(?:none|nothing|not sure|unsure|undecided|no idea|no preference)\b/i.test(normalized)
+        && !/\b(?:logo|design|brand|identity|packaging|guidelines|document|assets|website|app|marketing|seo)\b/i.test(normalized)
+    );
+};
+
 const isLikelyRecommendationAcceptance = (value = '') => {
     const normalized = normalizeHelperIntentText(value);
     if (!normalized) return false;
@@ -1634,7 +1670,10 @@ const pickRecommendedChatOption = (options = []) => {
         .filter(Boolean);
 
     return optionTexts.find((text) => /\brecommend(?:ed)?\b/i.test(text))
-        || optionTexts.find((text) => !FREEFORM_FOLLOWUP_OPTION_REGEX.test(normalizeHelperIntentText(text)))
+        || optionTexts.find((text) => (
+            !FREEFORM_FOLLOWUP_OPTION_REGEX.test(normalizeHelperIntentText(text))
+            && !isNoneLikeSelectionOption(text)
+        ))
         || '';
 };
 
@@ -3622,7 +3661,7 @@ const GuestAIDemo = () => {
         if (!resolvedValue) return;
 
         const needsFreeformFollowup = requiresFreeformOptionFollowup(resolvedValue);
-        const isNoneLikeOption = NONE_LIKE_OPTION_REGEX.test(String(resolvedValue || '').trim());
+        const isNoneLikeOption = isNoneLikeSelectionOption(resolvedValue);
 
         if (isMultiInput) {
             if (isNoneLikeOption) {
@@ -3635,7 +3674,7 @@ const GuestAIDemo = () => {
             const alreadySelected = optionIsSelected(resolvedValue);
             setSelectedOptions((prev) => {
                 const withoutNoneLike = prev.filter(
-                    (value) => !NONE_LIKE_OPTION_REGEX.test(String(value || '').trim())
+                    (value) => !isNoneLikeSelectionOption(value)
                 );
                 const alreadyChosen = prev.some(
                     (v) => normalizeOptionToken(v) === normalizeOptionToken(resolvedValue)
@@ -6496,55 +6535,56 @@ const GuestAIDemo = () => {
                     </div>
                 )}
 
-                <form
-                    onSubmit={handleSendMessage}
-                    className={`rounded-[clamp(1.25rem,5vw,1.5rem)] md:rounded-3xl border p-[clamp(0.5rem,2.5vw,0.625rem)] md:p-2.5 shadow-md backdrop-blur-xl ${isDark
-                        ? 'border-white/10 bg-[#2F2F2F]'
-                        : 'border-slate-200 bg-[#F4F4F4]'
-                        }`}
-                >
-                    {isAgencyFlowCompleted && (
-                        <div className={`mb-3 rounded-2xl border px-3.5 py-3 text-sm ${isDark
-                            ? 'border-[#ffc800]/20 bg-[#ffc800]/[0.08] text-zinc-200'
-                            : 'border-primary/20 bg-primary/10 text-slate-700'
-                            }`}>
-                            The combined agency proposal is ready. Keep chatting below to refine it. If you want a service-specific change like budget or timeline, name the service first.
-                        </div>
-                    )}
+                <div className="flex items-end gap-2 md:gap-3">
+                    <form
+                        onSubmit={handleSendMessage}
+                        className={`flex-1 rounded-[clamp(1.25rem,5vw,1.5rem)] md:rounded-3xl border p-[clamp(0.5rem,2.5vw,0.625rem)] md:p-2.5 shadow-md backdrop-blur-xl ${isDark
+                            ? 'border-white/10 bg-[#2F2F2F]'
+                            : 'border-slate-200 bg-[#F4F4F4]'
+                            }`}
+                    >
+                        {isAgencyFlowCompleted && (
+                            <div className={`mb-3 rounded-2xl border px-3.5 py-3 text-sm ${isDark
+                                ? 'border-[#ffc800]/20 bg-[#ffc800]/[0.08] text-zinc-200'
+                                : 'border-primary/20 bg-primary/10 text-slate-700'
+                                }`}>
+                                The combined agency proposal is ready. Keep chatting below to refine it. If you want a service-specific change like budget or timeline, name the service first.
+                            </div>
+                        )}
 
-                    {pendingAttachments.length > 0 && (
-                        <div className="mb-2 flex flex-wrap gap-2 px-2 pt-1">
-                            {pendingAttachments.map((file, index) => {
-                                const imageFile = String(file.type || '').startsWith('image/');
-                                return (
-                                    <div
-                                        key={`${file.name}-${file.size}-${index}`}
-                                        className={`inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isDark
-                                            ? 'border-white/10 bg-[#212121] text-slate-200'
-                                            : 'border-slate-300 bg-white text-slate-700'
-                                            }`}
-                                    >
-                                        {imageFile ? (
-                                            <ImageIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                                        ) : (
-                                            <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                                        )}
-                                        <span className="max-w-[190px] truncate font-medium">{file.name}</span>
-                                        <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                            {formatBytes(file.size)}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            className={`ml-1 rounded-full p-0.5 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
-                                            onClick={() => removePendingAttachment(index)}
+                        {pendingAttachments.length > 0 && (
+                            <div className="mb-2 flex flex-wrap gap-2 px-2 pt-1">
+                                {pendingAttachments.map((file, index) => {
+                                    const imageFile = String(file.type || '').startsWith('image/');
+                                    return (
+                                        <div
+                                            key={`${file.name}-${file.size}-${index}`}
+                                            className={`inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-xs ${isDark
+                                                ? 'border-white/10 bg-[#212121] text-slate-200'
+                                                : 'border-slate-300 bg-white text-slate-700'
+                                                }`}
                                         >
-                                            <X className="h-3.5 w-3.5" />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
+                                            {imageFile ? (
+                                                <ImageIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                            ) : (
+                                                <FileText className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                                            )}
+                                            <span className="max-w-[190px] truncate font-medium">{file.name}</span>
+                                            <span className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                {formatBytes(file.size)}
+                                            </span>
+                                            <button
+                                                type="button"
+                                                className={`ml-1 rounded-full p-0.5 ${isDark ? 'hover:bg-white/15' : 'hover:bg-slate-100'}`}
+                                                onClick={() => removePendingAttachment(index)}
+                                            >
+                                                <X className="h-3.5 w-3.5" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
 
                     <div className="flex items-end gap-[clamp(0.35rem,1.8vw,0.5rem)] md:gap-2">
                         <div className="flex flex-1 items-center bg-transparent">
@@ -6610,36 +6650,6 @@ const GuestAIDemo = () => {
                                     {isListening ? <MicOff className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" /> : <Mic className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />}
                                 </Button>
                             )}
-                            {isPendingOptionFollowup && (
-                                <Button
-                                    size="icon"
-                                    type="button"
-                                    variant="ghost"
-                                    onClick={() => {
-                                        setAttentionRecommendationKey((current) => (
-                                            current === activeRecommendationKey ? '' : current
-                                        ));
-                                        setIsRecommendationPanelOpen((current) => !current);
-                                    }}
-                                    className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full border md:h-9 md:w-9 ${isCurrentRecommendationUsed
-                                        ? isDark
-                                            ? 'border-white/10 text-slate-500 hover:bg-white/10 hover:text-slate-300'
-                                            : 'border-slate-300 text-slate-400 hover:bg-black/5 hover:text-slate-600'
-                                        : isRecommendationPanelOpen
-                                            ? 'border-primary bg-primary text-primary-foreground'
-                                            : shouldPulseRecommendationBulb
-                                                ? isDark
-                                                    ? 'border-[#ffd54a] bg-[#3b3200] text-[#ffd54a] shadow-[0_0_0_1px_rgba(255,213,74,0.35),0_0_18px_rgba(255,213,74,0.45)] animate-pulse'
-                                                    : 'border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_rgba(217,105,42,0.18),0_0_18px_rgba(217,105,42,0.28)] animate-pulse'
-                                            : isDark
-                                                ? 'border-white/10 bg-[#2F2F2F] text-[#ffd54a] hover:bg-[#383838]'
-                                                : 'border-slate-200 bg-white text-primary hover:bg-primary/5'
-                                        }`}
-                                    aria-label={isRecommendationPanelOpen ? 'Hide recommendation helper' : 'Show recommendation helper'}
-                                >
-                                    <Lightbulb className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />
-                                </Button>
-                            )}
                             <Button
                                 size="icon"
                                 type="submit"
@@ -6659,7 +6669,39 @@ const GuestAIDemo = () => {
                             Uploading attachment...
                         </p>
                     )}
-                </form>
+                    </form>
+
+                    {isPendingOptionFollowup && (
+                        <Button
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                            onClick={() => {
+                                setAttentionRecommendationKey((current) => (
+                                    current === activeRecommendationKey ? '' : current
+                                ));
+                                setIsRecommendationPanelOpen((current) => !current);
+                            }}
+                            className={`mb-[clamp(0.5rem,2.5vw,0.625rem)] h-[clamp(2.75rem,9vw,3.25rem)] w-[clamp(2.75rem,9vw,3.25rem)] shrink-0 rounded-full border shadow-md md:mb-2.5 md:h-11 md:w-11 ${isCurrentRecommendationUsed
+                                ? isDark
+                                    ? 'border-white/10 text-slate-500 hover:bg-white/10 hover:text-slate-300'
+                                    : 'border-slate-300 text-slate-400 hover:bg-black/5 hover:text-slate-600'
+                                : isRecommendationPanelOpen
+                                    ? 'border-primary bg-primary text-primary-foreground'
+                                    : shouldPulseRecommendationBulb
+                                        ? isDark
+                                            ? 'border-[#ffd54a] bg-[#3b3200] text-[#ffd54a] shadow-[0_0_0_1px_rgba(255,213,74,0.35),0_0_18px_rgba(255,213,74,0.45)] animate-pulse'
+                                            : 'border-primary bg-primary/10 text-primary shadow-[0_0_0_1px_rgba(217,105,42,0.18),0_0_18px_rgba(217,105,42,0.28)] animate-pulse'
+                                    : isDark
+                                        ? 'border-white/10 bg-[#2F2F2F] text-[#ffd54a] hover:bg-[#383838]'
+                                        : 'border-slate-200 bg-white text-primary hover:bg-primary/5'
+                                }`}
+                            aria-label={isRecommendationPanelOpen ? 'Hide recommendation helper' : 'Show recommendation helper'}
+                        >
+                            <Lightbulb className="h-[clamp(1rem,4vw,1.2rem)] w-[clamp(1rem,4vw,1.2rem)] md:h-5 md:w-5" />
+                        </Button>
+                    )}
+                </div>
             </div>
         );
     };
