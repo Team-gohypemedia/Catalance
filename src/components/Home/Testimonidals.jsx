@@ -162,6 +162,13 @@ const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1,
   const yVal = typeof y === "string" ? parseFloat(y) : y;
   const popDown = yVal < 50;
 
+  const xVal = typeof x === "string" ? parseFloat(x) : x;
+  let align = "center";
+  if (!isNaN(xVal)) {
+    if (xVal < 30) align = "left";
+    else if (xVal > 70) align = "right";
+  }
+
   const stopAudio = React.useCallback(() => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.pause(); 
@@ -275,8 +282,11 @@ const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1,
               exit={{ opacity: 0, scale: 0.8, y: popDown ? -10 : 10 }}
               transition={{ duration: 0.4 }}
               className={cn(
-                "absolute left-1/2 -translate-x-1/2 w-52 sm:w-60 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 text-xs px-4 py-3.5 rounded-2xl shadow-2xl border border-neutral-200/60 dark:border-neutral-800 z-50 text-left",
-                popDown ? "top-full mt-4" : "bottom-full mb-4"
+                "absolute w-52 sm:w-60 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 text-xs px-4 py-3.5 rounded-2xl shadow-2xl border border-neutral-200/60 dark:border-neutral-800 z-50 text-left",
+                popDown ? "top-full mt-4" : "bottom-full mb-4",
+                align === "left" && "left-[-10px] translate-x-0",
+                align === "right" && "right-[-10px] translate-x-0",
+                align === "center" && "left-1/2 -translate-x-1/2"
               )}
             >
               <div className="flex items-center gap-0.5 mb-1.5 sm:mb-2">
@@ -299,14 +309,24 @@ const FloatingAvatar = ({ testimonial, delay = 0, x = "0%", y = "0%", scale = 1,
               {/* Connector dots */}
               {popDown ? (
                 /* Upward pointing bubble connector dots */
-                <div className="absolute left-1/2 transform -translate-x-1/2 -top-4 flex flex-col items-center pointer-events-none">
+                <div className={cn(
+                  "absolute -top-4 flex flex-col items-center pointer-events-none",
+                  align === "left" && "left-[30px] sm:left-[42px] -translate-x-1/2",
+                  align === "right" && "right-[30px] sm:right-[42px] translate-x-1/2",
+                  align === "center" && "left-1/2 -translate-x-1/2"
+                )}>
                   <div className="w-1 h-1 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850"></div>
                   <div className="w-1.5 h-1.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
                   <div className="w-2.5 h-2.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
                 </div>
               ) : (
                 /* Downward pointing bubble connector dots */
-                <div className="absolute left-1/2 transform -translate-x-1/2 -bottom-4 flex flex-col items-center pointer-events-none">
+                <div className={cn(
+                  "absolute -bottom-4 flex flex-col items-center pointer-events-none",
+                  align === "left" && "left-[30px] sm:left-[42px] -translate-x-1/2",
+                  align === "right" && "right-[30px] sm:right-[42px] translate-x-1/2",
+                  align === "center" && "left-1/2 -translate-x-1/2"
+                )}>
                   <div className="w-2.5 h-2.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850"></div>
                   <div className="w-1.5 h-1.5 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
                   <div className="w-1 h-1 bg-white dark:bg-neutral-900 rounded-full shadow-md border border-neutral-200/60 dark:border-neutral-850 mt-0.5"></div>
@@ -377,12 +397,12 @@ const Testimonidals = () => {
           </svg>
         </div>
         
-        <FloatingAvatar testimonial={testimonials[0]} x="5%" y="10%" delay={0} scale={0.8} isDark={isDark} />
-        <FloatingAvatar testimonial={testimonials[1]} x="12%" y="45%" delay={1} scale={1} isDark={isDark} />
-        <FloatingAvatar testimonial={testimonials[2]} x="85%" y="15%" delay={0.5} scale={0.9} isDark={isDark} />
-        <FloatingAvatar testimonial={testimonials[3]} x="90%" y="45%" delay={1.5} scale={0.75} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[0]} x="8%" y="10%" delay={0} scale={0.8} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[1]} x="14%" y="45%" delay={1} scale={1} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[2]} x="80%" y="15%" delay={0.5} scale={0.9} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[3]} x="84%" y="45%" delay={1.5} scale={0.75} isDark={isDark} />
         <FloatingAvatar testimonial={testimonials[4]} x="20%" y="65%" delay={2} scale={1.1} isDark={isDark} />
-        <FloatingAvatar testimonial={testimonials[5]} x="78%" y="70%" delay={0.8} scale={1} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[5]} x="76%" y="70%" delay={0.8} scale={1} isDark={isDark} />
         <FloatingAvatar testimonial={testimonials[3]} x="50%" y="35%" delay={1.2} scale={1.1} isDark={isDark} />
       </div>
 
