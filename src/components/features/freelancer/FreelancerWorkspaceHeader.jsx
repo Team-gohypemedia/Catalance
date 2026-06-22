@@ -33,7 +33,7 @@ const workspaceNavItems = [
   { label: "Dashboard", key: "dashboard", to: "/freelancer" },
   { label: "Proposals", key: "proposals", to: "/freelancer/proposals" },
   { label: "Projects", key: "projects", to: "/freelancer/project" },
-  { label: "Messages", key: "messages", to: "/freelancer/messages" },
+  { label: "Chat", key: "messages", to: "/freelancer/messages" },
   { label: "Payments", key: "payments", to: "/freelancer/payments" },
   { label: "Profile", key: "profile", to: "/freelancer/profile" },
 ];
@@ -360,14 +360,14 @@ const FreelancerWorkspaceHeader = ({
             <button
               type="button"
               onClick={onPrimaryAction}
-              className="flex items-center whitespace-nowrap gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
+              className="flex items-center whitespace-nowrap gap-2 rounded-[7px] bg-[var(--primary)] px-4 py-1 text-[15px] font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
             >
               {primaryActionContent}
             </button>
           ) : (
             <Link
               to={primaryActionTo}
-              className="flex items-center whitespace-nowrap gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
+              className="flex items-center whitespace-nowrap gap-2 rounded-[7px] bg-[var(--primary)] px-4 py-2 text-[15px] font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
             >
               {primaryActionContent}
             </Link>
@@ -419,14 +419,14 @@ const FreelancerWorkspaceHeader = ({
                 <button
                   type="button"
                   onClick={onPrimaryAction}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[7px] bg-[var(--primary)] px-4 py-2 text-[15px] font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </button>
               ) : (
                 <Link
                   to={primaryActionTo}
-                  className="flex items-center gap-2 rounded-[16px] bg-[var(--primary)] px-4 py-2 text-sm font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
+                  className="flex items-center gap-2 rounded-[7px] bg-[var(--primary)] px-4 py-2 text-[15px] font-bold text-white dark:text-[#1C1B1F] transition-colors hover:bg-primary/80"
                 >
                   {primaryActionContent}
                 </Link>
