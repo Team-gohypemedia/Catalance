@@ -6778,6 +6778,7 @@ const generateProposalResponseForSession = async ({
     persistedAnswers,
     userMessageForReasoning = "",
     userMessageText = "",
+    overrideAnswersBySlug = null,
     timingTracker = null,
 }) => {
     // Reload messages fresh from DB so we have the full conversation history.
@@ -6821,7 +6822,7 @@ const generateProposalResponseForSession = async ({
         questions,
         timingTracker,
     });
-    const proposalAnswersBySlug = mergeExtractedAnswers({
+    let proposalAnswersBySlug = mergeExtractedAnswers({
         baseAnswers: persistedAnswers.bySlug,
         extractedAnswers: extractedFromConversation,
         validSlugs: allQuestionSlugs,
@@ -6829,6 +6830,20 @@ const generateProposalResponseForSession = async ({
         runtimeOptionsByQuestionSlug,
         service
     });
+
+    // Apply explicit overrides last — these always win over transcript-extracted answers.
+    // This ensures post-proposal field changes (e.g. "change timeline to 1 month") are respected.
+    if (overrideAnswersBySlug && typeof overrideAnswersBySlug === "object") {
+        const overrideEntries = Object.entries(overrideAnswersBySlug)
+            .filter(([slug, value]) => allQuestionSlugs.has(slug) && value != null && String(value).trim());
+        if (overrideEntries.length > 0) {
+            for (const [slug, value] of overrideEntries) {
+                proposalAnswersBySlug[slug] = value;
+            }
+            console.log(`[Proposal Override] Applied ${overrideEntries.length} explicit override answer(s):`, Object.fromEntries(overrideEntries));
+        }
+    }
+
     const proposalAnswersPayload = buildPersistedAnswersPayload(proposalAnswersBySlug, questions, {
         runtimeOptionsByQuestionSlug,
         existingPayload: session.answers || {}
@@ -7704,6 +7719,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             ),
             userMessageForReasoning: "",
             userMessageText: "",
+            overrideAnswersBySlug: proposedAnswersBySlug || null,
             timingTracker: requestTimingTracker,
         });
 
@@ -7770,13 +7786,61 @@ export const guestChat = asyncHandler(async (req, res) => {
                 responseMessage = `${postProposalBudgetAction.blockedMessage} If you still want another proposal, keep the budget at least ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")} and tell me when you are ready.`;
                 nextInputConfig = { type: "text", options: [] };
             } else {
+                // Extract ALL field changes from the message (timeline, budget, audience, etc.)
+                // so we can store them and apply them as overrides during proposal regeneration.
+                let generalExtractedAnswers = [];
+                try {
+                    generalExtractedAnswers = await extractAnswersFromMessage({
+                        serviceName: service.name,
+                        message: trimmedMessageText,
+                        questions,
+                        timingTracker: requestTimingTracker,
+                    });
+                } catch {
+                    generalExtractedAnswers = [];
+                }
+
+                const validSlugsForOverride = new Set(
+                    (Array.isArray(questions) ? questions : []).map((q) => q?.slug).filter(Boolean)
+                );
+
+                // Build merged proposed answers: start from existing, apply general extraction, then budget on top
+                let mergedProposedAnswersBySlug = { ...existingAnswersBySlug };
+                for (const extracted of generalExtractedAnswers) {
+                    const slug = String(extracted?.slug || "").trim();
+                    const answer = String(extracted?.answer || "").trim();
+                    const confidence = Number(extracted?.confidence || 0);
+                    if (slug && answer && validSlugsForOverride.has(slug) && confidence >= 0.85) {
+                        mergedProposedAnswersBySlug[slug] = answer;
+                    }
+                }
+                // Budget action answers override general extraction
+                if (postProposalBudgetAction?.proposedAnswersBySlug) {
+                    Object.assign(mergedProposedAnswersBySlug, postProposalBudgetAction.proposedAnswersBySlug);
+                }
+
+                // Only keep slugs that actually changed from existing answers
+                const changedProposedAnswersBySlug = Object.fromEntries(
+                    Object.entries(mergedProposedAnswersBySlug).filter(([slug, value]) => {
+                        const existing = String(existingAnswersBySlug[slug] || "").trim();
+                        const proposed = String(value || "").trim();
+                        return proposed && proposed !== existing;
+                    })
+                );
+
+                if (Object.keys(changedProposedAnswersBySlug).length > 0) {
+                    console.log(`[Post-Proposal Change Extraction] Captured ${Object.keys(changedProposedAnswersBySlug).length} field change(s):`, changedProposedAnswersBySlug);
+                }
+
                 nextAnswers = mergeAnswersUiState(nextAnswers, {
                     [PENDING_PROPOSAL_STATE_KEY]: {
                         action: "regenerate_current",
                         targetServiceSlug: service.slug,
                         targetServiceName: service.name,
                         sourceMessage: trimmedMessageText,
-                        proposedAnswersBySlug: postProposalBudgetAction?.proposedAnswersBySlug || null
+                        proposedAnswersBySlug: Object.keys(changedProposedAnswersBySlug).length > 0
+                            ? changedProposedAnswersBySlug
+                            : (postProposalBudgetAction?.proposedAnswersBySlug || null)
                     }
                 });
                 await prisma.aiGuestSession.update({ where: { id: sessionId }, data: { answers: nextAnswers } });
