@@ -105,9 +105,8 @@ const ActiveProjects = memo(function ActiveProjects({
         const paymentResult = await processProjectInstallmentPayment({
           authFetch: dashboardData.authFetch,
           projectId: project.id,
-          description: `${project.dueInstallment?.label || "Project payment"} for ${
-            project.title || "project"
-          }`,
+          description: `${project.dueInstallment?.label || "Project payment"} for ${project.title || "project"
+            }`,
         });
 
         toast.success(paymentResult?.message || "Payment completed successfully.");
@@ -217,10 +216,10 @@ const ActiveProjects = memo(function ActiveProjects({
   }
 
   return (
-    <section className={cn("mt-14", className)}>
+    <section className={cn("mt-6 sm:mt-14", className)}>
       <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
+          \    <div className="flex flex-wrap items-center gap-3">
             <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
               Active Projects
             </h2>
