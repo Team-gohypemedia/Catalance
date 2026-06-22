@@ -196,22 +196,11 @@ const Footer = () => {
             </div>
           </div>
         </div>
-
         <div className="mt-12 border-t border-border/60 pt-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-muted-foreground">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-center">
+            <p className="text-sm text-muted-foreground text-center">
               &copy; {currentYear} Catalance. All rights reserved.
             </p>
-
-            <div className="flex items-center justify-center gap-3 rounded-full border border-border/60 bg-background px-4 py-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              </span>
-              <span className="text-sm font-medium text-foreground">
-                All Systems Operational
-              </span>
-            </div>
           </div>
         </div>
       </div>

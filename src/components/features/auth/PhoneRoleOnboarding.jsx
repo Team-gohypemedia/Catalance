@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import { toast } from "sonner";
 import * as Flags from "country-flag-icons/react/3x2";
 import { Button } from "@/components/ui/button";
@@ -979,10 +979,12 @@ function PhoneRoleOnboarding() {
 
         {/* Logo bar */}
         <header className="relative z-10 flex items-center gap-2.5 px-8 pt-7">
-          <div className="flex size-8 items-center justify-center rounded-full bg-primary">
-            <img src={catalanceLogo} alt="" className="h-[18px] w-[18px] object-contain invert dark:invert-0" />
-          </div>
-          <span className={cn("text-[1.05rem] font-bold tracking-[-0.4px]", isDark ? "text-white" : "text-[#1C1B1F]")}>Catalance</span>
+          <Link to="/" className="flex items-center gap-2.5 transition-opacity">
+            <div className="flex size-8 items-center justify-center rounded-full bg-primary">
+              <img src={catalanceLogo} alt="" className="h-[18px] w-[18px] object-contain invert dark:invert-0" />
+            </div>
+            <span className={cn("text-[1.05rem] font-bold tracking-[-0.4px]", isDark ? "text-white" : "text-[#1C1B1F]")}>Catalance</span>
+          </Link>
         </header>
 
         {/* Main split */}
