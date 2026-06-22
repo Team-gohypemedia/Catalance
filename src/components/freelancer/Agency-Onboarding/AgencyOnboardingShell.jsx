@@ -3747,7 +3747,6 @@ const AgencyOnboardingShell = ({
                 className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
               >
                 <Link to={FREELANCER_DASHBOARD_PATH} replace>
-                  <ChevronLeft className="h-4 w-4" />
                   Back to dashboard
                 </Link>
               </Button>

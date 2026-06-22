@@ -1142,15 +1142,17 @@ function PhoneRoleOnboarding() {
   // ── Slide 1: role picker ─────────────────────────────────────────────
   return (
     <main className="relative min-h-svh bg-background px-4 py-6 text-foreground sm:px-6 lg:px-8">
+      {/* Back button hidden on the first stage onboarding slide */}
+      {/* 
       <Button
         type="button"
         disabled={isSaving}
         onClick={handleBack}
         className="absolute left-4 top-6 z-10 !h-10 rounded-md border border-black/10 dark:border-white/10 bg-background px-3 text-sm text-black dark:text-white hover:bg-black/5 dark:hover:bg-white/5 sm:left-6 lg:left-8"
       >
-        <ChevronLeft className="size-4" />
         Back
       </Button>
+      */}
       <div className="mx-auto flex min-h-[calc(100svh-3rem)] w-full max-w-6xl items-center justify-center">
         <div className="w-full pt-4">
           {renderSlideContent()}
