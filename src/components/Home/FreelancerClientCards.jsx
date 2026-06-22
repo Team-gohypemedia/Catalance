@@ -14,17 +14,17 @@ import { useTheme } from "@/components/providers/theme-provider";
 import Mascot1 from "@/assets/mascot/mascot1.png";
 
 const businessFeatures = [
-  { icon: BadgeCheck, text: "Only verified professionals" },
-  { icon: Users, text: "AI-powered talent matching" },
-  { icon: ShieldCheck, text: "Safe & secure payments" },
-  { icon: Clock3, text: "Transparent project tracking" },
+  { icon: BadgeCheck, text: "Verified professionals" },
+  { icon: Users, text: "Smart talent matching" },
+  { icon: ShieldCheck, text: "Secure payments" },
+  { icon: Clock3, text: "Project tracking" },
 ];
 
 const freelancerFeatures = [
-  { icon: Handshake, text: "Work with trusted teams." },
-  { icon: ChartNoAxesCombined, text: "Reliable high-quality opportunities" },
-  { icon: ShieldCheck, text: "Secure structured payments" },
-  { icon: MessageSquareDot, text: "Quick problem help" },
+  { icon: Handshake, text: "Trusted clients" },
+  { icon: ChartNoAxesCombined, text: "Quality opportunities" },
+  { icon: ShieldCheck, text: "Secure payments" },
+  { icon: MessageSquareDot, text: "Quick support" },
 ];
 
 const featureClassName =
@@ -107,7 +107,7 @@ const FreelancerClientCards = () => {
                   </span>
                 </div>
 
-                <h3 className={`max-w-xs text-2xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`max-w-xs text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Hire Reliable Talent Faster
                 </h3>
 
@@ -169,7 +169,7 @@ const FreelancerClientCards = () => {
                   </span>
                 </div>
 
-                <h3 className={`max-w-sm text-2xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`max-w-sm text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Grow Your Career with Trusted Clients
                 </h3>
 

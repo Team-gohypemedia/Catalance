@@ -178,7 +178,7 @@ const Hero = () => {
           />
         </h1>
 
-        <p className="mt-6 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-foreground/80 dark:text-white/90 sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
+        <p className="mt-3 mb-6 max-w-4xl text-balance text-sm font-normal leading-relaxed text-foreground/80 dark:text-white/90 sm:mt-7 sm:mb-7 sm:text-base md:text-lg">
           Hire trusted experts focused on reliable and timely delivery.
         </p>
 
