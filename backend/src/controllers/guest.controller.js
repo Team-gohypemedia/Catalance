@@ -2559,6 +2559,7 @@ const getComparableOptionAliases = (option = {}) =>
     );
 
 const HELPER_OPTION_TRIGGER_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
+const NEGATIVE_OPTION_REGEX = /\b(?:none|nothing|none of these|none of the above|unsure|undecided|no idea|no preference)\b/i;
 const BINARY_RECOMMENDATION_ANSWER_REGEX = /^(yes|no)$/i;
 
 const normalizeAdviceVisibleOptions = (currentOptions = [], currentQuestion = null) => {
@@ -2609,9 +2610,10 @@ const getPreferredAdviceOptionLabel = (visibleOptionObjects = [], adviceAdminCon
         ).trim();
     }
 
-    const firstConcreteOption = normalizedOptions.find((option) =>
-        !HELPER_OPTION_TRIGGER_REGEX.test(String(option?.label || option?.value || ""))
-    );
+    const firstConcreteOption = normalizedOptions.find((option) => {
+        const text = String(option?.label || option?.value || "");
+        return !HELPER_OPTION_TRIGGER_REGEX.test(text) && !NEGATIVE_OPTION_REGEX.test(text);
+    });
 
     return String(
         firstConcreteOption?.label
@@ -9484,6 +9486,7 @@ Do NOT say "tell me", "share", "what feels comfortable", "what sounds best", "yo
 Your notice MUST directly recommend the best answer for this user right now.
 You MUST also set "recommendedAnswer" to the exact final answer the user can send.
 If visible options exist, choose exactly ONE option from the visible options and set "recommendedAnswer" to that exact option text.
+NEVER recommend negative options like "None", "None of these", "None of the above", "Nothing", "Not sure", or "Other". Always recommend a valid, positive option that moves the project forward.
 If the best answer is a binary yes/no choice, keep "recommendedAnswer" as the exact option but do NOT write a bare "Yes" or "No" in the notice or placeholder. Phrase the recommendation as a direct direction with one short reason.
 If this is a timeline question without fixed options, recommend one concrete timeline the user can send directly.
 If this is a budget question without fixed options, recommend one concrete budget figure or a narrow range the user can send directly.
