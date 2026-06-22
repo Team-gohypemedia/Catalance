@@ -1501,13 +1501,89 @@ const isGreetingInsteadOfNameAnswer = (questionText = "", userText = "") => {
     return wordCount <= 8;
 };
 
-const buildServiceAwareOpeningMessage = (serviceName = "") => {
+const getServiceActionPhrasing = (service) => {
+    if (!service) return { verb: "build", target: "what you want to build" };
+
+    let serviceId = "";
+    let serviceName = "";
+
+    if (typeof service === "object") {
+        serviceId = String(service.id || service.slug || "").toLowerCase().trim();
+        serviceName = String(service.name || "").toLowerCase().trim();
+    } else if (typeof service === "string") {
+        serviceId = service.toLowerCase().trim();
+        serviceName = service.toLowerCase().trim();
+    }
+
+    // Services where "build" makes perfect sense:
+    const isBuildService = 
+        serviceId.includes("development") || 
+        serviceId.includes("software") || 
+        serviceId.includes("app") || 
+        serviceId.includes("website") ||
+        serviceName.includes("develop") ||
+        serviceName.includes("software") ||
+        serviceName.includes("app") ||
+        serviceName.includes("website");
+
+    if (isBuildService) {
+        return { verb: "build", target: "what you want to build" };
+    }
+
+    // Services related to marketing, ads, SEO, lead gen, etc.
+    const isMarketingOrAds =
+        serviceId.includes("advertising") ||
+        serviceId.includes("marketing") ||
+        serviceId.includes("seo") ||
+        serviceId.includes("lead_generation") ||
+        serviceId.includes("generation") ||
+        serviceName.includes("advertising") ||
+        serviceName.includes("marketing") ||
+        serviceName.includes("seo") ||
+        serviceName.includes("lead gen") ||
+        serviceName.includes("generation");
+
+    if (isMarketingOrAds) {
+        return { verb: "achieve", target: "what you want to achieve" };
+    }
+
+    // Services related to design, content, writing
+    const isDesignOrCreative =
+        serviceId.includes("design") ||
+        serviceId.includes("branding") ||
+        serviceId.includes("video") ||
+        serviceId.includes("writing") ||
+        serviceId.includes("content") ||
+        serviceName.includes("design") ||
+        serviceName.includes("brand") ||
+        serviceName.includes("video") ||
+        serviceName.includes("write") ||
+        serviceName.includes("content");
+
+    if (isDesignOrCreative) {
+        return { verb: "create", target: "what you want to create" };
+    }
+
+    // Default fallback
+    return { verb: "achieve", target: "your goals and requirements" };
+};
+
+const buildServiceAwareOpeningMessage = (service = null) => {
+    let serviceName = "";
+    if (service && typeof service === "object") {
+        serviceName = service.name || "";
+    } else if (typeof service === "string") {
+        serviceName = service;
+    }
+
     const normalizedServiceName = String(serviceName || "").trim().toLowerCase();
     const scopeLabel = normalizedServiceName
         ? `your ${normalizedServiceName} requirement`
         : "your requirement";
 
-    return `Hello! I'm CATA, here to help with ${scopeLabel}.\nTell me a bit about what you want to build, and I can help shape the scope or generate a proposal.`;
+    const phrasing = getServiceActionPhrasing(service);
+
+    return `Hello! I'm CATA, here to help with ${scopeLabel}.\nTell me a bit about ${phrasing.target}, and I can help shape the scope or generate a proposal.`;
 };
 
 const hasCorrectionIntent = (text = "") => CORRECTION_INTENT_REGEX.test(String(text || ""));
@@ -6740,7 +6816,7 @@ const buildServiceStartState = async ({
         )
         : `How can I help you regarding ${service?.name || "this service"}?`;
     let firstQuestion = isNameFirstQuestion && !startPrefillBridge
-        ? buildServiceAwareOpeningMessage(service.name)
+        ? buildServiceAwareOpeningMessage(service)
         : sanitizedAiFirstQuestion;
     if (!firstQuestion) {
         firstQuestion = startPrefillBridge
@@ -6756,7 +6832,7 @@ const buildServiceStartState = async ({
                 )
             )
             : (isNameFirstQuestion
-                ? buildServiceAwareOpeningMessage(service.name)
+                ? buildServiceAwareOpeningMessage(service)
                 : firstQuestionFallbackPrompt);
     }
 
@@ -7246,7 +7322,8 @@ Return plain text only.
             return "I have enough context to put the proposal together now.";
         }
         if (openingNameStep) {
-            return `Happy to help with ${service?.name || "this"}.\nTell me a bit about what you want to build, and I will guide you from there.`;
+            const phrasing = getServiceActionPhrasing(service);
+            return `Happy to help with ${service?.name || "this"}.\nTell me a bit about ${phrasing.target}, and I will guide you from there.`;
         }
         return nextQuestion
             ? (getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug).length > 0
