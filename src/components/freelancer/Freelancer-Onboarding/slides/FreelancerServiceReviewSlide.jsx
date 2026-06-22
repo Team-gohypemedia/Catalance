@@ -941,7 +941,7 @@ const FreelancerServiceReviewSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-5xl flex-col items-center mt-[10px] sm:mt-0">
       <div className="w-full space-y-4">
         <div className="text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>

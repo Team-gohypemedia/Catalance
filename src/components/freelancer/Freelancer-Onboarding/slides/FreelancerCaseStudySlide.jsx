@@ -334,7 +334,7 @@ const FreelancerCaseStudySlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[10px] sm:mt-0">
       <div className="w-full space-y-4">
         {/* Heading */}
         <div className="text-center">

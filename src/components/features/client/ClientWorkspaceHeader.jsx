@@ -33,7 +33,7 @@ const workspaceNavItems = [
   { label: "Dashboard", key: "dashboard", to: "/client" },
   { label: "Proposals", key: "proposals", to: "/client/proposal" },
   { label: "Projects", key: "projects", to: "/client/project" },
-  { label: "Messages", key: "messages", to: "/client/messages" },
+  { label: "Chat", key: "messages", to: "/client/messages" },
   { label: "Payments", key: "payments", to: "/client/payments" },
   { label: "Profile", key: "profile", to: "/client/profile" },
 ];

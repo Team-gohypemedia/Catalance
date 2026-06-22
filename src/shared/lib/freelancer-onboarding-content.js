@@ -124,7 +124,7 @@ export const DEFAULT_SERVICE_INFO_FIELDS = [
   {
     id: "categories",
     type: "multiselect",
-    label: "Select Category",
+    label: "Select Skill",
     placeholder: "Search here",
     searchPlaceholder: "Search here",
     options: [],
@@ -350,7 +350,7 @@ export const DEFAULT_FREELANCER_ONBOARDING_CONTENT = {
         placeholder: "I will do something I'm really good at",
       },
       categories: {
-        label: "Select Category",
+        label: "Select Skill",
         placeholder: "Search here",
         searchPlaceholder: "Search here",
         options: [],

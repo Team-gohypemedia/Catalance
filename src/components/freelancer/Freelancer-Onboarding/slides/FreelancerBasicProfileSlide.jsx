@@ -795,7 +795,7 @@ const FreelancerBasicProfileSlide = ({
   const remainingFields = visibleFields.filter((field) => !renderedFieldIds.has(field.id));
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5">
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5 mt-[10px] sm:mt-0">
       <div className="w-full max-w-2xl text-center">
         <h1 className="mb-1 text-xl font-medium text-foreground md:mb-2 md:text-4xl lg:mb-2 lg:text-5xl">
           {renderTitle(slideTitle)}

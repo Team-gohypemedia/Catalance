@@ -123,8 +123,8 @@ const SectionHeader = ({
   rightElement = null,
 }) => {
   const content = (
-    <div className="flex items-start justify-between gap-3 w-full min-w-0">
-      <div className="flex items-start gap-3 flex-1 min-w-0">
+    <div className="flex items-center justify-between gap-3 w-full min-w-0">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
           <Icon className="h-4 w-4" />
         </div>
@@ -920,7 +920,7 @@ const FreelancerServiceQuickInfoSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[10px] sm:mt-0">
       <div className="w-full space-y-8">
         {/* Page Title */}
         <div className="text-center">
@@ -965,11 +965,9 @@ const FreelancerServiceQuickInfoSlide = ({
               <SectionHeader
                 number="1"
                 icon={FileText}
-                title="Tell clients what you offer"
-                description="Capture the title, category, and experience you want shown for this service."
-              />
+                title="Tell clients what you offer"              />
 
-              <div className="space-y-4 pt-4">
+              <div className="space-y-6 pt-2">
                 {/* Service Title */}
                 {infoFieldMap.title?.visible !== false && (
                   <div className="space-y-1">
@@ -1011,14 +1009,14 @@ const FreelancerServiceQuickInfoSlide = ({
                 {infoFieldMap.categories?.visible !== false && (
                   <div className="space-y-1">
                     <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
-                      {infoFieldMap.categories?.label || "Select Category"}
+                      {infoFieldMap.categories?.label || "Select Skill"}
                     </label>
                     <CategoryMultiSelect
                       selected={selectedCategoryKeys}
                       onChange={handleSelectedCategoriesChange}
                       options={allCategoryOptions}
-                      placeholder={isCategoriesLoading ? "Loading..." : infoFieldMap.categories?.placeholder || "Search or select a category"}
-                      searchPlaceholder={infoFieldMap.categories?.searchPlaceholder || "Search categories..."}
+                      placeholder={isCategoriesLoading ? "Loading..." : infoFieldMap.categories?.placeholder || "Search or select a skill"}
+                      searchPlaceholder={infoFieldMap.categories?.searchPlaceholder || "Search skills..."}
                       isLoading={isCategoriesLoading}
                       hasError={Boolean(categoryError)}
                       activeCategoryKey={activeSkillCategoryId}
@@ -1037,7 +1035,7 @@ const FreelancerServiceQuickInfoSlide = ({
 
                 {/* Service Description */}
                 {pricingFieldMap.description?.visible !== false && (
-                  <div className="space-y-1 pt-4">
+                  <div className="space-y-1">
                     <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
                       {pricingFieldMap.description?.label || "Service Description"}
                     </label>
