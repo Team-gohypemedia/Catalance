@@ -2872,6 +2872,9 @@ const inferBriefingService = (services = [], answers = {}) => {
                 .split(' ')
                 .filter((token) => token.length >= 3 && source.includes(token))
                 .length;
+            
+            if (aliasScore === 0 && tokenScore === 0) return;
+
             const score = aliasScore + tokenScore - matcherIndex * 0.01;
             if (score > bestScore) {
                 bestScore = score;
@@ -5403,7 +5406,7 @@ const GuestAIDemo = () => {
                                         <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
                                             {currentBriefingStep.key === 'role'
                                                 ? 'Choose the direction that best describes your project.'
-                                                : 'Briefly describe your project requirement.'}
+                                                : `Briefly describe your ${briefingAnswers.role ? String(briefingAnswers.role).toLowerCase() : 'project'} requirement.`}
                                         </h2>
                                         <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
                                             {currentBriefingStep.label}
