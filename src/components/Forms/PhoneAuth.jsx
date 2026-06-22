@@ -952,39 +952,21 @@ function PhoneAuth() {
                 Hire verified creative freelancers.
               </p>
 
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-3 xl:justify-start">
-                <Button
-                  asChild
-                  variant="outline"
-                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
-                >
-                  <Link to="/marketplace?view=freelancers#specialists-section" className="gap-2.5">
-                    <Search className="size-4 text-primary" />
-                    Hire freelancers
-                  </Link>
-                </Button>
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-6 xl:justify-start">
+                <div className="flex items-center gap-2.5 text-sm font-medium text-black dark:text-white">
+                  <Search className="size-4 text-primary" />
+                  Hire freelancers
+                </div>
 
-                <Button
-                  asChild
-                  variant="outline"
-                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
-                >
-                  <Link to="/get-started" className="gap-2.5">
-                    <Briefcase className="size-4 text-primary" />
-                    Post a project
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-2.5 text-sm font-medium text-black dark:text-white">
+                  <Briefcase className="size-4 text-primary" />
+                  Post a project
+                </div>
 
-                <Button
-                  asChild
-                  variant="outline"
-                  className="h-12 rounded-full border-black/15 dark:border-white/15 bg-black/[0.03] dark:bg-white/[0.03] px-5 text-sm font-medium text-black dark:text-white hover:bg-black/[0.06] dark:bg-white/[0.06] hover:text-black dark:text-white"
-                >
-                  <Link to="/contact" className="gap-2.5">
-                    <MessageCircle className="size-4 text-primary" />
-                    Message freelancers
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-2.5 text-sm font-medium text-black dark:text-white">
+                  <MessageCircle className="size-4 text-primary" />
+                  Message freelancers
+                </div>
               </div>
             </div>
           </section>

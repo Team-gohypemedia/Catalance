@@ -602,9 +602,9 @@ const App = () => {
             <Route
               path="/service"
               element={
-                <LayoutNavbarOnly>
+                <LayoutWithNavbar>
                   <GuestAIDemo />
-                </LayoutNavbarOnly>
+                </LayoutWithNavbar>
               }
             />
             <Route

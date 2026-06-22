@@ -5583,7 +5583,7 @@ const GuestAIDemo = () => {
                                     type="button"
                                     onClick={goToPreviousBriefingStep}
                                     disabled={briefingStepIndex === 0}
-                                    className={`flex items-center gap-2 text-[13px] font-semibold transition-colors disabled:opacity-50 ${briefingHintClasses} ${briefingBackButtonClasses}`}
+                                    className={`flex items-center gap-2 text-[13px] font-semibold transition-colors ${briefingStepIndex === 0 ? 'invisible' : 'disabled:opacity-50'} ${briefingHintClasses} ${briefingBackButtonClasses}`}
                                 >
                                     <ArrowLeft className="h-4 w-4" />
                                     <span>Back</span>
