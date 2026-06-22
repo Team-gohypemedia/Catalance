@@ -189,7 +189,7 @@ const ServiceRailCard = React.memo(function ServiceRailCard({ service, isDark, o
       <div className="flex flex-col gap-3.5 relative z-10 w-full">
 
         {/* Title */}
-        <h3 className="text-2xl text-center font-bold tracking-tight text-foreground leading-tight">
+        <h3 className="text-xl text-center font-semibold tracking-tight text-foreground leading-tight sm:text-2xl sm:font-bold">
           {service.title}
         </h3>
       </div>
@@ -222,30 +222,42 @@ const ServiceCardsCarousel = () => {
     theme === "dark" ||
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
+  const isHovered = React.useRef(false);
+
+  React.useEffect(() => {
+    let animationId;
+    const scroll = () => {
+      if (trackRef.current && !isHovered.current) {
+        trackRef.current.scrollLeft += 1;
+        // Reset scroll position for seamless infinite loop
+        if (trackRef.current.scrollLeft >= trackRef.current.scrollWidth / 2) {
+          trackRef.current.scrollLeft = 0;
+        }
+      }
+      animationId = requestAnimationFrame(scroll);
+    };
+    animationId = requestAnimationFrame(scroll);
+    return () => cancelAnimationFrame(animationId);
+  }, []);
+
+  const handleMouseEnter = () => {
+    isHovered.current = true;
+  };
+
+  const handleMouseLeave = () => {
+    isHovered.current = false;
+  };
+
   const handleGetFreeProposal = React.useCallback(() => {
     navigate("/service");
   }, [navigate]);
 
   const handleSelectService = React.useCallback(
     (service) => {
-      navigate("/service", {
-        state: {
-          openChat: true,
-          serviceTitle: service.title,
-          serviceId: service.id,
-        },
-      });
+      navigate(`/service?service=${service.id}`);
     },
     [navigate],
   );
-
-  // Pause on hover
-  const handleMouseEnter = () => {
-    if (trackRef.current) trackRef.current.style.animationPlayState = "paused";
-  };
-  const handleMouseLeave = () => {
-    if (trackRef.current) trackRef.current.style.animationPlayState = "running";
-  };
 
   // Duplicate cards for seamless loop
   const allCards = [
@@ -276,23 +288,21 @@ const ServiceCardsCarousel = () => {
           </Button>
         </div>
 
-        {/* Auto-scrolling marquee */}
-        <div
-          className="relative w-full overflow-hidden py-10"
+        {/* Scrollable list */}
+        <div 
+          className="relative w-full py-10"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
+          onTouchStart={handleMouseEnter}
+          onTouchEnd={handleMouseLeave}
         >
           {/* Fade edges */}
-          <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-24 bg-gradient-to-r from-background to-transparent sm:w-40" />
-          <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-24 bg-gradient-to-l from-background to-transparent sm:w-40" />
+          <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-8 bg-gradient-to-r from-background to-transparent sm:w-16" />
+          <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-8 bg-gradient-to-l from-background to-transparent sm:w-16" />
 
           <div
             ref={trackRef}
-            className="flex gap-4 sm:gap-5"
-            style={{
-              width: "max-content",
-              animation: "marquee-scroll 65s linear infinite",
-            }}
+            className="flex gap-4 sm:gap-5 overflow-x-auto scrollbar-hide px-4 sm:px-8 pb-4"
           >
             {allCards.map((service, i) => (
               <ServiceRailCard
@@ -307,11 +317,14 @@ const ServiceCardsCarousel = () => {
 
       </div>
 
-      {/* Keyframe style */}
+      {/* Hide scrollbar style */}
       <style>{`
-        @keyframes marquee-scroll {
-          0%   { transform: translateX(0); }
-          100% { transform: translateX(-50%); }
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
       `}</style>
     </section>

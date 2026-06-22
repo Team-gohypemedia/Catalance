@@ -2872,6 +2872,9 @@ const inferBriefingService = (services = [], answers = {}) => {
                 .split(' ')
                 .filter((token) => token.length >= 3 && source.includes(token))
                 .length;
+            
+            if (aliasScore === 0 && tokenScore === 0) return;
+
             const score = aliasScore + tokenScore - matcherIndex * 0.01;
             if (score > bestScore) {
                 bestScore = score;
@@ -4313,6 +4316,12 @@ const GuestAIDemo = () => {
     const startServiceConversation = useCallback(async (service, options = {}) => {
         if (!service) return null;
 
+        const currentParams = new URLSearchParams(window.location.search);
+        if (currentParams.get('service') !== (service.slug || service.id)) {
+            currentParams.set('service', service.slug || service.id);
+            navigate(`${window.location.pathname}?${currentParams.toString()}`, { replace: true, state: window.location.state });
+        }
+
         const preserveExistingMessages = Boolean(options.preserveExistingMessages);
         const baseMessages = Array.isArray(options.baseMessages)
             ? options.baseMessages
@@ -4430,6 +4439,7 @@ const GuestAIDemo = () => {
         resetChatComposerState,
         updateAgencyFlowState,
         userPrefillName,
+        navigate,
     ]);
 
     const startAgencyFlow = useCallback(async (selectedServicesOverride = null) => {
@@ -4484,6 +4494,89 @@ const GuestAIDemo = () => {
             });
         }
     }, [resetAgencyFlow, selectedService, startAgencyFlow, startServiceConversation]);
+
+    // Auto-select service from URL query parameter or location state
+    useEffect(() => {
+        const queryParams = new URLSearchParams(window.location.search);
+        const queryService = queryParams.get('service');
+        const stateHasChat = location.state?.openChat;
+
+        if (!queryService && !stateHasChat && selectedService) {
+            dismissedAutoHelperKeysRef.current = new Set();
+            setSelectedService(null);
+            setSessionId(null);
+            replaceMessages([]);
+            resetChatComposerState();
+            resetAgencyFlow();
+            setAgencySelectedServiceIds([]);
+            resetBriefingState();
+            return;
+        }
+        
+        if (services.length > 0 && !selectedService && (queryService || stateHasChat)) {
+            const requestedId = queryService || location.state?.serviceId;
+            const requestedTitle = location.state?.serviceTitle;
+            
+            const CAROUSEL_ID_TO_TITLE = {
+                'web_development': 'Website Development',
+                'app_development': 'App Development',
+                'ai_automation': 'AI Automation',
+                'crm_erp': 'CRM & ERP Integrated Solutions',
+                'seo': 'SEO / GMB',
+                'influencer_marketing': 'Influencer Marketing',
+                'social_media_marketing': 'Social Media Marketing',
+                'ugc_marketing': 'UGC Marketing',
+                'creative_design': 'Creative & Design',
+                'brandkit': 'Branding Kit',
+                'paid_advertising': 'Paid Advertising',
+                'content_writing': 'Writing & Content',
+                'video_services': 'Video Services',
+                'ai_video_generation': 'AI Video Generation',
+                '3d_services': '3D Animation',
+                'voice_agent': 'Voice Agent',
+            };
+            
+            const aliasTitle = CAROUSEL_ID_TO_TITLE[requestedId];
+
+            const normalizeStr = (str) => (str || '').replace(/[^a-z0-9]/gi, '').toLowerCase();
+            const normReqId = normalizeStr(requestedId);
+            const normReqTitle = normalizeStr(requestedTitle);
+            const normAliasTitle = normalizeStr(aliasTitle);
+
+            const matchedService = services.find(
+                s => (normReqId && normalizeStr(s.id) === normReqId) || 
+                     (normReqId && normalizeStr(s.slug) === normReqId) ||
+                     (normReqTitle && normalizeStr(s.title) === normReqTitle) ||
+                     (normReqTitle && normalizeStr(s.name) === normReqTitle) ||
+                     (normReqId && normalizeStr(s.name) === normReqId) ||
+                     (normAliasTitle && normalizeStr(s.name) === normAliasTitle) ||
+                     (normAliasTitle && normalizeStr(s.title) === normAliasTitle)
+            );
+
+            if (matchedService) {
+                if (stateHasChat) {
+                    const state = { ...location.state };
+                    delete state.openChat;
+                    navigate(window.location.pathname + window.location.search, { replace: true, state });
+                }
+                
+                startServiceConversation(matchedService, {
+                    preserveExistingMessages: false,
+                    flowMode: SERVICE_SELECTION_MODES.FREELANCER,
+                });
+            }
+        }
+    }, [
+        services, 
+        location, 
+        navigate, 
+        selectedService, 
+        startServiceConversation, 
+        replaceMessages, 
+        resetChatComposerState, 
+        resetAgencyFlow, 
+        resetBriefingState
+    ]);
 
     const handleLoadPreviousChat = async (chatMeta) => {
         if (!chatMeta?.sessionId) return;
@@ -5169,6 +5262,12 @@ const GuestAIDemo = () => {
     };
 
     const handleBackToServices = () => {
+        const currentParams = new URLSearchParams(window.location.search);
+        if (currentParams.has('service')) {
+            currentParams.delete('service');
+            const search = currentParams.toString();
+            navigate(`${window.location.pathname}${search ? '?' + search : ''}`, { replace: true, state: window.location.state });
+        }
         dismissedAutoHelperKeysRef.current = new Set();
         setSelectedService(null);
         setSessionId(null);
@@ -5307,7 +5406,7 @@ const GuestAIDemo = () => {
                                         <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
                                             {currentBriefingStep.key === 'role'
                                                 ? 'Choose the direction that best describes your project.'
-                                                : 'Briefly describe your project requirement.'}
+                                                : `Briefly describe your ${briefingAnswers.role ? String(briefingAnswers.role).toLowerCase() : 'project'} requirement.`}
                                         </h2>
                                         <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
                                             {currentBriefingStep.label}
