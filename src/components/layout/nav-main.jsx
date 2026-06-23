@@ -36,9 +36,9 @@ export function NavMain({ items }) {
           const hasChildren =
             Array.isArray(item.items) && item.items.length > 0;
 
-          // Show badge on Messages item when there are unread chat notifications
+          // Show badge on Chat item when there are unread chat notifications
           const showMessageBadge =
-            item.title === "Messages" && chatUnreadCount > 0;
+            String(item.url || "").includes("/messages") && chatUnreadCount > 0;
 
           // Show badge on Proposals items
           const isProposalsItem =
@@ -55,9 +55,9 @@ export function NavMain({ items }) {
                 !location.search.includes("view=");
             }
 
-            // When clicking Messages, mark chat as read
+            // When clicking Chat, mark chat as read
             const handleClick = () => {
-              if (item.title === "Messages") {
+              if (String(item.url || "").includes("/messages")) {
                 markChatAsRead();
               }
             };

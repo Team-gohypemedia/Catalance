@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Check from "lucide-react/dist/esm/icons/check";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
@@ -9,6 +10,10 @@ import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ImageIcon from "lucide-react/dist/esm/icons/image";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Tag from "lucide-react/dist/esm/icons/tag";
+import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
+import Lock from "lucide-react/dist/esm/icons/lock";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -20,11 +25,65 @@ import {
 } from "../../Freelancer-Onboarding/service-details";
 
 import {
-  ServiceInfoStepper,
   CustomSelect,
   ServiceTitleTooltip,
 } from "../../Freelancer-Onboarding/slides/shared/ServiceInfoComponents";
-import { SERVICE_INFO_STEPS } from "../../Freelancer-Onboarding/slides/shared/serviceInfoConstants";
+
+const SectionHeader = ({
+  number,
+  icon: Icon,
+  title,
+  description,
+  isCollapsible = false,
+  isExpanded = false,
+  onToggle = null,
+}) => {
+  const content = (
+    <div className="flex items-center justify-between gap-3 w-full min-w-0">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-foreground">
+            {number}. {title}
+          </h3>
+          <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">{description}</p>
+        </div>
+      </div>
+      {isCollapsible && (
+        <div className="flex h-8 items-center shrink-0">
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground/60 transition-transform duration-200",
+              isExpanded ? "rotate-180" : ""
+            )}
+          />
+        </div>
+      )}
+    </div>
+  );
+
+  if (isCollapsible) {
+    return (
+      <div className="flex items-start justify-between gap-4 w-full">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="flex flex-1 items-start text-left cursor-pointer group/header select-none rounded-xl p-2 -m-2 hover:bg-muted/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+        >
+          {content}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start justify-between gap-4 w-full">
+      {content}
+    </div>
+  );
+};
 
 const PROJECT_TIMELINE_OPTIONS = [
   { value: "under_1_week", label: "Under 1 Week" },
@@ -61,9 +120,6 @@ const MAX_KEYWORDS = 5;
 const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
 const MAX_MEDIA_FILE_SIZE_BYTES = 4.5 * 1024 * 1024;
-const PROFILE_SERVICE_INFO_STEPS = SERVICE_INFO_STEPS.filter(
-  (step) => step.id !== "preview"
-);
 
 const ROLE_OPTIONS = [
   { value: "full_execution", label: "Full execution" },
@@ -165,7 +221,14 @@ const AddEditServiceWizard = ({
   onCoverChange,
   servicesCatalog = [], // Pass from parent to resolve serviceId
 }) => {
-  const [activeStepId, setActiveStepId] = useState("overview");
+  const [activeStepId, setActiveStepId] = useState("quickInfo");
+  const [expandedSections, setExpandedSections] = useState({
+    2: false,
+    3: false,
+  });
+  const hasAutoExpandedSec2 = useRef(false);
+  const hasAutoExpandedSec3 = useRef(false);
+
   const [nicheOptions, setNicheOptions] = useState([]);
   const [isLoadingNiches, setIsLoadingNiches] = useState(false);
   
@@ -287,14 +350,30 @@ const AddEditServiceWizard = ({
     fetchSubCategories();
   }, [resolvedServiceId]);
 
-  // Fetch tools for selected sub-categories
+  // Cache for fetched tools to avoid redundant requests
+  const fetchedToolsCache = useRef({});
+
+  // Fetch tools for all available sub-categories
   useEffect(() => {
+    const catalogIds = allCategoryOptions
+      .map(option => {
+        const match = String(option.value || "").match(/^catalog:(\d+)$/);
+        return match ? match[1] : null;
+      })
+      .filter(Boolean);
+
     const selectedCatalogIds = (serviceProfileForm.subcategories || [])
       .map(s => s.subCategoryId)
       .filter(Boolean);
 
-    if (!selectedCatalogIds.length) {
-      setToolOptionsByCategory({});
+    const allIds = [...new Set([...catalogIds, ...selectedCatalogIds])].map(String);
+    const idsToFetch = allIds.filter(id => !fetchedToolsCache.current[id]);
+
+    if (!idsToFetch.length) {
+      if (allIds.length > 0) {
+        // Just update state from cache if needed, but toolOptionsByCategory already has them
+        setToolOptionsByCategory(prev => ({ ...prev, ...fetchedToolsCache.current }));
+      }
       return;
     }
 
@@ -302,16 +381,23 @@ const AddEditServiceWizard = ({
       setIsToolsLoading(true);
       try {
         const toolEntries = await Promise.all(
-          selectedCatalogIds.map(async (id) => {
+          idsToFetch.map(async (id) => {
             const response = await fetch(`${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${id}`);
             if (response.ok) {
               const payload = await response.json();
-              return [String(id), payload?.data || []];
+              return [id, payload?.data || []];
             }
-            return [String(id), []];
+            return [id, []];
           })
         );
-        setToolOptionsByCategory(Object.fromEntries(toolEntries));
+        
+        const newTools = Object.fromEntries(toolEntries);
+        fetchedToolsCache.current = { ...fetchedToolsCache.current, ...newTools };
+        
+        setToolOptionsByCategory(prev => ({
+          ...prev,
+          ...newTools
+        }));
       } catch (error) {
         console.error("Failed to fetch tools:", error);
       } finally {
@@ -319,7 +405,7 @@ const AddEditServiceWizard = ({
       }
     };
     fetchTools();
-  }, [serviceProfileForm.subcategories]);
+  }, [allCategoryOptions, serviceProfileForm.subcategories]);
 
   // Derived active subcategory data
   const activeSubcategory = selectedSubcategories.find(
@@ -400,7 +486,7 @@ const AddEditServiceWizard = ({
   }, []);
 
   // Step Nav
-  const steps = ["overview", "pricing", "visuals", "caseStudy"];
+  const steps = ["quickInfo"];
   const currentStepIndex = steps.indexOf(activeStepId);
 
   const hasServiceInfoSelection = useMemo(() => {
@@ -426,48 +512,95 @@ const AddEditServiceWizard = ({
     return hasSubcategorySkillSelection || hasLegacySkills;
   }, [serviceProfileForm.skillsAndTechnologies, serviceProfileForm.subcategories]);
 
+  const validateQuickInfoSection1 = () => {
+    if (!String(serviceProfileForm.title || "").trim()) {
+      toast.error("Please enter a service title.");
+      return false;
+    }
+    if (
+      !Array.isArray(serviceProfileForm.subcategories) ||
+      serviceProfileForm.subcategories.length === 0
+    ) {
+      toast.error("Please select a category.");
+      return false;
+    }
+    if (!hasServiceInfoSelection) {
+      toast.error("Please add at least one skill or technology.");
+      return false;
+    }
+    if (!String(serviceProfileForm.description || "").trim()) {
+      toast.error("Please add a service description.");
+      return false;
+    }
+    return true;
+  };
+
+  const validateQuickInfoSection2 = () => {
+    if (!String(serviceProfileForm.experience || "").trim()) {
+      toast.error("Please select your experience level.");
+      return false;
+    }
+    if (!String(serviceProfileForm.priceRange || "").trim()) {
+      toast.error("Please set a service price.");
+      return false;
+    }
+    if (!String(serviceProfileForm.deliveryTimeline || "").trim()) {
+      toast.error("Please select a delivery timeline.");
+      return false;
+    }
+    return true;
+  };
+
+  const validateQuickInfoSection3 = () => {
+    const mediaFiles = Array.isArray(serviceProfileForm.mediaFiles)
+      ? serviceProfileForm.mediaFiles
+      : [];
+    if (!isServiceVisualsUploadValid(mediaFiles)) {
+      toast.error("Please add up to 2 images and 1 video before continuing.");
+      return false;
+    }
+    return true;
+  };
+
+  // Auto-expand sections logic
+  useEffect(() => {
+    if (activeStepId !== "quickInfo") return;
+
+    if (
+      !hasAutoExpandedSec2.current &&
+      String(serviceProfileForm.title || "").trim() &&
+      hasServiceInfoSelection &&
+      String(serviceProfileForm.description || "").trim()
+    ) {
+      setExpandedSections((prev) => ({ ...prev, 2: true }));
+      hasAutoExpandedSec2.current = true;
+    }
+
+    if (
+      !hasAutoExpandedSec3.current &&
+      hasAutoExpandedSec2.current &&
+      String(serviceProfileForm.experience || "").trim() &&
+      String(serviceProfileForm.priceRange || "").trim() &&
+      String(serviceProfileForm.deliveryTimeline || "").trim()
+    ) {
+      setExpandedSections((prev) => ({ ...prev, 3: true }));
+      hasAutoExpandedSec3.current = true;
+    }
+  }, [
+    activeStepId,
+    serviceProfileForm.title,
+    hasServiceInfoSelection,
+    serviceProfileForm.description,
+    serviceProfileForm.experience,
+    serviceProfileForm.priceRange,
+    serviceProfileForm.deliveryTimeline,
+  ]);
+
   const handleNext = () => {
-    if (activeStepId === "overview") {
-      if (!String(serviceProfileForm.title || "").trim()) {
-        toast.error("Please enter a service title.");
-        return;
-      }
-      if (
-        !Array.isArray(serviceProfileForm.subcategories) ||
-        serviceProfileForm.subcategories.length === 0
-      ) {
-        toast.error("Please select a category.");
-        return;
-      }
-      if (!hasServiceInfoSelection) {
-        toast.error("Please add at least one skill or technology.");
-        return;
-      }
-      if (!String(serviceProfileForm.experience || "").trim()) {
-        toast.error("Please select your experience level.");
-        return;
-      }
-    } else if (activeStepId === "pricing") {
-      if (!String(serviceProfileForm.description || "").trim()) {
-        toast.error("Please add a service description.");
-        return;
-      }
-      if (!String(serviceProfileForm.deliveryTimeline || "").trim()) {
-        toast.error("Please select a delivery timeline.");
-        return;
-      }
-      if (!String(serviceProfileForm.priceRange || "").trim()) {
-        toast.error("Please set a service price.");
-        return;
-      }
-    } else if (activeStepId === "visuals") {
-      const mediaFiles = Array.isArray(serviceProfileForm.mediaFiles)
-        ? serviceProfileForm.mediaFiles
-        : [];
-      if (!isServiceVisualsUploadValid(mediaFiles)) {
-        toast.error("Please add up to 2 images and 1 video before continuing.");
-        return;
-      }
+    if (activeStepId === "quickInfo") {
+      if (!validateQuickInfoSection1()) return;
+      if (!validateQuickInfoSection2()) return;
+      if (!validateQuickInfoSection3()) return;
     } else if (activeStepId === "caseStudy") {
       if (!String(activeCaseStudy.title || "").trim()) {
         toast.error("Please enter a case study title.");
@@ -498,7 +631,7 @@ const AddEditServiceWizard = ({
     if (currentStepIndex < steps.length - 1) {
       setActiveStepId(steps[currentStepIndex + 1]);
     } else {
-      onSave(); // Last step
+      onSave(serviceProfileForm); // Last step
     }
   };
 
@@ -582,21 +715,20 @@ const AddEditServiceWizard = ({
     [allCategoryOptions, setServiceProfileForm]
   );
 
-  const handleActiveSubcategoryChange = useCallback(
-    (field, values) => {
+  const handleSubcategorySkillChange = useCallback(
+    (subcategoryKey, field, values) => {
       setServiceProfileForm((prev) => ({
         ...prev,
         subcategories: (Array.isArray(prev.subcategories) ? prev.subcategories : []).map(
           (subcategory) =>
-            subcategory.subCategoryKey === activeSkillCategoryId
+            subcategory.subCategoryKey === subcategoryKey
               ? { ...subcategory, [field]: values }
               : subcategory
         ),
       }));
     },
-    [activeSkillCategoryId, setServiceProfileForm]
+    [setServiceProfileForm]
   );
-
   const updateCaseStudy = useCallback((field, value) => {
     setServiceProfileForm((prev) => {
       const normalizedCaseStudies = normalizeWizardCaseStudies(prev);
@@ -679,36 +811,22 @@ const AddEditServiceWizard = ({
         </div>
       </div>
 
-      {/* Stepper Implementation */}
-      <div className="flex-none mb-8 px-6">
-        <ServiceInfoStepper
-          activeStepId={activeStepId}
-          steps={PROFILE_SERVICE_INFO_STEPS}
-          onStepChange={(id) => {
-             // Allow jumping back, but maybe not forward without validation?
-             // For simplicity, let's allow it for now if they are editing.
-             setActiveStepId(id);
-          }}
-        />
-      </div>
-
       {/* Main Content Area with Animated Transitions */}
       <div className="subtle-scrollbar flex-1 min-h-0 overflow-y-auto px-6 pb-6 pr-3 custom-wizard-content">
         
-        {/* STEP 1: OVERVIEW */}
-        {activeStepId === "overview" && (
-          <div className="space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-                Add service info
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Provide the details of the service you will offer.
-              </p>
-            </div>
-
-            <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
-              <div className="space-y-6">
+        {/* STEP 1: QUICK INFO (COMBINED) */}
+        {activeStepId === "quickInfo" && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-700 pb-12">
+            {/* Section 1: Tell clients what you offer */}
+            <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+              <SectionHeader
+                number={1}
+                icon={FileText}
+                title="Tell clients what you offer"
+                description="Your service title and skills"
+              />
+              
+              <div className="mt-6 space-y-6">
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
                     <label
@@ -741,405 +859,204 @@ const AddEditServiceWizard = ({
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                      Select Category
-                    </label>
-                    <CategoryMultiSelect
-                      selected={selectedCategoryKeys}
-                      options={allCategoryOptions}
-                      isLoading={isCategoriesLoading}
-                      onChange={handleSelectedCategoriesChange}
-                    />
-                  </div>
-
-                  <div className="space-y-2.5">
-                    <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                      Experience
-                    </label>
-                    <CustomSelect
-                      value={serviceProfileForm.experience}
-                      onChange={(value) =>
-                        setServiceProfileForm((prev) => ({
-                          ...prev,
-                          experience: value,
-                          experienceYears: value,
-                        }))
-                      }
-                      options={EXPERIENCE_OPTIONS}
-                      placeholder="Select experience level"
-                      viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                      className="h-10"
-                    />
-                  </div>
-                </div>
-
                 <div className="space-y-2.5">
                   <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Skills
+                    Select Skill
                   </label>
-                  
-                  {selectedSubcategories.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-                      Select at least one sub-category to add skills.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <CustomSelect
-                        value={activeSkillCategoryId || selectedSubcategories[0]?.subCategoryKey || ""}
-                        onChange={(value) =>
-                          setServiceProfileForm((prev) => ({
-                            ...prev,
-                            activeSkillCategory: value,
-                          }))
-                        }
-                        options={selectedSubcategories.map((subcategory) => {
-                          const lookup = allCategoryOptions.find(opt => opt.value === subcategory.subCategoryKey);
-                          return {
-                            value: subcategory.subCategoryKey,
-                            label: lookup?.label || subcategory.label || subcategory.name || "Selected sub-category",
-                          };
-                        })}
-                        placeholder="Select sub-category"
-                        viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                        className="h-10"
-                      />
-
-                      <div className="rounded-xl border border-border bg-card/60 p-3 sm:p-4">
-                         <p className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-foreground/55">
-                           Adding Skills To{" "}
-                           <span className="text-primary">
-                             {allCategoryOptions.find(opt => opt.value === activeSubcategory?.subCategoryKey)?.label || activeSubcategory?.label || activeSubcategory?.name || "Selected sub-category"}
-                           </span>
-                         </p>
-                         <p className="mb-3 text-xs text-foreground/45">
-                           Choose tools from the selected sub-category or add your own.
-                         </p>
-                         <TechnologiesInput
-                           toolOptions={activeCategoryToolOptions}
-                           selectedToolIds={activeSubcategory?.selectedToolIds || []}
-                           customSkillNames={activeSubcategory?.customSkillNames || []}
-                           isLoading={isToolsLoading}
-                           onChange={handleActiveSubcategoryChange}
-                         />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: PRICING */}
-        {activeStepId === "pricing" && (
-          <div className="space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-                Set Your Price
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Provide the details of the service you will offer.
-              </p>
-            </div>
-
-            <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                  Service Description
-                </label>
-                <textarea
-                  value={serviceProfileForm.description || ""}
-                  onChange={(e) =>
-                    setServiceProfileForm((prev) => ({
-                      ...prev,
-                      description: e.target.value,
-                      serviceDescription: e.target.value,
-                    }))
-                  }
-                  placeholder="Description..."
-                  rows={4}
-                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                  maxLength={500}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Delivery Timeline
-                  </label>
-                  <CustomSelect
-                    value={serviceProfileForm.deliveryTimeline}
-                    onChange={(val) =>
+                  <CategorySkillBrowser
+                    categories={allCategoryOptions}
+                    selectedCategoryKeys={selectedCategoryKeys}
+                    selectedSubcategories={selectedSubcategories}
+                    activeCategoryKey={activeSkillCategoryId}
+                    toolOptionsByCategory={toolOptionsByCategory}
+                    isCategoriesLoading={isCategoriesLoading}
+                    isToolsLoading={isToolsLoading}
+                    onCategoriesChange={handleSelectedCategoriesChange}
+                    onActiveCategoryChange={(value) =>
                       setServiceProfileForm((prev) => ({
                         ...prev,
-                        deliveryTimeline: val,
-                        deliveryTime: val,
+                        activeSkillCategory: value,
                       }))
                     }
-                    options={DELIVERY_TIMELINE_OPTIONS}
-                    placeholder="Select delivery time"
-                    viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                    className="h-10"
+                    onSkillChange={handleSubcategorySkillChange}
                   />
                 </div>
-
                 <div className="space-y-2.5">
                   <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Starting Price
+                    Service Description
                   </label>
-                  <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-foreground/40">
-                      ₹
-                    </span>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={serviceProfileForm.priceRange || ""}
-                      onChange={(e) => {
-                        const digitsOnly = e.target.value.replace(/\D/g, "");
-                        setServiceProfileForm((prev) => ({
-                          ...prev,
-                          priceRange: digitsOnly,
-                          averageProjectPrice: digitsOnly,
-                          averagePrice: digitsOnly,
-                        }));
-                      }}
-                      placeholder="Enter starting price"
-                      className="h-10 w-full rounded-xl border border-border bg-card pl-8 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                    />
-                  </div>
+                  <textarea
+                    value={serviceProfileForm.description || ""}
+                    onChange={(e) =>
+                      setServiceProfileForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                        serviceDescription: e.target.value,
+                      }))
+                    }
+                    placeholder="Description..."
+                    rows={4}
+                    className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 custom-textarea"
+                    maxLength={500}
+                  />
                 </div>
               </div>
+            </div>
+
+            {/* Section 2: Set your price */}
+            <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm overflow-hidden">
+              <SectionHeader
+                number={2}
+                icon={Tag}
+                title="Set your price"
+                description="Experience, pricing, and delivery timeline"
+                isCollapsible
+                isExpanded={expandedSections[2]}
+                onToggle={() =>
+                  setExpandedSections((prev) => ({ ...prev, 2: !prev[2] }))
+                }
+              />
+
+              <AnimatePresence initial={false}>
+                {expandedSections[2] && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-6 space-y-6 pt-1">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="space-y-2.5">
+                          <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                            Experience
+                          </label>
+                          <CustomSelect
+                            value={serviceProfileForm.experience}
+                            onChange={(value) =>
+                              setServiceProfileForm((prev) => ({
+                                ...prev,
+                                experience: value,
+                                experienceYears: value,
+                              }))
+                            }
+                            options={EXPERIENCE_OPTIONS}
+                            placeholder="Select experience level"
+                            viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                            className="h-10"
+                          />
+                        </div>
+
+                        <div className="space-y-2.5">
+                          <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                            Starting Price
+                          </label>
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-foreground/40">
+                              ₹
+                            </span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              value={serviceProfileForm.priceRange || ""}
+                              onChange={(e) => {
+                                const digitsOnly = e.target.value.replace(/\D/g, "");
+                                setServiceProfileForm((prev) => ({
+                                  ...prev,
+                                  priceRange: digitsOnly,
+                                  averageProjectPrice: digitsOnly,
+                                  averagePrice: digitsOnly,
+                                }));
+                              }}
+                              placeholder="Enter starting price"
+                              className="h-10 w-full rounded-xl border border-border bg-card pl-8 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-2.5 sm:col-span-2">
+                          <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                            Delivery Timeline
+                          </label>
+                          <CustomSelect
+                            value={serviceProfileForm.deliveryTimeline}
+                            onChange={(val) =>
+                              setServiceProfileForm((prev) => ({
+                                ...prev,
+                                deliveryTimeline: val,
+                                deliveryTime: val,
+                              }))
+                            }
+                            options={DELIVERY_TIMELINE_OPTIONS}
+                            placeholder="Select delivery time"
+                            viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
+                            className="h-10"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Section 3: Enhance your service */}
+            <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm overflow-hidden">
+              <SectionHeader
+                number={3}
+                icon={LayoutGrid}
+                title="Enhance your service"
+                description="Upload images or videos"
+                isCollapsible
+                isExpanded={expandedSections[3]}
+                onToggle={() =>
+                  setExpandedSections((prev) => ({ ...prev, 3: !prev[3] }))
+                }
+              />
+
+              <AnimatePresence initial={false}>
+                {expandedSections[3] && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="mt-6 pt-1">
+                      <div className="space-y-2.5">
+                        <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                          Upload Media
+                        </label>
+                        <ServiceMediaUploadArea
+                          files={mediaFiles}
+                          uploading={uploadingServiceCover}
+                          onChange={(nextFiles) =>
+                            setServiceProfileForm((prev) => ({
+                              ...prev,
+                              mediaFiles: nextFiles,
+                            }))
+                          }
+                        />
+                        <p className="text-xs leading-relaxed text-foreground/35">
+                          Upload up to 2 images and 1 video (max 5MB each).
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
+            <div className="flex items-center justify-center gap-2 pt-6 text-xs text-muted-foreground">
+              <Lock className="h-3 w-3" />
+              <span>You can review everything before publishing</span>
             </div>
           </div>
         )}
 
-        {/* STEP 3: VISUALS */}
-        {activeStepId === "visuals" && (
-          <div className="space-y-7 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-                Add Media
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Add media for better visibility.
-              </p>
-            </div>
 
-            <div className="space-y-6 rounded-2xl border border-border bg-card p-5 sm:p-7">
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                  Upload Media
-                </label>
-                <ServiceMediaUploadArea
-                  files={mediaFiles}
-                  uploading={uploadingServiceCover}
-                  onChange={(nextFiles) =>
-                    setServiceProfileForm((prev) => ({
-                      ...prev,
-                      mediaFiles: nextFiles,
-                    }))
-                  }
-                />
-                <p className="text-xs leading-relaxed text-foreground/35">
-                  Upload up to 2 images and 1 video (max 5MB each).
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: CASE STUDY */}
-        {activeStepId === "caseStudy" && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold text-foreground sm:text-3xl">
-                Tell Us About Your Previous Work
-              </h2>
-              <p className="text-sm text-muted-foreground sm:text-base">
-                Add multiple case studies and switch between them while filling the details.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="space-y-1">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Case Studies
-                  </p>
-                  <p className="text-xs leading-relaxed text-foreground/40">
-                    Add multiple case studies and switch between them while filling the details.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAddCaseStudy}
-                  disabled={caseStudies.length >= MAX_ONBOARDING_CASE_STUDIES}
-                  className="case-study-add-btn inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary bg-transparent px-4 text-sm font-semibold text-primary transition-all duration-200 hover:bg-primary/10 disabled:cursor-not-allowed disabled:border-border disabled:bg-card disabled:text-muted-foreground disabled:opacity-100 disabled:hover:bg-card"
-                >
-                  <Plus className="h-4 w-4 text-primary" />
-                  Add Case Study
-                </button>
-              </div>
-
-              {caseStudies.length > 1 ? (
-                <div className="flex flex-wrap gap-2">
-                  {caseStudies.map((caseStudy, index) => (
-                    <button
-                      key={caseStudy.id}
-                      type="button"
-                      onClick={() =>
-                        setServiceProfileForm((prev) => ({
-                          ...prev,
-                          caseStudy,
-                          activeCaseStudyId: caseStudy.id,
-                        }))
-                      }
-                      className={cn(
-                        "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-                        activeCaseStudy?.id === caseStudy.id
-                          ? "border-primary bg-primary/15 text-primary"
-                          : "border-border bg-muted text-foreground/45 hover:text-foreground"
-                      )}
-                    >
-                      {String(caseStudy.title || "").trim() || `Project ${index + 1}`}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <h3 className="text-xl font-semibold text-foreground sm:text-2xl">
-              {String(activeCaseStudy?.title || "").trim() ||
-                `Project ${activeCaseStudyIndex + 1}`}
-            </h3>
-
-            <div className="space-y-6">
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                  Case Study Title
-                </label>
-                <input
-                  type="text"
-                  value={activeCaseStudy?.title || ""}
-                  onChange={(e) => updateCaseStudy("title", e.target.value)}
-                  placeholder="e.g. E-commerce Platform Redesign"
-                  className="h-10 w-full rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                  Description
-                </label>
-                <textarea
-                  value={activeCaseStudy?.description || ""}
-                  onChange={(e) => updateCaseStudy("description", e.target.value)}
-                  placeholder="Briefly describe the project and its goals..."
-                  rows={4}
-                  className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                />
-              </div>
-
-              <div className="space-y-2.5">
-                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                  Niche
-                </label>
-                <CustomSelect
-                  value={activeCaseStudy?.niche}
-                  onChange={(val) => updateCaseStudy("niche", val)}
-                  options={nicheOptions}
-                  placeholder={isLoadingNiches ? "Loading niches..." : "select niche"}
-                  isSearchable
-                  searchPlaceholder="Search niches"
-                  viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                  className="h-10"
-                />
-              </div>
-
-              <div className="grid gap-5 sm:grid-cols-3">
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Project Link (Optional)
-                  </label>
-                  <div className="relative">
-                    <Link2 className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
-                    <input
-                      type="url"
-                      value={activeCaseStudy?.projectLink || ""}
-                      onChange={(e) => updateCaseStudy("projectLink", e.target.value)}
-                      placeholder="https://..."
-                      className="h-10 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Project File (Optional)
-                  </label>
-                  <FileUploadButton
-                    file={activeCaseStudy?.projectFile}
-                    onChange={(file) => updateCaseStudy("projectFile", file)}
-                  />
-                </div>
-
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Your Role
-                  </label>
-                  <CustomSelect
-                    value={activeCaseStudy?.role}
-                    onChange={(val) => updateCaseStudy("role", val)}
-                    options={ROLE_OPTIONS}
-                    placeholder="Select role"
-                    viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                    className="h-10"
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-5 sm:grid-cols-2">
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Timeline
-                  </label>
-                  <CustomSelect
-                    value={activeCaseStudy?.timeline}
-                    onChange={(val) => updateCaseStudy("timeline", val)}
-                    options={PROJECT_TIMELINE_OPTIONS}
-                    placeholder="Select duration"
-                    viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                    className="h-10"
-                  />
-                </div>
-
-                <div className="space-y-2.5">
-                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                    Budget
-                  </label>
-                  <div className="relative">
-                    <IndianRupee className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
-                    <input
-                      type="text"
-                      value={activeCaseStudy?.budget || ""}
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/[^0-9]/g, "");
-                        updateCaseStudy("budget", value);
-                      }}
-                      placeholder="e.g. 5000"
-                      className="h-10 w-full rounded-xl border border-border bg-card pl-10 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
       </div>
 
@@ -1689,6 +1606,630 @@ const FileUploadButton = ({ file, onChange }) => {
   );
 };
 
+const CategorySkillBrowser = ({
+  categories = [],
+  selectedCategoryKeys = [],
+  selectedSubcategories = [],
+  activeCategoryKey,
+  toolOptionsByCategory = {},
+  isCategoriesLoading = false,
+  isToolsLoading = false,
+  onCategoriesChange,
+  onActiveCategoryChange,
+  onSkillChange,
+}) => {
+  const [isBrowseOpen, setIsBrowseOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [categoryQuery, setCategoryQuery] = useState("");
+  const [requestingType, setRequestingType] = useState("");
+  const [pendingToolToAdd, setPendingToolToAdd] = useState(null);
+  const browserRef = useRef(null);
+
+  const selectedSet = useMemo(
+    () => new Set((Array.isArray(selectedCategoryKeys) ? selectedCategoryKeys : []).map(String)),
+    [selectedCategoryKeys]
+  );
+
+  const selectedByKey = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(selectedSubcategories) ? selectedSubcategories : []).forEach((entry) => {
+      const key = String(entry?.subCategoryKey || "").trim();
+      if (key) map.set(key, entry);
+    });
+    return map;
+  }, [selectedSubcategories]);
+
+  const activeKey = activeCategoryKey || selectedCategoryKeys[0] || "";
+  const activeCategory =
+    categories.find((category) => String(category.value) === String(activeKey)) ||
+    categories.find((category) => selectedSet.has(String(category.value))) ||
+    null;
+  const activeSubcategory = activeCategory
+    ? selectedByKey.get(String(activeCategory.value)) || null
+    : null;
+
+  const getToolOptionsForCategory = useCallback(
+    (categoryKey) => {
+      const subcategory = selectedByKey.get(String(categoryKey));
+      let subcategoryId = subcategory?.subCategoryId;
+      
+      if (!subcategoryId) {
+        const match = String(categoryKey || "").match(/^catalog:(\d+)$/);
+        subcategoryId = match ? match[1] : null;
+      }
+      
+      return subcategoryId ? toolOptionsByCategory[String(subcategoryId)] || [] : [];
+    },
+    [selectedByKey, toolOptionsByCategory]
+  );
+
+  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const normalizedCategoryQuery = String(categoryQuery || "").trim().toLowerCase();
+
+  const visibleCategories = useMemo(() => {
+    return categories.filter((category) => {
+      const label = String(category?.label || "").toLowerCase();
+      const categoryMatches = !normalizedCategoryQuery || label.includes(normalizedCategoryQuery);
+      return categoryMatches;
+    });
+  }, [categories, normalizedCategoryQuery]);
+
+  const activeToolOptions = activeCategory
+    ? getToolOptionsForCategory(activeCategory.value)
+    : [];
+  const selectedToolIds = Array.isArray(activeSubcategory?.selectedToolIds)
+    ? activeSubcategory.selectedToolIds
+    : [];
+  const customSkillNames = Array.isArray(activeSubcategory?.customSkillNames)
+    ? activeSubcategory.customSkillNames
+    : [];
+  const selectedToolSet = new Set(selectedToolIds.map(String));
+
+  const visibleTools = useMemo(() => {
+    if (!normalizedCategoryQuery) return activeToolOptions;
+    return activeToolOptions.filter((tool) =>
+      String(tool?.name || tool?.label || "").toLowerCase().includes(normalizedCategoryQuery)
+    );
+  }, [activeToolOptions, normalizedCategoryQuery]);
+
+  const searchResults = useMemo(() => {
+    if (!normalizedQuery) return { categories: [], skills: [] };
+    const matchedCategories = categories.filter((category) =>
+      String(category?.label || "").toLowerCase().includes(normalizedQuery)
+    );
+    const matchedSkills = [];
+    categories.forEach((category) => {
+      const categoryKey = String(category.value);
+      getToolOptionsForCategory(categoryKey).forEach((tool) => {
+        const label = String(tool?.name || tool?.label || "").trim();
+        if (label.toLowerCase().includes(normalizedQuery)) {
+          matchedSkills.push({ tool, categoryKey, categoryLabel: category?.label || "Category" });
+        }
+      });
+    });
+    return { categories: matchedCategories, skills: matchedSkills };
+  }, [categories, getToolOptionsForCategory, normalizedQuery]);
+
+  const hasSearchResults = searchResults.categories.length > 0 || searchResults.skills.length > 0;
+  const totalSelectedSkills = selectedSubcategories.reduce((count, subcategory) => {
+    const toolCount = Array.isArray(subcategory?.selectedToolIds) ? subcategory.selectedToolIds.length : 0;
+    const customCount = Array.isArray(subcategory?.customSkillNames) ? subcategory.customSkillNames.length : 0;
+    return count + toolCount + customCount;
+  }, 0);
+
+  useEffect(() => {
+    if (!isBrowseOpen && !isSearchOpen) return undefined;
+    const handleClickOutside = (event) => {
+      if (browserRef.current && !browserRef.current.contains(event.target)) {
+        setIsBrowseOpen(false);
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isBrowseOpen, isSearchOpen]);
+
+  const ensureCategorySelected = (categoryKey) => {
+    if (!categoryKey) return;
+    if (!selectedSet.has(String(categoryKey))) {
+      onCategoriesChange([...selectedCategoryKeys, categoryKey]);
+    }
+    onActiveCategoryChange(categoryKey);
+  };
+
+  const toggleCategory = (category) => {
+    const key = String(category.value);
+    const nextKeys = selectedSet.has(key)
+      ? selectedCategoryKeys.filter((value) => String(value) !== key)
+      : [...selectedCategoryKeys, key];
+    onCategoriesChange(nextKeys);
+    if (!selectedSet.has(key)) {
+      onActiveCategoryChange(key);
+    }
+  };
+
+  const toggleToolForCategory = (categoryKey, tool) => {
+    const subcategory = selectedByKey.get(String(categoryKey));
+    if (!subcategory) return;
+    const currentIds = Array.isArray(subcategory.selectedToolIds) ? subcategory.selectedToolIds : [];
+    const id = tool.id;
+    const exists = currentIds.some((value) => String(value) === String(id));
+    const nextIds = exists
+      ? currentIds.filter((value) => String(value) !== String(id))
+      : [...currentIds, id];
+    onSkillChange(subcategory.subCategoryKey, "selectedToolIds", nextIds);
+  };
+
+  useEffect(() => {
+    if (pendingToolToAdd) {
+      const { categoryKey, tool } = pendingToolToAdd;
+      const subcategory = selectedByKey.get(String(categoryKey));
+      if (subcategory) {
+        // Check if the tool is already added to avoid toggling it OFF if they double clicked
+        const currentIds = Array.isArray(subcategory.selectedToolIds) ? subcategory.selectedToolIds : [];
+        if (!currentIds.some((value) => String(value) === String(tool.id))) {
+          onSkillChange(subcategory.subCategoryKey, "selectedToolIds", [...currentIds, tool.id]);
+        }
+        setPendingToolToAdd(null);
+      }
+    }
+  }, [selectedByKey, pendingToolToAdd, onSkillChange]);
+
+  const toggleTool = (tool) => {
+    if (!activeSubcategory) return;
+    toggleToolForCategory(activeSubcategory.subCategoryKey, tool);
+  };
+
+  const addLocalCategory = (value) => {
+    const label = String(value || "").trim();
+    if (!label) return;
+    const existing = categories.find(
+      (category) => String(category.label || "").trim().toLowerCase() === label.toLowerCase()
+    );
+    const key = existing ? String(existing.value) : label;
+    if (!selectedSet.has(key)) {
+      onCategoriesChange([...selectedCategoryKeys, key]);
+    }
+    onActiveCategoryChange(key);
+  };
+
+  const addLocalSkill = (value) => {
+    const label = String(value || "").trim();
+    if (!label) return;
+    const targetKey = activeCategory?.value || selectedCategoryKeys[0] || categories[0]?.value;
+    if (!targetKey) {
+      toast.error("No categories available for this service.");
+      return;
+    }
+    if (!selectedSet.has(String(targetKey))) {
+      ensureCategorySelected(targetKey);
+    }
+    const subcategory = selectedByKey.get(String(targetKey));
+    const currentCustom = Array.isArray(subcategory?.customSkillNames) ? subcategory.customSkillNames : [];
+    const exists = currentCustom.some((skill) => String(skill).toLowerCase() === label.toLowerCase());
+    if (!exists && subcategory) {
+      onSkillChange(subcategory.subCategoryKey, "customSkillNames", [...currentCustom, label]);
+    }
+  };
+
+  const requestMissingOption = async (requestedType) => {
+    const requestName = String(query || "").trim();
+    if (!requestName || requestingType) return;
+
+    setRequestingType(requestedType);
+    try {
+      await fetch(`${API_BASE_URL}/user-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request: requestName, requestedType }),
+      });
+      if (requestedType === "category") {
+        addLocalCategory(requestName);
+      } else {
+        addLocalSkill(requestName);
+      }
+      toast.success(`${requestName} saved locally and sent for admin review.`);
+      setQuery("");
+      setIsSearchOpen(false);
+    } catch (error) {
+      if (requestedType === "category") {
+        addLocalCategory(requestName);
+      } else {
+        addLocalSkill(requestName);
+      }
+      toast.success(`${requestName} saved locally. Admin request can sync later.`);
+      setQuery("");
+      setIsSearchOpen(false);
+    } finally {
+      setRequestingType("");
+    }
+  };
+
+  const removeCustomSkill = (skill) => {
+    if (!activeSubcategory) return;
+    onSkillChange(
+      activeSubcategory.subCategoryKey,
+      "customSkillNames",
+      customSkillNames.filter((entry) => entry !== skill)
+    );
+  };
+
+  const selectedCategoryItems = useMemo(() => {
+    return selectedCategoryKeys
+      .map((categoryKey) => {
+        const category = categories.find((entry) => String(entry.value) === String(categoryKey));
+        const subcategory = selectedByKey.get(String(categoryKey));
+        return {
+          key: String(categoryKey),
+          label: category?.label || subcategory?.label || subcategory?.name || String(categoryKey),
+        };
+      })
+      .filter((entry) => entry.key && entry.label);
+  }, [categories, selectedByKey, selectedCategoryKeys]);
+
+  const selectedSkillItems = useMemo(() => {
+    const items = [];
+    selectedSubcategories.forEach((subcategory) => {
+      const categoryKey = String(subcategory?.subCategoryKey || "");
+      const toolOptions = getToolOptionsForCategory(categoryKey);
+      const toolById = new Map(
+        toolOptions.map((tool) => [String(tool.id), String(tool.name || tool.label || "Skill")])
+      );
+
+      (Array.isArray(subcategory?.selectedToolIds) ? subcategory.selectedToolIds : []).forEach((id) => {
+        items.push({
+          id: `${categoryKey}:tool:${id}`,
+          categoryKey,
+          type: "tool",
+          value: id,
+          label: toolById.get(String(id)) || "Skill",
+        });
+      });
+
+      (Array.isArray(subcategory?.customSkillNames) ? subcategory.customSkillNames : []).forEach((skill) => {
+        const label = String(skill || "").trim();
+        if (!label) return;
+        items.push({
+          id: `${categoryKey}:custom:${label.toLowerCase()}`,
+          categoryKey,
+          type: "custom",
+          value: label,
+          label,
+        });
+      });
+    });
+    return items;
+  }, [getToolOptionsForCategory, selectedSubcategories]);
+
+  const removeCategory = (categoryKey) => {
+    onCategoriesChange(selectedCategoryKeys.filter((value) => String(value) !== String(categoryKey)));
+  };
+
+  const removeSkillItem = (item) => {
+    const subcategory = selectedByKey.get(String(item.categoryKey));
+    if (!subcategory) return;
+
+    if (item.type === "tool") {
+      const currentIds = Array.isArray(subcategory.selectedToolIds) ? subcategory.selectedToolIds : [];
+      onSkillChange(
+        subcategory.subCategoryKey,
+        "selectedToolIds",
+        currentIds.filter((value) => String(value) !== String(item.value))
+      );
+      return;
+    }
+
+    const currentCustom = Array.isArray(subcategory.customSkillNames) ? subcategory.customSkillNames : [];
+    onSkillChange(
+      subcategory.subCategoryKey,
+      "customSkillNames",
+      currentCustom.filter((value) => String(value).toLowerCase() !== String(item.value).toLowerCase())
+    );
+  };
+
+  const summaryText = "Search here";
+
+  return (
+    <div ref={browserRef} className="relative">
+      <div
+        className={cn(
+          "flex h-12 w-full overflow-hidden rounded-[18px] border bg-card transition-colors",
+          isBrowseOpen || isSearchOpen ? "border-primary/55 shadow-sm" : "border-border"
+        )}
+      >
+        <input
+          type="text"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setIsBrowseOpen(false);
+            setIsSearchOpen(event.target.value.trim().length > 0);
+          }}
+          onFocus={() => query.trim() && setIsSearchOpen(true)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && query.trim()) {
+              event.preventDefault();
+              if (!hasSearchResults) void requestMissingOption(activeCategory ? "skill" : "category");
+            }
+          }}
+          placeholder={summaryText}
+          className="min-w-0 flex-1 bg-transparent px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            setIsBrowseOpen((value) => !value);
+            setIsSearchOpen(false);
+            setQuery("");
+          }}
+          className="flex h-full shrink-0 items-center gap-2 border-l border-border px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted/60"
+        >
+          Browse
+          <ChevronDown className={cn("h-4 w-4 transition-transform", isBrowseOpen && "rotate-180")} />
+        </button>
+      </div>
+
+      {(selectedCategoryItems.length > 0 || selectedSkillItems.length > 0) ? (
+        <div className="mt-3 space-y-5">
+          {selectedCategoryItems.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {selectedCategoryItems.map((category) => (
+                <span
+                  key={category.key}
+                  className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground"
+                >
+                  {category.label}
+                  <button
+                    type="button"
+                    onClick={() => removeCategory(category.key)}
+                    className="inline-flex size-5 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+                    aria-label={`Remove ${category.label}`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          {selectedSkillItems.length > 0 ? (
+            <div className="space-y-3">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-foreground">
+                Skills
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {selectedSkillItems.map((skill) => (
+                  <span
+                    key={skill.id}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-foreground"
+                  >
+                    {skill.label}
+                    <button
+                      type="button"
+                      onClick={() => removeSkillItem(skill)}
+                      className="inline-flex size-5 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+                      aria-label={`Remove ${skill.label}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isSearchOpen && query.trim() ? (
+        <div className="mt-2 max-h-80 overflow-y-auto rounded-2xl border border-border bg-card shadow-sm subtle-scrollbar">
+          {!hasSearchResults ? (
+            <div className="space-y-3 px-4 py-3">
+              <p className="text-sm text-muted-foreground">No matching category or skill found.</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    void requestMissingOption("category");
+                  }}
+                  disabled={Boolean(requestingType)}
+                  className="rounded-md border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:opacity-60"
+                >
+                  {requestingType === "category" ? "Sending..." : `Request category "${query.trim()}"`}
+                </button>
+                <button
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    void requestMissingOption("skill");
+                  }}
+                  disabled={Boolean(requestingType)}
+                  className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                >
+                  {requestingType === "skill" ? "Sending..." : `Request skill "${query.trim()}"`}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-2">
+              {searchResults.categories.length > 0 ? (
+                <div>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-foreground">Categories</p>
+                  {searchResults.categories.map((category) => {
+                    const key = String(category.value);
+                    const isSelected = selectedSet.has(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onMouseDown={(event) => {
+                          event.preventDefault();
+                          ensureCategorySelected(key);
+                          setQuery("");
+                          setIsSearchOpen(false);
+                        }}
+                        className="grid min-h-11 w-full grid-cols-[2rem_minmax(0,1fr)_minmax(8rem,0.55fr)] items-center gap-3 rounded-xl px-3 py-2 text-left text-sm hover:bg-muted/70"
+                      >
+                        <span className={cn("h-5 w-5 rounded border", isSelected ? "border-primary bg-primary" : "border-border")} />
+                        <span className="truncate text-base font-semibold">{category.label}</span>
+                        <span className="truncate text-right text-sm text-foreground">{category.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+              {searchResults.skills.length > 0 ? (
+                <div>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-foreground">Skills</p>
+                  {searchResults.skills.map(({ tool, categoryKey, categoryLabel }) => (
+                    <button
+                      key={`${categoryKey}-${tool.id}`}
+                      type="button"
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        if (!selectedSet.has(categoryKey)) {
+                          ensureCategorySelected(categoryKey);
+                          setPendingToolToAdd({ categoryKey, tool });
+                        } else {
+                          toggleToolForCategory(categoryKey, tool);
+                        }
+                        setQuery("");
+                        setIsSearchOpen(false);
+                      }}
+                      className="grid min-h-11 w-full grid-cols-[2rem_minmax(0,1fr)_minmax(8rem,0.55fr)] items-center gap-3 rounded-xl px-3 py-2 text-left text-sm hover:bg-muted/70"
+                    >
+                      <span className="h-5 w-5 rounded border border-border" />
+                      <span className="truncate text-base font-semibold">{tool.name || tool.label}</span>
+                      <span className="truncate text-right text-sm text-foreground">{categoryLabel}</span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {isBrowseOpen ? (
+        <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+          <div className="border-b border-border p-3">
+            <Input
+              value={categoryQuery}
+              onChange={(event) => setCategoryQuery(event.target.value)}
+              placeholder="Search categories..."
+              className="h-10 rounded-xl border-border bg-background px-4 text-sm"
+            />
+          </div>
+
+          <div className="grid min-h-[19rem] grid-cols-1 md:grid-cols-[minmax(15rem,0.95fr)_minmax(0,1.35fr)]">
+            <div className="border-b border-border md:border-b-0 md:border-r">
+              <div className="flex h-10 items-center justify-between border-b border-border px-4">
+                <span className="text-[11px] font-bold uppercase tracking-[0.22em] text-foreground">Categories</span>
+                <span className="text-xs text-foreground/70">{totalSelectedSkills} selected</span>
+              </div>
+              <div className="max-h-[16.5rem] overflow-y-auto subtle-scrollbar p-2">
+                {isCategoriesLoading ? (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">Loading categories...</div>
+                ) : visibleCategories.length ? (
+                  visibleCategories.map((category) => {
+                    const key = String(category.value);
+                    const isSelected = selectedSet.has(key);
+                    const isActive = String(activeCategory?.value || "") === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) onActiveCategoryChange(key);
+                          else toggleCategory(category);
+                        }}
+                        onMouseEnter={() => isSelected && onActiveCategoryChange(key)}
+                        className={cn(
+                          "flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors",
+                          isActive ? "bg-primary/12 text-foreground" : "text-foreground/85 hover:bg-muted/70",
+                          isSelected && "font-semibold"
+                        )}
+                      >
+                        <span className="min-w-0 truncate">{category.label}</span>
+                        {isSelected ? <Check className="h-4 w-4 shrink-0 text-primary" /> : null}
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="px-3 py-2 text-sm text-muted-foreground">No categories found.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex min-h-[16.5rem] flex-col p-4">
+              {!activeCategory ? (
+                <div className="flex flex-1 items-center justify-center text-center text-sm text-foreground">Select a category to manage its skills.</div>
+              ) : !selectedSet.has(String(activeCategory.value)) ? (
+                <div className="flex flex-1 items-center justify-center text-center text-sm text-muted-foreground">Select {activeCategory.label} to add skills.</div>
+              ) : (
+                <div className="flex min-h-0 flex-1 flex-col gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{activeCategory.label}</p>
+                    <p className="text-xs text-muted-foreground">Choose preset skills or type in the search field to request a custom skill.</p>
+                  </div>
+
+                  <div className="flex min-h-0 flex-1 flex-wrap content-start gap-2 overflow-y-auto subtle-scrollbar pr-1">
+                    {visibleTools.map((tool) => {
+                      const isSelected = selectedToolSet.has(String(tool.id));
+                      const label = String(tool.name || tool.label || "Skill").trim();
+                      return (
+                        <button
+                          key={tool.id}
+                          type="button"
+                          onClick={() => toggleTool(tool)}
+                          className={cn(
+                            "inline-flex h-9 items-center gap-2 rounded-full border px-3 text-sm transition-colors",
+                            isSelected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:border-primary/50"
+                          )}
+                        >
+                          {isSelected ? <Check className="h-3.5 w-3.5" /> : null}
+                          {label}
+                        </button>
+                      );
+                    })}
+                    {isToolsLoading ? (
+                      <span className="text-sm text-muted-foreground">Loading skills...</span>
+                    ) : visibleTools.length === 0 ? (
+                      <span className="text-sm text-muted-foreground">No preset skills found.</span>
+                    ) : null}
+                  </div>
+
+                  {(selectedToolIds.length > 0 || customSkillNames.length > 0) ? (
+                    <div className="border-t border-border pt-3">
+                      <div className="flex flex-wrap gap-2">
+                        {selectedToolIds.map((id) => {
+                          const tool = activeToolOptions.find((entry) => String(entry.id) === String(id));
+                          return (
+                            <span key={id} className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                              {tool?.name || tool?.label || "Skill"}
+                              <button type="button" onClick={() => toggleTool({ id })}><X className="h-3 w-3" /></button>
+                            </span>
+                          );
+                        })}
+                        {customSkillNames.map((skill) => (
+                          <span key={skill} className="inline-flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                            {skill}
+                            <button type="button" onClick={() => removeCustomSkill(skill)}><X className="h-3 w-3" /></button>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
 const CategoryMultiSelect = ({
   options = [],
   selected = [],

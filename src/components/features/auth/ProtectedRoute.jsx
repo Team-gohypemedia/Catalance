@@ -6,7 +6,6 @@ import {
   ACCOUNT_ONBOARDING_PATH,
   FREELANCER_DASHBOARD,
   FREELANCER_DASHBOARD_PATH,
-  FREELANCER_ONBOARDING_PATH,
   canAccessDashboard,
   isAccountOnboardingPath,
   requiresAccountOnboarding,
@@ -67,7 +66,16 @@ const ProtectedRoute = ({
     requireFreelancerOnboardingComplete &&
     requiresFreelancerOnboarding(user)
   ) {
-    return <Navigate to={FREELANCER_ONBOARDING_PATH} replace />;
+    return (
+      <Navigate
+        to={FREELANCER_DASHBOARD_PATH}
+        replace
+        state={{
+          showFreelancerOnboardingPrompt: true,
+          requestedPath: location.pathname,
+        }}
+      />
+    );
   }
 
   return children;

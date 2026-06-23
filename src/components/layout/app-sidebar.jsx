@@ -82,7 +82,7 @@ const navConfigs = {
       isActive: true,
     },
     {
-      title: "Messages",
+      title: "Chat",
       url: "/freelancer/messages",
       icon: MessageSquare,
       isActive: true,
@@ -120,7 +120,7 @@ const navConfigs = {
       isActive: true,
     },
     {
-      title: "Messages",
+      title: "Chat",
       url: "/client/messages",
       icon: MessageSquare,
       isActive: true,

@@ -78,7 +78,7 @@ const navConfigs = {
       isActive: true,
     },
     {
-      title: "Messages",
+      title: "Chat",
       url: "/freelancer/messages",
       icon: MessageSquare,
       isActive: true,
@@ -116,7 +116,7 @@ const navConfigs = {
       isActive: true,
     },
     {
-      title: "Messages",
+      title: "Chat",
       url: "/client/messages",
       icon: MessageSquare,
       isActive: true,
@@ -151,7 +151,7 @@ const navConfigs = {
       icon: ClipboardList,
     },
     {
-      title: "Messages",
+      title: "Chat",
       url: "/project-manager/messages",
       icon: MessageSquare,
     },

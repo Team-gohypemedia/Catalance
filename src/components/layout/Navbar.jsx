@@ -69,7 +69,7 @@ const clientWorkspaceNavItems = [
   { label: "Dashboard", key: "dashboard", to: "/client" },
   { label: "Proposals", key: "proposals", to: "/client/proposal" },
   { label: "Projects", key: "projects", to: "/client/project" },
-  { label: "Messages", key: "messages", to: "/client/messages" },
+  { label: "Chat", key: "messages", to: "/client/messages" },
   { label: "Payments", key: "payments", to: "/client/payments" },
   { label: "Profile", key: "profile", to: "/client/profile" },
 ];
@@ -79,7 +79,7 @@ const freelancerWorkspaceNavItems = [
   { label: "Growth Quest", key: "growth-quest", to: "/freelancer/growth-quest" },
   { label: "Proposals", key: "proposals", to: "/freelancer/proposals" },
   { label: "Projects", key: "projects", to: "/freelancer/project" },
-  { label: "Messages", key: "messages", to: "/freelancer/messages" },
+  { label: "Chat", key: "messages", to: "/freelancer/messages" },
   { label: "Payments", key: "payments", to: "/freelancer/payments" },
   { label: "Profile", key: "profile", to: "/freelancer/profile" },
 ];

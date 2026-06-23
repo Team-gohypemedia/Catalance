@@ -2034,8 +2034,9 @@ const FreelancerProfile = () => {
     }
   };
 
-  const saveOnboardingServiceProfile = async () => {
-    const serviceKey = resolveServiceStorageKey(serviceProfileForm.serviceKey);
+  const saveOnboardingServiceProfile = async (wizardServiceProfileForm) => {
+    const activeForm = wizardServiceProfileForm || serviceProfileForm;
+    const serviceKey = resolveServiceStorageKey(activeForm.serviceKey);
     if (!serviceKey) return;
     const existingServiceDetails =
       profileDetails?.serviceDetails &&
@@ -2044,7 +2045,7 @@ const FreelancerProfile = () => {
         : {};
     const currentServiceDetail =
       resolveServiceDetailRecord(serviceKey, existingServiceDetails).detail || {};
-    const normalizedDraft = normalizeServiceDraft(serviceProfileForm, {
+    const normalizedDraft = normalizeServiceDraft(activeForm, {
       serviceKey,
       serviceId: currentServiceDetail?.serviceId || null,
     });
@@ -2072,31 +2073,56 @@ const FreelancerProfile = () => {
     const nextServiceKeywords = normalizeServiceSkillTags(
       Array.isArray(normalizedDraft.keywords) ? normalizedDraft.keywords : []
     ).slice(0, 5);
-    const nextServiceMediaFiles = (
-      Array.isArray(normalizedDraft.mediaFiles)
-        ? normalizedDraft.mediaFiles
-        : []
-    )
-      .map((entry) => {
-        const file =
-          typeof File !== "undefined" && entry instanceof File
-            ? entry
-            : typeof File !== "undefined" && entry?.file instanceof File
-              ? entry.file
-              : null;
-
-        if (file) {
-          return {
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            kind: file.type?.startsWith("video/") ? "video" : "image",
-          };
+    setSavingServiceProfile(true);
+    let nextServiceMediaFiles = [];
+    try {
+      const uploadServiceMediaFile = async (file) => {
+        if (file && file.size > 50 * 1024 * 1024) {
+          throw new Error(`Media file ${file.name} exceeds the 50MB limit.`);
         }
+        const uploadData = new FormData();
+        uploadData.append("file", file);
+        const response = await authFetch("/upload/service-media", { method: "POST", body: uploadData });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload?.error?.message || payload?.message || "Failed to upload service media");
+        }
+        const payload = await response.json().catch(() => ({}));
+        const uploadedUrl = String(payload?.data?.url || "").trim();
+        if (!uploadedUrl) throw new Error("Service media upload completed without a usable URL.");
+        return {
+          url: uploadedUrl,
+          key: payload?.data?.key || null,
+          name: payload?.data?.name || file.name || null,
+          kind: payload?.data?.kind || (file.type?.startsWith("video/") ? "video" : "image"),
+          mimeType: payload?.data?.mimeType || file.type || null,
+          size: payload?.data?.size || file.size || null,
+        };
+      };
 
-        return entry && typeof entry === "object" ? entry : null;
-      })
-      .filter(Boolean);
+      const resolvedMediaFiles = await Promise.all(
+        (Array.isArray(normalizedDraft.mediaFiles) ? normalizedDraft.mediaFiles : []).map(async (entry) => {
+          const file =
+            typeof File !== "undefined" && entry instanceof File
+              ? entry
+              : typeof File !== "undefined" && entry?.file instanceof File
+                ? entry.file
+                : null;
+
+          if (file) {
+            return await uploadServiceMediaFile(file);
+          }
+
+          return entry && typeof entry === "object" ? entry : null;
+        })
+      );
+      nextServiceMediaFiles = resolvedMediaFiles.filter(Boolean);
+    } catch (error) {
+      console.error("Failed to upload media files:", error);
+      toast.error(error?.message || "Failed to upload media files.");
+      setSavingServiceProfile(false);
+      return;
+    }
     const rawCaseStudies =
       Array.isArray(normalizedDraft.caseStudies) &&
         normalizedDraft.caseStudies.length > 0
@@ -2204,7 +2230,7 @@ const FreelancerProfile = () => {
       services: nextServices,
     };
 
-    setSavingServiceProfile(true);
+    // setSavingServiceProfile(true); // Already set before upload
     try {
       const saved = await handleSave(
         buildProfileSnapshot({
