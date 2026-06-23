@@ -279,7 +279,7 @@ const FreelancerWorkspaceHeader = ({
   profileTo: _profileTo = "/freelancer/profile",
   onPrimaryAction,
   primaryActionLabel = "Opportunity",
-  primaryActionTo = "/opportunity",
+  primaryActionTo = "/freelancer/growth-quest",
   notifications = [],
   unreadCount = 0,
   markAllAsRead,

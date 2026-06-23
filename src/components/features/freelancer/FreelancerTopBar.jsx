@@ -198,11 +198,11 @@ export const FreelancerTopBar = () => {
           onOpenProfile={() => navigate("/freelancer/profile")}
           onPrimaryAction={
             activeWorkspaceKey !== "proposals"
-              ? () => navigate("/opportunity")
+              ? () => navigate("/freelancer/growth-quest")
               : undefined
           }
           primaryActionLabel="Opportunity"
-          primaryActionTo="/opportunity"
+          primaryActionTo="/freelancer/growth-quest"
           notifications={notifications}
           unreadCount={unreadCount}
           markAllAsRead={markAllAsRead}

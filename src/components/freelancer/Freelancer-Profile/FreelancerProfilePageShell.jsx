@@ -13,7 +13,7 @@ const FreelancerProfilePageShell = ({
       <FreelancerWorkspaceHeader
         profile={headerProfile}
         activeWorkspaceKey="profile"
-        primaryActionTo="/freelancer/proposals"
+        primaryActionTo="/freelancer/growth-quest"
         notifications={notifications}
         unreadCount={unreadCount}
         markAllAsRead={markAllAsRead}
