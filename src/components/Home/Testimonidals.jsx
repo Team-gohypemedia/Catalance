@@ -39,13 +39,13 @@ const testimonials = [
     quote: 'The collaborative nature of the platform made our project execution seamless and efficient.',
     name: 'Sarah Chen',
     role: 'Product Manager',
-    image: testimonial1,
+    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150&q=80',
   },
   {
     quote: 'Found world-class talent within days. The quality of work exceeded all our expectations.',
     name: 'James Wilson',
     role: 'Startup Founder',
-    image: testimonial2,
+    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&h=150&q=80',
   }
 ]
 
