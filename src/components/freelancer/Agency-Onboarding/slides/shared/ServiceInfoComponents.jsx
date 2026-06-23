@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { motion } from "framer-motion";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Check from "lucide-react/dist/esm/icons/check";
 
@@ -11,11 +12,9 @@ import {
 /* ──────────────────── Service Info Steps ──────────────────── */
 
 export const SERVICE_INFO_STEPS = [
-  { id: "overview", label: "Overview", step: 1 },
-  { id: "pricing", label: "Pricing", step: 2 },
-  { id: "visuals", label: "Add Visuals", step: 3 },
-  { id: "caseStudy", label: "Case Study", step: 4 },
-  { id: "preview", label: "Preview", step: 5 },
+  { id: "quickInfo", label: "Quick Info", step: 1 },
+  { id: "caseStudy", label: "Case Study", step: 2 },
+  { id: "preview", label: "Preview", step: 3 },
 ];
 
 /* ──────────────────── Stepper ──────────────────── */
@@ -26,54 +25,32 @@ const StepperItem = ({
   isCompleted,
   onStepChange,
 }) => (
-  <div
+  <button
+    type="button"
+    onClick={() => onStepChange?.(step.id)}
     className={cn(
-      "flex min-w-0 items-center transition-[flex] duration-300 ease-out",
-      isActive ? "flex-[2.3]" : "flex-[0.9]",
-      "sm:flex-1",
+      "relative flex h-8 sm:h-9 items-center justify-center rounded-full px-4 sm:px-6 text-[13px] sm:text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none",
+      isActive
+        ? "!text-white keep-white dark:!text-black"
+        : "text-muted-foreground hover:text-foreground",
     )}
+    aria-current={isActive ? "step" : undefined}
+    aria-label={`${step.step}. ${step.label}`}
   >
-    <button
-      type="button"
-      onClick={() => onStepChange?.(step.id)}
-      className={cn(
-        "relative flex h-9 w-full min-w-0 items-center rounded-full border text-sm transition-all duration-300 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:h-10",
-        isActive
-          ? "justify-center gap-0 border-primary bg-primary px-3 text-primary-foreground shadow-[0_0_16px_rgba(var(--brand-rgb),0.22)] sm:gap-2 sm:px-4"
-          : isCompleted
-            ? "justify-center gap-0 border-border bg-muted/80 px-2 text-foreground hover:border-primary/30 hover:bg-muted sm:px-4"
-            : "justify-center gap-0 border-border/40 bg-muted/30 px-2 text-muted-foreground/85 hover:border-border/85 hover:bg-muted/60 hover:text-foreground sm:gap-2 sm:px-4",
-      )}
-      aria-current={isActive ? "step" : undefined}
-      aria-label={`${step.step}. ${step.label}`}
-    >
-      {isCompleted && (
-        <span className="flex size-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0">
-          <Check className="size-2.5 stroke-[3.5]" />
-        </span>
-      )}
-      <span
-        className={cn(
-          ONBOARDING_STEP_LABEL_CLASS,
-          isActive
-            ? "max-w-none whitespace-nowrap text-sm font-medium text-primary-foreground"
-            : "max-w-full truncate text-sm font-normal text-inherit",
-        )}
-      >
-        {/* Mobile: active -> show label, inactive -> show step number. Desktop (sm+): always show full label. */}
-        <span 
-          className={cn(isActive ? "block sm:hidden text-primary-foreground" : "block sm:hidden")}
-        >
-          {isActive ? step.label : isCompleted ? "" : String(step.step)}
-        </span>
-        <span 
-          className={cn("hidden sm:inline", isActive && "text-primary-foreground", isCompleted && "ml-1.5")}
-        >
-          {step.label}
-        </span>
+    {isActive && (
+      <motion.div
+        layoutId="activeTabOverlay"
+        className="absolute inset-0 rounded-full bg-primary shadow-sm"
+        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+      />
+    )}
+    {isCompleted && (
+      <span className="relative z-10 mr-1.5 flex size-4 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400 shrink-0">
+        <Check className="size-2.5 stroke-[3.5]" />
       </span>
-    </button>
-  </div>
+    )}
+    <span className={cn("relative z-10", isActive ? "!text-white keep-white dark:!text-black" : "")}>{step.label}</span>
+  </button>
 );
 
 export const ServiceInfoStepper = ({
@@ -84,7 +61,7 @@ export const ServiceInfoStepper = ({
   const activeIdx = steps.findIndex((step) => step.id === activeStepId);
 
   return (
-    <div className="flex w-full items-center gap-1 overflow-hidden rounded-full border border-border bg-card p-1">
+    <div className="mx-auto flex w-fit items-center gap-1 rounded-full border border-border/80 bg-muted/40 p-1 shadow-sm">
       {steps.map((step, idx) => (
         <StepperItem
           key={step.id}

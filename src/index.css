@@ -1111,8 +1111,7 @@ html button.case-study-add-btn:not(:disabled) svg {
 html .onboarding-skip-btn {
   color: #8c8c8c !important;
   font-size: 14px !important;
-  text-decoration: underline !important;
-  text-underline-offset: 4px !important;
+  text-decoration: none !important;
 }
 
 html.dark .onboarding-skip-btn {
@@ -1122,11 +1121,15 @@ html.dark .onboarding-skip-btn {
 html .onboarding-skip-btn:hover {
   color: #1c1b1f !important;
   background-color: transparent !important;
+  text-decoration: underline !important;
+  text-underline-offset: 4px !important;
 }
 
 html.dark .onboarding-skip-btn:hover {
   color: #ffffff !important;
   background-color: transparent !important;
+  text-decoration: underline !important;
+  text-underline-offset: 4px !important;
 }
 
 /* --- iOS Focus Zoom Fix --- */

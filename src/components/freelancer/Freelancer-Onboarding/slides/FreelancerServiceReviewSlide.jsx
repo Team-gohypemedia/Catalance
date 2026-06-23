@@ -993,18 +993,20 @@ const FreelancerServiceReviewSlide = ({
               </div>
             </div>
 
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onSkipServices?.()}
-              className={cn(
-                ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
-                "shrink-0 px-3 py-2 text-sm",
-              )}
-            >
-              Skip
-            </Button>
+            {onSkipServices && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => onSkipServices?.()}
+                className={cn(
+                  ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
+                  "shrink-0 px-3 py-2 text-sm",
+                )}
+              >
+                Skip
+              </Button>
+            )}
           </div>
 
           <div className="flex flex-col gap-8 lg:grid lg:items-start lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">

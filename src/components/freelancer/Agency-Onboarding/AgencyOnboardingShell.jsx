@@ -2,6 +2,7 @@ import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useR
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
   resolveCaseStudyFields,
   resolveServiceInfoFields,
   resolveServicePricingFields,
+  resolveServiceVisualFields,
 } from "@/shared/lib/freelancer-onboarding-content";
 import {
   API_BASE_URL,
@@ -48,6 +50,7 @@ import {
   resolveServiceCatalogEntry,
   resolveServiceKey,
   serializeServiceDraft,
+  isServiceVisualsUploadValid,
 } from "@/components/freelancer/Freelancer-Onboarding/service-details";
 import {
   createInitialAgencyProfileForm,
@@ -66,9 +69,7 @@ const AgencyOperationsSlide = lazy(() => import("./slides/AgencyOperationsSlide"
 const AgencyTrustSlide = lazy(() => import("./slides/AgencyTrustSlide"));
 const FreelancerBasicProfileSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerBasicProfileSlide"));
 const FreelancerServicesSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicesSlide"));
-const FreelancerServiceInfoSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceInfoSlide"));
-const FreelancerServicePricingSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicePricingSlide"));
-const FreelancerServiceVisualsSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceVisualsSlide"));
+const FreelancerServiceQuickInfoSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceQuickInfoSlide"));
 const FreelancerCaseStudySlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerCaseStudySlide"));
 const AgencyServiceReviewSlide = lazy(() => import("./slides/AgencyServiceReviewSlide"));
 const FreelancerAcceptInProgressProjectsSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerAcceptInProgressProjectsSlide"));
@@ -86,9 +87,7 @@ const slideRegistry = {
   agencyTrust: AgencyTrustSlide,
   basicProfile: FreelancerBasicProfileSlide,
   services: FreelancerServicesSlide,
-  serviceInfo: FreelancerServiceInfoSlide,
-  servicePricing: FreelancerServicePricingSlide,
-  serviceVisuals: FreelancerServiceVisualsSlide,
+  quickInfo: FreelancerServiceQuickInfoSlide,
   caseStudy: FreelancerCaseStudySlide,
   serviceReview: AgencyServiceReviewSlide,
   acceptInProgressProjects: FreelancerAcceptInProgressProjectsSlide,
@@ -867,6 +866,11 @@ const AgencyOnboardingShell = ({
   const usernameCheckRequestRef = useRef(0);
   const onboardingScrollContainerRef = useRef(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [highestReachedSlideIndex, setHighestReachedSlideIndex] = useState(0);
+
+  useEffect(() => {
+    setHighestReachedSlideIndex((prev) => Math.max(prev, currentSlideIndex));
+  }, [currentSlideIndex]);
   const [selectedWorkPreference, setSelectedWorkPreference] = useState("agency");
   const [basicProfileForm, setBasicProfileForm] = useState(
     createInitialBasicProfileForm(),
@@ -972,7 +976,8 @@ const AgencyOnboardingShell = ({
     () => resolveServicePricingFields(),
     [],
   );
-  const globalCaseStudyFields = useMemo(() => resolveCaseStudyFields(), []);
+  const globalServiceVisualFields = useMemo(() => resolveServiceVisualFields(), []);
+    const globalCaseStudyFields = useMemo(() => resolveCaseStudyFields(), []);
   const progressValue =
     currentSlide.progressValue ??
     ((currentSlideIndex + 1) / Math.max(totalSlides, 1)) * 100;
@@ -980,13 +985,13 @@ const AgencyOnboardingShell = ({
   const isWorkPreferenceSlide = currentSlide.id === "workPreference";
   const isAgencySectionSlide = AGENCY_SLIDE_IDS.includes(currentSlide.id);
   const isServicesSlide = currentSlide.id === "services";
-  const isServiceInfoSlide = currentSlide.id === "serviceInfo";
+  const isServiceQuickInfoSlide = currentSlide.id === "quickInfo";
   const isServicePricingSlide = currentSlide.id === "servicePricing";
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
   const isServiceSectionSlide =
-    isServiceInfoSlide ||
+    isServiceQuickInfoSlide ||
     isServicePricingSlide ||
     isServiceVisualsSlide ||
     isCaseStudySlide ||
@@ -1008,6 +1013,9 @@ const AgencyOnboardingShell = ({
       : isCommunicationPolicySlide
         ? !communicationPolicyReady
       : false;
+  const quickInfoSlideIndex = onboardingSlides.findIndex(
+    (slide) => slide.id === "quickInfo",
+  );
   const serviceInfoSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceInfo",
   );
@@ -1051,17 +1059,13 @@ const AgencyOnboardingShell = ({
     : createEmptyServiceDraft();
 
   useEffect(() => {
-    if (currentSlide.id !== "services") {
-      return;
-    }
-
     const container = onboardingScrollContainerRef.current;
     if (!container) {
       return;
     }
 
     container.scrollTop = 0;
-  }, [currentSlide.id]);
+  }, [currentSlide.id, currentServiceIndex]);
 
   useEffect(() => {
     if (!user || hasHydratedFromUser) {
@@ -1798,28 +1802,17 @@ const AgencyOnboardingShell = ({
   const isServicePricingIncomplete = useMemo(() => {
     const hasDescription =
       String(currentServicePricingForm?.description || "").trim().length > 0;
-    const hasDeliveryTimeline =
-      String(currentServicePricingForm?.deliveryTimeline || "").trim().length > 0;
-    const hasPrice = Number(currentServicePricingForm?.priceRange || 0) > 0;
 
-    return !(hasDescription && hasDeliveryTimeline && hasPrice);
+    return !hasDescription;
   }, [
-    currentServicePricingForm?.deliveryTimeline,
     currentServicePricingForm?.description,
-    currentServicePricingForm?.priceRange,
   ]);
 
   const isServiceVisualsIncomplete = useMemo(() => {
     const mediaFiles = Array.isArray(currentServiceVisualsForm?.mediaFiles)
       ? currentServiceVisualsForm.mediaFiles
       : [];
-    const videoCount = mediaFiles.filter((entry) => isServiceMediaVideo(entry)).length;
-    const imageCount = Math.max(0, mediaFiles.length - videoCount);
-    const hasValidUpload =
-      (videoCount === 1 && imageCount === 0) ||
-      (imageCount === 2 && videoCount === 0);
-
-    return !hasValidUpload;
+    return !isServiceVisualsUploadValid(mediaFiles);
   }, [currentServiceVisualsForm?.mediaFiles]);
 
   const isCaseStudyIncomplete = useMemo(() => {
@@ -2906,6 +2899,39 @@ const AgencyOnboardingShell = ({
       return;
     }
 
+    if (currentSlide.id === "caseStudy") {
+      if (currentActiveCaseStudyId) {
+        clearServiceStepValidationErrors("caseStudy");
+        updateCurrentServiceDraft((draft) => {
+          const remainingCaseStudies = (draft.caseStudies || []).filter(
+            (caseStudy) => String(caseStudy?.id || "").trim() !== String(currentActiveCaseStudyId).trim(),
+          );
+
+          const replacementCaseStudy = createEmptyServiceCaseStudy();
+          const nextCaseStudies = remainingCaseStudies.length > 0
+            ? remainingCaseStudies
+            : [replacementCaseStudy];
+          const nextActiveId = remainingCaseStudies.length > 0
+            ? remainingCaseStudies[0]?.id || null
+            : replacementCaseStudy.id;
+
+          return {
+            ...draft,
+            caseStudies: nextCaseStudies,
+            activeCaseStudyId: nextActiveId,
+          };
+        });
+      }
+
+      const nextSlideIndex = onboardingSlides.findIndex(
+        (slide) => slide.id === "serviceReview",
+      );
+      if (nextSlideIndex >= 0) {
+        navigateToSlideIndex(nextSlideIndex, currentServiceIndex);
+      }
+      return;
+    }
+
     if (acceptInProgressProjectsSlideIndex >= 0) {
       navigateToSlideIndex(acceptInProgressProjectsSlideIndex);
       return;
@@ -2928,7 +2954,7 @@ const AgencyOnboardingShell = ({
     if (typeof document !== "undefined") {
       document.activeElement?.blur();
     }
-    if (currentSlide.id === "serviceInfo" && currentServiceIndex > 0) {
+    if (currentSlide.id === "quickInfo" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
       navigateToSlideIndex(serviceReviewSlideIndex, currentServiceIndex - 1);
       return;
@@ -3012,13 +3038,77 @@ const AgencyOnboardingShell = ({
 
   const validateServiceStepBeforeContinue = useCallback(
     (stepId = currentSlide.id) => {
+      // For the combined quickInfo slide, validate all 3 sub-sections
+      if (stepId === "quickInfo") {
+        const infoErrors = getServiceStepValidationErrors(
+          currentServiceDraft,
+          "serviceInfo",
+          globalServiceInfoFields,
+        );
+        const pricingErrors = getServiceStepValidationErrors(
+          currentServiceDraft,
+          "servicePricing",
+          globalServicePricingFields,
+        );
+        const visualErrors = getServiceStepValidationErrors(
+          currentServiceDraft,
+          "serviceVisuals",
+          globalServiceVisualFields,
+        );
+        const infoMessage = getServiceStepValidationMessage(
+          currentServiceDraft,
+          "serviceInfo",
+          globalServiceInfoFields,
+        );
+        const pricingMessage = getServiceStepValidationMessage(
+          currentServiceDraft,
+          "servicePricing",
+          globalServicePricingFields,
+        );
+        const visualMessage = getServiceStepValidationMessage(
+          currentServiceDraft,
+          "serviceVisuals",
+          globalServiceVisualFields,
+        );
+
+        const hasErrors = infoMessage || pricingMessage || visualMessage;
+        if (hasErrors) {
+          setServiceValidationErrorsByStep((currentErrors) => ({
+            ...currentErrors,
+            ...(infoMessage ? { serviceInfo: infoErrors } : {}),
+            ...(pricingMessage ? { servicePricing: pricingErrors } : {}),
+            ...(visualMessage ? { serviceVisuals: visualErrors } : {}),
+          }));
+          toast.error(infoMessage || pricingMessage || visualMessage);
+          return false;
+        }
+
+        clearServiceStepValidationErrors("serviceInfo");
+        clearServiceStepValidationErrors("servicePricing");
+        clearServiceStepValidationErrors("serviceVisuals");
+        return true;
+      }
+
+      const sectionFields =
+        stepId === "serviceInfo"
+          ? globalServiceInfoFields
+          : stepId === "servicePricing"
+            ? globalServicePricingFields
+            : stepId === "serviceVisuals"
+              ? globalServiceVisualFields
+              : stepId === "caseStudy"
+                ? globalCaseStudyFields
+                : [];
+
       const validationErrors = getServiceStepValidationErrors(
         currentServiceDraft,
         stepId,
+        sectionFields,
       );
       const validationMessage = getServiceStepValidationMessage(
         currentServiceDraft,
         stepId,
+        sectionFields,
       );
 
       if (validationMessage) {
@@ -3036,7 +3126,15 @@ const AgencyOnboardingShell = ({
       clearServiceStepValidationErrors(stepId);
       return true;
     },
-    [clearServiceStepValidationErrors, currentServiceDraft, currentSlide.id],
+    [
+      clearServiceStepValidationErrors,
+      currentServiceDraft,
+      currentSlide.id,
+      globalServiceInfoFields,
+      globalServicePricingFields,
+      globalServiceVisualFields,
+      globalCaseStudyFields,
+    ],
   );
 
   const handleContinue = () => {
@@ -3057,7 +3155,7 @@ const AgencyOnboardingShell = ({
         setCurrentServiceIndex((currentIndex) =>
           Math.min(currentIndex + 1, selectedServices.length - 1),
         );
-        navigateToSlideIndex(serviceInfoSlideIndex, currentServiceIndex + 1);
+        navigateToSlideIndex(quickInfoSlideIndex, currentServiceIndex + 1);
         return;
       }
 
@@ -3073,6 +3171,10 @@ const AgencyOnboardingShell = ({
     if (currentSlide.id === "acceptInProgressProjects") {
       if (deliveryPolicySlideIndex >= 0) {
         navigateToSlideIndex(deliveryPolicySlideIndex);
+        return;
+      }
+      if (communicationPolicySlideIndex >= 0) {
+        navigateToSlideIndex(communicationPolicySlideIndex);
         return;
       }
 
@@ -3171,41 +3273,29 @@ const AgencyOnboardingShell = ({
       }
 
       const currentServiceStepOrder =
-        currentSlide.id === "serviceInfo"
+        currentSlide.id === "quickInfo"
           ? 0
-          : currentSlide.id === "servicePricing"
+          : currentSlide.id === "caseStudy"
             ? 1
-            : currentSlide.id === "serviceVisuals"
+            : currentSlide.id === "serviceReview"
               ? 2
-              : currentSlide.id === "caseStudy"
-                ? 3
-                : currentSlide.id === "serviceReview"
-                  ? 4
-                  : -1;
+              : -1;
       const nextServiceStepOrder =
-        nextStepId === "overview"
+        nextStepId === "quickInfo"
           ? 0
-          : nextStepId === "pricing"
+          : nextStepId === "caseStudy"
             ? 1
-            : nextStepId === "visuals"
+            : nextStepId === "preview"
               ? 2
-              : nextStepId === "caseStudy"
-                ? 3
-                : nextStepId === "preview"
-                  ? 4
-                  : -1;
+              : -1;
+      const quickInfoComplete = !isServiceInfoIncomplete && !isServicePricingIncomplete && !isServiceVisualsIncomplete;
       let maxUnlockedServiceStepOrder = 0;
-      if (!isServiceInfoIncomplete) {
+      if (quickInfoComplete) {
         maxUnlockedServiceStepOrder = 1;
       }
-      if (!isServicePricingIncomplete) {
+      const isCaseStudyEmpty = isCaseStudyEffectivelyEmpty(currentCaseStudyForm);
+      if (quickInfoComplete && (!isCaseStudyIncomplete || isCaseStudyEmpty)) {
         maxUnlockedServiceStepOrder = 2;
-      }
-      if (!isServiceVisualsIncomplete) {
-        maxUnlockedServiceStepOrder = 3;
-      }
-      if (!isCaseStudyIncomplete) {
-        maxUnlockedServiceStepOrder = 4;
       }
 
       if (
@@ -3214,23 +3304,19 @@ const AgencyOnboardingShell = ({
         nextServiceStepOrder > maxUnlockedServiceStepOrder
       ) {
         if (nextServiceStepOrder > maxUnlockedServiceStepOrder) {
-          validateServiceStepBeforeContinue();
+          validateServiceStepBeforeContinue("quickInfo");
         }
         return;
       }
 
       const nextSlideIndex =
-        nextStepId === "overview"
-          ? serviceInfoSlideIndex
-          : nextStepId === "pricing"
-            ? servicePricingSlideIndex
-            : nextStepId === "visuals"
-              ? serviceVisualsSlideIndex
-              : nextStepId === "caseStudy"
-                ? caseStudySlideIndex
-                : nextStepId === "preview"
-                  ? serviceReviewSlideIndex
-                  : -1;
+        nextStepId === "quickInfo"
+          ? quickInfoSlideIndex >= 0 ? quickInfoSlideIndex : serviceInfoSlideIndex
+          : nextStepId === "caseStudy"
+            ? caseStudySlideIndex
+            : nextStepId === "preview"
+              ? serviceReviewSlideIndex
+              : -1;
 
       if (
         !Number.isInteger(nextSlideIndex) ||
@@ -3253,10 +3339,12 @@ const AgencyOnboardingShell = ({
       isServiceVisualsIncomplete,
       validateServiceStepBeforeContinue,
       serviceInfoSlideIndex,
-      servicePricingSlideIndex,
       serviceReviewSlideIndex,
       serviceVisualsSlideIndex,
       currentSlide.id,
+      currentCaseStudyForm,
+      currentServiceIndex,
+      quickInfoSlideIndex,
     ],
   );
 
@@ -3807,65 +3895,30 @@ const AgencyOnboardingShell = ({
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
       <main className="fixed inset-0 flex flex-col overflow-hidden bg-transparent z-10">
-      <header className="relative z-20 shrink-0 border-b border-white/8 bg-card">
-        <div
-          className="absolute left-0 top-0 h-1 bg-[var(--primary)] transition-all duration-300"
-          style={{ width: `${progressValue}%` }}
-        />
-        <div className="relative flex items-center justify-between px-4 py-4 sm:px-6">
-          {isFirstSlide ? (
-            shouldUseEmbeddedExit ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon-lg"
-                className="rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-                onClick={onExitAgencyFlow}
-                aria-label="Go back"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                asChild
-                variant="secondary"
-                className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
-              >
-                <Link to={FREELANCER_DASHBOARD_PATH} replace>
-                  Back to dashboard
-                </Link>
-              </Button>
-            )
-          ) : (
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                onClick={handleBack}
-                className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
-                aria-label="Back to dashboard"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-          )}
+      <div className="absolute top-0 left-0 right-0 h-1 z-30">
+          <div
+            className="h-full bg-[var(--primary)] transition-all duration-300"
+            style={{ width: `${progressValue}%` }}
+          />
         </div>
-      </header>
 
       <div className="contents">
         <section
           ref={onboardingScrollContainerRef}
-          className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"
+          className="subtle-scrollbar relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
         >
-          <div className="min-h-full px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12 pb-24">
+          <div className={`min-h-full flex flex-col px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 ${
+            isFooterHidden ? 'pb-4 sm:pb-6 lg:pb-8' : 'pb-24'
+          }`}>
             <Suspense fallback={<Loader className="flex-1 my-12" />}>
-              <AnimatePresence mode="wait">
+              <AnimatePresence initial={false} mode="wait">
                 <motion.div
                   key={currentSlide.id}
-                  initial={{ opacity: 0, x: 20 }}
+                  initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="w-full"
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.18, ease: "easeOut" }}
+                  className="w-full my-auto"
                 >
                   <ActiveSlide
                   slide={currentSlide}
@@ -3904,6 +3957,10 @@ const AgencyOnboardingShell = ({
                   currentServiceIndex={currentServiceIndex}
                   totalSelectedServices={selectedServices.length}
                   serviceDraft={currentServiceDraft}
+                    serviceInfoFields={globalServiceInfoFields}
+                    servicePricingFields={globalServicePricingFields}
+                    serviceVisualFields={globalServiceVisualFields}
+                    caseStudyFields={globalCaseStudyFields}
                   onServiceStepChange={handleServiceStepChange}
                   onUpdateServiceDraft={handleServiceInfoDraftUpdate}
                   serviceInfoForm={currentServiceInfoForm}
@@ -3933,9 +3990,9 @@ const AgencyOnboardingShell = ({
                   onCommunicationPolicyReadinessChange={(isReady) =>
                     setCommunicationPolicyReady(Boolean(isReady))
                   }
-                  isProfileSaving={isProfileSaving}
+                  onSkipServices={currentSlide.id === "serviceReview" ? null : handleSkipServicesSection}
+                    isProfileSaving={isProfileSaving}
                   user={user}
-                  onSkipServices={handleSkipServicesSection}
                 />
                 </motion.div>
               </AnimatePresence>
@@ -3948,7 +4005,43 @@ const AgencyOnboardingShell = ({
       {isFooterHidden ? null : (
         <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
           <div className="mx-auto max-w-6xl grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
-            <div />
+            <div className="flex justify-start">
+              {isFirstSlide ? (
+                shouldUseEmbeddedExit ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                    onClick={onExitAgencyFlow}
+                    aria-label="Go back"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    asChild
+                    variant="secondary"
+                    className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+                  >
+                    <Link to={FREELANCER_DASHBOARD_PATH} replace>
+                      Back to dashboard
+                    </Link>
+                  </Button>
+                )
+              ) : (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="icon"
+                    onClick={handleBack}
+                    className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                    aria-label="Go back"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+              )}
+            </div>
 
             <Button
               type="button"
@@ -3960,27 +4053,27 @@ const AgencyOnboardingShell = ({
               {footerPrimaryLabel}
             </Button>
 
-            {isProfileActionFooter ? (
-              <div />
-            ) : (
-              <div className="flex justify-end">
-                {isServiceSectionSlide && currentSlide.id !== "serviceInfo" ? (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="lg"
-                    onClick={handleSkipServicesSection}
-                    disabled={isProfileSaving}
-                    className={ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS}
-                  >
-                    Skip
-                  </Button>
-                ) : null}
-              </div>
-            )}
+            <div />
           </div>
         </footer>
       )}
+
+      {/* Floating Back Button when Footer is Hidden */}
+      {isFooterHidden && (
+        <div className="fixed left-4 bottom-6 z-30 sm:left-8">
+          <Button
+            type="button"
+            variant="secondary"
+            size="icon"
+            onClick={handleBack}
+            className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:bg-accent/10 transition-transform hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center"
+            aria-label="Go back"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       <ProfileImageCropDialog
         open={isProfileCropOpen}
         file={pendingProfilePhotoFile}

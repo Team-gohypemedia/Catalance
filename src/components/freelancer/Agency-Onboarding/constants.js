@@ -250,24 +250,10 @@ const SERVICE_SETUP_SLIDE = {
   continueLabel: "Continue",
 };
 
-const SERVICE_INFO_SLIDE = {
-  id: "serviceInfo",
+const SERVICE_QUICK_INFO_SLIDE = {
+  id: "quickInfo",
   title: "Fill Your Service Info",
-  progressValue: 30,
-  continueLabel: "Continue",
-};
-
-const SERVICE_PRICING_SLIDE = {
-  id: "servicePricing",
-  title: "Set Your Service Price",
-  progressValue: 38,
-  continueLabel: "Continue",
-};
-
-const SERVICE_VISUALS_SLIDE = {
-  id: "serviceVisuals",
-  title: "Add Keywords & Media",
-  progressValue: 46,
+  progressValue: 44,
   continueLabel: "Continue",
 };
 
@@ -291,13 +277,6 @@ const ACCEPT_IN_PROGRESS_PROJECTS_SLIDE = {
   progressValue: 96,
   continueLabel: "Continue",
   footerMode: "hidden",
-};
-
-const DELIVERY_POLICY_SLIDE = {
-  id: "deliveryPolicy",
-  title: "Do You Agree To Catalance Delivery & Revision SOP?",
-  progressValue: 98,
-  continueLabel: "Agree & Continue",
 };
 
 const COMMUNICATION_POLICY_SLIDE = {
@@ -352,16 +331,8 @@ export const AGENCY_ONBOARDING_SLIDES = [
     progressValue: 32,
   },
   {
-    ...SERVICE_INFO_SLIDE,
+    ...SERVICE_QUICK_INFO_SLIDE,
     progressValue: 44,
-  },
-  {
-    ...SERVICE_PRICING_SLIDE,
-    progressValue: 52,
-  },
-  {
-    ...SERVICE_VISUALS_SLIDE,
-    progressValue: 60,
   },
   {
     ...CASE_STUDY_SLIDE,
@@ -374,7 +345,6 @@ export const AGENCY_ONBOARDING_SLIDES = [
     progressValue: 92,
   },
   ACCEPT_IN_PROGRESS_PROJECTS_SLIDE,
-  DELIVERY_POLICY_SLIDE,
   {
     ...COMMUNICATION_POLICY_SLIDE,
     title: "Agency Agreement & Terms And Conditions",

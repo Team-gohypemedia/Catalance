@@ -55,18 +55,17 @@ const DELIVERY_TIMELINE_LABELS = {
   ongoing: "Ongoing / Retainer",
 };
 
-
-
-const SECTION_TITLE_CLASS = ONBOARDING_SECTION_TITLE_CLASS;
+const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} text-foreground`;
 const SECTION_SUBTITLE_CLASS =
   `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-muted-foreground`;
-const CARD_LABEL_CLASS = "text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground/60";
-const CARD_VALUE_CLASS = "mt-3 text-xl font-semibold tracking-[-0.03em] text-foreground";
+const CARD_LABEL_CLASS = "text-sm font-semibold text-foreground";
+const CARD_SUBLABEL_CLASS = "text-xs text-muted-foreground";
+const CARD_VALUE_CLASS = "mt-2 text-[22px] font-medium tracking-[-0.03em] text-foreground";
 const BADGE_CLASS =
   "inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground";
 const CASE_STUDY_PREVIEW_CACHE = new Map();
 const CASE_STUDY_META_PILL_CLASS =
-  "inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-xs font-medium text-foreground shadow-sm";
+  "inline-flex items-center rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-foreground";
 
 const normalizeStringArray = (values) => {
   if (!Array.isArray(values)) {
@@ -335,18 +334,28 @@ const resolveTagIcon = (label = "") => {
 
 const PreviewTag = ({ label, variant = "pill" }) => {
   const Icon = resolveTagIcon(label);
-  const isCategoryCard = variant === "category";
+  const isCategory = variant === "category";
+  const isCategoryCompact = variant === "category-compact";
+  const isCompact = variant === "compact";
 
   return (
     <div
-      className={
-        isCategoryCard
-          ? "flex min-h-[54px] items-center gap-3 rounded-2xl border border-white/8 bg-[#191919] px-4 py-3 text-sm font-medium text-white/88 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-          : "flex items-center gap-2 rounded-full border border-white/8 bg-[#191919] px-4 py-3 text-sm font-medium text-white/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-      }
+      className={cn(
+        "flex items-center text-foreground border border-border bg-muted",
+        isCategory
+          ? "min-h-[54px] gap-3 rounded-2xl px-4 py-3 text-sm font-medium"
+          : isCategoryCompact
+            ? "min-h-[38px] gap-2 rounded-xl px-3 py-1.5 text-xs font-semibold"
+            : isCompact
+              ? "gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+              : "gap-2 rounded-full px-4 py-3 text-sm font-medium"
+      )}
     >
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/12 text-primary">
-        <Icon className="h-3.5 w-3.5" />
+      <span className={cn(
+        "flex items-center justify-center rounded-full bg-primary/12 text-primary shrink-0",
+        (isCategory || variant === "pill") ? "h-7 w-7" : "h-5 w-5"
+      )}>
+        <Icon className={(isCategory || variant === "pill") ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} />
       </span>
       <span className="truncate">{label}</span>
     </div>
@@ -892,9 +901,10 @@ const AgencyServiceReviewSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-5xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-5xl flex-col items-center mt-[10px] mt-[20px] sm:mt-0">
       <div className="w-full space-y-4">
-        <div className="text-center">
+        {/* Page Title */}
+        <div className="mx-auto w-full max-w-3xl relative text-center">
           <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
             <span>Final </span>
             <span className="text-primary">Review</span>
@@ -910,428 +920,413 @@ const AgencyServiceReviewSlide = ({
           />
         </div>
 
-        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">
-          <article className="space-y-7">
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <h2 className={SECTION_TITLE_CLASS}>
-                  {reviewTitle}
-                </h2>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 overflow-hidden rounded-full border border-border bg-muted shadow-[0_10px_30px_rgba(0,0,0,0.15)]">
-                  {profilePhotoPreview?.url ? (
-                    <img
-                      src={profilePhotoPreview.url}
-                      alt={`${serviceName} profile`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
-                      {avatarFallbackInitial}
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-0.5">
-                  <p className="text-sm font-semibold text-foreground">{freelancerName}</p>
-                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    {serviceName}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {isAgencyFlow ? (
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className={SECTION_TITLE_CLASS}>Agency Snapshot</h3>
-                  <p className={SECTION_SUBTITLE_CLASS}>
-                    The agency metadata you will publish alongside this service.
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
-                      Agency Name
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {agencyProfileForm?.companyName || "Not set yet"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
-                      Agency Type
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {resolveAgencyOptionLabel(
-                        AGENCY_TYPE_OPTIONS,
-                        agencyProfileForm?.agencyType,
-                      ) || "Not set yet"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
-                      Team Size
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {resolveAgencyOptionLabel(
-                        AGENCY_TEAM_SIZE_OPTIONS,
-                        agencyProfileForm?.teamSize,
-                      ) || "Not set yet"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-muted p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
-                      Collaboration
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {resolveAgencyOptionLabel(
-                        AGENCY_COLLABORATION_STYLE_OPTIONS,
-                        agencyProfileForm?.collaborationStyle,
-                      ) || "Not set yet"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-muted p-4 sm:col-span-2">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
-                      Industries
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {agencyIndustries.length > 0
-                        ? agencyIndustries
-                            .map((value) =>
-                              resolveAgencyOptionLabel(AGENCY_INDUSTRY_OPTIONS, value),
-                            )
-                            .join(", ")
-                        : "Not set yet"}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-muted p-4 sm:col-span-2">
-                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
-                      Core Roles
-                    </p>
-                    <p className="mt-2 text-sm font-semibold text-foreground">
-                      {agencyCoreRoles.length > 0
-                        ? agencyCoreRoles
-                            .map((value) =>
-                              resolveAgencyOptionLabel(AGENCY_CORE_ROLE_OPTIONS, value),
-                            )
-                            .join(", ")
-                        : "Not set yet"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="space-y-4">
-              <div className="group relative overflow-hidden rounded-[30px] border border-border bg-neutral-950 shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
-                {mediaPreview?.url ? (
+        <div className="space-y-3">
+          <h2 className={`${SECTION_TITLE_CLASS} leading-tight`}>{reviewTitle}</h2>
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
+                {profilePhotoPreview?.url ? (
                   <img
-                    src={mediaPreview.url}
-                    alt={`${serviceName} preview`}
-                    className="aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.015]"
+                    src={profilePhotoPreview.url}
+                    alt={`${serviceName} profile`}
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,10,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.06),transparent_22%),linear-gradient(135deg,#090909,#131313_55%,#111111)] dark-card keep-white">
-                    <div className="absolute inset-y-0 left-[30%] w-px bg-white/10 keep-white" />
-                    <div className="absolute inset-y-0 right-[30%] w-px bg-white/10 keep-white" />
-                    <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(var(--brand-rgb),0.1)] keep-white" />
-                    <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12 keep-white" />
-                    <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25 keep-white" />
-                    <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))] keep-white" />
-                    <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm keep-white">
-                      <p className="text-xs uppercase tracking-[0.2em] text-white/45 keep-white">
-                        Visual Preview
-                      </p>
-                      <p className="mt-2 max-w-sm text-sm text-white/65 keep-white">
-                        Add service images in the media step to replace this placeholder.
-                      </p>
-                    </div>
+                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
+                    {avatarFallbackInitial}
                   </div>
                 )}
-
-                {hasMultipleMediaPreviews ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handlePreviousMediaPreview}
-                      className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
-                      aria-label="Show previous image"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleNextMediaPreview}
-                      className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
-                      aria-label="Show next image"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-
-                    <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-                      <span className="rounded-full border border-white/12 bg-black/55 px-3 py-1 text-xs font-medium text-white/86 backdrop-blur-md keep-white">
-                        {activeMediaPreviewIndex + 1} / {mediaPreviews.length}
-                      </span>
-                    </div>
-                  </>
-                ) : null}
               </div>
 
-              <div className="space-y-1">
-                <h3 className={SECTION_TITLE_CLASS}>
-                  Description
-                </h3>
-                <p className={`${SECTION_SUBTITLE_CLASS} max-w-3xl`}>
-                  {description}
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-foreground">{freelancerName}</p>
+                <p className="truncate text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                  {serviceName}
                 </p>
               </div>
+            </div>
+          </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className={SECTION_TITLE_CLASS}>
-                    Case Studies
-                  </h3>
-                  <p className={SECTION_SUBTITLE_CLASS}>
+          <div className="flex flex-col gap-8 lg:grid lg:items-start lg:grid-cols-[minmax(0,1.58fr)_300px] xl:grid-cols-[minmax(0,1.62fr)_332px]">
+            {/* Part 1: Main Content Column */}
+            <div className="space-y-7 lg:col-start-1 lg:col-end-2">
+              {/* Agency Snapshot Card */}
+              {isAgencyFlow ? (
+                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                  <div className="border-b border-border p-5">
+                    <p className={CARD_LABEL_CLASS}>Agency Snapshot</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      The agency metadata you will publish alongside this service.
+                    </p>
+                  </div>
+                  <div className="p-5">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl border border-border bg-muted/40 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                          Agency Name
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {agencyProfileForm?.companyName || "Not set yet"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-muted/40 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                          Agency Type
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {resolveAgencyOptionLabel(
+                            AGENCY_TYPE_OPTIONS,
+                            agencyProfileForm?.agencyType,
+                          ) || "Not set yet"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-muted/40 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                          Team Size
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {resolveAgencyOptionLabel(
+                            AGENCY_TEAM_SIZE_OPTIONS,
+                            agencyProfileForm?.teamSize,
+                          ) || "Not set yet"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-muted/40 p-4">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                          Collaboration
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {resolveAgencyOptionLabel(
+                            AGENCY_COLLABORATION_STYLE_OPTIONS,
+                            agencyProfileForm?.collaborationStyle,
+                          ) || "Not set yet"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-muted/40 p-4 sm:col-span-2">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                          Industries
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {agencyIndustries.length > 0
+                            ? agencyIndustries
+                                .map((value) =>
+                                  resolveAgencyOptionLabel(AGENCY_INDUSTRY_OPTIONS, value),
+                                )
+                                .join(", ")
+                            : "Not set yet"}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-muted/40 p-4 sm:col-span-2">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                          Core Roles
+                        </p>
+                        <p className="mt-2 text-sm font-semibold text-foreground">
+                          {agencyCoreRoles.length > 0
+                            ? agencyCoreRoles
+                                .map((value) =>
+                                  resolveAgencyOptionLabel(AGENCY_CORE_ROLE_OPTIONS, value),
+                                )
+                                .join(", ")
+                            : "Not set yet"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-4">
+                <div className="group relative overflow-hidden rounded-[30px] border border-border bg-neutral-950 shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
+                  {mediaPreview?.url ? (
+                    <img
+                      src={mediaPreview.url}
+                      alt={`${serviceName} preview`}
+                      className="aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.015]"
+                    />
+                  ) : (
+                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,10,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.06),transparent_22%),linear-gradient(135deg,#090909,#131313_55%,#111111)] dark-card keep-white">
+                      <div className="absolute inset-y-0 left-[30%] w-px bg-white/10 keep-white" />
+                      <div className="absolute inset-y-0 right-[30%] w-px bg-white/10 keep-white" />
+                      <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(var(--brand-rgb),0.1)] keep-white" />
+                      <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12 keep-white" />
+                      <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25 keep-white" />
+                      <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))] keep-white" />
+                      <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm keep-white">
+                        <p className="text-xs uppercase tracking-[0.2em] text-white/45 keep-white">
+                          Visual Preview
+                        </p>
+                        <p className="mt-2 max-w-sm text-sm text-white/65 keep-white">
+                          Add service images in the media step to replace this placeholder.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {hasMultipleMediaPreviews ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handlePreviousMediaPreview}
+                        className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
+                        aria-label="Show previous image"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleNextMediaPreview}
+                        className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
+                        aria-label="Show next image"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+
+                      <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+                        <span className="rounded-full border border-white/12 bg-black/55 px-3 py-1 text-xs font-medium text-white/86 backdrop-blur-md keep-white">
+                          {activeMediaPreviewIndex + 1} / {mediaPreviews.length}
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Description Card */}
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="p-5">
+                  <p className={CARD_LABEL_CLASS}>Description</p>
+                  <p className="mt-3 text-[15px] leading-[1.75] text-muted-foreground">
+                    {description}
+                  </p>
+                </div>
+              </div>
+
+              {/* Case Studies Card */}
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="border-b border-border p-5">
+                  <p className={CARD_LABEL_CLASS}>Case Studies</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Portfolio projects added in the case-study step.
                   </p>
                 </div>
 
                 {resolvedCaseStudyCards.length > 0 ? (
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {resolvedCaseStudyCards.map((caseStudy) => (
-                      <article
-                        key={caseStudy.id}
-                        className="group overflow-hidden rounded-[28px] border border-border bg-card shadow-[0_18px_54px_rgba(0,0,0,0.08)] transition-transform duration-300 hover:-translate-y-0.5 hover:border-primary/30"
-                      >
-                        <div className="relative overflow-hidden border-b border-border">
-                          {caseStudy.previewImage ? (
-                            <>
-                              <img
-                                src={caseStudy.previewImage}
-                                alt={`${caseStudy.displayTitle} preview`}
-                                className="aspect-[16/9] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-                              />
-                              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)] keep-white" />
-                            </>
-                          ) : (
-                            <div className="relative aspect-[16/9] w-full overflow-hidden dark-card keep-white bg-[linear-gradient(135deg,#090909,#131313_55%,#111111)]">
-                              <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.82))] keep-white" />
-                            </div>
-                          )}
-
-                          <div className="absolute left-5 right-5 top-5 flex items-start justify-between gap-3">
-                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] bg-white/90 shadow-[0_4px_20px_rgba(0,0,0,0.15)] backdrop-blur-md">
-                              {caseStudy.projectHost ? (
+                  <div className="p-5">
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      {resolvedCaseStudyCards.map((caseStudy) => (
+                        <article
+                          key={caseStudy.id}
+                          className="group flex flex-col h-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                        >
+                          <div className="relative overflow-hidden border-b border-border">
+                            {caseStudy.previewImage ? (
+                              <>
                                 <img
-                                  src={`https://www.google.com/s2/favicons?domain=${caseStudy.projectHost}&sz=128`}
-                                  alt={`${caseStudy.projectHost} logo`}
-                                  className="h-8 w-8 object-contain"
+                                  src={caseStudy.previewImage}
+                                  alt={`${caseStudy.displayTitle} preview`}
+                                  className="aspect-[16/9] w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                                 />
-                              ) : (
-                                <div className="text-xl font-bold tracking-[-0.08em] text-[#111111]">
-                                  {caseStudy.previewInitials}
-                                </div>
-                              )}
+                                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,5,0.08)_0%,rgba(5,5,5,0.22)_38%,rgba(5,5,5,0.86)_100%)] keep-white" />
+                              </>
+                            ) : (
+                              <div className="relative aspect-[16/9] w-full overflow-hidden dark-card keep-white bg-[linear-gradient(135deg,#090909,#131313_55%,#111111)]">
+                                <div className="absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.82))] keep-white" />
+                              </div>
+                            )}
+
+                            <div className="absolute left-4 top-4">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/90 shadow-md backdrop-blur-md">
+                                {caseStudy.projectHost ? (
+                                  <img
+                                    src={`https://www.google.com/s2/favicons?domain=${caseStudy.projectHost}&sz=128`}
+                                    alt={`${caseStudy.projectHost} logo`}
+                                    className="h-7 w-7 object-contain"
+                                  />
+                                ) : (
+                                  <div className="text-lg font-bold tracking-[-0.08em] text-[#111111]">
+                                    {caseStudy.previewInitials}
+                                  </div>
+                                )}
+                              </div>
                             </div>
 
-                            {caseStudy.niche ? (
-                              <div 
-                                className="max-w-[70%] truncate rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-primary shadow-[0_4px_20px_rgba(0,0,0,0.1)] backdrop-blur-md"
-                              >
-                                {caseStudy.niche}
-                              </div>
-                            ) : null}
-                          </div>
-
-                          <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-4">
-                            <div className="min-w-0">
-                              <div className="truncate text-2xl font-semibold tracking-[-0.04em] text-white keep-white drop-shadow-md">
+                            <div className="absolute inset-x-4 bottom-4">
+                              <div className="truncate text-[18px] font-semibold tracking-[-0.03em] text-white keep-white drop-shadow-md">
                                 {caseStudy.displayTitle}
                               </div>
                               {caseStudy.projectHost ? (
-                                <div className="mt-1 truncate text-xs font-medium uppercase tracking-[0.16em] text-white/80 keep-white drop-shadow-md">
+                                <div className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.16em] text-white/75 keep-white">
                                   {caseStudy.projectHost}
                                 </div>
                               ) : null}
                             </div>
                           </div>
-                        </div>
 
-                        <div className="space-y-4 p-5">
-                          <div
-                            className="overflow-hidden text-sm leading-7 text-muted-foreground"
-                            style={{
-                              display: "-webkit-box",
-                              WebkitLineClamp: 3,
-                              WebkitBoxOrient: "vertical",
-                            }}
-                          >
-                            {caseStudy.description ||
-                              caseStudy.previewDescription ||
-                              "Add a short case study description in the case-study step to strengthen this service preview."}
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            {caseStudy.role ? (
-                              <span className={CASE_STUDY_META_PILL_CLASS}>
-                                {toDisplayName(caseStudy.role)}
-                              </span>
-                            ) : null}
-                            {caseStudy.timeline ? (
-                              <span className={CASE_STUDY_META_PILL_CLASS}>
-                                {caseStudy.timeline}
-                              </span>
-                            ) : null}
-                            {caseStudy.budget ? (
-                              <span className={CASE_STUDY_META_PILL_CLASS}>
-                                {caseStudy.budget}
-                              </span>
-                            ) : null}
-                          </div>
-
-                          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-                            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                              {caseStudy.projectFileName ? (
-                                <span className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
-                                  <FileText className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="max-w-[180px] truncate">
-                                    {caseStudy.projectFileName}
-                                  </span>
+                          <div className="space-y-3 p-4 flex-1 flex flex-col justify-between">
+                            <div className="space-y-3">
+                              {caseStudy.niche ? (
+                                <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary w-fit">
+                                  {caseStudy.niche}
                                 </span>
                               ) : null}
+
+                              <div
+                                className="overflow-hidden text-[13px] leading-[1.7] text-muted-foreground"
+                                style={{
+                                  display: "-webkit-box",
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: "vertical",
+                                }}
+                              >
+                                {caseStudy.description ||
+                                  caseStudy.previewDescription ||
+                                  "Add a short case study description to strengthen this preview."}
+                              </div>
+
+                              {(caseStudy.role || caseStudy.timeline || caseStudy.budget) && (
+                                <div className="flex flex-wrap gap-1.5">
+                                  {caseStudy.role ? (
+                                    <span className={CASE_STUDY_META_PILL_CLASS}>
+                                      {toDisplayName(caseStudy.role)}
+                                    </span>
+                                  ) : null}
+                                  {caseStudy.timeline ? (
+                                    <span className={CASE_STUDY_META_PILL_CLASS}>
+                                      {caseStudy.timeline}
+                                    </span>
+                                  ) : null}
+                                  {caseStudy.budget ? (
+                                    <span className={cn(CASE_STUDY_META_PILL_CLASS, "font-semibold text-primary")}>
+                                      {caseStudy.budget}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              )}
                             </div>
 
-                            {caseStudy.projectLink ? (
-                              <a
-                                href={caseStudy.projectLink}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary transition-colors hover:text-primary/85"
-                              >
-                                View project
-                                <ArrowUpRight className="h-4 w-4" />
-                              </a>
-                            ) : (
-                              <span className="text-xs font-medium uppercase tracking-[0.16em] text-white/32">
-                                No project link
-                              </span>
-                            )}
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 mt-auto">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                                {caseStudy.projectFileName ? (
+                                  <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                                    <FileText className="h-3 w-3 shrink-0" />
+                                    <span className="max-w-[160px] truncate">
+                                      {caseStudy.projectFileName}
+                                    </span>
+                                  </span>
+                                ) : null}
+                              </div>
+
+                              {caseStudy.projectLink ? (
+                                <a
+                                  href={caseStudy.projectLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary transition-colors hover:text-primary/85"
+                                >
+                                  View project
+                                  <ArrowUpRight className="h-3.5 w-3.5" />
+                                </a>
+                              ) : (
+                                <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/50">
+                                  No project link
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </article>
-                    ))}
+                        </article>
+                      ))}
+                    </div>
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
+                  <div className="m-5 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
                     Add at least one case study in the case-study step to show it here.
                   </div>
                 )}
               </div>
+            </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className={SECTION_TITLE_CLASS}>
-                    Skills Category
-                  </h3>
-                  <p className={SECTION_SUBTITLE_CLASS}>
-                    Subcategories clients will link to service
-                  </p>
+            {/* Sidebar */}
+            <aside className="space-y-0 lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 lg:pt-0">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                {/* Grid: Starting Price, Experience Level, Delivery Timeline */}
+                <div className="grid grid-cols-2 border-b border-border lg:grid-cols-1 lg:divide-y lg:divide-border">
+                  {/* Starting Price */}
+                  <div className="col-span-2 border-b border-border p-5 lg:col-span-1 lg:border-b-0 lg:border-r-0">
+                    <p className={CARD_LABEL_CLASS}>Starting Price</p>
+                    <p className={CARD_VALUE_CLASS}>
+                      {startingPriceDisplay.label}
+                    </p>
+                  </div>
+
+                  {/* Experience Level */}
+                  <div className="border-r border-border p-5 lg:border-r-0">
+                    <p className={CARD_LABEL_CLASS}>Experience Level</p>
+                    <p className={CARD_VALUE_CLASS}>
+                      {experienceLabel}
+                    </p>
+                  </div>
+
+                  {/* Delivery Timeline */}
+                  <div className="p-5">
+                    <p className={CARD_LABEL_CLASS}>Delivery Timeline</p>
+                    <p className={CARD_VALUE_CLASS}>
+                      {deliveryLabel}
+                    </p>
+                  </div>
                 </div>
 
-                {selectedCategoryLabels.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {selectedCategoryLabels.map((tag) => (
-                      <PreviewTag key={tag} label={tag} variant="category" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
-                    Select at least one sub-category in the overview step to show it here.
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <h3 className={SECTION_TITLE_CLASS}>
-                    Skills
-                  </h3>
-                  <p className={SECTION_SUBTITLE_CLASS}>
-                    Skills grouped by sub-category for clear mapping.
-                  </p>
-                </div>
-
-                {skillsBySubCategory.length > 0 ? (
-                  <div className="space-y-4">
-                    {skillsBySubCategory.map((group) => (
-                      <div key={group.id} className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                          {group.label}
-                        </p>
-                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                          {group.skills.map((tag) => (
-                            <PreviewTag key={`${group.id}-${tag}`} label={tag} />
-                          ))}
-                        </div>
+                {/* Skills Category */}
+                <div className="border-b border-border p-5">
+                  <p className={CARD_LABEL_CLASS}>Skills Category</p>
+                  <div className="mt-3">
+                    {selectedCategoryLabels.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedCategoryLabels.map((tag) => (
+                          <PreviewTag key={tag} label={tag} variant="category-compact" />
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
+                        Select sub-category.
+                      </div>
+                    )}
                   </div>
-                ) : skillTags.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    {skillTags.map((tag) => (
-                      <PreviewTag key={tag} label={tag} />
-                    ))}
+                </div>
+
+                {/* Skills */}
+                <div className="p-5">
+                  <p className={CARD_LABEL_CLASS}>Skills</p>
+                  <div className="mt-3">
+                    {skillsBySubCategory.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {skillsBySubCategory.map((group) =>
+                          group.skills.map((tag) => (
+                            <PreviewTag key={`${group.id}-${tag}`} label={tag} variant="compact" />
+                          ))
+                        )}
+                      </div>
+                    ) : skillTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {skillTags.map((tag) => (
+                          <PreviewTag key={tag} label={tag} variant="compact" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
+                        No tools/skills added.
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
-                    Add tools or custom skills in the overview step to populate this section.
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
-          </article>
-
-          <aside className="space-y-4">
-            <div className="relative overflow-hidden rounded-[29px] border border-border bg-card">
-              <div className="absolute inset-0" />
-              <section className="relative p-6">
-                <p className={CARD_LABEL_CLASS}>Starting Price</p>
-                <p className={CARD_VALUE_CLASS}>
-                  {startingPriceDisplay.label}
-                </p>
-              </section>
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-[24px] border border-border bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.08)]">
-                <p className={CARD_LABEL_CLASS}>
-                  Experience Level
-                </p>
-                <p className={CARD_VALUE_CLASS}>
-                  {experienceLabel}
-                </p>
-              </div>
-
-              <div className="rounded-[24px] border border-border bg-card p-5 shadow-[0_16px_50px_rgba(0,0,0,0.08)]">
-                <p className={CARD_LABEL_CLASS}>
-                  Delivery Timeline
-                </p>
-                <p className={CARD_VALUE_CLASS}>
-                  {deliveryLabel}
-                </p>
-              </div>
-            </div>
-          </aside>
+            </aside>
+          </div>
         </div>
       </div>
     </section>

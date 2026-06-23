@@ -336,10 +336,10 @@ const FreelancerCaseStudySlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] mt-[20px] sm:mt-0">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
       <div className="w-full space-y-4">
         {/* Heading */}
-        <div className="text-center">
+        <div className="mx-auto w-full max-w-3xl relative text-center">
           
           {totalSelectedServices > 1 && (
             <div className="mb-2 text-sm font-semibold tracking-wide text-foreground uppercase">
@@ -379,10 +379,8 @@ const FreelancerCaseStudySlide = ({
               variant="ghost"
               size="sm"
               onClick={() => onSkipServices?.()}
-              className="onboarding-skip-btn sm:absolute sm:right-0 self-end sm:self-auto shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
-            >
-              Skip this
-            </Button>
+              className="onboarding-skip-btn absolute right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+            >Skip</Button>
           )}
         </div>
 

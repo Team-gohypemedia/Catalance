@@ -212,7 +212,7 @@ const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
     ...createEmptyServiceCaseStudy({ id: resolvedId }),
     ...source,
     id: resolvedId,
-    title: toDraftText(source.title),
+    title: toDraftText(source.title || source.customFields?.serviceInfo?.title),
     description: toDraftText(source.description),
     projectLink: toOptionalString(source.projectLink),
     projectFile: source.projectFile ?? null,
@@ -356,16 +356,16 @@ export const normalizeServiceDraft = (
     title: toDraftText(source.title),
     subcategories: normalizedSubcategories,
     skillsAndTechnologies: normalizeStringArray(source.skillsAndTechnologies),
-    experience: toOptionalString(source.experience || source.experienceYears),
+    experience: toOptionalString(source.experience || source.experienceYears || source.customFields?.serviceInfo?.experience),
 
     description: toDraftText(
-      source.description || source.serviceDescription,
+      source.description || source.serviceDescription || source.customFields?.servicePricing?.description,
     ),
     deliveryTimeline: toOptionalString(
       source.deliveryTimeline || source.deliveryTime,
     ),
     priceRange: toOptionalString(
-      source.priceRange || source.averageProjectPrice || source.averagePrice,
+      source.priceRange || source.averageProjectPrice || source.averagePrice || source.customFields?.servicePricing?.priceRange,
     ),
     coverImage: toOptionalString(source.coverImage),
     keywords: normalizeStringArray(source.keywords),
@@ -962,6 +962,14 @@ export const getServiceStepValidationErrors = (draft = {}, stepId = "", fields =
     serviceId: draft?.serviceId,
   });
   const normalizedStepId = String(stepId || "").trim();
+
+  if (normalizedStepId === "quickInfo") {
+    return {
+      ...buildServiceInfoValidationErrors(normalizedDraft, fields),
+      ...buildServicePricingValidationErrors(normalizedDraft, fields),
+      ...buildServiceVisualsValidationErrors(normalizedDraft, fields),
+    };
+  }
 
   if (normalizedStepId === "serviceInfo") {
     return buildServiceInfoValidationErrors(normalizedDraft, fields);

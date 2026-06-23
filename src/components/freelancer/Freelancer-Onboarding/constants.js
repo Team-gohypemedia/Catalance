@@ -68,13 +68,6 @@ const ACCEPT_IN_PROGRESS_PROJECTS_SLIDE = {
   footerMode: "hidden",
 };
 
-const DELIVERY_POLICY_SLIDE = {
-  id: "deliveryPolicy",
-  title: "Do You Agree To Catalance Delivery & Revision SOP?",
-  progressValue: 98,
-  continueLabel: "Agree & Continue",
-};
-
 const COMMUNICATION_POLICY_SLIDE = {
   id: "communicationPolicy",
   title: "Freelancer Agreement & Terms And Conditions",
@@ -96,7 +89,6 @@ const INDIVIDUAL_FLOW_SLIDES = [
   CASE_STUDY_SLIDE,
   SERVICE_REVIEW_SLIDE,
   ACCEPT_IN_PROGRESS_PROJECTS_SLIDE,
-  DELIVERY_POLICY_SLIDE,
   COMMUNICATION_POLICY_SLIDE,
 ];
 

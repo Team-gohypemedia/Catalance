@@ -2,6 +2,7 @@ import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useR
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import X from "lucide-react/dist/esm/icons/x";
 import { toast } from "sonner";
@@ -925,6 +926,11 @@ const FreelancerOnboardingShell = () => {
   const onboardingScrollContainerRef = useRef(null);
   const serviceSkipReturnRef = useRef(null);
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [highestReachedSlideIndex, setHighestReachedSlideIndex] = useState(0);
+
+  useEffect(() => {
+    setHighestReachedSlideIndex((prev) => Math.max(prev, currentSlideIndex));
+  }, [currentSlideIndex]);
 
 
   const [selectedWorkPreference, setSelectedWorkPreference] = useState("");
@@ -1028,14 +1034,14 @@ const FreelancerOnboardingShell = () => {
   const isFirstSlide = currentSlideIndex === 0;
   const isWorkPreferenceSlide = currentSlide.id === "workPreference";
   const isServicesSlide = currentSlide.id === "services";
-  const isServiceInfoSlide = currentSlide.id === "serviceInfo";
+  const isServiceQuickInfoSlide = currentSlide.id === "quickInfo";
   const isServicePricingSlide = currentSlide.id === "servicePricing";
   const isServiceVisualsSlide = currentSlide.id === "serviceVisuals";
   const isQuickInfoSlide = currentSlide.id === "quickInfo";
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
   const isServiceSectionSlide =
-    isServiceInfoSlide ||
+    isServiceQuickInfoSlide ||
     isServicePricingSlide ||
     isServiceVisualsSlide ||
     isQuickInfoSlide ||
@@ -3156,6 +3162,7 @@ const FreelancerOnboardingShell = () => {
     }
 
     if (isFirstSlide) {
+      navigate(FREELANCER_DASHBOARD_PATH, { replace: true });
       return;
     }
 
@@ -3306,6 +3313,10 @@ const FreelancerOnboardingShell = () => {
     if (currentSlide.id === "acceptInProgressProjects") {
       if (deliveryPolicySlideIndex >= 0) {
         navigateToSlideIndex(deliveryPolicySlideIndex);
+        return;
+      }
+      if (communicationPolicySlideIndex >= 0) {
+        navigateToSlideIndex(communicationPolicySlideIndex);
         return;
       }
 
@@ -3899,6 +3910,7 @@ const FreelancerOnboardingShell = () => {
     setSelectedServices([]);
     setServiceDraftsByKey({});
     setCurrentServiceIndex(0);
+    setHighestReachedSlideIndex(0);
     setAcceptInProgressProjectsValue(null);
     setDeliveryPolicyAccepted(false);
     setCommunicationPolicyReady(false);
@@ -4190,9 +4202,9 @@ const FreelancerOnboardingShell = () => {
                   onCommunicationPolicyReadinessChange={(isReady) =>
                     setCommunicationPolicyReady(Boolean(isReady))
                   }
-                  isProfileSaving={isProfileSaving}
+                  onSkipServices={currentSlide.id === "serviceReview" ? null : handleSkipServicesSection}
+                    isProfileSaving={isProfileSaving}
                   user={user}
-                  onSkipServices={handleSkipServicesSection}
                   continueButton={null}
                   onContinue={handleContinue}
                 />
@@ -4205,19 +4217,63 @@ const FreelancerOnboardingShell = () => {
 
       {/* Sticky Bottom Bar */}
       {!isFooterHidden && (
-        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 flex justify-center shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+        <footer className="relative z-20 shrink-0 border-t border-white/8 bg-card px-4 py-4 sm:px-6 shadow-[0_-8px_30px_rgba(0,0,0,0.12)]">
+          <div className="mx-auto max-w-6xl grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <div className="flex justify-start">
+              {isFirstSlide ? (
+                <Button
+                  asChild
+                  variant="secondary"
+                  className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+                >
+                  <Link to={FREELANCER_DASHBOARD_PATH} replace>
+                    Back to dashboard
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  onClick={handleBack}
+                  className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                  aria-label="Go back"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
 
+            <Button
+              type="button"
+              size="lg"
+              onClick={footerPrimaryAction}
+              disabled={footerPrimaryDisabled}
+              className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
+            >
+              {isProfileSaving && <Loader size="sm" className="mr-2 inline-flex" />}
+              {footerPrimaryLabel}
+            </Button>
+
+            <div />
+          </div>
+        </footer>
+      )}
+
+      {/* Floating Back Button when Footer is Hidden */}
+      {isFooterHidden && (
+        <div className="fixed left-4 bottom-6 z-30 sm:left-8">
           <Button
             type="button"
-            size="lg"
-            onClick={footerPrimaryAction}
-            disabled={footerPrimaryDisabled}
-            className={ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS}
+            variant="secondary"
+            size="icon"
+            onClick={handleBack}
+            className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-[0_8px_30px_rgba(0,0,0,0.12)] hover:bg-accent/10 transition-transform hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center"
+            aria-label="Go back"
           >
-            {isProfileSaving && <Loader size="sm" className="mr-2 inline-flex" />}
-            {footerPrimaryLabel}
+            <ChevronLeft className="h-4 w-4" />
           </Button>
-        </footer>
+        </div>
       )}
 
       {isAiHelperExpanded ? (

@@ -922,10 +922,10 @@ const FreelancerServiceQuickInfoSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center mt-[20px] mt-[20px] sm:mt-0">
-      <div className="w-full space-y-8">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+      <div className="w-full space-y-4">
         {/* Page Title */}
-        <div className="text-center">
+        <div className="mx-auto w-full max-w-3xl relative text-center">
           
           {totalSelectedServices > 1 && (
             <div className="mb-2 text-sm font-semibold tracking-wide text-foreground uppercase">
@@ -964,6 +964,15 @@ const FreelancerServiceQuickInfoSlide = ({
             activeStepId="quickInfo"
             onStepChange={onServiceStepChange}
           />
+          {onSkipServices && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onSkipServices?.()}
+              className="onboarding-skip-btn absolute right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+            >Skip</Button>
+          )}
         </div>
 
         {/* Content */}
