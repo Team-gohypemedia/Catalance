@@ -2419,6 +2419,32 @@ const isOtherAnswerSelectedForQuestion = (question = {}, answersBySlug = {}) => 
     );
 };
 
+const filterOrphanOtherAnswersBySlug = (answersBySlug = {}, questions = []) => {
+    if (!answersBySlug || typeof answersBySlug !== "object" || Array.isArray(answersBySlug)) {
+        return {};
+    }
+
+    const questionList = Array.isArray(questions)
+        ? questions
+        : questions && typeof questions.values === "function"
+            ? Array.from(questions.values())
+            : [];
+
+    const nextAnswers = { ...answersBySlug };
+    const answersSnapshot = { ...answersBySlug };
+    for (const question of questionList) {
+        const slug = String(question?.slug || "").trim();
+        const baseSlug = getOtherAnswerBaseSlug(slug);
+        if (!baseSlug) continue;
+        if (isOtherAnswerSelectedForQuestion({ slug: baseSlug }, answersSnapshot)) {
+            continue;
+        }
+        delete nextAnswers[slug];
+    }
+
+    return nextAnswers;
+};
+
 const buildCapturedCustomOptionForQuestion = (question = {}, answersBySlug = {}) => {
     const customAnswer = getCapturedCustomAnswerForQuestion(question, answersBySlug);
     if (!customAnswer) return null;
@@ -2557,6 +2583,15 @@ const getComparableOptionAliases = (option = {}) =>
             .map((value) => normalizeOptionComparableText(value))
             .filter(Boolean)
     );
+
+const findExactOptionMatchFromText = (answerValue = "", options = []) => {
+    const normalizedAnswer = normalizeOptionComparableText(answerValue);
+    if (!normalizedAnswer) return null;
+
+    return (options || []).find((option) =>
+        getComparableOptionAliases(option).some((alias) => alias === normalizedAnswer)
+    ) || null;
+};
 
 const HELPER_OPTION_TRIGGER_REGEX = /\b(not sure|other|suggest|recommend|advice|help)\b/i;
 const NEGATIVE_OPTION_REGEX = /\b(?:none|nothing|none of these|none of the above|unsure|undecided|no idea|no preference)\b/i;
@@ -2800,6 +2835,19 @@ const normalizeAnswerForQuestion = (question = {}, answerValue = "", runtimeOpti
         return Array.isArray(answerValue)
             ? answerValue.map((item) => String(item || "").trim()).filter(Boolean).join(", ")
             : String(answerValue || "").trim();
+    }
+
+    const exactMatch = findExactOptionMatchFromText(
+        answerValue,
+        getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug)
+    );
+    if (exactMatch) {
+        return String(
+            exactMatch.value
+            || exactMatch.canonicalValue
+            || exactMatch.label
+            || ""
+        ).trim();
     }
 
     const matchedOptions = findMatchingOptionsFromText(
@@ -3634,6 +3682,12 @@ const looksLikeSingleOptionSelection = (message = "", question = {}, runtimeOpti
 
     const displayedOptions = getQuestionOptionLabels(question, runtimeOptionsByQuestionSlug);
     if (displayedOptions.length === 0) return false;
+
+    const exactOptionMatch = findExactOptionMatchFromText(
+        rawMessage,
+        getAcceptedQuestionOptions(question, runtimeOptionsByQuestionSlug)
+    );
+    if (exactOptionMatch) return true;
 
     const numericMatch = rawMessage.match(SIMPLE_OPTION_SELECTION_REGEX);
     if (numericMatch) {
@@ -4577,19 +4631,20 @@ const getAnswersBySlug = (sessionAnswers = {}, questions = []) => {
         }
     }
 
-    return result;
+    return filterOrphanOtherAnswersBySlug(result, questions);
 };
 
 const buildPersistedAnswersPayload = (answersBySlug = {}, questions = [], {
     runtimeOptionsByQuestionSlug = {},
     existingPayload = {}
 } = {}) => {
+    const effectiveAnswersBySlug = filterOrphanOtherAnswersBySlug(answersBySlug, questions);
     const bySlug = {};
     const byQuestionText = {};
 
     for (const question of questions) {
         if (!question?.slug) continue;
-        const value = answersBySlug[question.slug];
+        const value = effectiveAnswersBySlug[question.slug];
         if (!hasAnswerValue(value)) continue;
         bySlug[question.slug] = value;
         byQuestionText[question.text] = buildQuestionDisplayAnswer(
@@ -5190,7 +5245,21 @@ const generateRuntimeOptionsForQuestion = async ({
     const questionType = normalizeTextToken(question?.type || "input");
     const adminControls = getQuestionAdminControls(question, servicePrompt);
     const canonicalOptions = getCanonicalQuestionOptions(question, adminControls);
-    const customRuntimeOptionCandidate = buildCustomRuntimeOptionCandidate(question, answersBySlug);
+    const effectiveAnswersBySlug = filterOrphanOtherAnswersBySlug(answersBySlug, allQuestions);
+    const effectiveAnswersByQuestionText = (Array.isArray(allQuestions) ? allQuestions : []).reduce((acc, currentQuestion) => {
+        const slug = String(currentQuestion?.slug || "").trim();
+        const questionText = String(currentQuestion?.text || "").trim();
+        if (!slug || !questionText || !hasAnswerValue(effectiveAnswersBySlug[slug])) return acc;
+
+        const readableAnswer = answersByQuestionText?.[questionText];
+        acc[questionText] = hasAnswerValue(readableAnswer)
+            ? readableAnswer
+            : effectiveAnswersBySlug[slug];
+        return acc;
+    }, {});
+    const customRuntimeOptionCandidate = isOtherAnswerSelectedForQuestion(question, effectiveAnswersBySlug)
+        ? buildCustomRuntimeOptionCandidate(question, effectiveAnswersBySlug)
+        : null;
     if (!OPTION_QUESTION_TYPES.has(questionType)) {
         return [];
     }
@@ -5217,8 +5286,8 @@ const generateRuntimeOptionsForQuestion = async ({
         serviceName,
         servicePrompt,
         question,
-        answersByQuestionText,
-        answersBySlug,
+        answersByQuestionText: effectiveAnswersByQuestionText,
+        answersBySlug: effectiveAnswersBySlug,
         allQuestions,
         customRuntimeOptionCandidate,
     });
@@ -6046,32 +6115,20 @@ const getSemanticDependentIndexesForChanges = (
 
 const shouldAcceptAutoCapturedOtherAnswer = ({
     slug = "",
-    currentQuestion = null,
     baseAnswersBySlug = {},
     existingAnswersBySlug = {},
-    correctionIntent = false,
+    extractedAnswersBySlug = {},
 }) => {
     const targetBaseSlug = getOtherAnswerBaseSlug(slug);
     if (!targetBaseSlug) return true;
-    if (correctionIntent) return true;
-
-    const currentSlug = String(currentQuestion?.slug || "").trim();
-    if (!currentSlug) return false;
-    if (currentSlug !== targetBaseSlug && currentSlug !== slug) {
-        return false;
-    }
-
-    if (currentSlug === slug) return true;
 
     const combinedAnswers = {
         ...(existingAnswersBySlug || {}),
         ...(baseAnswersBySlug || {}),
+        ...(extractedAnswersBySlug || {}),
     };
 
-    return isOtherAnswerSelectedForQuestion(
-        { slug: targetBaseSlug },
-        combinedAnswers
-    );
+    return isOtherAnswerSelectedForQuestion({ slug: targetBaseSlug }, combinedAnswers);
 };
 
 const clearAnswersByIndexes = (answersBySlug = {}, questions = [], indexes = []) => {
@@ -6111,6 +6168,12 @@ const applyExtractedAnswerUpdates = ({
     const nextAnswers = { ...(baseAnswersBySlug || {}) };
     const updatedSlugs = [];
     const currentQuestionIdentity = getQuestionIdentityType(currentQuestion);
+    const extractedAnswersBySlug = (Array.isArray(extractedAnswers) ? extractedAnswers : []).reduce((acc, extracted) => {
+        const slug = String(extracted?.slug || "").trim();
+        if (!slug || !hasAnswerValue(extracted?.answer)) return acc;
+        acc[slug] = extracted.answer;
+        return acc;
+    }, {});
 
     for (const extracted of extractedAnswers || []) {
         const slug = extracted?.slug;
@@ -6122,7 +6185,7 @@ const applyExtractedAnswerUpdates = ({
             currentQuestion,
             baseAnswersBySlug,
             existingAnswersBySlug,
-            correctionIntent,
+            extractedAnswersBySlug,
         })) {
             continue;
         }
@@ -6184,7 +6247,12 @@ const applyExtractedAnswerUpdates = ({
         }
     }
 
-    return { answersBySlug: nextAnswers, updatedSlugs };
+    const cleanedAnswers = filterOrphanOtherAnswersBySlug(nextAnswers, questionsBySlug);
+
+    return {
+        answersBySlug: cleanedAnswers,
+        updatedSlugs: updatedSlugs.filter((slug) => hasAnswerValue(cleanedAnswers[slug])),
+    };
 };
 
 const findNextUnansweredStep = (questions = [], answersBySlug = {}, {
@@ -6276,11 +6344,25 @@ const mergeExtractedAnswers = ({
     service = {}
 }) => {
     const merged = { ...(baseAnswers || {}) };
+    const extractedAnswersBySlug = (Array.isArray(extractedAnswers) ? extractedAnswers : []).reduce((acc, extracted) => {
+        const slug = String(extracted?.slug || "").trim();
+        if (!slug || !hasAnswerValue(extracted?.answer)) return acc;
+        acc[slug] = extracted.answer;
+        return acc;
+    }, {});
 
     for (const extracted of extractedAnswers || []) {
         const slug = extracted?.slug;
         if (!slug || (validSlugs.size > 0 && !validSlugs.has(slug))) continue;
         if (!hasAnswerValue(extracted?.answer)) continue;
+        if (!shouldAcceptAutoCapturedOtherAnswer({
+            slug,
+            baseAnswersBySlug: baseAnswers,
+            existingAnswersBySlug: merged,
+            extractedAnswersBySlug,
+        })) {
+            continue;
+        }
 
         const question = questionsBySlug.get(slug);
         const blockedByBudgetMinimum = getBudgetMinimumValidationResult({
@@ -6315,7 +6397,7 @@ const mergeExtractedAnswers = ({
         }
     }
 
-    return merged;
+    return filterOrphanOtherAnswersBySlug(merged, questionsBySlug);
 };
 
 const buildQuestionAnswerCoverage = (questions = [], answersBySlug = {}, runtimeOptionsByQuestionSlug = {}) =>
@@ -6361,6 +6443,7 @@ Rules:
 - Return answers that are explicitly stated or clearly implied by the user's message.
 - For option-based questions, if the user's meaning clearly matches one option, return that exact option label as the answer.
 - Use any provided option aliases when they clearly map the user's wording to an option.
+- Only map an answer into a dedicated _other field when the user explicitly describes that question's topic. Do not assign a future _other field from a generic correction or unrelated aside.
 - If a question is not clearly answered, skip it.
 - Do not force a match when multiple options seem plausible.
 - Keep free-text answers short and close to what the user said.
@@ -6437,6 +6520,7 @@ Rules:
 - If one user message answers multiple questions, return all matched questions.
 - For option-based questions, if the user's wording clearly maps to one option, return that exact option label.
 - Use any provided option aliases when they clearly map the user's wording to an option.
+- Only map an answer into a dedicated _other field when the user explicitly describes that question's topic. Do not assign a future _other field from a generic correction or unrelated aside.
 - You may use semantic understanding to match a user's wording to the correct question or option when it is clearly implied.
 - Do not force uncertain matches.
 - Prefer concise answer text.
@@ -6695,6 +6779,7 @@ ${JSON.stringify(attachmentInferredAnswer || "")}
 
 Validation rules:
 - Greeting only, gibberish, or irrelevant text when details are needed => INVALID.
+- If the user sends the exact text of one visible option, treat it as VALID even if that label contains words like "other" or "not sure".
 - Direct side-question, confusion, advice request, "not sure", or "other" => INFO_REQUEST.
 - If current question response mode is "final_confirmation" or "final_confirmation_end", short completion replies like "not really", "nothing else", "no more", "that's all", "go ahead", or "generate it" are VALID.
 - If direct text is empty but attachment/URL context clearly answers the question => VALID.
@@ -8152,9 +8237,9 @@ export const guestChat = asyncHandler(async (req, res) => {
             `
             : "";
 
-        if (serviceAiInstructions) {
-            console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${serviceAiInstructions}\n---------------------------\n`);
-        }
+        // if (serviceAiInstructions) {
+        //     console.log(`\n--- [AI Context Loaded] ---\nService: ${service.name}\nPrompt: ${serviceAiInstructions}\n---------------------------\n`);
+        // }
 
         const businessNameGuardAction = getBusinessNameValidationGuardAction({
             question: currentQuestion,

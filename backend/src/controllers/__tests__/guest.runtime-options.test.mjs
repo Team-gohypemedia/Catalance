@@ -736,6 +736,63 @@ test("does not auto-capture unrelated future _other answers from a pages selecti
   assert.deepEqual(result.updatedSlugs, []);
 });
 
+test("does not auto-capture unrelated future _other answers during a correction flow", () => {
+  const questions = [
+    {
+      slug: "pages_required",
+      text: "Which pages do you need?",
+      type: "multi_select",
+      options: [
+        { label: "Home", value: "home" },
+        { label: "Shop / Products", value: "shop" },
+      ],
+    },
+    {
+      slug: "design_style",
+      text: "How would you like your website to look and feel?",
+      type: "single_select",
+      options: [
+        { label: "Clean and modern", value: "clean_modern" },
+        { label: "Premium and luxury", value: "premium_luxury" },
+        { label: "Other", value: "other" },
+      ],
+    },
+    {
+      slug: "design_style_other",
+      text: "Please describe your preferred design style.",
+      type: "input",
+    },
+  ];
+
+  const result = applyExtractedAnswerUpdates({
+    baseAnswersBySlug: {
+      pages_required: "Home, Shop / Products",
+    },
+    existingAnswersBySlug: {
+      pages_required: "Home, Shop / Products",
+    },
+    extractedAnswers: [
+      {
+        slug: "design_style_other",
+        answer: "Home, Shop / Products, Product Detail Page, Cart & Checkout, About Us, Contact",
+        confidence: 0.96,
+      },
+    ],
+    questionIndexBySlug: new Map(questions.map((question, index) => [question.slug, index])),
+    questionsBySlug: new Map(questions.map((question) => [question.slug, question])),
+    questionSlugSet: new Set(questions.map((question) => question.slug)),
+    runtimeOptionsByQuestionSlug: {},
+    currentStep: 0,
+    currentQuestion: questions[0],
+    ignoreSlug: "pages_required",
+    correctionIntent: true,
+    logPrefix: "[Test Auto Capture]",
+  });
+
+  assert.equal(result.answersBySlug.design_style_other, undefined);
+  assert.deepEqual(result.updatedSlugs, []);
+});
+
 test("does not display captured _other text unless the base option was actually other", () => {
   const question = {
     slug: "design_style",
@@ -761,6 +818,60 @@ test("does not display captured _other text unless the base option was actually 
     design_style_other: "Dark and futuristic",
   });
   assert.equal(validCustomOptions[0].label, "Dark and futuristic");
+});
+
+test("filters orphan _other answers out of persisted payloads", () => {
+  const questions = [
+    {
+      slug: "pages_required",
+      text: "Which pages do you need?",
+      type: "multi_select",
+      options: [
+        { label: "Home", value: "home" },
+        { label: "Shop / Products", value: "shop" },
+      ],
+    },
+    {
+      slug: "design_style",
+      text: "How would you like your website to look and feel?",
+      type: "single_select",
+      options: [
+        { label: "Clean and modern", value: "clean_modern" },
+        { label: "Premium and luxury", value: "premium_luxury" },
+        { label: "Other", value: "other" },
+      ],
+    },
+    {
+      slug: "design_style_other",
+      text: "Please describe your preferred design style.",
+      type: "input",
+    },
+  ];
+
+  const orphanPayload = buildPersistedAnswersPayload(
+    {
+      pages_required: "Home, Shop / Products",
+      design_style_other: "Dark and futuristic",
+    },
+    questions,
+    { runtimeOptionsByQuestionSlug: {}, existingPayload: {} }
+  );
+
+  assert.equal(orphanPayload.bySlug.design_style_other, undefined);
+  assert.equal(orphanPayload.byQuestionText["Please describe your preferred design style."], undefined);
+
+  const validPayload = buildPersistedAnswersPayload(
+    {
+      pages_required: "Home, Shop / Products",
+      design_style: "other",
+      design_style_other: "Dark and futuristic",
+    },
+    questions,
+    { runtimeOptionsByQuestionSlug: {}, existingPayload: {} }
+  );
+
+  assert.equal(validPayload.bySlug.design_style_other, "Dark and futuristic");
+  assert.equal(validPayload.byQuestionText["Please describe your preferred design style."], "Dark and futuristic");
 });
 
 test("replaces budget fallback text when the actual next question is not budget", () => {

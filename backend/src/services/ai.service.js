@@ -4366,8 +4366,8 @@ export const generateProposalMarkdown = async (
     selectedServiceName
   });
 
-  console.log("[DEBUG] Raw AI Proposal Markdown:\n", proposalMarkdown);
-  console.log("[DEBUG] Completeness Needs Repair:", completeness.needsRepair, "Missing:", completeness.missingFields);
+  // console.log("[DEBUG] Raw AI Proposal Markdown:\n", proposalMarkdown);
+  // console.log("[DEBUG] Completeness Needs Repair:", completeness.needsRepair, "Missing:", completeness.missingFields);
 
   if (completeness.needsRepair) {
     try {
