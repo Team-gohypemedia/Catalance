@@ -3967,6 +3967,9 @@ const FreelancerOnboardingShell = () => {
   const caseStudyValidationErrors = serviceValidationErrorsByStep.caseStudy || {};
 
   useEffect(() => {
+    if (showAgencyFlow) {
+      return;
+    }
     const handleKeyDown = (e) => {
       if (e.key === "Enter") {
         const target = e.target;
@@ -3978,14 +3981,29 @@ const FreelancerOnboardingShell = () => {
 
         // Check if there is any open dropdown, menu, dialog, or popover overlay
         const hasOpenOverlay = (() => {
-          if (
-            document.querySelector("[role='listbox']") ||
-            document.querySelector("[role='menu']") ||
-            document.querySelector("[data-radix-popper-content-wrapper]") ||
-            document.querySelector("[data-onboarding-popup='true']")
-          ) {
-            return true;
+          const selectors = [
+            "[role='listbox']",
+            "[role='menu']",
+            "[data-radix-popper-content-wrapper]",
+            "[data-onboarding-popup='true']"
+          ];
+          for (const selector of selectors) {
+            const elements = document.querySelectorAll(selector);
+            for (const el of elements) {
+              const state = el.getAttribute("data-state");
+              if (state === "open") return true;
+              if (state === "closed") continue;
+              
+              const style = window.getComputedStyle(el);
+              if (style.display !== "none" && style.visibility !== "hidden") {
+                const rect = el.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                  return true;
+                }
+              }
+            }
           }
+
           const dialogs = document.querySelectorAll("[role='dialog']");
           for (const el of dialogs) {
             const state = el.getAttribute("data-state");
@@ -4040,7 +4058,7 @@ const FreelancerOnboardingShell = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [footerPrimaryAction, footerPrimaryDisabled]);
+  }, [footerPrimaryAction, footerPrimaryDisabled, showAgencyFlow]);
 
   if (showAgencyFlow) {
     return (

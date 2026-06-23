@@ -3719,6 +3719,97 @@ const AgencyOnboardingShell = ({
   const agencyValidationErrors =
     agencyValidationErrorsByStep[currentSlide.id] || {};
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Enter") {
+        const target = e.target;
+        if (!target) return;
+        const tagName = target.tagName.toUpperCase();
+        if (tagName === "TEXTAREA" || target.disabled) {
+          return;
+        }
+
+        // Check if there is any open dropdown, menu, dialog, or popover overlay
+        const hasOpenOverlay = (() => {
+          const selectors = [
+            "[role='listbox']",
+            "[role='menu']",
+            "[data-radix-popper-content-wrapper]",
+            "[data-onboarding-popup='true']"
+          ];
+          for (const selector of selectors) {
+            const elements = document.querySelectorAll(selector);
+            for (const el of elements) {
+              const state = el.getAttribute("data-state");
+              if (state === "open") return true;
+              if (state === "closed") continue;
+              
+              const style = window.getComputedStyle(el);
+              if (style.display !== "none" && style.visibility !== "hidden") {
+                const rect = el.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                  return true;
+                }
+              }
+            }
+          }
+
+          const dialogs = document.querySelectorAll("[role='dialog']");
+          for (const el of dialogs) {
+            const state = el.getAttribute("data-state");
+            if (state === "open") return true;
+            if (state === "closed") continue;
+            if (el.getAttribute("aria-hidden") === "true") continue;
+            const style = window.getComputedStyle(el);
+            if (style.display !== "none" && style.visibility !== "hidden") {
+              return true;
+            }
+          }
+          return false;
+        })();
+        if (hasOpenOverlay) {
+          return;
+        }
+
+        if (tagName === "BUTTON") {
+          const btnText = String(target.textContent || "").trim().toLowerCase();
+          const ariaLabel = String(target.getAttribute("aria-label") || "").toLowerCase();
+          
+          // Prevent navigation if the focused button has an explicit navigation/removal action
+          const isBackBtn = btnText.includes("back") || ariaLabel.includes("back") || target.querySelector(".lucide-chevron-left");
+          const isSkipBtn = btnText.includes("skip") || ariaLabel.includes("skip");
+          const isResetBtn = btnText.includes("reset") || ariaLabel.includes("reset");
+          const isRemoveBtn = btnText.includes("remove") || ariaLabel.includes("remove") || target.querySelector(".lucide-x") || target.title?.toLowerCase().includes("remove") || target.ariaLabel?.toLowerCase().includes("remove");
+          
+          if (isBackBtn || isSkipBtn || isResetBtn || isRemoveBtn) {
+            return;
+          }
+          
+          // Let browser's native click behavior on primary continue buttons run without double triggering
+          const isPrimaryBtn = target.getAttribute("type") === "submit" || btnText.includes("continue") || btnText.includes("next");
+          if (isPrimaryBtn) {
+            return;
+          }
+        }
+
+        if (tagName === "INPUT") {
+          const type = (target.type || "").toLowerCase();
+          if (["checkbox", "radio", "file", "submit", "button"].includes(type)) {
+            return;
+          }
+        }
+
+        e.preventDefault();
+        if (footerPrimaryAction && !footerPrimaryDisabled) {
+          footerPrimaryAction();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [footerPrimaryAction, footerPrimaryDisabled]);
+
   return (
     <DarkGradientBg className="text-[#f1f5f9]">
       <main className="fixed inset-0 flex flex-col overflow-hidden bg-transparent z-10">
@@ -3766,79 +3857,7 @@ const AgencyOnboardingShell = ({
         </div>
       </header>
 
-      <div
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            const target = e.target;
-            if (!target) return;
-            const tagName = target.tagName.toUpperCase();
-            if (tagName === "TEXTAREA" || target.disabled) {
-              return;
-            }
-
-            // Check if there is any open dropdown, menu, dialog, or popover overlay
-            const hasOpenOverlay = (() => {
-              if (
-                document.querySelector("[role='listbox']") ||
-                document.querySelector("[role='menu']") ||
-                document.querySelector("[data-radix-popper-content-wrapper]") ||
-                document.querySelector("[data-onboarding-popup='true']")
-              ) {
-                return true;
-              }
-              const dialogs = document.querySelectorAll("[role='dialog']");
-              for (const el of dialogs) {
-                const state = el.getAttribute("data-state");
-                if (state === "open") return true;
-                if (state === "closed") continue;
-                if (el.getAttribute("aria-hidden") === "true") continue;
-                const style = window.getComputedStyle(el);
-                if (style.display !== "none" && style.visibility !== "hidden") {
-                  return true;
-                }
-              }
-              return false;
-            })();
-            if (hasOpenOverlay) {
-              return;
-            }
-
-            if (tagName === "BUTTON") {
-              const btnText = String(target.textContent || "").trim().toLowerCase();
-              const ariaLabel = String(target.getAttribute("aria-label") || "").toLowerCase();
-              
-              // Prevent navigation if the focused button has an explicit navigation/removal action
-              const isBackBtn = btnText.includes("back") || ariaLabel.includes("back") || target.querySelector(".lucide-chevron-left");
-              const isSkipBtn = btnText.includes("skip") || ariaLabel.includes("skip");
-              const isResetBtn = btnText.includes("reset") || ariaLabel.includes("reset");
-              const isRemoveBtn = btnText.includes("remove") || ariaLabel.includes("remove") || target.querySelector(".lucide-x") || target.title?.toLowerCase().includes("remove") || target.ariaLabel?.toLowerCase().includes("remove");
-              
-              if (isBackBtn || isSkipBtn || isResetBtn || isRemoveBtn) {
-                return;
-              }
-              
-              // Let browser's native click behavior on primary continue buttons run without double triggering
-              const isPrimaryBtn = target.getAttribute("type") === "submit" || btnText.includes("continue") || btnText.includes("next");
-              if (isPrimaryBtn) {
-                return;
-              }
-            }
-
-            if (tagName === "INPUT") {
-              const type = (target.type || "").toLowerCase();
-              if (["checkbox", "radio", "file", "submit", "button"].includes(type)) {
-                return;
-              }
-            }
-
-            e.preventDefault();
-            if (footerPrimaryAction && !footerPrimaryDisabled) {
-              footerPrimaryAction();
-            }
-          }
-        }}
-        className="contents"
-      >
+      <div className="contents">
         <section
           ref={onboardingScrollContainerRef}
           className="subtle-scrollbar relative min-h-0 flex-1 overflow-y-auto"

@@ -39,8 +39,8 @@ const FreelancerClientCards = () => {
   const brandColor = isDarkMode ? "#F9D949" : "#D9692A";
   
   const cardClassName = isDarkMode
-    ? "relative isolate flex min-h-0 sm:min-h-[26rem] flex-col rounded-[1.5rem] sm:rounded-[2rem] border border-white/10 bg-white/5 p-4 sm:p-6 text-left shadow-2xl backdrop-blur-xl transition-all duration-500 ease-in-out"
-    : "relative isolate flex min-h-0 sm:min-h-[26rem] flex-col rounded-[1.5rem] sm:rounded-[2rem] border border-black/5 bg-white p-4 sm:p-6 text-left shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-500 ease-in-out group-hover:!bg-[#D9692A] group-hover:border-transparent group-hover:shadow-[0_24px_80px_rgba(217,105,42,0.35)]";
+    ? "relative isolate flex min-h-0 sm:min-h-[22rem] flex-col rounded-[1.5rem] sm:rounded-[2rem] border border-white/10 bg-white/5 p-4 sm:p-6 text-left shadow-2xl backdrop-blur-xl transition-all duration-500 ease-in-out"
+    : "relative isolate flex min-h-0 sm:min-h-[22rem] flex-col rounded-[1.5rem] sm:rounded-[2rem] border border-black/5 bg-white p-4 sm:p-6 text-left shadow-[0_4px_20px_rgba(0,0,0,0.03)] transition-all duration-500 ease-in-out group-hover:!bg-[#D9692A] group-hover:border-transparent group-hover:shadow-[0_24px_80px_rgba(217,105,42,0.35)]";
 
   const textHeadingClass = isDarkMode
     ? "text-white"
@@ -87,7 +87,7 @@ const FreelancerClientCards = () => {
           </p>
         </div>
 
-        <div className="mt-10 grid w-full max-w-5xl items-center gap-8 sm:mt-14 lg:mt-20 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] lg:gap-10">
+        <div className="mt-10 grid w-full max-w-6xl items-center gap-8 sm:mt-14 lg:mt-20 lg:grid-cols-[minmax(0,1fr)_120px_minmax(0,1fr)] lg:gap-10">
           {/* For Businesses Card */}
           <div className="relative group overflow-visible">
             <img
@@ -100,14 +100,14 @@ const FreelancerClientCards = () => {
 
             <article className={`${cardClassName} z-10`}>
               <div className="relative z-10 flex h-full flex-col">
-                <div className="mb-4 sm:mb-11 flex items-center justify-between gap-4">
+                <div className="mb-4 sm:mb-6 flex items-center justify-between gap-4">
                   <Briefcase className={`size-7 ${iconClass}`} />
                   <span className={`text-sm font-semibold uppercase tracking-[0.28em] transition-colors duration-500 ease-in-out ${isDarkMode ? "text-white/50" : "text-[#1C1B1F]/50 group-hover:!text-white"}`}>
                     For Businesses
                   </span>
                 </div>
 
-                <h3 className={`max-w-xs mx-auto text-center text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`text-left text-xl sm:text-[1.75rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Hire Reliable Talent Faster
                 </h3>
 
@@ -124,9 +124,11 @@ const FreelancerClientCards = () => {
                   ))}
                 </div>
 
+                <div className="flex-grow" />
+
                 <Link
                   to="/service"
-                  className={`mt-4 sm:mt-8 flex items-center justify-center h-[3.25rem] sm:h-[3.75rem] rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
+                  className={`mt-6 flex items-center justify-center h-[3.25rem] sm:h-[3.75rem] rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
                 >
                   Hire Now
                 </Link>
@@ -162,14 +164,14 @@ const FreelancerClientCards = () => {
 
             <article className={`${cardClassName} z-10`}>
               <div className="relative z-10 flex h-full flex-col">
-                <div className="mb-4 sm:mb-11 flex items-center justify-between gap-4">
+                <div className="mb-4 sm:mb-6 flex items-center justify-between gap-4">
                   <UserRoundSearch className={`size-7 ${iconClass}`} />
                   <span className={`text-sm font-semibold uppercase tracking-[0.28em] transition-colors duration-500 ease-in-out ${isDarkMode ? "text-white/50" : "text-[#1C1B1F]/50 group-hover:!text-white"}`}>
                     For Freelancers
                   </span>
                 </div>
 
-                <h3 className={`max-w-sm mx-auto text-center text-xl sm:text-[2.05rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`text-left text-xl sm:text-[1.75rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Work with Trusted Clients
                 </h3>
 
@@ -186,9 +188,11 @@ const FreelancerClientCards = () => {
                   ))}
                 </div>
 
+                <div className="flex-grow" />
+
                 <Link
                   to="/signup?role=freelancer"
-                  className={`mt-4 sm:mt-8 flex items-center justify-center h-[3.25rem] sm:h-[3.75rem] rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
+                  className={`mt-6 flex items-center justify-center h-[3.25rem] sm:h-[3.75rem] rounded-xl sm:rounded-2xl text-lg sm:text-xl font-bold transition-transform hover:scale-[1.02] ${buttonClass}`}
                 >
                   Get Hired Now
                 </Link>
