@@ -172,6 +172,7 @@ const ProfileHeroCard = ({
 
         <div className="absolute -top-16 left-4 sm:-top-20 sm:left-5 md:-top-24 md:left-6">
           <div
+            id="profile-avatar-upload"
             className="group/avatar relative shrink-0 cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >

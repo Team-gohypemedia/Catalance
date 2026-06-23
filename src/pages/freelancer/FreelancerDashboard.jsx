@@ -79,11 +79,7 @@ const FreelancerDashboard = () => {
               activeWorkspaceKey={model.activeWorkspaceKey}
               onWorkspaceNav={model.handleWorkspaceNav}
               onOpenProfile={model.onOpenProfile}
-              onPrimaryAction={
-                model.activeWorkspaceKey !== "proposals"
-                  ? model.onOpenProposals
-                  : undefined
-              }
+
               notifications={model.notifications}
               unreadCount={model.unreadCount}
               markAllAsRead={model.markAllAsRead}

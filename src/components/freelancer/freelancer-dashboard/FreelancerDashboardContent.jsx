@@ -3782,11 +3782,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         activeWorkspaceKey={activeWorkspaceKey}
         onWorkspaceNav={handleWorkspaceNav}
         onOpenProfile={() => navigate("/freelancer/profile")}
-        onPrimaryAction={
-          activeWorkspaceKey !== "proposals"
-            ? () => navigate("/freelancer/proposals")
-            : undefined
-        }
+
         notifications={notifications}
         unreadCount={unreadCount}
         markAllAsRead={markAllAsRead}

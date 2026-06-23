@@ -3642,7 +3642,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Profile photo",
       detail: "Upload a clear profile image.",
-      onClick: () => openEditPersonalModal(),
+      onClick: () => document.getElementById("profile-avatar-upload")?.click(),
     });
   }
 
@@ -3658,7 +3658,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Professional title",
       detail: "Add your headline or role title.",
-      onClick: () => openEditPersonalModal(),
+      onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.ALL),
     });
   }
 
@@ -3666,7 +3666,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Professional Bio",
       detail: "Write a short bio that highlights your expertise.",
-      onClick: () => openEditPersonalModal(),
+      onClick: () => openEditPersonalModal(PERSONAL_EDITOR_SECTIONS.ABOUT),
     });
   }
 
@@ -3737,7 +3737,7 @@ const FreelancerProfile = () => {
       detail: suggestedLinks
         ? `Add ${missingProfileLinkCount} more link${missingProfileLinkCount === 1 ? "" : "s"} (suggested: ${suggestedLinks}).`
         : `Add ${missingProfileLinkCount} more profile link${missingProfileLinkCount === 1 ? "" : "s"}.`,
-      onClick: () => openEditPersonalModal(),
+      onClick: () => setModalType("portfolio"),
     });
   }
 
@@ -3753,7 +3753,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Resume uploaded",
       detail: "Upload your resume so clients can quickly review your profile.",
-      onClick: () => openEditPersonalModal(),
+      onClick: () => resumeInputRef.current?.click(),
     });
   }
 
