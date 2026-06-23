@@ -66,7 +66,6 @@ const AgencyOperationsSlide = lazy(() => import("./slides/AgencyOperationsSlide"
 const AgencyTrustSlide = lazy(() => import("./slides/AgencyTrustSlide"));
 const FreelancerBasicProfileSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerBasicProfileSlide"));
 const FreelancerServicesSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicesSlide"));
-const FreelancerServiceSetupSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceSetupSlide"));
 const FreelancerServiceInfoSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceInfoSlide"));
 const FreelancerServicePricingSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServicePricingSlide"));
 const FreelancerServiceVisualsSlide = lazy(() => import("@/components/freelancer/Freelancer-Onboarding/slides/FreelancerServiceVisualsSlide"));
@@ -87,7 +86,6 @@ const slideRegistry = {
   agencyTrust: AgencyTrustSlide,
   basicProfile: FreelancerBasicProfileSlide,
   services: FreelancerServicesSlide,
-  serviceSetup: FreelancerServiceSetupSlide,
   serviceInfo: FreelancerServiceInfoSlide,
   servicePricing: FreelancerServicePricingSlide,
   serviceVisuals: FreelancerServiceVisualsSlide,
@@ -988,7 +986,6 @@ const AgencyOnboardingShell = ({
   const isCaseStudySlide = currentSlide.id === "caseStudy";
   const isServiceReviewSlide = currentSlide.id === "serviceReview";
   const isServiceSectionSlide =
-    currentSlide.id === "serviceSetup" ||
     isServiceInfoSlide ||
     isServicePricingSlide ||
     isServiceVisualsSlide ||
@@ -1011,9 +1008,6 @@ const AgencyOnboardingShell = ({
       : isCommunicationPolicySlide
         ? !communicationPolicyReady
       : false;
-  const serviceSetupSlideIndex = onboardingSlides.findIndex(
-    (slide) => slide.id === "serviceSetup",
-  );
   const serviceInfoSlideIndex = onboardingSlides.findIndex(
     (slide) => slide.id === "serviceInfo",
   );
@@ -2934,7 +2928,7 @@ const AgencyOnboardingShell = ({
     if (typeof document !== "undefined") {
       document.activeElement?.blur();
     }
-    if (currentSlide.id === "serviceSetup" && currentServiceIndex > 0) {
+    if (currentSlide.id === "serviceInfo" && currentServiceIndex > 0) {
       setCurrentServiceIndex((currentIndex) => Math.max(currentIndex - 1, 0));
       navigateToSlideIndex(serviceReviewSlideIndex, currentServiceIndex - 1);
       return;
@@ -3063,7 +3057,7 @@ const AgencyOnboardingShell = ({
         setCurrentServiceIndex((currentIndex) =>
           Math.min(currentIndex + 1, selectedServices.length - 1),
         );
-        navigateToSlideIndex(serviceSetupSlideIndex, currentServiceIndex + 1);
+        navigateToSlideIndex(serviceInfoSlideIndex, currentServiceIndex + 1);
         return;
       }
 
@@ -3970,7 +3964,7 @@ const AgencyOnboardingShell = ({
               <div />
             ) : (
               <div className="flex justify-end">
-                {isServiceSectionSlide && currentSlide.id !== "serviceSetup" && currentSlide.id !== "serviceInfo" ? (
+                {isServiceSectionSlide && currentSlide.id !== "serviceInfo" ? (
                   <Button
                     type="button"
                     variant="secondary"

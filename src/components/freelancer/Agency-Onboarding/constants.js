@@ -352,11 +352,6 @@ export const AGENCY_ONBOARDING_SLIDES = [
     progressValue: 32,
   },
   {
-    ...SERVICE_SETUP_SLIDE,
-    title: "Let's Start Your Service Setup",
-    progressValue: 36,
-  },
-  {
     ...SERVICE_INFO_SLIDE,
     progressValue: 44,
   },
