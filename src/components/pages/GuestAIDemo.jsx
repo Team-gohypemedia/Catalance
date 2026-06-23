@@ -89,6 +89,10 @@ const { primaryKey: GUEST_CHAT_STORAGE_KEY } = getGuestChatStorageKeys();
 const { primaryKey: GUEST_CHAT_SIDEBAR_SIZE_KEY } =
     getGuestChatSidebarSizeStorageKeys();
 const MAX_PREVIOUS_CHAT_ITEMS = 30;
+const REMOVE_BOLD_MARKDOWN_COMPONENTS = {
+    strong: ({ node, ...props }) => <span {...props} />,
+    b: ({ node, ...props }) => <span {...props} />,
+};
 const ATTACHMENT_TOKEN_PREFIX = '[[ATTACHMENT]]';
 const ATTACHMENT_TOKEN_REGEX = /^\[\[ATTACHMENT\]\]([^|]+)\|([^|]+)\|([^|]*)\|(\d+)$/;
 const URL_TOKEN_PREFIX = '[[URL]]';
@@ -1422,7 +1426,7 @@ const AssistantMarkdownBlocks = ({ content = '', className = '' }) => {
     if (blocks.length <= 1) {
         return (
             <div className={className}>
-                <ReactMarkdown>{normalized}</ReactMarkdown>
+                <ReactMarkdown components={REMOVE_BOLD_MARKDOWN_COMPONENTS}>{normalized}</ReactMarkdown>
             </div>
         );
     }
@@ -1431,7 +1435,7 @@ const AssistantMarkdownBlocks = ({ content = '', className = '' }) => {
         <div className={`${className} space-y-4`}>
             {blocks.map((block, index) => (
                 <div key={`assistant-block-${index}`}>
-                    <ReactMarkdown>{block}</ReactMarkdown>
+                    <ReactMarkdown components={REMOVE_BOLD_MARKDOWN_COMPONENTS}>{block}</ReactMarkdown>
                 </div>
             ))}
         </div>
@@ -1472,7 +1476,7 @@ const AssistantMessageBody = ({
             {questionText && (
                 <div className={`rounded-2xl border px-3.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ${isDark ? 'border-primary/20 bg-primary/5' : 'border-primary/30 bg-primary/12'}`}>
                     <div className={`prose prose-sm max-w-none break-words text-[12.5px] font-medium leading-normal prose-p:my-0.5 ${isDark ? 'prose-invert prose-p:text-primary' : 'prose-p:text-slate-800'}`}>
-                        <ReactMarkdown>{questionText}</ReactMarkdown>
+                        <ReactMarkdown components={REMOVE_BOLD_MARKDOWN_COMPONENTS}>{questionText}</ReactMarkdown>
                     </div>
                 </div>
             )}
@@ -1502,7 +1506,7 @@ const AssistantMessageBody = ({
                                     {option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
-                                    <ReactMarkdown>{option.text}</ReactMarkdown>
+                                    <ReactMarkdown components={REMOVE_BOLD_MARKDOWN_COMPONENTS}>{option.text}</ReactMarkdown>
                                 </div>
                             </button>
                         ) : (
@@ -1514,7 +1518,7 @@ const AssistantMessageBody = ({
                                     {option.number}
                                 </span>
                                 <div className={`prose prose-sm max-w-none text-[13px] leading-normal prose-p:my-0 ${isDark ? 'prose-invert text-slate-100' : 'text-slate-700'}`}>
-                                    <ReactMarkdown>{option.text}</ReactMarkdown>
+                                    <ReactMarkdown components={REMOVE_BOLD_MARKDOWN_COMPONENTS}>{option.text}</ReactMarkdown>
                                 </div>
                             </div>
                         )
@@ -2485,7 +2489,7 @@ const ProposalPreview = ({ content, isDark }) => {
     if (!parsed.hasStructuredData) {
         return (
             <div className={`prose prose-sm max-w-none ${isDark ? 'prose-invert' : ''}`}>
-                <ReactMarkdown>{normalizeProposalPreviewContent(content)}</ReactMarkdown>
+                <ReactMarkdown components={REMOVE_BOLD_MARKDOWN_COMPONENTS}>{normalizeProposalPreviewContent(content)}</ReactMarkdown>
             </div>
         );
     }
@@ -7156,7 +7160,7 @@ const GuestAIDemo = () => {
                                                     : 'bg-[#F0F0F0] text-slate-900'
                                                 }`}>
                                                 <div className={`prose prose-sm max-w-none prose-p:my-0 prose-strong:font-normal prose-headings:font-normal ${isDark ? 'prose-invert' : ''}`}>
-                                                    <ReactMarkdown>{messageContent}</ReactMarkdown>
+                                                    <ReactMarkdown components={REMOVE_BOLD_MARKDOWN_COMPONENTS}>{messageContent}</ReactMarkdown>
                                                 </div>
                                             </div>
                                         )}
