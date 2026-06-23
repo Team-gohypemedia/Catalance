@@ -261,14 +261,18 @@ const AddEditServiceWizard = ({
   }, []);
 
   const resolvedServiceId = useMemo(() => {
+    if (serviceProfileForm?.serviceId) return serviceProfileForm.serviceId;
     const normalizedKey = normalizeServiceLookupToken(serviceKey);
     if (!normalizedKey) return null;
+
+    // Handle common mismatches between service keys
+    const lookupKey = normalizedKey === 'website_development' ? 'web_development' : normalizedKey;
 
     // Match against marketplace service key/name/label/id variants.
     const mService = marketplaceServices.find((service) => {
       const candidates = [service?.key, service?.name, service?.label, service?.id];
       return candidates.some(
-        (candidate) => normalizeServiceLookupToken(candidate) === normalizedKey
+        (candidate) => normalizeServiceLookupToken(candidate) === lookupKey
       );
     });
     if (mService) return mService.id;
@@ -277,11 +281,11 @@ const AddEditServiceWizard = ({
     const service = servicesCatalog.find((entry) => {
       const candidates = [entry?.key, entry?.value, entry?.id, entry?.label, entry?.name];
       return candidates.some(
-        (candidate) => normalizeServiceLookupToken(candidate) === normalizedKey
+        (candidate) => normalizeServiceLookupToken(candidate) === lookupKey
       );
     });
     return service?.id || null;
-  }, [serviceKey, servicesCatalog, marketplaceServices]);
+  }, [serviceKey, servicesCatalog, marketplaceServices, serviceProfileForm?.serviceId]);
 
   const selectedSubcategories = useMemo(
     () =>
@@ -1535,7 +1539,7 @@ const ServiceMediaUploadArea = ({
           }}
           onDragLeave={() => setIsDragOver(false)}
           className={cn(
-            "flex w-full flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-14 transition-colors",
+            "flex w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-6 py-8 transition-colors",
             isDragOver
               ? "border-primary/60 bg-primary/5"
               : "border-primary/30 bg-transparent hover:border-primary/50"
@@ -1970,7 +1974,22 @@ const CategorySkillBrowser = ({
         </button>
       </div>
 
-      {(selectedCategoryItems.length > 0 || selectedSkillItems.length > 0) ? (
+      {isCategoriesLoading || isToolsLoading ? (
+        <div className="mt-3 space-y-5">
+          <div className="flex flex-wrap gap-2">
+            <div className="h-10 w-28 animate-pulse rounded-lg bg-muted/60" />
+            <div className="h-10 w-24 animate-pulse rounded-lg bg-muted/60" />
+            <div className="h-10 w-32 animate-pulse rounded-lg bg-muted/60" />
+          </div>
+          <div className="space-y-3">
+            <p className="h-4 w-16 animate-pulse rounded bg-muted/60" />
+            <div className="flex flex-wrap gap-2">
+              <div className="h-10 w-24 animate-pulse rounded-lg bg-muted/60" />
+              <div className="h-10 w-20 animate-pulse rounded-lg bg-muted/60" />
+            </div>
+          </div>
+        </div>
+      ) : (selectedCategoryItems.length > 0 || selectedSkillItems.length > 0) ? (
         <div className="mt-3 space-y-5">
           {selectedCategoryItems.length > 0 ? (
             <div className="flex flex-wrap gap-2">

@@ -93,22 +93,42 @@ const ProfileSummaryCards = ({
             Missing details
           </p>
           <ul className="mt-2 space-y-3">
-            {visibleMissingDetails.map((item, index) => (
-              <li key={`${item.label}-${index}`} className="flex gap-3">
-                <span
-                  className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary/10 ring-4 ring-primary/20/10"
-                  aria-hidden="true"
-                />
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold text-foreground">
-                    {item.label}
-                  </p>
-                  <p className="text-xs leading-relaxed text-muted-foreground">
-                    {item.detail}
-                  </p>
-                </div>
-              </li>
-            ))}
+            {visibleMissingDetails.map((item, index) => {
+              const content = (
+                <>
+                  <span
+                    className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-primary/10 ring-4 ring-primary/20/10"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0 text-left">
+                    <p className="text-xs font-semibold text-foreground">
+                      {item.label}
+                    </p>
+                    <p className="text-xs leading-relaxed text-muted-foreground transition-colors group-hover:text-foreground">
+                      {item.detail}
+                    </p>
+                  </div>
+                </>
+              );
+
+              return (
+                <li key={`${item.label}-${index}`}>
+                  {item.onClick ? (
+                    <button
+                      type="button"
+                      onClick={item.onClick}
+                      className="group flex w-full gap-3 rounded-lg -mx-2 px-2 py-1.5 transition-colors hover:bg-muted/50 active:bg-muted"
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div className="flex gap-3 px-2 py-1.5 -mx-2">
+                      {content}
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
           {hiddenMissingCount > 0 ? (
             <p className="mt-2 text-[11px] font-medium text-primary/80">

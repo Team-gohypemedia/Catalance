@@ -835,8 +835,8 @@ const FreelancerPayments = () => {
                     <Skeleton className="h-14 w-full rounded-2xl" />
                   </div>
                 ) : pendingMilestones.length === 0 ? (
-                  <div className="rounded-[22px] border border-dashed border-white/[0.06] bg-white/[0.015] px-5 py-12 text-center">
-                    <p className="text-xl font-semibold text-white">No payout milestones yet</p>
+                  <div className="rounded-[22px] border border-dashed border-border bg-muted/30 px-5 py-12 text-center">
+                    <p className="text-xl font-semibold text-foreground">No payout milestones yet</p>
                     <p className="mt-2 text-sm text-muted-foreground">
                       Accepted projects with milestone schedules will start appearing here.
                     </p>
@@ -895,7 +895,7 @@ const FreelancerPayments = () => {
                     <div className="hidden overflow-x-auto md:block">
                       <table className="w-full min-w-[680px] text-left">
                       <thead>
-                        <tr className="border-b border-white/[0.06] text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        <tr className="border-b border-border text-xs uppercase tracking-[0.18em] text-muted-foreground">
                           <th className="pb-5 pr-6 font-medium">Date</th>
                           <th className="pb-5 pr-6 font-medium">Project</th>
                           <th className="pb-5 pr-6 font-medium">Client</th>
@@ -914,13 +914,13 @@ const FreelancerPayments = () => {
                                 {formatDateLabel(row.date)}
                               </td>
                               <td className="py-5 pr-6">
-                                <p className="text-sm font-medium text-white">{row.projectTitle}</p>
+                                <p className="text-sm font-medium text-foreground">{row.projectTitle}</p>
                                 <p className="mt-1 text-sm text-muted-foreground">{row.label}</p>
                               </td>
-                              <td className="py-5 pr-6 text-sm font-medium text-white">
+                              <td className="py-5 pr-6 text-sm font-medium text-foreground">
                                 {row.clientName}
                               </td>
-                              <td className="py-5 pr-6 text-sm font-semibold text-white">
+                              <td className="py-5 pr-6 text-sm font-semibold text-foreground">
                                 {formatINR(row.shareAmount)}
                               </td>
                               <td className="py-5">

@@ -16,7 +16,7 @@ const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
         : modalType === "education"
           ? "max-w-4xl max-h-[90vh] overflow-y-auto"
           : modalType === "personal"
-            ? "max-w-2xl"
+            ? "max-w-2xl max-h-[90vh] overflow-y-auto"
             : modalType === "onboardingService"
               ? "max-w-6xl h-[92vh] max-h-[960px] overflow-hidden flex flex-col"
               : modalType === "work"

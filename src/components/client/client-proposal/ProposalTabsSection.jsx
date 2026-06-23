@@ -191,13 +191,10 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
       className="w-full space-y-8"
     >
       <ClientPageHeader
-        title="Project Proposals"
-        dateLabel={false}
-        className="lg:items-start"
-        titleClassName="text-[clamp(1.35rem,2.1vw,2.55rem)] leading-[0.98] tracking-[-0.05em] whitespace-nowrap"
-        actions={
-          <div className="flex flex-col gap-3.5 items-end w-full sm:w-auto">
-            <div className="flex items-center gap-3">
+        title={
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            <span>Project Proposals</span>
+            <div className="flex items-center gap-2 sm:gap-3">
               {proposalTypeConfig.map((item) => {
                 const isActive = item.value === activeType;
 
@@ -210,7 +207,8 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                       setActiveType(item.value);
                     }}
                     className={cn(
-                      "inline-flex h-[46px] items-center justify-center rounded-full px-6 text-[15px] font-semibold whitespace-nowrap transition-all duration-300",
+                      "inline-flex items-center justify-center rounded-full font-semibold whitespace-nowrap transition-all duration-300",
+                      "h-8 px-3 text-xs sm:h-[46px] sm:px-6 sm:text-[15px]",
                       isActive
                         ? "bg-primary text-primary-foreground shadow-[0_4px_12px_rgba(var(--brand-rgb),0.2)] dark:shadow-none"
                         : "border border-border bg-card text-foreground hover:bg-muted/50 dark:hover:bg-zinc-800/50"
@@ -219,7 +217,8 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                     <span>{item.label}</span>
                     <span
                       className={cn(
-                        "ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold leading-none transition-colors duration-300",
+                        "ml-1.5 sm:ml-2 inline-flex items-center justify-center rounded-full font-bold leading-none transition-colors duration-300",
+                        "h-4 w-4 text-[10px] sm:h-5 sm:w-5 sm:text-[10px]",
                         isActive
                           ? "bg-white/20 text-primary-foreground"
                           : "bg-muted text-foreground"
@@ -231,8 +230,13 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                 );
               })}
             </div>
-
-            {/* Custom status dropdown select */}
+          </div>
+        }
+        dateLabel={false}
+        className="lg:items-start"
+        titleClassName="text-[clamp(1.35rem,2.1vw,2.55rem)] leading-[0.98] tracking-[-0.05em] whitespace-nowrap"
+        actions={
+          <div className="flex flex-col gap-3.5 items-start sm:items-end w-full sm:w-auto">            {/* Custom status dropdown select */}
             <div ref={dropdownRef} className="relative w-full sm:w-[14.5rem] shrink-0">
               <button
                 type="button"

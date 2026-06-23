@@ -3642,6 +3642,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Profile photo",
       detail: "Upload a clear profile image.",
+      onClick: () => openEditPersonalModal(),
     });
   }
 
@@ -3649,6 +3650,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Profile cover",
       detail: "Add a cover image to strengthen your profile header.",
+      onClick: () => openEditPersonalModal(),
     });
   }
 
@@ -3656,6 +3658,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Professional title",
       detail: "Add your headline or role title.",
+      onClick: () => openEditPersonalModal(),
     });
   }
 
@@ -3663,6 +3666,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Professional Bio",
       detail: "Write a short bio that highlights your expertise.",
+      onClick: () => openEditPersonalModal(),
     });
   }
 
@@ -3673,6 +3677,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Location details",
       detail: `Add your ${missingLocationParts.join(" and ")}.`,
+      onClick: () => openEditPersonalModal(),
     });
   }
 
@@ -3680,6 +3685,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Services selected",
       detail: "Select at least one service you offer.",
+      onClick: () => openAddServiceModal(),
     });
   }
 
@@ -3698,6 +3704,10 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Service description/cover",
       detail: `Complete ${serviceDetailGaps.join(" and ")} across your selected services.`,
+      onClick: () => {
+        const incompleteService = onboardingServiceEntries.find((s) => !s.description || !s.coverImage);
+        if (incompleteService) openEditServiceProfileModal(incompleteService.serviceKey);
+      },
     });
   }
 
@@ -3708,6 +3718,7 @@ const FreelancerProfile = () => {
         missingSkillCount > 0
           ? `Add ${missingSkillCount} more skill${missingSkillCount === 1 ? "" : "s"} (target: 5).`
           : "Add a clearer tech stack with up to 5 key skills.",
+      onClick: () => document.getElementById("profile-skills-card")?.scrollIntoView({ behavior: "smooth" }),
     });
   }
 
@@ -3715,6 +3726,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Availability setup",
       detail: `Add ${availabilityMissingDetails.join(", ")}.`,
+      onClick: () => document.getElementById("profile-availability-section")?.scrollIntoView({ behavior: "smooth" }),
     });
   }
 
@@ -3725,6 +3737,7 @@ const FreelancerProfile = () => {
       detail: suggestedLinks
         ? `Add ${missingProfileLinkCount} more link${missingProfileLinkCount === 1 ? "" : "s"} (suggested: ${suggestedLinks}).`
         : `Add ${missingProfileLinkCount} more profile link${missingProfileLinkCount === 1 ? "" : "s"}.`,
+      onClick: () => openEditPersonalModal(),
     });
   }
 
@@ -3732,6 +3745,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Featured project",
       detail: "Add at least one project to your portfolio.",
+      onClick: () => openAddProjectModal(),
     });
   }
 
@@ -3739,6 +3753,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Resume uploaded",
       detail: "Upload your resume so clients can quickly review your profile.",
+      onClick: () => openEditPersonalModal(),
     });
   }
 
@@ -3746,6 +3761,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Work experience",
       detail: "Add at least one work experience entry.",
+      onClick: () => openCreateExperienceModal(),
     });
   }
 
@@ -3753,6 +3769,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Education history",
       detail: "Add your education details (school, degree, or year).",
+      onClick: () => openFullProfileEditor(),
     });
   }
 
@@ -3760,6 +3777,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Industry focus",
       detail: "Select your global industry focus.",
+      onClick: () => openFullProfileEditor(),
     });
   }
 
@@ -3767,6 +3785,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Policies accepted",
       detail: `Review and complete: ${policyMissingDetails.join(", ")}.`,
+      onClick: () => openFullProfileEditor(),
     });
   }
 
