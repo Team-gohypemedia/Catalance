@@ -57,6 +57,88 @@ const SERVICE_ALIAS_MAP = SERVICE_EQUIVALENCE_GROUPS.reduce((accumulator, group)
   return accumulator;
 }, {});
 
+const SERVICE_HIERARCHY = Object.freeze({
+  creative_design: [
+    "ui_ux_design",
+    "graphic_design",
+    "publishing",
+    "motion_design",
+    "prototyping",
+    "presentation_design",
+    "video_editing",
+    "branding",
+    "brand_design",
+    "product_design",
+    "ux_ui_design",
+    "video_production",
+  ],
+  digital_marketing: [
+    "seo",
+    "social_media_marketing",
+    "search_engine_optimization",
+    "smm",
+    "performance_marketing",
+    "email_marketing",
+    "content_marketing",
+    "marketing",
+  ],
+  web_development: [
+    "website_development",
+    "web_dev",
+    "frontend_development",
+    "backend_development",
+    "full_stack_development",
+    "ecommerce_development",
+    "wordpress_development",
+  ],
+  app_development: [
+    "mobile_app_development",
+    "android_app_development",
+    "ios_app_development",
+    "cross_platform_app_development",
+  ],
+});
+
+const SERVICE_PARENT_MAP = Object.freeze(
+  Object.entries(SERVICE_HIERARCHY).reduce((acc, [parent, children]) => {
+    children.forEach((child) => {
+      const canonicalChild = SERVICE_ALIAS_MAP[child] || child;
+      if (!acc[canonicalChild]) acc[canonicalChild] = [];
+      if (!acc[canonicalChild].includes(parent)) {
+        acc[canonicalChild].push(parent);
+      }
+    });
+    return acc;
+  }, {})
+);
+
+const expandServiceSignal = (signal) => {
+  if (!signal) return [];
+  const expanded = new Set([signal]);
+
+  if (SERVICE_HIERARCHY[signal]) {
+    SERVICE_HIERARCHY[signal].forEach((child) => {
+      expanded.add(SERVICE_ALIAS_MAP[child] || child);
+    });
+  }
+
+  if (SERVICE_PARENT_MAP[signal]) {
+    SERVICE_PARENT_MAP[signal].forEach((parent) => expanded.add(parent));
+  }
+
+  return Array.from(expanded);
+};
+
+const isServiceCompatible = (signalA, signalB) => {
+  if (!signalA || !signalB) return false;
+  if (signalA === signalB) return true;
+
+  const expandedA = expandServiceSignal(signalA);
+  const expandedB = expandServiceSignal(signalB);
+
+  return expandedA.some((a) => expandedB.includes(a));
+};
+
 const LEVEL_METADATA = Object.freeze({
   level_1_completed_project: {
     level: 1,
@@ -233,11 +315,18 @@ const humanizeServiceLabel = (value = "") =>
     .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
     .join(" ");
 
-const collectServiceSignals = (...values) =>
-  uniqueItems(values.flatMap((value) => normalizeList(value)))
+const collectServiceSignals = (...values) => {
+  const listItems = values.flatMap((value) => {
+    if (typeof value === "string") {
+      return [value, ...normalizeList(value)];
+    }
+    return normalizeList(value);
+  });
+  return uniqueItems(listItems)
     .map((value) => normalizeServiceSignal(value))
     .filter(Boolean)
     .filter((value, index, collection) => collection.indexOf(value) === index);
+};
 
 const splitListValue = (value = "") =>
   String(value || "")
@@ -1393,13 +1482,18 @@ const evaluateCandidateMatch = ({
   const hasExplicitServiceKeyMismatch =
     Boolean(targetPrimaryServiceSignal) &&
     Boolean(sourcePrimaryServiceSignal) &&
-    targetPrimaryServiceSignal !== sourcePrimaryServiceSignal;
+    !isServiceCompatible(targetPrimaryServiceSignal, sourcePrimaryServiceSignal);
   const sourceServiceSignalSet = new Set(sourceServiceSignals);
   const serviceMatch = hasExplicitServiceKeyMismatch
     ? false
     : hasTargetServiceSignal
-      ? targetServiceSignals.some((signal) => sourceServiceSignalSet.has(signal))
+      ? targetServiceSignals.some((signal) =>
+          Array.from(sourceServiceSignalSet).some((srcSignal) =>
+            isServiceCompatible(signal, srcSignal)
+          )
+        )
       : hasSourceServiceSignal;
+
   const serviceScore = hasTargetServiceSignal
     ? serviceMatch
       ? 28
