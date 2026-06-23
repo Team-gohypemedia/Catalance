@@ -510,7 +510,7 @@ const FreelancerSelectionDialog = ({
                     </div>
 
                     <div className="mt-6 flex min-h-0 flex-1 flex-col px-0.5">
-                      <div className="flex items-start justify-between gap-2 border-b border-white/10 pb-1.5">
+                      <div className="flex items-start justify-between gap-2 border-b border-border dark:border-white/10 pb-1.5">
                         <div className="min-w-0">
                           <div className="flex min-w-0 items-center gap-1">
                             <h3 className="min-w-0 truncate text-base leading-tight font-semibold tracking-tight text-foreground">
@@ -596,7 +596,7 @@ const FreelancerSelectionDialog = ({
                               key={`${freelancer.id}-${stat.key}`}
                               className={`flex min-w-0 flex-col items-center justify-center px-1 py-1 text-center ${
                                 index < performanceStats.length - 1
-                                  ? "border-r border-white/10"
+                                  ? "border-r border-border dark:border-white/10"
                                   : ""
                               }`}
                             >
