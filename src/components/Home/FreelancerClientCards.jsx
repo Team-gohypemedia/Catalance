@@ -107,7 +107,7 @@ const FreelancerClientCards = () => {
                   </span>
                 </div>
 
-                <h3 className={`text-left text-xl sm:text-[1.75rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`text-center text-xl sm:text-[1.75rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Hire Reliable Talent Faster
                 </h3>
 
@@ -171,7 +171,7 @@ const FreelancerClientCards = () => {
                   </span>
                 </div>
 
-                <h3 className={`text-left text-xl sm:text-[1.75rem] font-semibold leading-tight ${textHeadingClass}`}>
+                <h3 className={`text-center text-xl sm:text-[1.75rem] font-semibold leading-tight ${textHeadingClass}`}>
                   Work with Trusted Clients
                 </h3>
 

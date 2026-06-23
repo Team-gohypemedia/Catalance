@@ -78,7 +78,7 @@ const BrandMarquee = ({ isIntegrated = false }) => {
         </div>
         <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground dark:text-white">
           Trusted by{" "}
-          <span className="text-primary italic">Industry Leaders</span>
+          <span className="italic">Industry Leaders</span>
         </h2>
       </div>
 
