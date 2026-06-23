@@ -7046,7 +7046,7 @@ const GuestAIDemo = () => {
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className={`truncate text-[13px] font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{userDisplayName}</p>
-                                <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{userDisplayEmail || 'Authenticated'}</p>
+                                {/* <p className={`truncate text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{userDisplayEmail || 'Authenticated'}</p> */}
                             </div>
                         </div>
                     ) : (
