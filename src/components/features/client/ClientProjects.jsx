@@ -945,10 +945,7 @@ export const ProjectProposalCard = ({
   const detailPanelRef = useRef(null);
   const actionSectionRef = useRef(null);
   const progressText = `${project.phaseProgressValue}%`;
-  const showServiceType =
-    Boolean(project.serviceType) &&
-    normalizeComparableText(project.serviceType) !==
-      normalizeComparableText(project.title);
+
   const detailPanelClassName =
     "border border-border bg-card shadow-none";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
@@ -1038,11 +1035,7 @@ export const ProjectProposalCard = ({
         >
           {project.title}
         </h2>
-        {showServiceType ? (
-          <p className="mt-1 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            {project.serviceType}
-          </p>
-        ) : null}
+
 
         <div className="mt-5 flex items-center gap-3 sm:mt-6">
           <Avatar className="size-11 shrink-0 border border-border">

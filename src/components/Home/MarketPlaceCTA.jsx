@@ -51,15 +51,7 @@ const MarketPlaceCTA = () => {
               Hire verified freelancers and expert agencies for fast, high-quality project delivery.
             </p>
 
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <Link
-                to="/marketplace?view=freelancers#specialists-section"
-                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-xl font-bold text-sm bg-primary text-primary-foreground transition-all hover:scale-105 active:scale-95 shadow-[0_8px_24px_rgba(217,105,42,0.25)]"
-              >
-                Browse Talent
-                
-              </Link>
-            </div>
+
           </div>
 
           {/* RIGHT — Video (lazy-loaded, plays only when visible) */}
