@@ -3038,7 +3038,12 @@ const GuestAIDemo = () => {
     const [attentionRecommendationKey, setAttentionRecommendationKey] = useState('');
     const [isListening, setIsListening] = useState(false);
     const [isSpeechSupported, setIsSpeechSupported] = useState(false);
-    const [sidebarSize, setSidebarSize] = useState(() => readStoredSidebarSize());
+    const [sidebarSize, setSidebarSize] = useState(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+            return 'small';
+        }
+        return readStoredSidebarSize();
+    });
     const [previousChats, setPreviousChats] = useState(() => readStoredGuestSessions());
     const [generatedProposals, setGeneratedProposals] = useState(() => readStoredGeneratedProposals(user?.id));
     const [selectedProposalPreview, setSelectedProposalPreview] = useState(null);
@@ -3320,6 +3325,9 @@ const GuestAIDemo = () => {
     }, []);
 
     const expandSidebar = useCallback(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+            return;
+        }
         setSidebarSize('large');
         writeStoredSidebarSize('large');
     }, []);

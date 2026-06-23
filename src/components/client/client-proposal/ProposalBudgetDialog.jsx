@@ -29,7 +29,7 @@ const ProposalBudgetDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border border-white/10 bg-accent text-foreground sm:max-w-md">
+      <DialogContent className="border border-border dark:border-white/10 bg-background text-foreground sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Increase Budget</DialogTitle>
           <DialogDescription className="text-sm leading-6 text-muted-foreground">
@@ -39,7 +39,7 @@ const ProposalBudgetDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-[18px] border border-white/10 bg-background/35 p-4">
+          <div className="rounded-[18px] border border-border dark:border-white/10 bg-background/35 p-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Current Budget
             </p>
@@ -60,7 +60,7 @@ const ProposalBudgetDialog = ({
               value={budgetInput}
               onChange={(event) => onBudgetInputChange?.(event.target.value)}
               placeholder="e.g. 60000 or INR 60,000"
-              className="h-11 border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
+              className="h-11 border-border dark:border-white/10 bg-background/60 text-foreground placeholder:text-[#6f7785] focus-visible:border-[var(--primary)]/45 focus-visible:ring-[var(--primary)]/20"
             />
           </div>
         </div>
@@ -69,7 +69,7 @@ const ProposalBudgetDialog = ({
           <Button
             type="button"
             variant="outline"
-            className="border-white/10 bg-background/30 text-white hover:bg-background/50"
+            className="border-border dark:border-white/10 bg-background/30 text-foreground dark:text-white hover:bg-muted dark:hover:bg-background/50"
             onClick={() => onOpenChange?.(false)}
             disabled={isUpdatingBudget}
           >
