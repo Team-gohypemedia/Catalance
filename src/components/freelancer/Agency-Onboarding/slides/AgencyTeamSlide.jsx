@@ -1,4 +1,6 @@
 import { ChoiceGrid } from "./shared/AgencyFormComponents";
+import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_PAGE_TITLE_CLASS } from "../typography";
 import {
   AGENCY_CORE_ROLE_OPTIONS,
   AGENCY_TEAM_SIZE_OPTIONS,
@@ -35,12 +37,12 @@ const AgencyTeamSlide = ({
   const timezoneCoverageError = agencyValidationErrors.timezoneCoverage;
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 px-4 sm:px-6">
-      <div className="w-full max-w-3xl text-center">
-        <h1 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl">
-          {slide?.title || "Who Is On Your Team?"}
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 pt-8 pb-12 sm:pt-0 sm:pb-0">
+      <div className="w-full max-w-3xl text-center space-y-3">
+        <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
+          Who Is On <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Your Team?</span>
         </h1>
-        <p className="text-sm font-regular text-muted-foreground md:text-lg lg:text-base">
+        <p className="mx-auto max-w-2xl text-sm font-normal text-muted-foreground md:text-base">
           {slide?.description ||
             "Help clients understand the team size and core roles that will support their project."}
         </p>

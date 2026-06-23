@@ -4202,7 +4202,7 @@ const FreelancerOnboardingShell = () => {
                   onCommunicationPolicyReadinessChange={(isReady) =>
                     setCommunicationPolicyReady(Boolean(isReady))
                   }
-                  onSkipServices={currentSlide.id === "serviceReview" ? null : handleSkipServicesSection}
+                  onSkipServices={currentSlide.id === "caseStudy" ? handleSkipServicesSection : null}
                     isProfileSaving={isProfileSaving}
                   user={user}
                   continueButton={null}
@@ -4224,10 +4224,12 @@ const FreelancerOnboardingShell = () => {
                 <Button
                   asChild
                   variant="secondary"
-                  className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+                  size="icon"
+                  className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                  aria-label="Back to dashboard"
                 >
                   <Link to={FREELANCER_DASHBOARD_PATH} replace>
-                    Back to dashboard
+                    <ChevronLeft className="h-4 w-4" />
                   </Link>
                 </Button>
               ) : (

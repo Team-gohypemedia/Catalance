@@ -3893,9 +3893,28 @@ const AgencyOnboardingShell = ({
   }, [footerPrimaryAction, footerPrimaryDisabled]);
 
   return (
-    <DarkGradientBg className="text-[#f1f5f9]">
+    <DarkGradientBg className="text-neutral-900 dark:text-[#f1f5f9]">
       <main className="fixed inset-0 flex flex-col overflow-hidden bg-transparent z-10">
-      <div className="absolute top-0 left-0 right-0 h-1 z-30">
+        {/* Fixed Background container - placed here so it doesn't move or clip on scroll */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+        >
+          {/* Dark theme gradient background */}
+          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(180deg,#181818_0%,#0f0f0f_100%)]" />
+          <div className="absolute inset-0 hidden dark:block dark:bg-[radial-gradient(circle_at_50%_20%,rgba(255,196,123,0.08),transparent_34%)]" />
+          <div
+            className="absolute inset-0 hidden dark:block dark:opacity-30"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 18px 18px, rgba(227,122,36,0.26) 0 2px, transparent 2.4px), radial-gradient(circle at 18px 18px, rgba(227,122,36,0.08) 0 1px, transparent 1.4px)",
+              backgroundSize: "34px 34px, 96px 96px",
+              backgroundPosition: "0 0, 0 0",
+            }}
+          />
+          <div className="absolute inset-0 hidden dark:block dark:bg-[linear-gradient(135deg,rgba(255,196,123,0.05)_0%,transparent_18%,transparent_82%,rgba(255,196,123,0.05)_100%)]" />
+        </div>
+        <div className="absolute top-0 left-0 right-0 h-1 z-30">
           <div
             className="h-full bg-[var(--primary)] transition-all duration-300"
             style={{ width: `${progressValue}%` }}
@@ -3990,7 +4009,7 @@ const AgencyOnboardingShell = ({
                   onCommunicationPolicyReadinessChange={(isReady) =>
                     setCommunicationPolicyReady(Boolean(isReady))
                   }
-                  onSkipServices={currentSlide.id === "serviceReview" ? null : handleSkipServicesSection}
+                  onSkipServices={currentSlide.id === "caseStudy" ? handleSkipServicesSection : null}
                     isProfileSaving={isProfileSaving}
                   user={user}
                 />
@@ -4022,10 +4041,12 @@ const AgencyOnboardingShell = ({
                   <Button
                     asChild
                     variant="secondary"
-                    className="h-10 rounded-full border border-white/10 bg-card px-4 text-base font-normal text-foreground shadow-none hover:bg-accent/10"
+                    size="icon"
+                    className="h-10 w-10 rounded-full border border-white/10 bg-card text-foreground shadow-none hover:bg-accent/10"
+                    aria-label="Back to dashboard"
                   >
                     <Link to={FREELANCER_DASHBOARD_PATH} replace>
-                      Back to dashboard
+                      <ChevronLeft className="h-4 w-4" />
                     </Link>
                   </Button>
                 )

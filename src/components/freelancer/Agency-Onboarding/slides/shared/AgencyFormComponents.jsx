@@ -39,7 +39,7 @@ export const ChoiceGrid = ({
               type="button"
               onClick={() => onToggle?.(value)}
               className={cn(
-                "rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-colors",
+                "rounded-[10px] border px-4 py-3 text-left text-sm font-medium transition-colors",
                 isSelected
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-card text-foreground/90 hover:border-primary/30 hover:bg-muted",

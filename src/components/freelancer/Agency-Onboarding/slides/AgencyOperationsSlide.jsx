@@ -1,5 +1,6 @@
 import { Label } from "@/components/ui/label";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import { cn } from "@/shared/lib/utils";
+import { ONBOARDING_FIELD_LABEL_CLASS, ONBOARDING_PAGE_TITLE_CLASS } from "../typography";
 import { CustomSelect } from "./shared/ServiceInfoComponents";
 import {
   AGENCY_COLLABORATION_STYLE_OPTIONS,
@@ -25,12 +26,12 @@ const AgencyOperationsSlide = ({
       .join(" ");
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 px-4 sm:px-6">
-      <div className="w-full max-w-3xl text-center">
-        <h1 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl">
-          {slide?.title || "How Do You Deliver Projects?"}
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 pt-8 pb-12 sm:pt-0 sm:pb-0">
+      <div className="w-full max-w-3xl text-center space-y-3">
+        <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
+          How Do You <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Deliver Projects?</span>
         </h1>
-        <p className="text-sm font-regular text-muted-foreground md:text-lg lg:text-base">
+        <p className="mx-auto max-w-2xl text-sm font-normal text-muted-foreground md:text-base">
           {slide?.description ||
             "Tell clients how quickly your team responds and how you prefer to collaborate."}
         </p>

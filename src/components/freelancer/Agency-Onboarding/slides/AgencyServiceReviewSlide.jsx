@@ -32,7 +32,7 @@ import {
 } from "../agency-details";
 
 const ONBOARDING_PAGE_TITLE_CLASS =
-  "text-balance text-2xl font-semibold leading-[1.12] tracking-[-0.03em] text-primary sm:text-[34px] md:text-[40px]";
+  "text-balance text-xl font-medium leading-[1.15] tracking-[-0.035em] text-foreground sm:text-[34px] md:text-[40px]";
 const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em] text-primary";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 

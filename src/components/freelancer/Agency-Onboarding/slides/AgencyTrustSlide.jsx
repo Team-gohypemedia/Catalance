@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
-import { ONBOARDING_FIELD_LABEL_CLASS } from "../typography";
+import { ONBOARDING_FIELD_LABEL_CLASS, ONBOARDING_PAGE_TITLE_CLASS } from "../typography";
 import { ChoiceGrid } from "./shared/AgencyFormComponents";
 import { CustomSelect } from "./shared/ServiceInfoComponents";
 import {
@@ -12,9 +12,9 @@ import {
 } from "../agency-details";
 
 const inputClassName =
-  "h-14 rounded-[18px] border border-input bg-card px-5 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
+  "h-[46px] rounded-[10px] border border-input bg-card px-5 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const textAreaClassName =
-  "min-h-[120px] rounded-[24px] border border-input bg-card px-5 py-4 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus-visible:border-primary/45 focus-visible:ring-primary/15";
+  "min-h-[120px] rounded-[10px] border border-input bg-card px-5 py-4 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus-visible:border-primary/45 focus-visible:ring-primary/15 md:min-h-[100px]";
 const dangerFieldClassName =
   "border-destructive/75 text-destructive focus-visible:border-destructive focus-visible:ring-destructive/20";
 
@@ -62,12 +62,12 @@ const AgencyTrustSlide = ({
     cn(textAreaClassName, hasError && dangerFieldClassName);
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 px-4 sm:px-6">
-      <div className="w-full max-w-3xl text-center">
-        <h1 className="text-xl font-medium text-primary md:text-4xl lg:text-5xl">
-          {slide?.title || "Build Trust With Clients"}
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 pt-8 pb-12 sm:pt-0 sm:pb-0">
+      <div className="w-full max-w-3xl text-center space-y-3">
+        <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
+          Build Trust With <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Clients</span>
         </h1>
-        <p className="text-sm font-regular text-muted-foreground md:text-lg lg:text-base">
+        <p className="mx-auto max-w-2xl text-sm font-normal text-muted-foreground md:text-base">
           {slide?.description ||
             "Add the industries you serve and the business details that make your agency feel established."}
         </p>
@@ -117,7 +117,7 @@ const AgencyTrustSlide = ({
 
             <div className="space-y-1.5">
               <Label className={getFieldLabelClasses(Boolean(registrationIdError))}>
-                Registration ID
+                Registration ID (Optional)
               </Label>
               <Input
                 value={agencyProfileForm.registrationId}

@@ -1,5 +1,5 @@
 export const ONBOARDING_PAGE_TITLE_CLASS =
-  "text-balance text-2xl font-semibold leading-[1.12] tracking-[-0.03em] text-primary sm:text-[34px] md:text-[40px]";
+  "text-balance text-xl font-medium leading-[1.15] tracking-[-0.035em] text-foreground sm:text-[34px] md:text-[40px]";
 
 export const ONBOARDING_SERVICE_SETUP_TITLE_CLASS =
   "text-balance text-[40px] font-semibold leading-[1] tracking-[-0.05em] text-primary sm:text-[64px]";
@@ -28,7 +28,7 @@ export const ONBOARDING_STEP_LABEL_CLASS =
   "min-w-0 text-center text-sm leading-5 transition-[opacity,color] duration-300 ease-out";
 
 export const ONBOARDING_FOOTER_PRIMARY_BUTTON_CLASS =
-  "h-11 px-10 text-base font-medium disabled:opacity-100 disabled:bg-primary disabled:text-primary-foreground !text-white keep-white";
+  "h-11 px-10 text-base font-medium disabled:opacity-100 disabled:bg-primary disabled:text-primary-foreground !text-white keep-white dark:!text-black";
 
 export const ONBOARDING_FOOTER_SECONDARY_BUTTON_CLASS =
   "h-11 px-6 text-base font-normal";

@@ -964,15 +964,6 @@ const FreelancerServiceQuickInfoSlide = ({
             activeStepId="quickInfo"
             onStepChange={onServiceStepChange}
           />
-          {onSkipServices && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => onSkipServices?.()}
-              className="onboarding-skip-btn absolute right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
-            >Skip</Button>
-          )}
         </div>
 
         {/* Content */}
