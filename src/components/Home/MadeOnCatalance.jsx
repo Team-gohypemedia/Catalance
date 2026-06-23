@@ -12,22 +12,31 @@ const madeOnCatalanceVideoUrl = (fileName) =>
   `${MADE_ON_CATALANCE_ASSET_BASE_URL}/videos/${fileName}`;
 
 const imageSources = [
-  { src: madeOnCatalanceImageUrl("project-1.jpg"), width: 1200, height: 1200 },
-  { src: madeOnCatalanceImageUrl("project-2.jpg"), width: 1200, height: 900 },
-  { src: madeOnCatalanceImageUrl("project-3.jpg"), width: 960, height: 720 },
-  { src: madeOnCatalanceImageUrl("project-4.jpg"), width: 1200, height: 900 },
-  { src: madeOnCatalanceImageUrl("project-5.jpg"), width: 1200, height: 1200 },
-  { src: madeOnCatalanceImageUrl("project-6.jpg"), width: 1200, height: 1200 },
-  { src: madeOnCatalanceImageUrl("project-7.jpg"), width: 1000, height: 1911 },
-  { src: madeOnCatalanceImageUrl("project-8.jpg"), width: 1000, height: 1379 },
-  { src: madeOnCatalanceImageUrl("project-9.jpg"), width: 1000, height: 1164 },
-  { src: madeOnCatalanceImageUrl("project-10.jpg"), width: 1200, height: 900 },
-  { src: madeOnCatalanceImageUrl("project-11.jpg"), width: 1200, height: 1200 },
-  { src: madeOnCatalanceImageUrl("project-12.jpg"), width: 1200, height: 1200 },
-  { src: madeOnCatalanceImageUrl("project-13.jpg"), width: 960, height: 960 },
-  { src: madeOnCatalanceImageUrl("project-14.jpg"), width: 960, height: 960 },
+  { src: madeOnCatalanceImageUrl("project1.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project2.png"), width: 1842, height: 2304 },
+  { src: madeOnCatalanceImageUrl("project3.png"), width: 1842, height: 2304 },
+  { src: madeOnCatalanceImageUrl("project4.jpg"), width: 1080, height: 1080 },
+  { src: madeOnCatalanceImageUrl("project5.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project6.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project7.png"), width: 1254, height: 1254 },
+  { src: madeOnCatalanceImageUrl("project8.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project9.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project10.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project11.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project12.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project13.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project14.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project15.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project16.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project17.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project18.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project19.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project20.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project21.png"), width: 1092, height: 1440 },
+  { src: madeOnCatalanceImageUrl("project22.png"), width: 1122, height: 1402 },
 ];
 
+/*
 const videoSources = [
   {
     src: madeOnCatalanceVideoUrl("video1.mp4"),
@@ -72,6 +81,7 @@ const videoSources = [
     height: 1080,
   },
 ];
+*/
 
 const placeCards = imageSources.flatMap((image, index) => {
   const cards = [
@@ -84,7 +94,8 @@ const placeCards = imageSources.flatMap((image, index) => {
     },
   ];
 
-  // Optimization: Reduce video frequency from every 2nd to every 5th item
+  // Commented out video injection as requested
+  /*
   if (index % 5 === 1) {
     const videoIndex = Math.floor(index / 5) % videoSources.length;
     const video = videoSources[videoIndex];
@@ -98,6 +109,7 @@ const placeCards = imageSources.flatMap((image, index) => {
       alt: `Catalance project video showcase ${videoIndex + 1}`,
     });
   }
+  */
 
   return cards;
 });
