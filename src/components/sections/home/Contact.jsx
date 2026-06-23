@@ -230,8 +230,8 @@ const Contact = () => {
                 Thank you for your interest in Catalance. We value your thoughts, questions, and feedback. Please don't hesitate to reach out to us. Our dedicated team is here to assist you.
               </p>
               
-              {/* Social icons — bottom-right */}
-              <div className="absolute bottom-4 right-6 sm:bottom-6 sm:right-12 flex gap-3 justify-end">
+              {/* Social icons — beneath text on mobile, bottom-right on sm */}
+              <div className="mt-8 sm:mt-0 sm:absolute sm:bottom-6 sm:right-12 flex gap-3 justify-end">
                 {[
                   {
                     href: "https://www.facebook.com/profile.php?id=61586800500990",

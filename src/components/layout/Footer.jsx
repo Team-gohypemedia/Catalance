@@ -113,9 +113,13 @@ const Footer = () => {
             <div className="flex flex-col gap-5">
               <h3 className="text-sm font-semibold text-foreground">Platform</h3>
               <nav className="flex flex-col gap-3">
-                <Link to="/marketplace" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                <button 
+                  type="button"
+                  onClick={() => toast.info("Coming soon!")}
+                  className="text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
                   Browse Talent
-                </Link>
+                </button>
               </nav>
             </div>
 
@@ -174,7 +178,7 @@ const Footer = () => {
             <div className="w-full max-w-md">
               <form className="flex flex-col gap-3 sm:flex-row" onSubmit={handleNewsletterSubmit}>
                 <input
-                  className="h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40"
+                  className="h-12 w-full rounded-xl border border-border/60 bg-card px-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/40"
                   placeholder="name@catalance.in"
                   type="email"
                   autoComplete="email"
