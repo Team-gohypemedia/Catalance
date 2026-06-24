@@ -140,7 +140,7 @@ const renderTitle = (title) => {
     return (
       <>
         {before}
-        <span className="text-primary">{target}</span>
+        <span className="font-serif italic font-light text-primary text-[1.05em] select-none">{target}</span>
         {after}
       </>
     );
@@ -155,7 +155,7 @@ const renderTitle = (title) => {
     return (
       <>
         {before}
-        <span className="text-primary">{target}</span>
+        <span className="font-serif italic font-light text-primary text-[1.05em] select-none">{target}</span>
         {after}
       </>
     );
