@@ -7071,7 +7071,11 @@ const GuestAIDemo = () => {
                                     return (
                                         <div
                                             key={chat.sessionId}
-                                            className={`group relative flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors ${isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/35'}`}
+                                            className={`group relative flex items-center gap-1.5 rounded-lg px-2 py-1.5 transition-colors ${
+                                                isCurrent
+                                                    ? (isDark ? 'bg-white/10' : 'bg-slate-200/60')
+                                                    : (isDark ? 'hover:bg-white/4' : 'hover:bg-slate-200/35')
+                                            }`}
                                         >
                                             <button
                                                 type="button"
