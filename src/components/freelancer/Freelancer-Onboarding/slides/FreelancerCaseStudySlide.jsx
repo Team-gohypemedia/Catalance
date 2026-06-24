@@ -205,6 +205,19 @@ const FreelancerCaseStudySlide = ({
   const infoModalScrollRef = useRef(null);
   const [isRequestingNiche, setIsRequestingNiche] = useState(false);
 
+  // Scroll onboarding container to top on mobile when slide mounts or active case study changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        const scrollContainer = document.querySelector(".subtle-scrollbar");
+        if (scrollContainer) {
+          scrollContainer.scrollTop = 0;
+        }
+      }
+    }
+  }, [activeCaseStudyId, activeCaseStudyIndex]);
+
   // Scroll modal content to bottom when opened (mobile)
   useEffect(() => {
     if (showInfoModal) {
