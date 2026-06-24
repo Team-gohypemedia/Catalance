@@ -922,7 +922,7 @@ const FreelancerServiceQuickInfoSlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center pt-5 sm:pt-0">
       <div className="w-full space-y-4">
         {/* Page Title */}
         <div className="mx-auto w-full max-w-3xl relative text-center">

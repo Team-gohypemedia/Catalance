@@ -196,6 +196,7 @@ const FreelancerCaseStudySlide = ({
   continueButton,
   user,
   onAddRequestedNiche,
+  isAgency = false,
 }) => {
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [bannerUploadError, setBannerUploadError] = useState("");
@@ -237,21 +238,41 @@ const FreelancerCaseStudySlide = ({
   useEffect(() => {
     titleInputRef.current?.focus();
 
-    const storageKey = `seen_case_study_info_modal_${user?.id || "guest"}`;
+    // Wait until the user auth state is resolved to prevent guest vs. user ID race conditions
+    if (user === undefined) {
+      return;
+    }
+
+    const storageKey = isAgency
+      ? `seen_case_study_info_modal_agency_${user?.id || "guest"}`
+      : `seen_case_study_info_modal_${user?.id || "guest"}`;
+
     const hasSeen = localStorage.getItem(storageKey);
     if (!hasSeen) {
       // Show info popup after a comfortable 2.5-second delay to let the user see the form first
       const timer = setTimeout(() => {
-        setShowInfoModal(true);
-        localStorage.setItem(storageKey, "true");
+        // Double check hasSeen inside the timeout to prevent race conditions if opened manually
+        if (!localStorage.getItem(storageKey)) {
+          setShowInfoModal(true);
+          localStorage.setItem(storageKey, "true");
+        }
       }, 2500);
 
       return () => clearTimeout(timer);
     }
-  }, [user?.id]);
+  }, [user?.id, isAgency, user]);
 
   const handleCloseModal = () => {
     setShowInfoModal(false);
+
+    // Ensure the storage key is set when manually closing
+    if (user !== undefined) {
+      const storageKey = isAgency
+        ? `seen_case_study_info_modal_agency_${user?.id || "guest"}`
+        : `seen_case_study_info_modal_${user?.id || "guest"}`;
+      localStorage.setItem(storageKey, "true");
+    }
+
     setTimeout(() => {
       titleInputRef.current?.focus();
     }, 50);
@@ -336,7 +357,7 @@ const FreelancerCaseStudySlide = ({
   );
 
   return (
-    <section className="mx-auto flex w-full max-w-6xl flex-col items-center">
+    <section className="mx-auto flex w-full max-w-6xl flex-col items-center pt-5 sm:pt-0">
       <div className="w-full space-y-4">
         {/* Heading */}
         <div className="mx-auto w-full max-w-3xl relative text-center">
@@ -379,7 +400,7 @@ const FreelancerCaseStudySlide = ({
               variant="ghost"
               size="sm"
               onClick={() => onSkipServices?.()}
-              className="onboarding-skip-btn absolute right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
+              className="onboarding-skip-btn static self-end sm:self-auto sm:absolute sm:right-0 shrink-0 whitespace-nowrap px-3 py-2 cursor-pointer"
             >Skip</Button>
           )}
         </div>
@@ -410,7 +431,7 @@ const FreelancerCaseStudySlide = ({
 
               <p className={cn(ONBOARDING_SECTION_DESCRIPTION_CLASS, "text-muted-foreground sm:whitespace-nowrap")}>
                 {caseStudyContent?.sectionDescription ||
-                  "Add multiple case studies and switch between them while filling the details."}
+                  "Add multiple case studies and switch between them."}
               </p>
             </div>
 
@@ -490,7 +511,15 @@ const FreelancerCaseStudySlide = ({
           <div className="relative rounded-2xl border border-border bg-card p-4 shadow-[0_18px_60px_rgba(0,0,0,0.08)]">
             <button
               type="button"
-              onClick={() => setShowInfoModal(true)}
+              onClick={() => {
+                setShowInfoModal(true);
+                if (user !== undefined) {
+                  const storageKey = isAgency
+                    ? `seen_case_study_info_modal_agency_${user?.id || "guest"}`
+                    : `seen_case_study_info_modal_${user?.id || "guest"}`;
+                  localStorage.setItem(storageKey, "true");
+                }
+              }}
               className="absolute right-4 top-4 inline-flex size-6 items-center justify-center rounded-full bg-primary/15 text-primary transition-all duration-200 hover:bg-primary/25 hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 cursor-pointer z-10"
               aria-label="View case studies info"
               title="View case studies info"
@@ -954,7 +983,7 @@ const FreelancerCaseStudySlide = ({
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
                   
                   {/* Left Column: Top Rated Freelancer list */}
-                  <div className="md:col-span-6 bg-muted/40 rounded-2xl p-3 border border-border/50 space-y-1.5 flex flex-col justify-center">
+                  <div className="md:col-span-6 bg-muted/40 rounded-2xl p-3 border border-border/50 space-y-1.5 flex flex-col justify-center order-2 md:order-1">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="text-base">👑</span>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -1056,14 +1085,11 @@ const FreelancerCaseStudySlide = ({
                   </div>
 
                   {/* Right Column: Case study info points */}
-                  <div className="md:col-span-6 space-y-3 flex flex-col justify-between">
+                  <div className="md:col-span-6 space-y-3 flex flex-col justify-between order-1 md:order-2">
                     <div>
                       <h3 className="text-base font-bold text-foreground">
-                        Complete Case Studies,
+                        Complete Case Studies, <span className="text-primary">Get More Visibility</span>
                       </h3>
-                      <p className="text-base font-bold text-primary mt-0.5">
-                        Get More Visibility
-                      </p>
                       <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
                         Freelancers with complete case studies are more likely to rank higher and win client trust.
                       </p>
@@ -1111,14 +1137,15 @@ const FreelancerCaseStudySlide = ({
                       </div>
                     </div>
 
-                    {/* Tip Box */}
-                    <div className="rounded-xl border border-primary/10 bg-primary/5 p-2 flex gap-2 items-start">
-                      <span className="text-xs shrink-0">💡</span>
-                      <p className="text-[10px] text-foreground leading-normal">
-                        <span className="font-semibold">Tip:</span> Add detailed case studies with outcomes, screenshots, and results for best impact.
-                      </p>
-                    </div>
                   </div>
+                </div>
+
+                {/* Tip Box */}
+                <div className="rounded-xl border border-primary/10 bg-primary/5 p-2 flex gap-2 items-start">
+                  <span className="text-xs shrink-0">💡</span>
+                  <p className="text-[10px] text-foreground leading-normal">
+                    <span className="font-semibold">Tip:</span> Add detailed case studies with outcomes, screenshots, and results for best impact.
+                  </p>
                 </div>
               </div>
 

@@ -415,7 +415,7 @@ export const DEFAULT_FREELANCER_ONBOARDING_CONTENT = {
     headingTitle: "Tell Us About Your Previous Work",
     sectionTitle: "Case Studies",
     sectionDescription:
-      "Add multiple case studies and switch between them while filling the details.",
+      "Add multiple case studies and switch between them.",
     addButtonLabel: "Add Case Study",
     limitMessage:
       "Onboarding limit reached: 5 case studies. Add more later from your profile.",

@@ -3940,6 +3940,7 @@ const AgencyOnboardingShell = ({
                   className="w-full my-auto"
                 >
                   <ActiveSlide
+                  isAgency={true}
                   slide={currentSlide}
                   selectedWorkPreference={selectedWorkPreference}
                   onSelectWorkPreference={handleWorkPreferenceSelect}

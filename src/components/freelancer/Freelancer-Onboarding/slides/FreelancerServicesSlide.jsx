@@ -130,8 +130,10 @@ const ServiceIcon = ({ serviceName, isSelected }) => {
 
 const renderTitle = (title) => {
   if (typeof title !== "string") return title;
-  const target = "Help Clients";
-  const index = title.indexOf(target);
+
+  // Highlight "Help Clients" if present
+  let target = "Help Clients";
+  let index = title.indexOf(target);
   if (index !== -1) {
     const before = title.slice(0, index);
     const after = title.slice(index + target.length);
@@ -143,6 +145,22 @@ const renderTitle = (title) => {
       </>
     );
   }
+
+  // Highlight "Services" or "services" if present
+  target = title.includes("Services") ? "Services" : title.includes("services") ? "services" : null;
+  if (target) {
+    index = title.indexOf(target);
+    const before = title.slice(0, index);
+    const after = title.slice(index + target.length);
+    return (
+      <>
+        {before}
+        <span className="text-primary">{target}</span>
+        {after}
+      </>
+    );
+  }
+
   return title;
 };
 
