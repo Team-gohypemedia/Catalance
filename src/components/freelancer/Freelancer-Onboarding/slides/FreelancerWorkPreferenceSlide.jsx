@@ -37,7 +37,7 @@ const FreelancerWorkPreferenceSlide = ({
             type="button"
             onClick={() => onSelectWorkPreference("individual")}
             className={cn(
-              "group w-full rounded-2xl border p-5 sm:p-6 text-left transition-all duration-300 relative cursor-pointer",
+              "group w-full rounded-2xl border p-4 sm:p-6 text-left transition-all duration-300 relative cursor-pointer",
               selectedWorkPreference === "individual"
                 ? "border-primary bg-primary/[0.03] dark:bg-primary/[0.01] shadow-[0_12px_40px_rgba(217,105,42,0.06)] dark:shadow-[0_12px_40px_rgba(249,217,73,0.02)] scale-[1.01]"
                 : "border-neutral-200/60 dark:border-neutral-800 bg-white dark:bg-neutral-900/40 hover:border-primary/40 dark:hover:border-primary/40 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.04)] hover:-translate-y-0.5"
@@ -88,53 +88,57 @@ const FreelancerWorkPreferenceSlide = ({
             </div>
 
             {/* Bottom Tag List */}
-            <div className="flex flex-wrap justify-center gap-2 mt-4 sm:mt-5">
-              {/* Tag 1 */}
-              <div className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
-                selectedWorkPreference === "individual"
-                  ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
-              )}>
-                <Wallet className={cn(
-                  "h-3.5 w-3.5 transition-colors duration-300",
+            <div className="flex flex-col items-center gap-1.5 mt-4 sm:mt-5">
+              <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                {/* Tag 1 */}
+                <div className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
                   selectedWorkPreference === "individual"
-                    ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-400"
-                )} />
-                <div className="font-semibold">Set your rates</div>
+                    ? "border-primary/20 bg-primary/5 text-primary"
+                    : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
+                )}>
+                  <Wallet className={cn(
+                    "h-3.5 w-3.5 transition-colors duration-300",
+                    selectedWorkPreference === "individual"
+                      ? "text-primary"
+                      : "text-neutral-900/60 dark:text-neutral-400"
+                  )} />
+                  <div className="font-semibold">Set your rates</div>
+                </div>
+
+                {/* Tag 2 */}
+                <div className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
+                  selectedWorkPreference === "individual"
+                    ? "border-primary/20 bg-primary/5 text-primary"
+                    : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
+                )}>
+                  <Target className={cn(
+                    "h-3.5 w-3.5 transition-colors duration-300",
+                    selectedWorkPreference === "individual"
+                      ? "text-primary"
+                      : "text-neutral-900/60 dark:text-neutral-400"
+                  )} />
+                  <div className="font-semibold">Choose projects</div>
+                </div>
               </div>
 
-              {/* Tag 2 */}
-              <div className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
-                selectedWorkPreference === "individual"
-                  ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
-              )}>
-                <Target className={cn(
-                  "h-3.5 w-3.5 transition-colors duration-300",
+              <div className="flex justify-center">
+                {/* Tag 3 */}
+                <div className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
                   selectedWorkPreference === "individual"
-                    ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-400"
-                )} />
-                <div className="font-semibold">Choose projects</div>
-              </div>
-
-              {/* Tag 3 */}
-              <div className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
-                selectedWorkPreference === "individual"
-                  ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
-              )}>
-                <Workflow className={cn(
-                  "h-3.5 w-3.5 transition-colors duration-300",
-                  selectedWorkPreference === "individual"
-                    ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-400"
-                )} />
-                <div className="font-semibold">Work your way</div>
+                    ? "border-primary/20 bg-primary/5 text-primary"
+                    : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
+                )}>
+                  <Workflow className={cn(
+                    "h-3.5 w-3.5 transition-colors duration-300",
+                    selectedWorkPreference === "individual"
+                      ? "text-primary"
+                      : "text-neutral-900/60 dark:text-neutral-400"
+                  )} />
+                  <div className="font-semibold">Work your way</div>
+                </div>
               </div>
             </div>
           </button>
@@ -144,7 +148,7 @@ const FreelancerWorkPreferenceSlide = ({
             type="button"
             onClick={() => onSelectWorkPreference("agency")}
             className={cn(
-              "group w-full rounded-2xl border p-5 sm:p-6 text-left transition-all duration-300 relative cursor-pointer",
+              "group w-full rounded-2xl border p-4 sm:p-6 text-left transition-all duration-300 relative cursor-pointer",
               selectedWorkPreference === "agency"
                 ? "border-primary bg-primary/[0.03] dark:bg-primary/[0.01] shadow-[0_12px_40px_rgba(217,105,42,0.06)] dark:shadow-[0_12px_40px_rgba(249,217,73,0.02)] scale-[1.01]"
                 : "border-neutral-200/60 dark:border-neutral-800 bg-white dark:bg-neutral-900/40 hover:border-primary/40 dark:hover:border-primary/40 shadow-[0_4px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_16px_36px_rgba(0,0,0,0.04)] hover:-translate-y-0.5"
@@ -195,53 +199,57 @@ const FreelancerWorkPreferenceSlide = ({
             </div>
 
             {/* Bottom Tag List */}
-            <div className="flex flex-wrap justify-center gap-2 mt-4 sm:mt-5">
-              {/* Tag 1 */}
-              <div className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
-                selectedWorkPreference === "agency"
-                  ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
-              )}>
-                <Users className={cn(
-                  "h-3.5 w-3.5 transition-colors duration-300",
+            <div className="flex flex-col items-center gap-1.5 mt-4 sm:mt-5">
+              <div className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+                {/* Tag 1 */}
+                <div className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
                   selectedWorkPreference === "agency"
-                    ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-400"
-                )} />
-                <div className="font-semibold">Team collaboration</div>
+                    ? "border-primary/20 bg-primary/5 text-primary"
+                    : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
+                )}>
+                  <Users className={cn(
+                    "h-3.5 w-3.5 transition-colors duration-300",
+                    selectedWorkPreference === "agency"
+                      ? "text-primary"
+                      : "text-neutral-900/60 dark:text-neutral-400"
+                  )} />
+                  <div className="font-semibold">Team collaboration</div>
+                </div>
+
+                {/* Tag 2 */}
+                <div className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
+                  selectedWorkPreference === "agency"
+                    ? "border-primary/20 bg-primary/5 text-primary"
+                    : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
+                )}>
+                  <Calendar className={cn(
+                    "h-3.5 w-3.5 transition-colors duration-300",
+                    selectedWorkPreference === "agency"
+                      ? "text-primary"
+                      : "text-neutral-900/60 dark:text-neutral-400"
+                  )} />
+                  <div className="font-semibold">Manage projects</div>
+                </div>
               </div>
 
-              {/* Tag 2 */}
-              <div className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
-                selectedWorkPreference === "agency"
-                  ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
-              )}>
-                <Calendar className={cn(
-                  "h-3.5 w-3.5 transition-colors duration-300",
+              <div className="flex justify-center">
+                {/* Tag 3 */}
+                <div className={cn(
+                  "flex items-center gap-1 px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
                   selectedWorkPreference === "agency"
-                    ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-400"
-                )} />
-                <div className="font-semibold">Manage projects</div>
-              </div>
-
-              {/* Tag 3 */}
-              <div className={cn(
-                "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all duration-300",
-                selectedWorkPreference === "agency"
-                  ? "border-primary/20 bg-primary/5 text-primary"
-                  : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
-              )}>
-                <TrendingUp className={cn(
-                  "h-3.5 w-3.5 transition-colors duration-300",
-                  selectedWorkPreference === "agency"
-                    ? "text-primary"
-                    : "text-neutral-900/60 dark:text-neutral-400"
-                )} />
-                <div className="font-semibold">Scale your business</div>
+                    ? "border-primary/20 bg-primary/5 text-primary"
+                    : "border-neutral-200/60 dark:border-neutral-800 bg-neutral-100/50 dark:bg-neutral-900/40 text-neutral-900/60 dark:text-neutral-400"
+                )}>
+                  <TrendingUp className={cn(
+                    "h-3.5 w-3.5 transition-colors duration-300",
+                    selectedWorkPreference === "agency"
+                      ? "text-primary"
+                      : "text-neutral-900/60 dark:text-neutral-400"
+                  )} />
+                  <div className="font-semibold">Scale your business</div>
+                </div>
               </div>
             </div>
           </button>

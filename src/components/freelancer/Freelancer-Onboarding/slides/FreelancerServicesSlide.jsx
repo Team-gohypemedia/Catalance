@@ -177,7 +177,7 @@ const FreelancerServicesSlide = ({
     <section className="mx-auto flex w-full max-w-[340px] flex-col items-center mt-[10px] sm:max-w-[600px] md:max-w-6xl md:px-0 mt-[20px] sm:mt-0">
       <div className="w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-[17.5px] sm:text-2xl md:text-4xl lg:text-5xl font-medium text-foreground mb-4 md:mb-5 lg:mb-6 text-center">
+          <h1 className="text-[19px] sm:text-2xl md:text-4xl lg:text-5xl font-medium text-foreground mb-4 md:mb-5 lg:mb-6 text-center">
             {renderTitle(slide.title)}
           </h1>
            <p className="text-muted-foreground font-regular text-xs md:text-base lg:text-sm">

@@ -1,5 +1,5 @@
 export const ONBOARDING_PAGE_TITLE_CLASS =
-  "text-[17.5px] font-medium leading-[1.15] tracking-[-0.035em] text-foreground sm:text-[34px] md:text-[40px]";
+  "text-[19px] font-medium leading-[1.15] tracking-[-0.035em] text-foreground sm:text-[34px] md:text-[40px]";
 
 export const ONBOARDING_SERVICE_SETUP_TITLE_CLASS =
   "text-balance text-[40px] font-semibold leading-[1] tracking-[-0.05em] text-primary sm:text-[64px]";

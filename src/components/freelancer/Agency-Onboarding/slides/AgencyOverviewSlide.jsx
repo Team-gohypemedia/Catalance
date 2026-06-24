@@ -39,7 +39,7 @@ const AgencyOverviewSlide = ({
     cn(textAreaClassName, hasError && dangerFieldClassName);
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 pt-8 pb-12 sm:pt-0 sm:pb-0">
+    <section className="mx-auto flex min-h-[68vh] w-full max-w-5xl flex-col items-center justify-center gap-5 mt-[20px] pb-12 sm:mt-0 sm:pb-0">
       <div className="w-full max-w-3xl text-center space-y-3">
         <h1 className={ONBOARDING_PAGE_TITLE_CLASS}>
           Tell Us About <span className="font-serif italic font-light text-primary text-[1.05em] select-none">Your Agency</span>
