@@ -780,25 +780,25 @@ const AddEditServiceWizard = ({
   return (
     <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-background via-background/95 to-background/90 rounded-2xl overflow-hidden">
       {/* Header with Glassmorphism */}
-      <div className="flex-none mb-6 h-20 border-b border-border px-8 bg-card backdrop-blur-sm rounded-t-2xl">
-        <div className="relative flex h-full items-center justify-between">
+      <div className="flex-none mb-4 sm:mb-6 h-16 sm:h-20 border-b border-border px-4 sm:px-8 bg-card backdrop-blur-sm rounded-t-2xl">
+        <div className="flex h-full items-center justify-between gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={currentStepIndex > 0 ? handleBack : onCancel}
-            className="rounded-full border border-muted-foreground/30 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="shrink-0 rounded-full border border-muted-foreground/30 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             aria-label={currentStepIndex > 0 ? "Go to previous step" : "Close wizard"}
           >
-            <ChevronLeft className="h-6 w-6" />
+            <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
 
-          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+          <div className="flex-1 min-w-0 text-center flex flex-col items-center justify-center">
             <div className="flex items-center justify-center">
-              <span className="inline-flex items-center justify-center text-center rounded-full border border-border bg-card px-2.5 py-0.5 text-[9px] font-medium uppercase tracking-wider text-foreground">
+              <span className="inline-flex items-center justify-center text-center rounded-full border border-border bg-card px-2 py-0.5 text-[8px] sm:text-[9px] font-medium uppercase tracking-wider text-foreground">
                 {isDraftingNewService ? "New Service Setup" : "Editing Service"}
               </span>
             </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground drop-shadow-sm">
+            <h1 className="mt-0.5 sm:mt-1 text-base sm:text-2xl font-bold tracking-tight text-foreground drop-shadow-sm truncate w-full px-1" title={headerServiceLabel}>
               {headerServiceLabel}
             </h1>
           </div>
@@ -807,22 +807,22 @@ const AddEditServiceWizard = ({
             variant="ghost"
             size="icon"
             onClick={onCancel}
-            className="rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="shrink-0 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Close wizard"
           >
-            <X className="h-6 w-6" />
+            <X className="h-5 w-5 sm:h-6 sm:w-6" />
           </Button>
         </div>
       </div>
 
       {/* Main Content Area with Animated Transitions */}
-      <div className="subtle-scrollbar flex-1 min-h-0 overflow-y-auto px-6 pb-6 pr-3 custom-wizard-content">
+      <div className="subtle-scrollbar flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 pb-4 sm:pb-6 pr-3 custom-wizard-content">
         
         {/* STEP 1: QUICK INFO (COMBINED) */}
         {activeStepId === "quickInfo" && (
           <div className="space-y-4 animate-in fade-in slide-in-from-bottom-6 duration-700 pb-12">
             {/* Section 1: Tell clients what you offer */}
-            <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm">
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm">
               <SectionHeader
                 number={1}
                 icon={FileText}
@@ -908,7 +908,7 @@ const AddEditServiceWizard = ({
             </div>
 
             {/* Section 2: Set your price */}
-            <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm overflow-hidden">
               <SectionHeader
                 number={2}
                 icon={Tag}
@@ -1006,7 +1006,7 @@ const AddEditServiceWizard = ({
             </div>
 
             {/* Section 3: Enhance your service */}
-            <div className="rounded-2xl border border-border bg-card p-5 sm:p-7 shadow-sm overflow-hidden">
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-7 shadow-sm overflow-hidden">
               <SectionHeader
                 number={3}
                 icon={LayoutGrid}
