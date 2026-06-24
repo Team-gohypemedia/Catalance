@@ -10,7 +10,19 @@ import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
 import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+
 
 import { request } from "@/shared/lib/api-client";
 import { Button } from "@/components/ui/button";
@@ -204,6 +216,8 @@ const FreelancerCaseStudySlide = ({
   const [showInfoModal, setShowInfoModal] = useState(false);
   const infoModalScrollRef = useRef(null);
   const [isRequestingNiche, setIsRequestingNiche] = useState(false);
+  const [caseStudyToDeleteId, setCaseStudyToDeleteId] = useState(null);
+
 
   // Scroll onboarding container to top on mobile when slide mounts or active case study changes
   useEffect(() => {
@@ -511,7 +525,7 @@ const FreelancerCaseStudySlide = ({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          onRemoveCaseStudy?.(caseStudyId);
+                          setCaseStudyToDeleteId(caseStudyId);
                         }}
                         className={cn(
                           "shrink-0 rounded-full bg-background p-1 text-primary transition-colors hover:bg-background/90 dark:bg-black dark:text-white dark:hover:bg-black/80 case-study-close-btn",
@@ -520,6 +534,7 @@ const FreelancerCaseStudySlide = ({
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
+
                     </div>
                   );
                 })}
@@ -1193,7 +1208,43 @@ const FreelancerCaseStudySlide = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <AlertDialog
+        open={caseStudyToDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setCaseStudyToDeleteId(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-md bg-card border border-border">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 className="h-6 w-6 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-xl font-semibold text-foreground">Delete Case Study</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4 text-base text-muted-foreground">
+              Are you sure you want to delete this case study? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex justify-end gap-3">
+            <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (caseStudyToDeleteId) {
+                  onRemoveCaseStudy?.(caseStudyToDeleteId);
+                  setCaseStudyToDeleteId(null);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
+
   );
 };
 

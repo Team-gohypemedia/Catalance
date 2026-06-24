@@ -390,6 +390,8 @@ const FreelancerProfile = () => {
   const [skillForm, setSkillForm] = useState(createInitialSkillForm);
   const [workForm, setWorkForm] = useState(initialWorkForm);
   const [editingIndex, setEditingIndex] = useState(null); // null = add, number = edit
+  const [projectToDeleteIndex, setProjectToDeleteIndex] = useState(null);
+
 
   const [personal, setPersonal] = useState({
     name: "",
@@ -2814,8 +2816,17 @@ const FreelancerProfile = () => {
   };
 
   const removeProject = (index) => {
-    setPortfolioProjects((prev) => prev.filter((_, i) => i !== index));
+    setProjectToDeleteIndex(index);
   };
+
+  const handleConfirmRemoveProject = () => {
+    if (projectToDeleteIndex !== null) {
+      setPortfolioProjects((prev) => prev.filter((_, i) => i !== projectToDeleteIndex));
+      setProjectToDeleteIndex(null);
+      toast.success("Case study removed");
+    }
+  };
+
 
   const openFullProfileEditor = (section = FULL_PROFILE_EDITOR_SECTIONS.ALL) => {
     const currentDetails =
@@ -4720,6 +4731,36 @@ const FreelancerProfile = () => {
         onApply={handleProfilePhotoCropped}
         onCancel={closeProfileCropDialog}
       />
+
+      <AlertDialog
+        open={projectToDeleteIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) setProjectToDeleteIndex(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-md bg-card border border-border">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 className="h-6 w-6 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-xl font-semibold text-foreground">Delete Case Study</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4 text-base text-muted-foreground">
+              Are you sure you want to delete this case study? This action will remove it from your profile, and any unsaved changes to this case study will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex justify-end gap-3">
+            <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmRemoveProject}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
