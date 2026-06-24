@@ -6,7 +6,7 @@ import {
 import { cn } from "@/shared/lib/utils";
 
 const metricsGridClassName =
-  "mt-6 sm:mt-5 grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4";
+  "mt-6 sm:mt-5 grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-5 xl:grid-cols-4";
 
 const freelancerMetricSkeletonItems = [
   { id: "active-projects", hasControl: false },
@@ -22,21 +22,21 @@ const FreelancerMetricCardSkeleton = ({ item }) => {
   return (
     <FreelancerDashboardPanel
       className={cn(
-        "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
+        "group relative min-h-[110px] border border-transparent bg-card px-2.5 py-3 sm:min-h-[110px] sm:p-5",
       )}
     >
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
         {item.hasControl ? (
           <div className="flex w-full items-center justify-between">
-            <span className="size-10 shrink-0" aria-hidden="true" />
-            <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
-            <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
+            <span className="size-8 shrink-0" aria-hidden="true" />
+            <FreelancerDashboardSkeletonBlock className="size-8 rounded-[12px]" />
+            <FreelancerDashboardSkeletonBlock className="size-8 rounded-[12px]" />
           </div>
         ) : (
-          <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
+          <FreelancerDashboardSkeletonBlock className="size-8 rounded-[12px]" />
         )}
-        <FreelancerDashboardSkeletonBlock className="mt-4 h-8 w-16 rounded-full" />
-        <FreelancerDashboardSkeletonBlock className="mt-3 h-3 w-24 rounded-full" />
+        <FreelancerDashboardSkeletonBlock className="mt-3 h-7 w-14 rounded-full" />
+        <FreelancerDashboardSkeletonBlock className="mt-2 h-2.5 w-20 rounded-full" />
       </div>
 
       <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
@@ -89,7 +89,7 @@ const FreelancerMetricCard = ({
 
   return (
     <article
-      className={`group relative flex min-h-[136px] flex-col rounded-[24px] border border-transparent bg-card px-3.5 py-4 transition-colors hover:border-[var(--primary)]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
+      className={`group relative flex min-h-[110px] flex-col rounded-[20px] border border-transparent bg-card px-2.5 py-3 transition-colors hover:border-[var(--primary)]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role={onClick ? "button" : undefined}
@@ -97,19 +97,19 @@ const FreelancerMetricCard = ({
       aria-label={ariaLabel}
     >
       {control ? (
-        <div className="absolute right-3.5 top-3.5 z-20 sm:hidden">
+        <div className="absolute right-2.5 top-2.5 z-20 sm:hidden">
           {control}
         </div>
       ) : null}
 
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
-          <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
+          <Icon className="size-4 text-muted-foreground/75 sm:size-[22px]" />
         </div>
-        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
+        <p className="mt-3 shrink-0 text-[1.65rem] font-semibold leading-none tracking-[-0.05em] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
           {value}
         </p>
-        <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:mt-4 sm:text-[11px] sm:tracking-[0.2em]">
+        <p className="mt-2 text-center text-[7px] font-medium uppercase tracking-[0.12em] text-muted-foreground sm:mt-4 sm:text-[11px] sm:tracking-[0.2em]">
           {title}
         </p>
         {detail ? (

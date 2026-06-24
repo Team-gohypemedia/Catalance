@@ -25,16 +25,6 @@ const PrivacyPolicy = () => {
     <main
       className="relative min-h-screen w-full overflow-hidden bg-background text-gray-900 dark:text-white selection:bg-primary/30"
     >
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          backgroundImage: `
-            linear-gradient(to right, rgba(15, 23, 42, 0.06) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(15, 23, 42, 0.06) 1px, transparent 1px)
-          `,
-          backgroundSize: "80px 80px",
-        }}
-      />
 
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(200, 80, 40,0.15),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
 

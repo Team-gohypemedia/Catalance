@@ -1166,26 +1166,27 @@ const freelancerMetricSkeletonItems = [
 ];
 
 const FreelancerMetricCardSkeleton = ({ item }) => {
-  const shouldSpanFullWidth = item.id === "pending-proposals" || item.id === "total-earnings";
+  const shouldSpanFullWidth = item.className?.includes("col-span-1") || false;
 
   return (
     <FreelancerDashboardPanel
       className={cn(
-        "group relative min-h-[136px] border border-transparent bg-card px-3.5 py-4 sm:min-h-[110px] sm:p-5",
+        "group relative flex min-h-[85px] flex-col rounded-[16px] border border-transparent bg-card px-2 py-2.5 sm:min-h-[110px] sm:rounded-[20px] sm:p-5",
+        shouldSpanFullWidth && "col-span-1",
       )}
     >
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
         {item.hasControl ? (
           <div className="flex w-full items-center justify-between">
-            <span className="size-10 shrink-0" aria-hidden="true" />
-            <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
-            <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
+            <span className="size-6 shrink-0" aria-hidden="true" />
+            <FreelancerDashboardSkeletonBlock className="size-6 rounded-[10px]" />
+            <FreelancerDashboardSkeletonBlock className="size-6 rounded-[10px]" />
           </div>
         ) : (
-          <FreelancerDashboardSkeletonBlock className="size-10 rounded-[16px]" />
+          <FreelancerDashboardSkeletonBlock className="size-6 rounded-[10px]" />
         )}
-        <FreelancerDashboardSkeletonBlock className="mt-4 h-8 w-16 rounded-full" />
-        <FreelancerDashboardSkeletonBlock className="mt-3 h-3 w-24 rounded-full" />
+        <FreelancerDashboardSkeletonBlock className="mt-1.5 h-6 w-14 rounded-full" />
+        <FreelancerDashboardSkeletonBlock className="mt-1 h-2 w-20 rounded-full" />
       </div>
 
       <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
@@ -1208,7 +1209,7 @@ const FreelancerMetricCardSkeleton = ({ item }) => {
 };
 
 const FreelancerMetricCardsSkeleton = () => (
-  <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+  <section className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-5 lg:grid-cols-4">
     {freelancerMetricSkeletonItems.map((item) => (
       <FreelancerMetricCardSkeleton
         key={`freelancer-metric-skeleton-${item.id}`}
@@ -1649,7 +1650,7 @@ const FreelancerMetricCard = ({
 
   return (
     <article
-      className={`group relative flex min-h-[136px] flex-col rounded-[24px] border border-transparent bg-card px-3.5 py-4 transition-colors hover:border-[var(--primary)]/70 sm:min-h-[110px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
+      className={`group relative flex min-h-[85px] flex-col rounded-[16px] border border-transparent bg-card px-2 py-2.5 transition-colors hover:border-[var(--primary)]/70 sm:min-h-[110px] sm:rounded-[20px] sm:p-5 ${onClick ? "cursor-pointer" : ""} ${className}`.trim()}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       role={onClick ? "button" : undefined}
@@ -1657,23 +1658,23 @@ const FreelancerMetricCard = ({
       aria-label={ariaLabel}
     >
       {control ? (
-        <div className="absolute right-3.5 top-3.5 z-20 sm:hidden">
+        <div className="absolute right-2 top-2 z-20 sm:hidden">
           {control}
         </div>
       ) : null}
 
       <div className="flex h-full flex-col items-center justify-center text-center sm:hidden">
-        <div className="flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 sm:size-14 sm:rounded-[18px]">
-          <Icon className="size-[18px] text-muted-foreground/75 sm:size-[22px]" />
+        <div className="flex size-6 shrink-0 items-center justify-center rounded-[10px] bg-white/[0.06] text-muted-foreground/75">
+          <Icon className="size-3.5 text-muted-foreground/75" />
         </div>
-        <p className="mt-4 shrink-0 text-[2rem] font-semibold leading-none tracking-[-0.05em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)] sm:mt-6 sm:text-[3rem]">
+        <p className="mt-1.5 shrink-0 text-[1.25rem] font-semibold leading-none tracking-[-0.05em] dark:dark:text-white text-[#1C1B1F] dark:text-white text-[#1C1B1F] transition-colors group-hover:text-[var(--primary)]">
           {value}
         </p>
-        <p className="mt-3 text-center text-[8px] font-medium uppercase tracking-[0.14em] text-muted-foreground sm:mt-4 sm:text-[11px] sm:tracking-[0.2em]">
+        <p className="mt-1 text-center text-[7px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
           {title}
         </p>
         {detail ? (
-          <p className="mt-2 min-w-0 text-xs leading-5 text-[#6b7280]">{detail}</p>
+          <p className="mt-1 min-w-0 text-[10px] leading-4 text-[#6b7280]">{detail}</p>
         ) : null}
       </div>
       <div className="hidden h-full flex-col gap-2.5 sm:flex sm:gap-3">
@@ -3673,7 +3674,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             onKeyDown={(event) => {
               event.stopPropagation();
             }}
-            className="inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[var(--primary)] sm:size-9 sm:rounded-lg"
+            className="inline-flex size-8 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[var(--primary)] sm:size-9 sm:rounded-lg"
             aria-label={
               showPendingPaymentsStat ? "Show total earnings" : "Show pending payments"
             }
@@ -3805,7 +3806,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           {metricsLoading ? (
             <FreelancerMetricCardsSkeleton />
           ) : (
-            <section className="grid auto-rows-fr grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+            <section className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-5 lg:grid-cols-4">
               <FreelancerMetricCard
                 icon={FolderKanban}
                 title="Active Projects"
@@ -3849,7 +3850,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     onKeyDown={(event) => {
                       event.stopPropagation();
                     }}
-                    className="inline-flex size-10 shrink-0 items-center justify-center rounded-[16px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[var(--primary)] sm:size-9 sm:rounded-lg"
+                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[var(--primary)] sm:size-9 sm:rounded-lg"
                     aria-label={showPendingPaymentsStat ? "Show total earnings" : "Show pending payments"}
                   >
                     <Repeat2 className="size-4 text-muted-foreground/75" />

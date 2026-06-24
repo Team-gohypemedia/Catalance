@@ -5475,9 +5475,17 @@ const GuestAIDemo = () => {
                                     </span>
                                     <div className="flex-1 min-w-0">
                                         <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
-                                            {currentBriefingStep.key === 'role'
-                                                ? 'Choose the direction that best describes your project.'
-                                                : `Briefly describe your ${briefingAnswers.role ? String(briefingAnswers.role).toLowerCase() : 'project'} requirement.`}
+                                            {currentBriefingStep.key === 'role' ? (
+                                                'Choose the direction that best describes your project.'
+                                            ) : (
+                                                <>
+                                                    Briefly describe your{' '}
+                                                    <span className="text-primary">
+                                                        {briefingAnswers.role ? String(briefingAnswers.role).toLowerCase() : 'project'}
+                                                    </span>{' '}
+                                                    requirement.
+                                                </>
+                                            )}
                                         </h2>
                                         <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
                                             {currentBriefingStep.label}
