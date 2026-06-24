@@ -5412,6 +5412,10 @@ const GuestAIDemo = () => {
         event.preventDefault();
         event.stopPropagation();
 
+        if (!window.confirm('Are you sure you want to delete this chat?')) {
+            return;
+        }
+
         const targetSessionId = chatMeta?.sessionId;
         if (!targetSessionId) return;
 
