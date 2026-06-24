@@ -205,10 +205,15 @@ const FreelancerCaseStudySlide = ({
   const infoModalScrollRef = useRef(null);
   const [isRequestingNiche, setIsRequestingNiche] = useState(false);
 
-  // Scroll modal content to top when opened
+  // Scroll modal content to bottom when opened (mobile)
   useEffect(() => {
-    if (showInfoModal && infoModalScrollRef.current) {
-      infoModalScrollRef.current.scrollTop = infoModalScrollRef.current.scrollHeight;
+    if (showInfoModal) {
+      const timer = setTimeout(() => {
+        if (infoModalScrollRef.current) {
+          infoModalScrollRef.current.scrollTop = infoModalScrollRef.current.scrollHeight;
+        }
+      }, 400);
+      return () => clearTimeout(timer);
     }
   }, [showInfoModal]);
 
