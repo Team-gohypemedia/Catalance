@@ -5168,6 +5168,7 @@ const buildAiFirstRuntimeOptionPrompt = ({
     answersBySlug = {},
     allQuestions = [],
     customRuntimeOptionCandidate = null,
+    recentChatHistory = [],
 }) => {
     const adminControls = getQuestionAdminControls(question, servicePrompt);
     const answersContext = buildAnswersContextLines(answersByQuestionText, {
@@ -5188,6 +5189,12 @@ const buildAiFirstRuntimeOptionPrompt = ({
     );
     const questionContext = clipContextSnippet(buildAdminControlSummaryText(adminControls), 140);
 
+    const historyLines = (Array.isArray(recentChatHistory) ? recentChatHistory : [])
+        .slice(-4)
+        .filter(msg => msg && msg.content)
+        .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${String(msg.content).substring(0, 300)}`)
+        .join('\n');
+
     return `
 You are generating the visible UI options for one questionnaire step.
 
@@ -5195,6 +5202,10 @@ Service: ${JSON.stringify(serviceName)}
 Question: ${JSON.stringify(String(question?.text || ""))}
 Question type: ${JSON.stringify(String(question?.type || "input"))}
 Question context: ${JSON.stringify(questionContext || "none")}
+
+Recent chat history (use this to infer implied preferences, stacks, or skills the user already mentioned):
+${historyLines || "- none yet"}
+
 Confirmed user context:
 ${answersContext || "- none yet"}
 
@@ -5220,12 +5231,13 @@ Task:
 6. If the context is too weak or generic, return an empty options array.
 7. Do not generate fake brands, impossible tools, or overly random niche options.
 8. If the user context clearly points to a region, stack, market, or integration type, let the options reflect that.
-9. If the direct custom answer candidate is specific and clearly relevant to this exact question, include it as one of the visible options.
+9. CRITICAL: If the user context shows they have already chosen a primary platform or technology (e.g. Webflow, Shopify, WordPress), DO NOT offer competing core platforms (like React or WordPress if they chose Webflow). Only offer tools, integrations, or infrastructure that are highly compatible with their chosen stack.
+10. If the direct custom answer candidate is specific and clearly relevant to this exact question, include it as one of the visible options.
 
 Return strict JSON only:
 {
   "options": [
-    { "value": "option value", "label": "User-facing label" }
+    { "value": "option value", "label": "User-facing label", "source": "generated" | "canonical" }
   ]
 }
 `;
@@ -5240,6 +5252,7 @@ const generateRuntimeOptionsForQuestion = async ({
     answersByQuestionText = {},
     answersBySlug = {},
     allQuestions = [],
+    recentChatHistory = [],
     timingTracker = null,
 }) => {
     const questionType = normalizeTextToken(question?.type || "input");
@@ -5290,6 +5303,7 @@ const generateRuntimeOptionsForQuestion = async ({
         answersBySlug: effectiveAnswersBySlug,
         allQuestions,
         customRuntimeOptionCandidate,
+        recentChatHistory,
     });
 
     const fallbackOptions = applyAdminControlsToOptions(
@@ -7737,6 +7751,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 answersBySlug: correctedAnswersBySlug,
                 allQuestions: questions,
                 timingTracker: requestTimingTracker,
+                recentChatHistory: session?.messages || [],
             });
             if (correctionNextQuestion?.slug && runtimeOptions.length > 0) {
                 correctedRuntimeOptionsByQuestionSlug[correctionNextQuestion.slug] = runtimeOptions;
@@ -8810,6 +8825,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                         answersBySlug: conversationalAnswersBySlug,
                         allQuestions: questions,
                         timingTracker: requestTimingTracker,
+                        recentChatHistory: session?.messages || [],
                     });
                     if (questions[conversationalNextStep]?.slug && runtimeOptions.length > 0) {
                         conversationalRuntimeOptionsByQuestionSlug[questions[conversationalNextStep].slug] = runtimeOptions;
@@ -9252,6 +9268,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             answersBySlug: updatedAnswersBySlug,
             allQuestions: questions,
             timingTracker: requestTimingTracker,
+            recentChatHistory: session?.messages || [],
         });
         if (questions[nextStep]?.slug && runtimeOptions.length > 0) {
             nextRuntimeOptionsByQuestionSlug[questions[nextStep].slug] = runtimeOptions;
