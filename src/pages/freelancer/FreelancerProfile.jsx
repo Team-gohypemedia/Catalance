@@ -391,6 +391,8 @@ const FreelancerProfile = () => {
   const [workForm, setWorkForm] = useState(initialWorkForm);
   const [editingIndex, setEditingIndex] = useState(null); // null = add, number = edit
   const [projectToDeleteIndex, setProjectToDeleteIndex] = useState(null);
+  const [serviceToDeleteKey, setServiceToDeleteKey] = useState(null);
+
 
 
   const [personal, setPersonal] = useState({
@@ -2284,17 +2286,23 @@ const FreelancerProfile = () => {
     }
   };
 
-  const deleteServiceProfile = async (serviceKeyToDelete) => {
+  const deleteServiceProfile = (serviceKeyToDelete) => {
     if (isSaving || savingServiceProfile) return;
-    if (!window.confirm("Are you sure you want to delete this service?")) return;
+    setServiceToDeleteKey(serviceKeyToDelete);
+  };
+
+  const handleConfirmDeleteServiceProfile = async () => {
+    if (!serviceToDeleteKey) return;
+    const keyToDelete = serviceToDeleteKey;
+    setServiceToDeleteKey(null);
 
     setSavingServiceProfile(true);
     try {
       const existingServiceDetails = profileDetails?.serviceDetails || {};
       const nextServiceDetails = { ...existingServiceDetails };
-      delete nextServiceDetails[serviceKeyToDelete];
+      delete nextServiceDetails[keyToDelete];
 
-      const targetComparisonKey = resolveServiceComparisonKey(serviceKeyToDelete);
+      const targetComparisonKey = resolveServiceComparisonKey(keyToDelete);
       
       const nextServices = Array.isArray(services) 
         ? services.filter(k => resolveServiceComparisonKey(k) !== targetComparisonKey) 
@@ -2330,6 +2338,7 @@ const FreelancerProfile = () => {
       setSavingServiceProfile(false);
     }
   };
+
 
   // ----- Portfolio Projects Logic -----
   const resetProjectDraft = () => {
@@ -4754,6 +4763,36 @@ const FreelancerProfile = () => {
             <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmRemoveProject}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={serviceToDeleteKey !== null}
+        onOpenChange={(open) => {
+          if (!open) setServiceToDeleteKey(null);
+        }}
+      >
+        <AlertDialogContent className="max-w-md bg-card border border-border">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <Trash2 className="h-6 w-6 text-destructive" />
+              </div>
+              <AlertDialogTitle className="text-xl font-semibold text-foreground">Delete Service</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="pt-4 text-base text-muted-foreground">
+              Are you sure you want to delete this service? This action will remove the service and all of its associated settings from your profile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex justify-end gap-3">
+            <AlertDialogCancel className="border-border text-foreground hover:bg-muted">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDeleteServiceProfile}
               className="bg-destructive hover:bg-destructive/90 text-destructive-foreground font-semibold"
             >
               Delete
