@@ -3270,8 +3270,14 @@ const AgencyOnboardingShell = ({
       return;
     }
 
+    if (communicationPolicySlideIndex >= 0) {
+      navigateToSlideIndex(communicationPolicySlideIndex);
+      return;
+    }
+
     submitOnboardingAndNavigate();
   };
+
 
   const handleServiceStepChange = useCallback(
     (nextStepId) => {
