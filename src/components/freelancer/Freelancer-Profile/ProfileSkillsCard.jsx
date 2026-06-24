@@ -221,6 +221,7 @@ const ProfileSkillsCard = ({
   toUniqueLabels,
   openEditServiceProfileModal,
   openAddServiceModal,
+  deleteServiceProfile,
 }) => {
   const skillCards = (Array.isArray(skills) ? skills : []).map(normalizeSkill);
   const [openMenu, setOpenMenu] = useState(null);
@@ -669,6 +670,22 @@ const ProfileSkillsCard = ({
                 Services & Skills
               </p>
               <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              {typeof deleteServiceProfile === "function" ? (
+                <button
+                  type="button"
+                  disabled={!activeService?.serviceKey || savingChanges}
+                  onClick={() => {
+                    if (activeService?.serviceKey) {
+                      deleteServiceProfile(activeService.serviceKey);
+                    }
+                  }}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Delete service"
+                  title="Delete service"
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
+              ) : null}
               {typeof openEditServiceProfileModal === "function" ? (
                 <button
                   type="button"

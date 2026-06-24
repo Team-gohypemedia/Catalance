@@ -151,6 +151,12 @@ export const SUB_PROFESSION_OPTIONS_BY_SERVICE = {
         "Short Form Content Strategist",
         "UGC Video Producer",
     ],
+    ai_video_generation: [
+        "AI Video Specialist",
+        "AI Animator",
+        "Generative Video Creator",
+        "AI Video Editor",
+    ],
     ai_automation: [
         "AI Automation Specialist",
         "No-Code Automation Developer",
@@ -243,6 +249,7 @@ export const SERVICE_OPTIONS = [
     { value: "customer_support", label: "Customer Support Services", icon: MessageCircle },
     { value: "influencer_marketing", label: "Influencer Marketing", icon: Star },
     { value: "ugc_marketing", label: "UGC Marketing", icon: Video },
+    { value: "ai_video_generation", label: "AI Video Generation", icon: Video },
     { value: "ai_automation", label: "AI Automation", icon: Bot },
     { value: "whatsapp_chatbot", label: "WhatsApp Chatbot", icon: MessageSquare },
     { value: "creative_design", label: "Creative & Design", icon: Palette },
@@ -336,6 +343,11 @@ export const SERVICE_PLATFORM_PROFILE_FIELDS = {
         { key: "instagram", label: "Instagram Profile", placeholder: "https://www.instagram.com/your-handle" },
         { key: "tiktok", label: "TikTok Profile", placeholder: "https://www.tiktok.com/@your-handle" },
         { key: "youtube", label: "YouTube Shorts / Reels Work", placeholder: "https://www.youtube.com/@your-channel" },
+    ],
+    ai_video_generation: [
+        { key: "portfolio", label: "Video Portfolio", placeholder: "https://your-portfolio.com/videos" },
+        { key: "youtube", label: "YouTube Channel", placeholder: "https://youtube.com/@yourchannel" },
+        { key: "instagram", label: "Instagram Profile", placeholder: "https://www.instagram.com/your-handle" },
     ],
     ai_automation: [
         { key: "github", label: "GitHub Profile", placeholder: "https://github.com/your-username" },
@@ -871,6 +883,16 @@ export const DAILY_TECH_OPTIONS_BY_SERVICE = {
         "InShot",
         "Amazon Influencer",
         "Snapchat Spotlight",
+    ],
+    ai_video_generation: [
+        "RunwayML",
+        "Midjourney",
+        "Sora",
+        "Pika Labs",
+        "Kaiber",
+        "Topaz Video AI",
+        "HeyGen",
+        "ElevenLabs",
     ],
     influencer_marketing: [
         "Instagram",
@@ -1455,6 +1477,29 @@ export const SERVICE_GROUPS = {
                 "Instagram",
                 "TikTok",
                 "YouTube Shorts",
+            ],
+        },
+    ],
+    ai_video_generation: [
+        {
+            id: "ai_video_type",
+            label: "Video types",
+            options: [
+                "Explainer Videos",
+                "Social Media Ads",
+                "Music Videos",
+                "Avatar / Presenter Videos",
+            ],
+        },
+        {
+            id: "ai_video_tools",
+            label: "Tools",
+            options: [
+                "Runway Gen-2",
+                "Pika Labs",
+                "Midjourney",
+                "Stable Video Diffusion",
+                "HeyGen",
             ],
         },
     ],
