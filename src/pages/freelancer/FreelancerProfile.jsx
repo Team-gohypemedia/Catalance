@@ -245,6 +245,11 @@ const normalizeServiceStorageKeys = (values = []) => {
   }, []);
 };
 
+const isSeededServiceCoverImage = (value = "") =>
+  /(?:^|\/)assets\/services\/[^/]+-cover\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i.test(
+    String(value || "").trim()
+  );
+
 const parseLocationInput = (value = "") => {
   const parts = String(value || "")
     .split(",")
@@ -2092,6 +2097,7 @@ const FreelancerProfile = () => {
         if (!uploadedUrl) throw new Error("Service media upload completed without a usable URL.");
         return {
           url: uploadedUrl,
+          uploadedUrl,
           key: payload?.data?.key || null,
           name: payload?.data?.name || file.name || null,
           kind: payload?.data?.kind || (file.type?.startsWith("video/") ? "video" : "image"),
@@ -2113,7 +2119,23 @@ const FreelancerProfile = () => {
             return await uploadServiceMediaFile(file);
           }
 
-          return entry && typeof entry === "object" ? entry : null;
+          if (!entry || typeof entry !== "object") {
+            return null;
+          }
+
+          const remoteUrl = String(
+            entry.uploadedUrl || entry.url || entry.mediaUrl || entry.src || entry.value || ""
+          ).trim();
+
+          if (!remoteUrl || remoteUrl.startsWith("blob:")) {
+            return null;
+          }
+
+          return {
+            ...entry,
+            url: remoteUrl,
+            uploadedUrl: String(entry.uploadedUrl || remoteUrl).trim(),
+          };
         })
       );
       nextServiceMediaFiles = resolvedMediaFiles.filter(Boolean);
@@ -2160,8 +2182,12 @@ const FreelancerProfile = () => {
       nextCaseStudies[0] ||
       null;
     const primaryImage = getPrimaryImageFromMediaFiles(nextServiceMediaFiles);
+    const rawCoverImage = String(normalizedDraft.coverImage || "").trim();
+    const persistedCoverImage = isSeededServiceCoverImage(rawCoverImage)
+      ? ""
+      : resolveAvatarUrl(rawCoverImage);
     const nextCoverImage = String(
-      normalizedDraft.coverImage ||
+      persistedCoverImage ||
         primaryImage?.uploadedUrl ||
         primaryImage?.url ||
         ""

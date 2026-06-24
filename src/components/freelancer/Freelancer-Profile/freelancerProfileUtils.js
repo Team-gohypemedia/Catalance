@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/shared/lib/api-client";
+
 export const getBioTextFromObject = (obj) => {
   if (!obj || typeof obj !== "object") return "";
   const textKeys = ["bio", "about", "description", "summary", "text"];
@@ -306,32 +308,44 @@ export const buildLocationFromIdentity = (identity = {}) => {
   return [city, country].filter(Boolean).join(", ");
 };
 
+const R2_KEY_PREFIX_PATTERN = /^(avatars|chat|freelancers|profiles|projects|resumes)\//i;
+
+const buildImageProxyUrl = (key = "") => {
+  const normalizedKey = String(key || "").trim().replace(/^\/+/, "");
+  if (!normalizedKey) return "";
+
+  const apiBaseUrl = String(API_BASE_URL || "/api").trim().replace(/\/+$/, "");
+  return `${apiBaseUrl}/images/${normalizedKey.split("/").map(encodeURIComponent).join("/")}`;
+};
+
 export const resolveAvatarUrl = (value, { allowBlob = false } = {}) => {
   if (!value) return "";
   if (typeof value === "string") {
     const url = value.trim();
     if (!url) return "";
     if (!allowBlob && url.startsWith("blob:")) return "";
-    
-    // Resolve Cloudflare R2 URLs to backend proxy in development
-    if (url.includes("assets.catalance.in") || url.includes("r2.dev")) {
-      let key = url.includes("assets.catalance.in")
-        ? url.split("assets.catalance.in/")[1]
-        : url.split("r2.dev/")[1];
-      key = String(key || "").trim();
-      if (key) {
-        let apiBaseUrl = String(import.meta.env?.VITE_API_BASE_URL || "").trim().replace(/\/+$/, "");
-        if (!apiBaseUrl || apiBaseUrl.includes("localhost") || apiBaseUrl.includes("127.0.0.1")) {
-          apiBaseUrl = "/api";
-        }
-        return `${apiBaseUrl}/images/${key}`;
-      }
+
+    if (/^https?:\/\//i.test(url)) {
+      return url;
     }
+
+    const apiImageMarker = "/api/images/";
+    const markerIndex = url.indexOf(apiImageMarker);
+    if (markerIndex !== -1) {
+      const key = url.slice(markerIndex + apiImageMarker.length);
+      return buildImageProxyUrl(decodeURIComponent(key));
+    }
+
+    const normalizedKey = url.replace(/^\/+/, "");
+    if (R2_KEY_PREFIX_PATTERN.test(normalizedKey)) {
+      return buildImageProxyUrl(normalizedKey);
+    }
+
     return url;
   }
   if (typeof value === "object") {
     return resolveAvatarUrl(
-      value.uploadedUrl || value.url || value.src || value.value || "",
+      value.uploadedUrl || value.url || value.mediaUrl || value.src || value.value || "",
       { allowBlob }
     );
   }

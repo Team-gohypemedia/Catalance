@@ -268,11 +268,18 @@ const resolveMediaImageUrl = (value, resolveAvatarUrl) => {
   return "";
 };
 
+const isSeededServiceCoverImage = (value = "") =>
+  /(?:^|\/)assets\/services\/[^/]+-cover\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i.test(
+    String(value || "").trim()
+  );
+
 const resolveServiceImageFromDetail = (detail, resolveAvatarUrl, fieldPaths) => {
   const coverImage = getFirstValue(detail, fieldPaths.serviceCoverImage);
   const directCoverImage = resolveMediaImageUrl(coverImage, resolveAvatarUrl);
 
-  if (directCoverImage) return directCoverImage;
+  if (directCoverImage && !isSeededServiceCoverImage(directCoverImage)) {
+    return directCoverImage;
+  }
 
   const mediaEntries = getArrayValuesFromPaths(detail, fieldPaths.serviceMedia);
 
