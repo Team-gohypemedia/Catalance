@@ -32,7 +32,7 @@ import {
 const CASE_STUDY_BANNER_MAX_BYTES = 4.5 * 1024 * 1024;
 
 const ONBOARDING_PAGE_TITLE_CLASS =
-  "whitespace-nowrap text-[14px] min-[360px]:text-[15px] min-[390px]:text-[17px] font-semibold leading-[1.12] tracking-[-0.03em] sm:text-[34px] md:text-[40px]";
+  "text-[17.5px] font-semibold leading-[1.12] tracking-[-0.03em] sm:text-[34px] md:text-[40px]";
 const ONBOARDING_SECTION_TITLE_CLASS = "text-2xl font-medium leading-tight tracking-[-0.02em]";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
@@ -1114,7 +1114,7 @@ const FreelancerCaseStudySlide = ({
                   {/* Right Column: Case study info points */}
                   <div className="md:col-span-6 space-y-3 flex flex-col justify-between order-2 md:order-2">
                     <div>
-                      <h3 className="text-sm md:text-base font-bold text-foreground whitespace-nowrap">
+                      <h3 className="text-sm md:text-base font-bold text-foreground whitespace-nowrap md:whitespace-normal">
                         Complete Case Studies, <span className="text-primary">Get More Visibility</span>
                       </h3>
                       <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
