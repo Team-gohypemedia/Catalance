@@ -2939,8 +2939,8 @@ const FreelancerProfile = () => {
     const bioText = String(fullProfileForm.professionalBio || "").trim();
     if (bioText) {
       const wordCount = bioText.split(/\s+/).filter(Boolean).length;
-      if (wordCount > 50) {
-        toast.error("Professional bio cannot exceed 50 words.");
+      if (wordCount > 100) {
+        toast.error("Professional bio cannot exceed 100 words.");
         return;
       }
     }

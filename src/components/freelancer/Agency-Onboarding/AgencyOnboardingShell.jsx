@@ -821,10 +821,17 @@ const getBasicProfileFieldError = (field, form) => {
       }
       return "";
     }
-    case "professionalBio":
-      return String(form.professionalBio || "").trim()
-        ? ""
-        : "Please enter your professional bio.";
+    case "professionalBio": {
+      const bioText = String(form.professionalBio || "").trim();
+      if (!bioText) {
+        return "Please enter your professional bio.";
+      }
+      const wordCount = bioText.split(/\s+/).filter(Boolean).length;
+      if (wordCount > 100) {
+        return "Professional bio cannot exceed 100 words.";
+      }
+      return "";
+    }
     case "country":
       return String(form.country || "").trim() ? "" : "Please select your country.";
     case "state":

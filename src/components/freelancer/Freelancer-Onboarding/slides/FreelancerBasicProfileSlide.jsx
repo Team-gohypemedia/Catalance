@@ -452,7 +452,7 @@ const FreelancerBasicProfileSlide = ({
     const fieldError = basicProfileErrors[field.id];
     const isBio = field.id === "professionalBio";
     const wordCount = isBio ? String(fieldValue).trim().split(/\s+/).filter(Boolean).length : 0;
-    const isOverLimit = isBio && wordCount > 50;
+    const isOverLimit = isBio && wordCount > 100;
 
     return (
       <div key={field.id} className="w-full space-y-3">
@@ -479,7 +479,7 @@ const FreelancerBasicProfileSlide = ({
                 isOverLimit ? "text-destructive" : "text-black/20 dark:text-white/20",
               )}
             >
-              {wordCount} / 50 words
+              {wordCount} / 100 words
             </span>
           )}
         </div>

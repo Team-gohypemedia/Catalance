@@ -855,8 +855,8 @@ const getBasicProfileFieldError = (field, form, schemaField = null) => {
         return isRequired ? "Please enter your professional bio." : "";
       }
       const wordCount = bioText.split(/\s+/).filter(Boolean).length;
-      if (wordCount > 50) {
-        return "Professional bio cannot exceed 50 words.";
+      if (wordCount > 100) {
+        return "Professional bio cannot exceed 100 words.";
       }
       return "";
     }
