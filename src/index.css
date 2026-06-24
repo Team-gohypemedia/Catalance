@@ -1133,16 +1133,52 @@ html.dark .onboarding-skip-btn:hover {
 }
 
 /* --- iOS Focus Zoom Fix --- */
-@media (max-width: 767px) {
-  input[class],
-  textarea[class],
-  select[class],
-  [role="combobox"][class],
-  .SelectTrigger[class],
+/* iOS Safari auto-zooms inputs with font-size < 16px. Force 16px minimum on all form elements. */
+@media screen and (max-width: 767px) {
+  input,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="search"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"],
+  input[type="time"],
+  input[type="color"],
+  textarea,
+  select,
+  [contenteditable],
+  [contenteditable="true"],
+  [role="textbox"],
+  [role="combobox"],
+  [role="searchbox"],
+  [role="spinbutton"],
+  .SelectTrigger {
+    font-size: 16px !important;
+    /* Prevent double-tap zoom on form elements */
+    touch-action: manipulation;
+  }
+}
+
+/* Prevent iOS text size adjustment that can cause zoom */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* Prevent touch zoom gestures on form elements for all touch devices */
+@media (hover: none) and (pointer: coarse) {
   input,
   textarea,
-  select {
-    font-size: 16px !important;
+  select,
+  [contenteditable],
+  [role="textbox"],
+  [role="combobox"] {
+    touch-action: manipulation;
   }
 }
 
