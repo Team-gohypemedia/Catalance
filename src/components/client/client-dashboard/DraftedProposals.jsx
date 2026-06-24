@@ -913,6 +913,9 @@ const Proposals = memo(function Proposals({
   const handleDeleteDraft = useCallback(
     (draftId) => {
       if (isControlled || !draftId) return;
+      
+      const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
+      if (!confirmed) return;
 
       const storageKeys = getProposalStorageKeys(sessionUser?.id);
       const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage(

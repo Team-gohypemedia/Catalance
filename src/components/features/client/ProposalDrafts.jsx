@@ -269,6 +269,9 @@ const ProposalDraftsContent = () => {
   };
 
   const handleDelete = (draft) => {
+    const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
+    if (!confirmed) return;
+
     // Delete from the specific storage key
     deleteDraftFromStorage(draft.storageKey);
     
