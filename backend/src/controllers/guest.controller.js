@@ -6798,6 +6798,7 @@ Validation rules:
 - Use visible options as the shown menu and canonical option pool as extra acceptable matches.
 - Honor admin alias/mapping rules when the meaning is clear.
 - Only re-list visible options if needed for guidance.
+- CRITICAL RULE: If the user explicitly states they do not have the requested information, do not know, or says it is not available (e.g., "not available", "I don't have this", "none", "skip"), treat it as VALID and set normalizedAnswer to "Not available". Do NOT force them to provide it.
 
 Response rules:
 ${validationResponseRules}
