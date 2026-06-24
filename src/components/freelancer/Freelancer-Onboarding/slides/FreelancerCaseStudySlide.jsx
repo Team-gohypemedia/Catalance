@@ -202,7 +202,15 @@ const FreelancerCaseStudySlide = ({
   const [bannerUploadError, setBannerUploadError] = useState("");
   const titleInputRef = useRef(null);
   const [showInfoModal, setShowInfoModal] = useState(false);
+  const infoModalScrollRef = useRef(null);
   const [isRequestingNiche, setIsRequestingNiche] = useState(false);
+
+  // Scroll modal content to top when opened
+  useEffect(() => {
+    if (showInfoModal && infoModalScrollRef.current) {
+      infoModalScrollRef.current.scrollTop = infoModalScrollRef.current.scrollHeight;
+    }
+  }, [showInfoModal]);
 
   const handleRequestNiche = async (requestName) => {
     if (!requestName) return;
@@ -955,7 +963,7 @@ const FreelancerCaseStudySlide = ({
                 damping: 26,
                 mass: 0.9
               }}
-              className="relative w-full max-w-[760px] md:w-[70%] lg:w-[48vw] max-h-[72vh] flex flex-col rounded-3xl border border-border bg-card p-4 shadow-[0_28px_100px_rgba(0,0,0,0.16)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.45)] overflow-hidden"
+              className="relative w-full max-w-[760px] md:w-[70%] lg:w-[48vw] max-h-[80vh] md:max-h-[72vh] flex flex-col rounded-3xl border border-border bg-card p-4 shadow-[0_28px_100px_rgba(0,0,0,0.16)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.45)] overflow-hidden"
             >
               
               {/* Close Button */}
@@ -976,6 +984,7 @@ const FreelancerCaseStudySlide = ({
 
               {/* Scrollable Content */}
               <div 
+                ref={infoModalScrollRef}
                 className="flex-1 overflow-y-auto pr-1 py-1 space-y-3"
                 style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}
               >
@@ -983,7 +992,7 @@ const FreelancerCaseStudySlide = ({
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
                   
                   {/* Left Column: Top Rated Freelancer list */}
-                  <div className="md:col-span-6 bg-muted/40 rounded-2xl p-3 border border-border/50 space-y-1.5 flex flex-col justify-center order-2 md:order-1">
+                  <div className="md:col-span-6 bg-muted/40 rounded-2xl p-3 border border-border/50 space-y-1.5 flex flex-col justify-center order-1 md:order-1">
                     <div className="flex items-center gap-1.5 mb-0.5">
                       <span className="text-base">👑</span>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -1085,9 +1094,9 @@ const FreelancerCaseStudySlide = ({
                   </div>
 
                   {/* Right Column: Case study info points */}
-                  <div className="md:col-span-6 space-y-3 flex flex-col justify-between order-1 md:order-2">
+                  <div className="md:col-span-6 space-y-3 flex flex-col justify-between order-2 md:order-2">
                     <div>
-                      <h3 className="text-base font-bold text-foreground">
+                      <h3 className="text-sm md:text-base font-bold text-foreground whitespace-nowrap">
                         Complete Case Studies, <span className="text-primary">Get More Visibility</span>
                       </h3>
                       <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
