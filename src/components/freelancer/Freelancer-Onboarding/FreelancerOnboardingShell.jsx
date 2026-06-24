@@ -4121,7 +4121,7 @@ const FreelancerOnboardingShell = () => {
               ? "py-2 sm:py-3 lg:py-4 pb-2 sm:pb-3 lg:pb-4"
               : `py-4 sm:py-6 lg:py-8 ${isFooterHidden ? 'pb-4 sm:pb-6 lg:pb-8' : 'pb-24'}`
           }`}>
-            <Suspense fallback={<Loader className="flex-1 my-12" />}>
+            <Suspense fallback={<Loader size="lg" className="flex-1 my-12" />}>
               <AnimatePresence initial={false} mode="wait">
                 <motion.div
                   key={currentSlide.id}

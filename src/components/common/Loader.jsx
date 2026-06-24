@@ -54,7 +54,9 @@ export default function Loader({ size = "full", className = "" }) {
   const wrapperClass =
     size === "full"
       ? `flex ${isFixedOrAbsolute ? "h-full w-full" : "min-h-[100dvh] w-full"} items-center justify-center bg-background`
-      : "inline-flex items-center justify-center";
+      : size === "lg"
+        ? "flex w-full items-center justify-center"
+        : "inline-flex items-center justify-center";
 
   const isFlex = size === "lg" || size === "full";
 
