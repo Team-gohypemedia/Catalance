@@ -193,7 +193,7 @@ const ensureServicesCatalogLoaded = async (force = false) => {
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL =
-  env.OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-5.1";
+  env.OPENROUTER_MODEL || process.env.OPENROUTER_MODEL || "openai/gpt-5.2";
 const FALLBACK_MODEL =
   env.OPENROUTER_MODEL_FALLBACK ||
   process.env.OPENROUTER_MODEL_FALLBACK ||
