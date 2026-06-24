@@ -2848,7 +2848,7 @@ const BRIEFING_SERVICE_MATCHERS = [
         aliases: ['app development', 'mobile app development'],
     },
     {
-        test: /\b(ai automation|automation|workflow|agent|chatbot|voice bot|voice agent|whatsapp bot|ai assistant)\b/i,
+        test: /\b(ai automation|automation|workflow|agent|chatbot|voice bot|voice agent|whatsapp bot|ai assistant|crm|erp)\b/i,
         aliases: ['ai automation', 'voice agent', 'crm and erp integrated solutions'],
     },
     {
@@ -2856,7 +2856,7 @@ const BRIEFING_SERVICE_MATCHERS = [
         aliases: ['branding', 'branding kit', 'creative and design'],
     },
     {
-        test: /\b(ui|ux|product design|wireframe|figma|design system)\b/i,
+        test: /\b(ui|ux|product design|wireframe|figma|design system|creative|design)\b/i,
         aliases: ['creative and design', 'website development'],
     },
     {
@@ -2864,12 +2864,28 @@ const BRIEFING_SERVICE_MATCHERS = [
         aliases: ['seo', 'seo / gmb'],
     },
     {
-        test: /\b(content|copywriting|blog|articles|messaging|writer)\b/i,
+        test: /\b(content|copywriting|blog|articles|messaging|writer|writing)\b/i,
         aliases: ['writing and content'],
     },
     {
-        test: /\b(video|reel|shorts|ugc|editor|editing|motion|cgi)\b/i,
-        aliases: ['video services', 'ugc marketing', 'cgi video services'],
+        test: /\b(influencer|creator marketing|kol|influencers)\b/i,
+        aliases: ['influencer marketing'],
+    },
+    {
+        test: /\b(ai video|generative video|ai animation|ai generation|midjourney video|runway|sora|ai video generation)\b/i,
+        aliases: ['ai video generation'],
+    },
+    {
+        test: /\b(ugc|user generated)\b/i,
+        aliases: ['ugc marketing'],
+    },
+    {
+        test: /\b(cgi|3d|animation|vfx|3d animation)\b/i,
+        aliases: ['cgi video services', '3d animation'],
+    },
+    {
+        test: /\b(video|reel|shorts|editor|editing|motion)\b/i,
+        aliases: ['video services'],
     },
     {
         test: /\b(meta ads|google ads|performance marketing|paid ads|paid advertising)\b/i,
@@ -4589,8 +4605,26 @@ const GuestAIDemo = () => {
             const requestedTitle = location.state?.serviceTitle;
             
             const CAROUSEL_ID_TO_TITLE = {
+                'website-development': 'Website Development',
+                'mobile-app-development': 'Mobile App Development',
+                'ai-automation': 'AI Automation',
+                'crm-erp-integrated-solutions': 'CRM & ERP Integrated Solutions',
+                'seo-gmb': 'SEO / GMB',
+                'influencer-marketing': 'Influencer Marketing',
+                'social-media-marketing': 'Social Media Marketing',
+                'ugc-marketing': 'UGC Marketing',
+                'creative-design': 'Creative & Design',
+                'branding-kit': 'Branding Kit',
+                'paid-advertising': 'Paid Advertising',
+                'writing-content': 'Writing & Content',
+                'video-services': 'Video Services',
+                'ai-video-generation': 'AI Video Generation',
+                '3d-animation': '3D Animation/CGI Videos/VFX',
+                'voice-agent': 'Voice Agent / AI Calling',
+                
+                // Keep old ones for backward compatibility
                 'web_development': 'Website Development',
-                'app_development': 'App Development',
+                'app_development': 'Mobile App Development',
                 'ai_automation': 'AI Automation',
                 'crm_erp': 'CRM & ERP Integrated Solutions',
                 'seo': 'SEO / GMB',
@@ -4603,8 +4637,9 @@ const GuestAIDemo = () => {
                 'content_writing': 'Writing & Content',
                 'video_services': 'Video Services',
                 'ai_video_generation': 'AI Video Generation',
-                '3d_services': '3D Animation',
-                'voice_agent': 'Voice Agent',
+                '3d_services': '3D Animation/CGI Videos/VFX',
+                'cgi_video_services': '3D Animation/CGI Videos/VFX',
+                'voice_agent': 'Voice Agent / AI Calling',
             };
             
             const aliasTitle = CAROUSEL_ID_TO_TITLE[requestedId];
@@ -4631,10 +4666,18 @@ const GuestAIDemo = () => {
                     navigate(window.location.pathname + window.location.search, { replace: true, state });
                 }
                 
-                startServiceConversation(matchedService, {
-                    preserveExistingMessages: false,
-                    flowMode: SERVICE_SELECTION_MODES.FREELANCER,
-                });
+                if (location.state?.fromWizard) {
+                    setBriefingAnswers(prev => ({
+                        ...prev,
+                        role: matchedService.name || matchedService.title
+                    }));
+                    setBriefingStepIndex(1);
+                } else {
+                    startServiceConversation(matchedService, {
+                        preserveExistingMessages: false,
+                        flowMode: SERVICE_SELECTION_MODES.FREELANCER,
+                    });
+                }
             }
         }
     }, [
@@ -5369,6 +5412,10 @@ const GuestAIDemo = () => {
         event.preventDefault();
         event.stopPropagation();
 
+        if (!window.confirm('Are you sure you want to delete this chat?')) {
+            return;
+        }
+
         const targetSessionId = chatMeta?.sessionId;
         if (!targetSessionId) return;
 
@@ -5505,10 +5552,8 @@ const GuestAIDemo = () => {
                                                         key={getServiceIdentifier(service)}
                                                         type="button"
                                                         onClick={() => {
-                                                            updateBriefingAnswer('role', service?.name || service?.title || '');
-                                                            startTransition(() => {
-                                                                setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
-                                                            });
+                                                            const targetServiceId = service?.slug || service?.id;
+                                                            navigate(`${location.pathname}?service=${targetServiceId}`, { state: { fromWizard: true } });
                                                         }}
                                                         className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingChipClasses}`}
                                                     >

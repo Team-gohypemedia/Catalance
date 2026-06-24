@@ -2054,10 +2054,7 @@ const FreelancerProfile = () => {
       serviceKey,
       serviceId: currentServiceDetail?.serviceId || null,
     });
-    if (!String(normalizedDraft.deliveryTimeline || "").trim()) {
-      toast.error("Please select a delivery timeline for this service.");
-      return;
-    }
+
     const serviceComparisonKey = resolveServiceComparisonKey(serviceKey);
     const serviceAlreadyExists = Array.from(
       new Set([
@@ -2106,38 +2103,39 @@ const FreelancerProfile = () => {
         };
       };
 
-      const resolvedMediaFiles = await Promise.all(
-        (Array.isArray(normalizedDraft.mediaFiles) ? normalizedDraft.mediaFiles : []).map(async (entry) => {
-          const file =
-            typeof File !== "undefined" && entry instanceof File
-              ? entry
-              : typeof File !== "undefined" && entry?.file instanceof File
-                ? entry.file
-                : null;
+      const resolvedMediaFiles = [];
+      const mediaEntries = Array.isArray(normalizedDraft.mediaFiles) ? normalizedDraft.mediaFiles : [];
+      for (const entry of mediaEntries) {
+        const file =
+          typeof File !== "undefined" && entry instanceof File
+            ? entry
+            : typeof File !== "undefined" && entry?.file instanceof File
+              ? entry.file
+              : null;
 
-          if (file) {
-            return await uploadServiceMediaFile(file);
-          }
+        if (file) {
+          resolvedMediaFiles.push(await uploadServiceMediaFile(file));
+          continue;
+        }
 
-          if (!entry || typeof entry !== "object") {
-            return null;
-          }
+        if (!entry || typeof entry !== "object") {
+          continue;
+        }
 
-          const remoteUrl = String(
-            entry.uploadedUrl || entry.url || entry.mediaUrl || entry.src || entry.value || ""
-          ).trim();
+        const remoteUrl = String(
+          entry.uploadedUrl || entry.url || entry.mediaUrl || entry.src || entry.value || ""
+        ).trim();
 
-          if (!remoteUrl || remoteUrl.startsWith("blob:")) {
-            return null;
-          }
+        if (!remoteUrl || remoteUrl.startsWith("blob:")) {
+          continue;
+        }
 
-          return {
-            ...entry,
-            url: remoteUrl,
-            uploadedUrl: String(entry.uploadedUrl || remoteUrl).trim(),
-          };
-        })
-      );
+        resolvedMediaFiles.push({
+          ...entry,
+          url: remoteUrl,
+          uploadedUrl: String(entry.uploadedUrl || remoteUrl).trim(),
+        });
+      }
       nextServiceMediaFiles = resolvedMediaFiles.filter(Boolean);
     } catch (error) {
       console.error("Failed to upload media files:", error);
@@ -2279,6 +2277,53 @@ const FreelancerProfile = () => {
     } catch (error) {
       console.error("Failed to save onboarding service profile:", error);
       toast.error(error?.message || "Failed to save service details");
+    } finally {
+      setSavingServiceProfile(false);
+    }
+  };
+
+  const deleteServiceProfile = async (serviceKeyToDelete) => {
+    if (isSaving || savingServiceProfile) return;
+    if (!window.confirm("Are you sure you want to delete this service?")) return;
+
+    setSavingServiceProfile(true);
+    try {
+      const existingServiceDetails = profileDetails?.serviceDetails || {};
+      const nextServiceDetails = { ...existingServiceDetails };
+      delete nextServiceDetails[serviceKeyToDelete];
+
+      const targetComparisonKey = resolveServiceComparisonKey(serviceKeyToDelete);
+      
+      const nextServices = Array.isArray(services) 
+        ? services.filter(k => resolveServiceComparisonKey(k) !== targetComparisonKey) 
+        : [];
+        
+      const profileServices = Array.isArray(profileDetails?.services) 
+        ? profileDetails.services.filter(k => resolveServiceComparisonKey(k) !== targetComparisonKey) 
+        : [];
+
+      const nextProfileDetails = {
+        ...(profileDetails || {}),
+        serviceDetails: nextServiceDetails,
+        services: profileServices,
+      };
+
+      const saved = await handleSave(
+        buildProfileSnapshot({
+          services: nextServices,
+          profileDetails: nextProfileDetails,
+        }),
+        { suppressSuccessToast: true }
+      );
+
+      if (!saved) {
+        throw new Error("Failed to delete service details");
+      }
+
+      toast.success("Service deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete service profile:", error);
+      toast.error(error?.message || "Failed to delete service details");
     } finally {
       setSavingServiceProfile(false);
     }
@@ -3954,6 +3999,7 @@ const FreelancerProfile = () => {
                 normalizeValueLabel={normalizeValueLabel}
                 openEditServiceProfileModal={openEditServiceProfileModal}
                 openAddServiceModal={openAddServiceModal}
+                deleteServiceProfile={deleteServiceProfile}
               />
 
               <ProfileSidebarCards
@@ -4119,7 +4165,17 @@ const FreelancerProfile = () => {
             </div>
           </>
         ) : modalType === "service" ? (
-          <>
+          <div
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && canAddNewService) {
+                if (document.activeElement?.getAttribute("data-cancel-btn") === "true") {
+                  return;
+                }
+                e.preventDefault();
+                addService();
+              }
+            }}
+          >
             <h1 className="text-lg font-semibold text-foreground">
               Add New Service
             </h1>
@@ -4181,6 +4237,7 @@ const FreelancerProfile = () => {
             <div className="mt-7 flex justify-end gap-3">
               <button
                 type="button"
+                data-cancel-btn="true"
                 onClick={() => {
                   setServiceForm(createInitialServiceForm());
                   setModalType(null);
@@ -4198,7 +4255,7 @@ const FreelancerProfile = () => {
                 Continue
               </button>
             </div>
-          </>
+          </div>
         ) : modalType === "viewAllProjects" ? (
           <>
             <div className="border-b border-border/70 pb-4">

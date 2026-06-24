@@ -548,10 +548,6 @@ const AddEditServiceWizard = ({
       toast.error("Please set a service price.");
       return false;
     }
-    if (!String(serviceProfileForm.deliveryTimeline || "").trim()) {
-      toast.error("Please select a delivery timeline.");
-      return false;
-    }
     return true;
   };
 
@@ -584,8 +580,7 @@ const AddEditServiceWizard = ({
       !hasAutoExpandedSec3.current &&
       hasAutoExpandedSec2.current &&
       String(serviceProfileForm.experience || "").trim() &&
-      String(serviceProfileForm.priceRange || "").trim() &&
-      String(serviceProfileForm.deliveryTimeline || "").trim()
+      String(serviceProfileForm.priceRange || "").trim()
     ) {
       setExpandedSections((prev) => ({ ...prev, 3: true }));
       hasAutoExpandedSec3.current = true;
@@ -597,7 +592,6 @@ const AddEditServiceWizard = ({
     serviceProfileForm.description,
     serviceProfileForm.experience,
     serviceProfileForm.priceRange,
-    serviceProfileForm.deliveryTimeline,
   ]);
 
   const handleNext = () => {
@@ -778,7 +772,21 @@ const AddEditServiceWizard = ({
     ? serviceProfileForm.mediaFiles
     : [];
   return (
-    <div className="flex h-full min-h-0 flex-col bg-gradient-to-br from-background via-background/95 to-background/90 rounded-2xl overflow-hidden">
+    <div
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          const activeTag = document.activeElement?.tagName?.toLowerCase();
+          if (activeTag === "textarea" || activeTag === "button") {
+            return;
+          }
+          if (!savingServiceProfile && !uploadingServiceCover) {
+            e.preventDefault();
+            handleNext();
+          }
+        }
+      }}
+      className="flex h-full min-h-0 flex-col bg-gradient-to-br from-background via-background/95 to-background/90 rounded-2xl overflow-hidden"
+    >
       {/* Header with Glassmorphism */}
       <div className="flex-none mb-4 sm:mb-6 h-16 sm:h-20 border-b border-border px-4 sm:px-8 bg-card backdrop-blur-sm rounded-t-2xl">
         <div className="flex h-full items-center justify-between gap-3">
@@ -855,7 +863,7 @@ const AddEditServiceWizard = ({
                         }));
                       }}
                       placeholder="I will do something I'm really good at"
-                      className="h-10 w-full rounded-xl border border-border bg-card px-4 pr-24 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      className="h-10 w-full rounded-xl border border-border bg-card px-4 pr-24 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground placeholder:opacity-50 [&::placeholder]:opacity-50 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                     />
                     <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-xs text-foreground/30">
                       {serviceTitleLength} / {SERVICE_TITLE_MAX} MAX
@@ -900,7 +908,7 @@ const AddEditServiceWizard = ({
                     }
                     placeholder="Description..."
                     rows={4}
-                    className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 custom-textarea"
+                    className="w-full resize-none rounded-xl border border-border bg-card px-4 py-3 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground placeholder:opacity-50 [&::placeholder]:opacity-50 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 custom-textarea"
                     maxLength={500}
                   />
                 </div>
@@ -913,7 +921,7 @@ const AddEditServiceWizard = ({
                 number={2}
                 icon={Tag}
                 title="Set your price"
-                description="Experience, pricing, and delivery timeline"
+                description="Experience and pricing"
                 isCollapsible
                 isExpanded={expandedSections[2]}
                 onToggle={() =>
@@ -974,30 +982,12 @@ const AddEditServiceWizard = ({
                                 }));
                               }}
                               placeholder="Enter starting price"
-                              className="h-10 w-full rounded-xl border border-border bg-card pl-8 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                              className="h-10 w-full rounded-xl border border-border bg-card pl-8 pr-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground placeholder:opacity-50 [&::placeholder]:opacity-50 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                             />
                           </div>
                         </div>
 
-                        <div className="space-y-2.5 sm:col-span-2">
-                          <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                            Delivery Timeline
-                          </label>
-                          <CustomSelect
-                            value={serviceProfileForm.deliveryTimeline}
-                            onChange={(val) =>
-                              setServiceProfileForm((prev) => ({
-                                ...prev,
-                                deliveryTimeline: val,
-                                deliveryTime: val,
-                              }))
-                            }
-                            options={DELIVERY_TIMELINE_OPTIONS}
-                            placeholder="Select delivery time"
-                            viewportBottomOffset={WIZARD_DROPDOWN_BOTTOM_OFFSET}
-                            className="h-10"
-                          />
-                        </div>
+
                       </div>
                     </div>
                   </motion.div>

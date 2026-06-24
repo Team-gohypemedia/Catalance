@@ -25,7 +25,7 @@ import {
 
 const HOME_SERVICES = [
   {
-    id: "web_development",
+    id: "website-development",
     title: "Website Development",
     icon: Globe,
     cardBg: "#f1f2f0",
@@ -34,7 +34,7 @@ const HOME_SERVICES = [
     price: "₹45,000/-",
   },
   {
-    id: "app_dev",
+    id: "mobile-app-development",
     title: "Mobile App",
     icon: Smartphone,
     cardBg: "#f0f0ed",
@@ -43,7 +43,7 @@ const HOME_SERVICES = [
     price: "₹80,000/-",
   },
   {
-    id: "ai_automation",
+    id: "ai-automation",
     title: "AI Automation",
     icon: Bot,
     cardBg: "#e3e1db",
@@ -52,7 +52,7 @@ const HOME_SERVICES = [
     price: "₹25,000/-",
   },
   {
-    id: "crm_erp",
+    id: "crm-erp-integrated-solutions",
     title: "CRM & ERP Integrated Solutions",
     icon: Workflow,
     cardBg: "#efefec",
@@ -61,7 +61,7 @@ const HOME_SERVICES = [
     price: "₹50,000/-",
   },
   {
-    id: "seo",
+    id: "seo-gmb",
     title: "SEO / GMB",
     icon: LineChart,
     cardBg: "#eff0eb",
@@ -71,7 +71,7 @@ const HOME_SERVICES = [
   },
 
   {
-    id: "social_media_marketing",
+    id: "social-media-marketing",
     title: "Social Media Marketing",
     icon: Share2,
     cardBg: "#eeefea",
@@ -81,7 +81,7 @@ const HOME_SERVICES = [
   },
 
   {
-    id: "creative_design",
+    id: "creative-design",
     title: "Creative & Design",
     icon: Palette,
     cardBg: "#e9e6df",
@@ -90,7 +90,7 @@ const HOME_SERVICES = [
     price: "₹12,000/-",
   },
   {
-    id: "brandkit",
+    id: "branding-kit",
     title: "Branding Kit",
     icon: Sparkles,
     cardBg: "#eae6df",
@@ -99,7 +99,7 @@ const HOME_SERVICES = [
     price: "₹15,000/-",
   },
   {
-    id: "paid_advertising",
+    id: "paid-advertising",
     title: "Paid Advertising",
     icon: Rocket,
     cardBg: "#f1f1ec",
@@ -108,7 +108,7 @@ const HOME_SERVICES = [
     price: "₹20,000/- Month",
   },
   {
-    id: "content_writing",
+    id: "writing-content",
     title: "Writing & Content",
     icon: PenTool,
     cardBg: "#eff0eb",
@@ -117,7 +117,7 @@ const HOME_SERVICES = [
     price: "₹8,000/-",
   },
   {
-    id: "video_services",
+    id: "video-services",
     title: "Video Services",
     icon: Film,
     cardBg: "#efefee",
@@ -126,7 +126,7 @@ const HOME_SERVICES = [
     price: "₹15,000/-",
   },
   {
-    id: "ai_video_generation",
+    id: "ai-video-generation",
     title: "AI Video Generation",
     icon: Video,
     cardBg: "#ecede8",
@@ -135,7 +135,7 @@ const HOME_SERVICES = [
     price: "₹20,000/-",
   },
   {
-    id: "cgi_video_services",
+    id: "3d-animation",
     title: "3D Animation",
     icon: Database,
     cardBg: "#f1f1ed",
@@ -144,7 +144,7 @@ const HOME_SERVICES = [
     price: "₹30,000/-",
   },
   {
-    id: "voice_agent",
+    id: "voice-agent",
     title: "Voice Agent",
     icon: Mic,
     cardBg: "#ccccc6",
