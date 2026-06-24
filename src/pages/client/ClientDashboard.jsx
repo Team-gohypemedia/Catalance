@@ -32,15 +32,9 @@ const ClientDashboardContent = () => {
           <ActiveProjects />
 
           {useEmptyWorkspaceLayout ? (
-            <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
-              <div className="min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7">
-                <Proposals />
-              </div>
-
-              <div className="grid gap-5 sm:gap-6 xl:gap-7">
-                <WishlistedFreelancers />
-              </div>
-            </section>
+            <div className="mt-14">
+              <Proposals />
+            </div>
           ) : (
             <section className="mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]">
               <div className="min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7">
@@ -49,7 +43,6 @@ const ClientDashboardContent = () => {
 
               <div className="grid gap-5 sm:gap-6 xl:gap-7">
                 <ActiveChats />
-                <WishlistedFreelancers />
               </div>
             </section>
           )}
