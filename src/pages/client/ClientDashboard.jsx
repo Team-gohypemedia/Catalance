@@ -38,7 +38,7 @@ const ClientDashboardContent = () => {
               </div>
 
               <div className="grid gap-5 sm:gap-6 xl:gap-7">
-                <WishlistedFreelancers />
+                {/* <WishlistedFreelancers /> */}
               </div>
             </section>
           ) : (
@@ -49,7 +49,7 @@ const ClientDashboardContent = () => {
 
               <div className="grid gap-5 sm:gap-6 xl:gap-7">
                 <ActiveChats />
-                <WishlistedFreelancers />
+                {/* <WishlistedFreelancers /> */}
               </div>
             </section>
           )}
