@@ -1134,6 +1134,11 @@ html.dark .onboarding-skip-btn:hover {
 
 /* --- iOS Focus Zoom Fix --- */
 @media (max-width: 767px) {
+  input[class],
+  textarea[class],
+  select[class],
+  [role="combobox"][class],
+  .SelectTrigger[class],
   input,
   textarea,
   select {
