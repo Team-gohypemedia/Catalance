@@ -3468,18 +3468,7 @@ const buildProposalConcreteTimelineFromKeyword = (value = "", serviceCategory = 
   }
 
   if (/urgent|asap|immediately|fast turnaround/.test(source)) {
-    switch (category) {
-      case "creative":
-        return "1 week";
-      case "seo":
-        return "1 month";
-      case "app":
-        return "8 weeks";
-      case "web":
-        return "4 weeks";
-      default:
-        return "4 weeks";
-    }
+    return "ASAP";
   }
 
   if (/standard timeline/.test(source)) {
