@@ -2595,6 +2595,7 @@ Launch Timeline must always use a single concrete value in days, weeks, or month
 If budget or pricing is missing, generate a single realistic recommended budget amount in INR based on the scope and service type. NEVER write a budget range.
 If design, build, technology, hosting, engagement, audience, or similar delivery fields are missing, choose practical recommended values that fit the stated requirements.
 Present inferred values directly and professionally inside the field value, not as a question and not as a disclaimer.
+Never use the word "Catalance" anywhere in the generated proposal, especially not as a business name or brand name.
 
 Output requirements:
 - Return clean markdown only.
