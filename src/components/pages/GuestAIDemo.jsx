@@ -2898,6 +2898,19 @@ const BRIEFING_SERVICE_MATCHERS = [
 ];
 
 const inferBriefingService = (services = [], answers = {}) => {
+    if (answers?.role && Array.isArray(services)) {
+        const roleNormalized = normalizeServiceLogoKey(answers.role);
+        const exactMatch = services.find((service) => 
+            normalizeServiceLogoKey(service?.name) === roleNormalized ||
+            normalizeServiceLogoKey(service?.title) === roleNormalized ||
+            normalizeServiceLogoKey(service?.slug) === roleNormalized ||
+            normalizeServiceLogoKey(service?.id) === roleNormalized
+        );
+        if (exactMatch) {
+            return exactMatch;
+        }
+    }
+
     const source = normalizeServiceLogoKey([
         answers?.role,
         answers?.goal,
