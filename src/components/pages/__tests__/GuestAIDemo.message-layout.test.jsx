@@ -72,4 +72,71 @@ To get things rolling, could you share your name?`);
 
     expect(parsed.contextText).toContain("**Nice, a fashion e-commerce site is a great** space to be in.");
   });
+
+  it("does not split the question on e.g., and protects both dots", () => {
+    const parsed = parseAssistantMessageLayout(`Got it, so the brand name is goupe.
+
+You mentioned a Webflow ecommerce fashion site with 3D animation, so it'll help to understand the vibe and content a bit more.
+
+This lets us plan structure, visuals, and animations that actually fit your brand instead of just looking "cool."
+
+Can you tell me a little about your website—what you'll sell, who it's for, and the kind of style or feeling you want (e.g., luxury, streetwear, minimal, edgy)?`);
+
+    expect(parsed.questionText).toBe("Can you tell me a little about your website—what you'll sell, who it's for, and the kind of style or feeling you want (e.g., luxury, streetwear, minimal, edgy)?");
+    expect(parsed.contextText).toContain("This lets us plan structure, visuals");
+  });
+
+  it("merges the layout back into contextText if the question has malformed parentheses", () => {
+    // If the question only gets unmatched parenthesis due to some bad splitting
+    const parsed = parseAssistantMessageLayout(`What is your favorite food? Here is some context (which shouldn't split
+    
+    )?`);
+    expect(parsed.questionText).toBe("");
+    expect(parsed.contextText).toContain("What is your favorite food?");
+  });
+
+  it("merges the layout back into contextText if the question is extremely short", () => {
+    const parsed = parseAssistantMessageLayout(`This is some long context about your request.
+    
+    Q?`);
+    expect(parsed.questionText).toBe("");
+    expect(parsed.contextText).toContain("This is some long context");
+  });
+
+  it("correctly handles the 3D-animated fashion e-commerce onboarding prompt", () => {
+    const content = `Nice, a 3D-animated fashion e-commerce site on Webflow is a great direction.
+
+From what you said, this sounds like:
+
+Goal: Sell products online
+Type: E-commerce Store
+Platform: Webflow
+Style: Strong focus on 3D animation / motion for a premium visual experience
+On Webflow, we can mix:
+
+3D product presentation (embedded 3D models or “3D-like” interactions with scroll and hover animations)
+Smooth page transitions and micro-interactions
+A clean, conversion-focused checkout with Webflow Ecommerce (or a connected checkout if needed)
+To guide you better on structure, visuals, and features, I’d love to know:
+
+What’s your name?`;
+
+    const parsed = parseAssistantMessageLayout(content);
+    expect(parsed.questionText).toBe("What’s your name?");
+    expect(parsed.contextText).toContain("Nice, a 3D-animated fashion");
+    expect(parsed.contextText).toContain("To guide you better on structure, visuals, and features, I’d love to know:");
+  });
+
+  it("extracts a request starting with I'd love to know as questionText even if it ends with a period", () => {
+    const content = `Nice to meet you, Ravindra.
+
+This is for an ecommerce fashion website in Webflow with 3D animation, so it'll help to align the design and brand feel with your label identity.
+
+For that, I'd love to know your company or brand name.`;
+
+    const parsed = parseAssistantMessageLayout(content);
+    expect(parsed.questionText).toBe("For that, I'd love to know your company or brand name.");
+    expect(parsed.contextText).toContain("Nice to meet you, Ravindra.");
+    expect(parsed.contextText).toContain("so it'll help to align the design");
+  });
 });
