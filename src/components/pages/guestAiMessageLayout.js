@@ -44,7 +44,7 @@ export const normalizeMarkdownContent = (content = "") =>
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
 const REQUEST_PROMPT_LINE_REGEX =
-  /^(?:please\s+)?(?:tell\s+me|share|describe|explain|outline|list|provide|let\s+me\s+know|walk\s+me\s+through|help\s+me\s+understand)\b/i;
+  /^(?:[A-Za-z0-9\s'’-]+,\s*)?(?:please\s+)?(?:tell\s+me|share|describe|explain|outline|list|provide|let\s+me\s+know|walk\s+me\s+through|help\s+me\s+understand|I(?:'d|'ve|\s+would)?\s+(?:love|like)\s+to\s+(?:know|hear|understand)|Let's\s+(?:start|begin)\s+(?:with|by)|Could\s+you|Can\s+you|Would\s+you)\b/i;
 const OPTION_PROMPT_CUE_REGEX =
   /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
 
@@ -68,8 +68,8 @@ const ABBREVIATION_DOT_PLACEHOLDER = "__ABBR_DOT__";
 
 const protectSentenceBreakAbbreviations = (text = "") =>
   String(text || "").replace(
-    /\b(Dr|Mr|Mrs|Ms|e\.g|i\.e|etc)\.(?=(?:["')\]]|\s))/gi,
-    (_, value) => `${value}${ABBREVIATION_DOT_PLACEHOLDER}`,
+    /\b(Dr|Mr|Mrs|Ms|e\.g|i\.e|etc|vs|prof|jr|sr|co|corp|inc|ltd|approx|a\.m|p\.m)\.(?=(?:[\s,;:()[\]"']|$))/gi,
+    (_, value) => `${value.replaceAll('.', ABBREVIATION_DOT_PLACEHOLDER)}${ABBREVIATION_DOT_PLACEHOLDER}`,
   );
 
 const restoreSentenceBreakAbbreviations = (text = "") =>
@@ -258,39 +258,62 @@ export const parseAssistantMessageLayout = (
     }
   }
 
+  let result;
+
   if (questionIndex === -1) {
     const split = splitContextAndQuestion(normalized);
     if (!split.questionText) {
-      return { contextText: normalized, questionText: "", options: [] };
+      result = { contextText: normalized, questionText: "", options: [] };
+    } else {
+      result = {
+        contextText: split.contextText,
+        questionText: split.questionText,
+        options: [],
+      };
     }
-    return {
-      contextText: split.contextText,
-      questionText: split.questionText,
-      options: [],
+  } else {
+    const splitQuestionLine = splitContextAndQuestion(lines[questionIndex]);
+    const hasInlineQuestionSplit = Boolean(splitQuestionLine.questionText);
+    const questionText = stripInlineOptionListTail(
+      hasInlineQuestionSplit ? splitQuestionLine.questionText : lines[questionIndex],
+    );
+    const contextParts = lines.filter(
+      (line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line),
+    );
+
+    if (hasInlineQuestionSplit && splitQuestionLine.contextText) {
+      contextParts.push(splitQuestionLine.contextText);
+    }
+
+    const contextText = contextParts.join("\n\n").trim();
+
+    result = {
+      contextText: forceSentenceBreaks(contextText),
+      questionText: forceSentenceBreaks(questionText),
+      options: normalizedOptionEntries.map((option) => ({
+        number: option.number,
+        text: option.text,
+      })),
     };
   }
 
-  const splitQuestionLine = splitContextAndQuestion(lines[questionIndex]);
-  const hasInlineQuestionSplit = Boolean(splitQuestionLine.questionText);
-  const questionText = stripInlineOptionListTail(
-    hasInlineQuestionSplit ? splitQuestionLine.questionText : lines[questionIndex],
-  );
-  const contextParts = lines.filter(
-    (line, idx) => idx !== questionIndex && !OPTION_LINE_REGEX.test(line),
-  );
+  // Defensive Fallback Checks
+  if (result.questionText) {
+    const openParens = (result.questionText.match(/\(/g) || []).length;
+    const closeParens = (result.questionText.match(/\)/g) || []).length;
+    const isMalformedParens = closeParens > openParens;
 
-  if (hasInlineQuestionSplit && splitQuestionLine.contextText) {
-    contextParts.push(splitQuestionLine.contextText);
+    const isExtremelyShort = result.questionText.length < 10;
+
+    if (isMalformedParens || isExtremelyShort) {
+      // Revert splitting: keep the whole text in contextText to avoid UI layout breakage
+      return {
+        contextText: forceSentenceBreaks(normalized),
+        questionText: "",
+        options: result.options,
+      };
+    }
   }
 
-  const contextText = contextParts.join("\n\n").trim();
-
-  return {
-    contextText: forceSentenceBreaks(contextText),
-    questionText: forceSentenceBreaks(questionText),
-    options: normalizedOptionEntries.map((option) => ({
-      number: option.number,
-      text: option.text,
-    })),
-  };
+  return result;
 };
