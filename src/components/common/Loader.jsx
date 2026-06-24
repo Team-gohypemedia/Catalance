@@ -48,27 +48,31 @@ export default function Loader({ size = "full", className = "" }) {
     },
   };
 
+  const isFixedOrAbsolute = className.includes("fixed") || className.includes("absolute");
+
   const config = sizeMap[size] || sizeMap.full;
   const wrapperClass =
     size === "full"
-      ? "flex min-h-screen items-center justify-center bg-background"
+      ? `flex ${isFixedOrAbsolute ? "h-full w-full" : "min-h-[100dvh] w-full"} items-center justify-center bg-background`
       : "inline-flex items-center justify-center";
+
+  const isFlex = size === "lg" || size === "full";
 
   return (
     <div className={`${wrapperClass} ${className}`}>
-      <div className={`relative ${config.container} ${config.padding} items-center justify-center rounded-full bg-primary ${config.wrapper === "flex" ? "flex" : "inline-flex"}`}>
+      <div className={`relative ${config.container} ${config.padding} items-center justify-center rounded-full bg-primary ${isFlex ? "flex" : "inline-flex"}`}>
         {/* Outer loader - rotates clockwise */}
         <img
           src={loaderOuter}
           alt="Loading outer"
-          className={`absolute ${config.outer} animate-spin-clockwise invert dark:invert-0`}
+          className={`absolute inset-0 m-auto ${config.outer} animate-spin-clockwise invert dark:invert-0`}
         />
         
         {/* Inner loader - rotates counter-clockwise */}
         <img
           src={loaderInner}
           alt="Loading inner"
-          className={`absolute ${config.inner} animate-spin-counter-clockwise invert dark:invert-0`}
+          className={`absolute inset-0 m-auto ${config.inner} animate-spin-counter-clockwise invert dark:invert-0`}
         />
       </div>
     </div>
