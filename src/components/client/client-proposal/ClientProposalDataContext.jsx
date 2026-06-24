@@ -98,7 +98,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   const buildProposalMatchCacheKey = useCallback((proposal = null) => {
     if (!proposal || typeof proposal !== "object") return "";
 
-    const proposalId = String(proposal.id || proposal.projectId || proposal.syncedProjectId || "").trim();
+    const proposalId = String(proposal.id || "").trim();
     const serviceKey = String(
       proposal.serviceKey ||
         proposal.serviceType ||
@@ -1767,7 +1767,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         if (String(proposal.projectId) !== String(sourceProjectId)) return;
         const status = String(proposal.status || "").toLowerCase();
         if (proposal.freelancerId && PROPOSAL_BLOCKED_STATUSES.has(status)) {
-          alreadyInvitedIds.add(proposal.freelancerId);
+          alreadyInvitedIds.add(String(proposal.freelancerId));
         }
       });
     }
@@ -1777,7 +1777,8 @@ export const ClientProposalDataProvider = ({ children }) => {
     );
 
     const available = normalized.filter((freelancer) => {
-      if (alreadyInvitedIds.has(freelancer.id)) return false;
+      if (!freelancer || !freelancer.id) return false;
+      if (alreadyInvitedIds.has(String(freelancer.id))) return false;
       if (!isFreelancerOpenToWork(freelancer)) return false;
       return true;
     });
