@@ -5549,7 +5549,7 @@ const GuestAIDemo = () => {
                                                         type="button"
                                                         onClick={() => {
                                                             const targetServiceId = service?.slug || service?.id;
-                                                            navigate(`${location.pathname}?service=${targetServiceId}`, { replace: true, state: { fromWizard: true } });
+                                                            navigate(`${location.pathname}?service=${targetServiceId}`, { state: { fromWizard: true } });
                                                         }}
                                                         className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingChipClasses}`}
                                                     >
