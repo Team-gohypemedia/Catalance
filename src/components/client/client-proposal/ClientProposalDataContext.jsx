@@ -758,6 +758,18 @@ export const ClientProposalDataProvider = ({ children }) => {
     const hasCachedPool =
       cache.userId === user?.id && cache.queryKey === queryKey && cache.loaded;
 
+    console.log("[DEBUG] FetchFreelancerPool Effect", {
+      hasCachedPool,
+      queryKey,
+      cacheQueryKey: cache.queryKey,
+      cacheLoaded: cache.loaded,
+      selectedProposalForSend: {
+        id: selectedProposalForSend?.id,
+        projectId: selectedProposalForSend?.projectId,
+        syncedProjectId: selectedProposalForSend?.syncedProjectId,
+      }
+    });
+
     if (hasCachedPool) {
       const cachedFreelancers = Array.isArray(cache.data) ? cache.data : [];
       setSuggestedFreelancers(cachedFreelancers);
@@ -1781,6 +1793,17 @@ export const ClientProposalDataProvider = ({ children }) => {
       if (alreadyInvitedIds.has(String(freelancer.id))) return false;
       if (!isFreelancerOpenToWork(freelancer)) return false;
       return true;
+    });
+
+    console.log("[DEBUG] freelancerSelectionData", {
+      sourceProjectId,
+      proposalsCount: proposals.length,
+      alreadyInvitedIds: Array.from(alreadyInvitedIds),
+      normalizedCount: normalized.length,
+      availableCount: available.length,
+      firstMissingFreelancer: normalized.find(f => !available.some(a => a.id === f.id)),
+      rankedSuggestedFreelancersCount: rankedSuggestedFreelancers.length,
+      suggestedFreelancersCount: suggestedFreelancers.length,
     });
 
     return {
