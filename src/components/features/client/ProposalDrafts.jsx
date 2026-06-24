@@ -9,6 +9,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import {
   Dialog,
@@ -268,10 +278,13 @@ const ProposalDraftsContent = () => {
     setDraftText(draft.content || "");
   };
 
-  const handleDelete = (draft) => {
-    const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
-    if (!confirmed) return;
+  const [draftToDelete, setDraftToDelete] = useState(null);
 
+  const handleDelete = (draft) => {
+    setDraftToDelete(draft);
+  };
+
+  const coreHandleDelete = (draft) => {
     // Delete from the specific storage key
     deleteDraftFromStorage(draft.storageKey);
     
@@ -399,6 +412,31 @@ const ProposalDraftsContent = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <AlertDialog open={Boolean(draftToDelete)} onOpenChange={(open) => !open && setDraftToDelete(null)}>
+        <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Proposal Draft?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Are you sure you want to delete this proposal draft? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border border-border bg-transparent hover:bg-muted text-foreground">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (draftToDelete) {
+                  const target = draftToDelete;
+                  setDraftToDelete(null);
+                  coreHandleDelete(target);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

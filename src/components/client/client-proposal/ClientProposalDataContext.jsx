@@ -842,9 +842,6 @@ export const ClientProposalDataProvider = ({ children }) => {
 
   const handleDelete = useCallback(
     async (proposal) => {
-      const confirmed = window.confirm("Are you sure you want to delete this proposal?");
-      if (!confirmed) return;
-
       if (proposal?.isLocalDraft) {
         if (proposal?.isDraftProject && proposal?.projectId) {
           const response = await authFetch(`/projects/${proposal.projectId}`, {

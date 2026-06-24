@@ -6,6 +6,16 @@ import React, {
   useRef,
   useState,
 } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import FileText from "lucide-react/dist/esm/icons/file-text";
@@ -717,6 +727,7 @@ const Proposals = memo(function Proposals({
   const [freelancerSearch, setFreelancerSearch] = useState("");
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
+  const [draftToDeleteId, setDraftToDeleteId] = useState(null);
   const [draftProposalCarouselApi, setDraftProposalCarouselApi] = useState(null);
   const [canGoToPreviousDraftProposal, setCanGoToPreviousDraftProposal] = useState(false);
   const [canGoToNextDraftProposal, setCanGoToNextDraftProposal] = useState(false);
@@ -913,9 +924,6 @@ const Proposals = memo(function Proposals({
   const handleDeleteDraft = useCallback(
     (draftId) => {
       if (isControlled || !draftId) return;
-      
-      const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
-      if (!confirmed) return;
 
       const storageKeys = getProposalStorageKeys(sessionUser?.id);
       const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage(
@@ -951,7 +959,7 @@ const Proposals = memo(function Proposals({
         timeline: formatDraftTimeline(
           proposal.timeline || proposal.launchTimeline || proposal.duration,
         ),
-        dateLabel: formatDraftDate(proposal.updatedAt || proposal.createdAt),
+        dateLabel: getSavedProposalDisplayDate(proposal),
         isAgencyProposal: resolveProposalAgencyFlag(proposal),
         serviceEntries: buildDraftServiceEntries(proposal),
         onSend: () => {
@@ -960,7 +968,7 @@ const Proposals = memo(function Proposals({
           setShowFreelancerSelect(true);
         },
         onView: () => navigate(buildDraftProposalPath(proposal.id, "view")),
-        onDelete: () => handleDeleteDraft(proposal.id),
+        onDelete: () => setDraftToDeleteId(proposal.id),
       })),
     [handleDeleteDraft, navigate, visibleSavedDrafts],
   );
@@ -1310,6 +1318,32 @@ const Proposals = memo(function Proposals({
           />
         </>
       ) : null}
+
+      <AlertDialog open={Boolean(draftToDeleteId)} onOpenChange={(open) => !open && setDraftToDeleteId(null)}>
+        <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Proposal Draft?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Are you sure you want to delete this proposal draft? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border border-border bg-transparent hover:bg-muted text-foreground">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (draftToDeleteId) {
+                  const targetId = draftToDeleteId;
+                  setDraftToDeleteId(null);
+                  handleDeleteDraft(targetId);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 });

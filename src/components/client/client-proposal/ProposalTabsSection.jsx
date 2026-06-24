@@ -5,6 +5,16 @@ import { cn } from "@/shared/lib/utils";
 import ProposalCardsCarousel from "./ProposalCardsCarousel.jsx";
 import { EmptyStateCard, ProposalLoadingState } from "./ProposalStates.jsx";
 import { proposalTabCopy } from "./proposal-utils.js";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import ArrowUpNarrowWide from "lucide-react/dist/esm/icons/arrow-up-narrow-wide";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
@@ -54,12 +64,17 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
   const {
     setActiveTab,
     handleApproveAndPay,
-    handleDelete,
+    handleDelete: coreHandleDelete,
     openBudgetDialogForProposal,
     handleOpenFreelancerDetails,
     handleOpenProposal,
     openFreelancerSelection,
   } = actions;
+
+  const [proposalToDelete, setProposalToDelete] = useState(null);
+  const handleDelete = (proposal) => {
+    setProposalToDelete(proposal);
+  };
   const [activeType, setActiveType] = useState("freelancer");
   const [hasSelectedType, setHasSelectedType] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -185,11 +200,12 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
   };
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={setActiveTab}
-      className="w-full space-y-8"
-    >
+    <>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="w-full space-y-8"
+      >
       <ClientPageHeader
         title={
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -310,6 +326,33 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
         {renderTabContent("rejected")}
       </TabsContent>
     </Tabs>
+
+    <AlertDialog open={Boolean(proposalToDelete)} onOpenChange={(open) => !open && setProposalToDelete(null)}>
+      <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md">
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete Proposal?</AlertDialogTitle>
+          <AlertDialogDescription className="text-muted-foreground">
+            Are you sure you want to delete this proposal? This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel className="border border-border bg-transparent hover:bg-muted text-foreground">Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              if (proposalToDelete) {
+                const target = proposalToDelete;
+                setProposalToDelete(null);
+                await coreHandleDelete(target);
+              }
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 };
 
