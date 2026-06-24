@@ -1,5 +1,5 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
-
 const ProfileSummaryCards = ({
   profileCompletionPercent,
   completedCompletionSections,
@@ -8,6 +8,8 @@ const ProfileSummaryCards = ({
   profileCompletionMessage,
   profileCompletionMissingDetails,
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const completion = Math.min(
     100,
     Math.max(0, Number(profileCompletionPercent) || 0)
@@ -17,13 +19,13 @@ const ProfileSummaryCards = ({
     profileCompletionMessage ||
     "You're nearly there, add a few more details to complete your profile.";
   const visibleMissingDetails = Array.isArray(profileCompletionMissingDetails)
-    ? profileCompletionMissingDetails.slice(0, 4)
+    ? (isExpanded ? profileCompletionMissingDetails : profileCompletionMissingDetails.slice(0, 4))
     : [];
   const hiddenMissingCount = Math.max(
     0,
     (Array.isArray(profileCompletionMissingDetails)
       ? profileCompletionMissingDetails.length
-    : 0) - visibleMissingDetails.length
+    : 0) - (isExpanded ? profileCompletionMissingDetails.length : 4)
   );
 
   return (
@@ -131,9 +133,21 @@ const ProfileSummaryCards = ({
             })}
           </ul>
           {hiddenMissingCount > 0 ? (
-            <p className="mt-2 text-[11px] font-medium text-primary/80">
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="mt-2 text-[11px] font-medium text-primary/80 hover:text-primary transition-colors cursor-pointer text-left"
+            >
               +{hiddenMissingCount} more detail{hiddenMissingCount === 1 ? "" : "s"} to complete
-            </p>
+            </button>
+          ) : isExpanded && Array.isArray(profileCompletionMissingDetails) && profileCompletionMissingDetails.length > 4 ? (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="mt-2 text-[11px] font-medium text-primary/80 hover:text-primary transition-colors cursor-pointer text-left"
+            >
+              Show fewer details
+            </button>
           ) : null}
         </div>
       ) : null}

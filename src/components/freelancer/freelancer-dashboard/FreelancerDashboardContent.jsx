@@ -770,15 +770,6 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
     );
   });
 
-  const availabilityMissingDetails = [];
-  if (!hasTextValue(onboardingAvailability?.hoursPerWeek)) {
-    availabilityMissingDetails.push("weekly hours");
-  }
-  if (!hasTextValue(onboardingAvailability?.startTimeline)) {
-    availabilityMissingDetails.push("start timeline");
-  }
-  const availabilityCoverage = (2 - availabilityMissingDetails.length) / 2;
-
   const policyMissingDetails = [];
   if (!profileDetails?.deliveryPolicyAccepted) {
     policyMissingDetails.push("delivery policy");
@@ -812,11 +803,6 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
     { label: "Profile photo", score: hasProfilePhoto ? 1 : 0, weight: 4 },
     { label: "Profile cover", score: hasProfileCover ? 1 : 0, weight: 4 },
     {
-      label: "Professional title",
-      score: hasProfessionalTitle ? 1 : 0,
-      weight: 8,
-    },
-    {
       label: "Professional Bio",
       score: hasProfessionalBio ? 1 : 0,
       weight: 10,
@@ -840,11 +826,6 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
       label: "Skills and tech stack",
       score: skillsCoverage,
       weight: 10,
-    },
-    {
-      label: "Availability setup",
-      score: availabilityCoverage,
-      weight: 8,
     },
     { label: "Profile links", score: linkCoverage, weight: 8 },
     {
@@ -903,10 +884,6 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
     missingDetails.push("Add a cover image to strengthen your profile header.");
   }
 
-  if (!hasProfessionalTitle) {
-    missingDetails.push("Add your headline or role title.");
-  }
-
   if (!hasProfessionalBio) {
     missingDetails.push("Write a short bio that highlights your expertise.");
   }
@@ -945,10 +922,6 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
         ? `Add ${missingSkillCount} more skill${missingSkillCount === 1 ? "" : "s"} (target: 5).`
         : "Add a clearer tech stack with up to 5 key skills."
     );
-  }
-
-  if (availabilityMissingDetails.length > 0) {
-    missingDetails.push(`Add ${availabilityMissingDetails.join(", ")}.`);
   }
 
   if (linkCoverage < 1) {

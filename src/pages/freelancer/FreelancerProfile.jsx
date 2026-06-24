@@ -3644,11 +3644,6 @@ const FreelancerProfile = () => {
     { label: "Profile photo", score: hasProfilePhoto ? 1 : 0, weight: 4 },
     { label: "Profile cover", score: hasProfileCover ? 1 : 0, weight: 4 },
     {
-      label: "Professional title",
-      score: hasProfessionalTitle ? 1 : 0,
-      weight: 8,
-    },
-    {
       label: "Professional Bio",
       score: hasProfessionalBio ? 1 : 0,
       weight: 10,
@@ -3672,11 +3667,6 @@ const FreelancerProfile = () => {
       label: "Skills and tech stack",
       score: skillsCoverage,
       weight: 10,
-    },
-    {
-      label: "Availability setup",
-      score: availabilityCoverage,
-      weight: 8,
     },
     { label: "Profile links", score: linkCoverage, weight: 8 },
     {
@@ -3722,14 +3712,6 @@ const FreelancerProfile = () => {
       label: "Profile cover",
       detail: "Add a cover image to strengthen your profile header.",
       onClick: () => openEditPersonalModal(),
-    });
-  }
-
-  if (!hasProfessionalTitle) {
-    profileCompletionMissingDetails.push({
-      label: "Professional title",
-      detail: "Add your headline or role title.",
-      onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.ALL),
     });
   }
 
@@ -3790,14 +3772,6 @@ const FreelancerProfile = () => {
           ? `Add ${missingSkillCount} more skill${missingSkillCount === 1 ? "" : "s"} (target: 5).`
           : "Add a clearer tech stack with up to 5 key skills.",
       onClick: () => document.getElementById("profile-skills-card")?.scrollIntoView({ behavior: "smooth" }),
-    });
-  }
-
-  if (availabilityMissingDetails.length > 0) {
-    profileCompletionMissingDetails.push({
-      label: "Availability setup",
-      detail: `Add ${availabilityMissingDetails.join(", ")}.`,
-      onClick: () => document.getElementById("profile-availability-section")?.scrollIntoView({ behavior: "smooth" }),
     });
   }
 
