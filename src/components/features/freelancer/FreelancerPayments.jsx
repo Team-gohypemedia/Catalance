@@ -10,6 +10,7 @@ import Clock3 from "lucide-react/dist/esm/icons/clock-3";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import FolderOpen from "lucide-react/dist/esm/icons/folder-open";
 import Landmark from "lucide-react/dist/esm/icons/landmark";
+import ListFilter from "lucide-react/dist/esm/icons/list-filter";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
@@ -370,16 +371,13 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-[12px] bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-primary/80 dark:text-[#141414] sm:w-auto"
+          className="inline-flex h-11 w-full min-w-0 items-center justify-between gap-3 rounded-[12px] bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:bg-primary/85 dark:text-[#141414] sm:w-auto shadow-sm"
         >
-          <div className="flex min-w-0 items-center gap-2">
-            <FolderOpen className="size-4 shrink-0" />
-            <span>Filter</span>
-            <span className="max-w-[8.5rem] truncate rounded-full bg-black/10 dark:bg-black/20 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm sm:max-w-[10rem]">
-              {selectedLabel}
-            </span>
+          <div className="flex min-w-0 items-center gap-2.5">
+            <ListFilter className="size-4.5 shrink-0 opacity-95" />
+            <span className="max-w-[10rem] truncate sm:max-w-[12rem]">{selectedLabel}</span>
           </div>
-          <ChevronDown className="size-4 shrink-0 opacity-80" />
+          <ChevronDown className="size-4 shrink-0 opacity-90" />
         </button>
       </DropdownMenuTrigger>
 

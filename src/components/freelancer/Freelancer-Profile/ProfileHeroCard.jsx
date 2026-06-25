@@ -185,7 +185,7 @@ const ProfileHeroCard = ({
         />
       </div>
 
-      <div className="relative border-t border-border/60 bg-card px-4 pb-5 pt-14 sm:px-5 sm:pb-5 sm:pt-16 md:px-6 md:pt-20">
+      <div className="relative border-t border-border/60 px-4 pb-5 pt-14 sm:px-5 sm:pb-5 sm:pt-16 md:px-6 md:pt-20">
 
         <div className="absolute -top-16 left-4 sm:-top-20 sm:left-5 md:-top-24 md:left-6">
           <div

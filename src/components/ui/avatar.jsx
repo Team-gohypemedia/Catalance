@@ -37,15 +37,8 @@ function AvatarImage({
   ...props
 }) {
   const normalizedSrc = React.useMemo(() => normalizeAvatarSrc(src), [src]);
-  const lastStableSrcRef = React.useRef(normalizedSrc);
 
-  if (normalizedSrc) {
-    lastStableSrcRef.current = normalizedSrc;
-  }
-
-  const resolvedSrc = normalizedSrc || lastStableSrcRef.current;
-
-  if (!resolvedSrc) {
+  if (!normalizedSrc) {
     return null;
   }
 
@@ -53,7 +46,7 @@ function AvatarImage({
     <AvatarPrimitive.Image
       data-slot="avatar-image"
       className={cn("aspect-square size-full object-cover", className)}
-      src={resolvedSrc}
+      src={normalizedSrc}
       {...props} />
   );
 }

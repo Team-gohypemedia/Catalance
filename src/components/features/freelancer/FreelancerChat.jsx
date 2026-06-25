@@ -523,6 +523,7 @@ const ChatArea = ({
   onDeleteAttachment,
   onClearChat,
   isClearingChat = false,
+  loading = false,
 }) => {
   const messagesViewportRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -895,6 +896,13 @@ const ChatArea = ({
         className="min-h-0 flex-1 overflow-y-auto bg-card px-2 py-6 md:px-2.5 lg:px-3 [scrollbar-color:rgba(255,255,255,0.18)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/[0.16] [&::-webkit-scrollbar-track]:bg-transparent"
       >
         <div className="mx-auto flex w-full max-w-[1240px] flex-col gap-4 pb-4">
+          {loading ? (
+            <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 py-12 text-center">
+              <Loader2 className="size-8 animate-spin text-[var(--primary)] opacity-85" />
+              <p className="text-sm font-medium text-muted-foreground">Loading messages...</p>
+            </div>
+          ) : null}
+
           {visibleMessages.map((message, index) => {
             const ownMessage = isOwnMessage(message, currentUser);
             const deleted = message.deleted || message.isDeleted;
@@ -1097,7 +1105,7 @@ const ChatArea = ({
             </div>
           ) : null}
 
-          {visibleMessages.length === 0 && !deferredMessageSearch.trim() ? (
+          {!loading && visibleMessages.length === 0 && !deferredMessageSearch.trim() ? (
             <div className="flex h-full items-center justify-center p-6">
               <div className="flex w-full max-w-2xl flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-card px-6 py-20 text-center">
                 <div className="mb-6 flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -1246,6 +1254,7 @@ const FreelancerChatContent = () => {
   const currentFreelancerName = useMemo(() => getDisplayName(user), [user]);
   const [conversationId, setConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [sending, setSending] = useState(false);
   const [clearingChat, setClearingChat] = useState(false);
@@ -1351,6 +1360,8 @@ const FreelancerChatContent = () => {
       setMessages(nextMessages);
     } catch (error) {
       console.error("Failed to fetch messages:", error);
+    } finally {
+      setMessagesLoading(false);
     }
   }, [authFetch, conversationId]);
 
@@ -1383,12 +1394,19 @@ const FreelancerChatContent = () => {
   // Reset state when switching conversation to avoid cross-chat bleed.
   useEffect(() => {
     setConversationId(null);
-    if (selectedConversation?.isMarketplaceRequestChat) {
+    if (!selectedConversation) {
+      setMessages([]);
+      setMessagesLoading(false);
+      return;
+    }
+    if (selectedConversation.isMarketplaceRequestChat) {
       setMessages(
         getMarketplaceConversationMessages(selectedConversation.serviceKey || selectedConversation.id),
       );
+      setMessagesLoading(false);
     } else {
       setMessages([]);
+      setMessagesLoading(true);
     }
     setTypingUsers([]);
     setOnline(false);
@@ -1576,7 +1594,10 @@ const FreelancerChatContent = () => {
           setConversationId(stored);
           return;
         }
-        if (!authFetch || !token) return;
+        if (!authFetch || !token) {
+          setMessagesLoading(false);
+          return;
+        }
         const response = await authFetch("/chat/conversations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1596,9 +1617,14 @@ const FreelancerChatContent = () => {
           if (typeof window !== "undefined") {
             window.localStorage.setItem(storageKey, conversation.id);
           }
+        } else if (!cancelled) {
+          setMessagesLoading(false);
         }
       } catch (error) {
         console.error("Failed to start chat conversation:", error);
+        if (!cancelled) {
+          setMessagesLoading(false);
+        }
       }
     };
     ensureConversation();
@@ -1658,6 +1684,7 @@ const FreelancerChatContent = () => {
         (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       );
       setMessages(sorted);
+      setMessagesLoading(false);
     });
 
     socket.on("chat:message", (message) => {
@@ -1692,6 +1719,7 @@ const FreelancerChatContent = () => {
     socket.on("chat:error", (payload) => {
       console.error("Socket error:", payload);
       setSending(false);
+      setMessagesLoading(false);
     });
 
     socket.on("chat:typing", ({ conversationId: cid, typing, userId: uid, userName }) => {
@@ -2283,6 +2311,7 @@ const FreelancerChatContent = () => {
                     online={online}
                     onClearChat={selectedConversation?.isMarketplaceRequestChat ? undefined : handleClearChat}
                     isClearingChat={clearingChat}
+                    loading={messagesLoading}
                   />
                 ) : (
                   <div className="flex h-full min-h-0 items-center justify-center bg-card px-6 py-12 md:py-16">
