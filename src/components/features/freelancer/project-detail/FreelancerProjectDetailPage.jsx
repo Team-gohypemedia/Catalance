@@ -115,12 +115,12 @@ const mapStatus = (status = "") => {
 };
 
 const projectPanelClassName =
-  "rounded-[26px] border border-white/[0.08] bg-[#171717] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
+  "rounded-2xl border border-border bg-card shadow-none dark:border-white/[0.08] dark:bg-[#171717]";
 const projectInsetPanelClassName =
-  "rounded-[20px] border border-white/[0.08] bg-[#111111] px-4 py-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]";
+  "rounded-xl border border-border bg-muted px-3.5 py-3 dark:border-white/[0.08] dark:bg-[#111111]";
 const projectSectionEyebrowClassName =
-  "text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-muted-foreground";
-const projectSectionSubheadingClassName = "text-white";
+  "text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground";
+const projectSectionSubheadingClassName = "text-foreground dark:text-white";
 const projectDetailFieldNames = [
   "Service",
   "Project",
@@ -1554,7 +1554,7 @@ const FreelancerProjectDetailContent = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[94%] xl:max-w-none">
+        <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 sm:px-6 lg:px-8">
           <FreelancerWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -1583,7 +1583,7 @@ const FreelancerProjectDetailContent = () => {
   return (
     <>
       <div className="min-h-screen bg-background text-foreground">
-        <div className="mx-auto flex min-h-screen w-full max-w-[1536px] flex-col px-4 sm:px-6 lg:px-[40px] xl:w-[94%] xl:max-w-none">
+        <div className="mx-auto flex min-h-screen w-full max-w-7xl flex-col px-4 sm:px-6 lg:px-8">
           <FreelancerWorkspaceHeader
             profile={{
               avatar: user?.avatar,
@@ -1635,7 +1635,7 @@ const FreelancerProjectDetailContent = () => {
             </div>
           </div>
         )}
-                <div className="w-full max-w-full mx-auto space-y-6">
+                <div className="w-full space-y-5">
           <FreelancerProjectDetailHeader
             pageTitle={pageTitle}
             activeProjectManager={activeProjectManager}
@@ -1644,7 +1644,7 @@ const FreelancerProjectDetailContent = () => {
             isFallback={isFallback}
           />
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <FreelancerProjectDetailMainColumn
               projectDetailSnapshot={projectDetailSnapshot}
               insetPanelClassName={projectInsetPanelClassName}

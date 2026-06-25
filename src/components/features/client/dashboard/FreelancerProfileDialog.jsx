@@ -690,7 +690,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
             <div className="relative shrink-0 overflow-hidden border-b border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))]">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_130%_at_0%_0%,rgba(var(--brand-rgb),0.14)_0%,rgba(var(--brand-rgb),0)_56%),radial-gradient(120%_120%_at_100%_0%,rgba(59,130,246,0.14)_0%,rgba(59,130,246,0)_54%)]" />
 
-              <DialogHeader className="relative px-6 pt-6 pb-5 pr-14">
+              <DialogHeader className="relative p-4 pr-12 sm:px-6 sm:pt-6 sm:pb-5 sm:pr-14 text-left">
                 <DialogTitle className="sr-only">
                   {displayName} Freelancer Profile
                 </DialogTitle>
@@ -698,23 +698,23 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                   Profile overview with services, skills, languages, and projects.
                 </DialogDescription>
 
-                <div className="flex items-start gap-4">
-                  <Avatar className="h-24 w-24 border-4 border-card shadow-[0_14px_30px_rgba(0,0,0,0.28)]">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <Avatar className="h-16 w-16 sm:h-24 sm:w-24 border-2 sm:border-4 border-card shadow-[0_10px_25px_-5px_rgba(0,0,0,0.2)] shrink-0">
                     <AvatarImage src={avatarSrc} alt={displayName} />
-                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold tracking-wide">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-lg sm:text-2xl font-bold tracking-wide">
                       {displayInitials}
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                      <h2 className="truncate text-3xl font-bold leading-tight tracking-tight text-foreground">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
+                      <h2 className="truncate text-lg sm:text-3xl font-bold leading-tight tracking-tight text-foreground">
                         {displayName}
                       </h2>
-                      <Badge className="border-primary/20 bg-primary/15 text-primary">
+                      <Badge className="border-primary/20 bg-primary/15 text-primary text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5">
                         {roleLabel}
                       </Badge>
-                      <Badge variant="outline" className={availability.badgeClass}>
+                      <Badge variant="outline" className={`text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5 ${availability.badgeClass}`}>
                         <span
                           className={`mr-1.5 h-2 w-2 rounded-full ${availability.dotClass}`}
                           aria-hidden="true"
@@ -724,35 +724,35 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                       {matchScore && (
                         <Badge
                           variant="outline"
-                          className="border-emerald-400/35 bg-emerald-500/10 text-emerald-300"
+                          className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300 text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5"
                         >
-                          <Sparkles className="mr-1 h-3.5 w-3.5" />
+                          <Sparkles className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           {matchScore} Match
                         </Badge>
                       )}
                     </div>
 
                     {profileSubline && (
-                      <p className="mt-1 truncate text-sm text-muted-foreground">
+                      <p className="truncate text-xs sm:text-sm text-muted-foreground leading-none text-left">
                         {profileSubline}
                       </p>
                     )}
 
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-start gap-1.5 sm:gap-2">
                       <Badge
                         variant="outline"
-                        className="border-primary/20/40 bg-primary/10/10 text-primary"
+                        className="border-primary/20 bg-primary/5 text-primary text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5"
                       >
-                        <Star className="mr-1 h-3.5 w-3.5 fill-current" />
+                        <Star className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current" />
                         {ratingLabel}
                       </Badge>
 
                       {locationLabel && (
                         <Badge
                           variant="outline"
-                          className="border-border/70 bg-background/40 text-muted-foreground"
+                          className="border-border/70 bg-background/40 text-muted-foreground text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5"
                         >
-                          <MapPin className="mr-1 h-3.5 w-3.5" />
+                          <MapPin className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           {locationLabel}
                         </Badge>
                       )}
@@ -760,9 +760,9 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                       {hourlyRateLabel && (
                         <Badge
                           variant="outline"
-                          className="border-border/70 bg-background/40 text-muted-foreground"
+                          className="border-border/70 bg-background/40 text-muted-foreground text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5"
                         >
-                          <Wallet className="mr-1 h-3.5 w-3.5" />
+                          <Wallet className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5" />
                           {hourlyRateLabel}
                         </Badge>
                       )}
@@ -773,7 +773,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
             </div>
 
             <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-4 p-6">
+              <div className="space-y-3 p-4 sm:p-6">
                 <div className="space-y-4">
                   <Card className="border-border/60 bg-muted/15 p-4">
                     <h3 className="mb-2 flex items-center gap-2 text-base font-semibold text-foreground">
@@ -902,8 +902,8 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
               </div>
             </ScrollArea>
 
-            <DialogFooter className="shrink-0 border-t border-border/60 px-6 py-4 sm:justify-between">
-              <p className="text-xs text-muted-foreground">
+            <DialogFooter className="shrink-0 border-t border-border/60 p-3 sm:px-6 sm:py-4 sm:justify-between flex-row items-center justify-end gap-2">
+              <p className="hidden sm:block text-xs text-muted-foreground">
                 Review services, skills, languages, pricing, and projects before sending a proposal.
               </p>
               <div className="flex gap-2">

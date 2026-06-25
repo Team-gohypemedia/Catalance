@@ -55,20 +55,20 @@ const FreelancerProjectDetailSidebar = ({
       eyebrowClassName={eyebrowClassName}
     />
 
-    <Card className={cn(panelClassName, "min-h-[340px] overflow-hidden")}>
-      <CardHeader className="space-y-2 border-b border-white/[0.06] pb-3">
-        <div className="flex items-start justify-between gap-3">
+    <Card className={cn(panelClassName, "overflow-hidden")}>
+      <CardHeader className="space-y-1.5 border-b border-border dark:border-white/[0.06] px-4 pb-3 pt-4">
+        <div className="flex items-start justify-between gap-2">
           <div className="space-y-0.5">
             <CardTitle className={eyebrowClassName}>Project Chat</CardTitle>
-            <CardDescription className={cn(subheadingClassName, "text-xs")}>
-              Ask questions and share documents
+            <CardDescription className="text-xs text-muted-foreground">
+              Ask questions & share files
             </CardDescription>
           </div>
           <Button
             asChild
             size="sm"
             variant="outline"
-            className="h-7 border-border/60 px-2.5 text-[11px]"
+            className="h-6 border-border/60 px-2 text-[10px] shrink-0"
           >
             <Link
               to={
@@ -77,14 +77,14 @@ const FreelancerProjectDetailSidebar = ({
                   : "/freelancer/messages"
               }
             >
-              Open in Messages
+              Open Chat
             </Link>
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="max-h-[320px] min-h-[200px] space-y-3 overflow-y-auto px-4 py-4">
+      <CardContent className="max-h-[280px] min-h-[160px] space-y-2.5 overflow-y-auto px-4 py-3">
         {messages.length === 0 ? (
-          <div className="flex min-h-[160px] items-center justify-center rounded-[14px] border border-dashed border-white/[0.08] bg-card px-4 text-center text-sm text-muted-foreground">
+          <div className="flex min-h-[160px] items-center justify-center rounded-[14px] border border-dashed border-border dark:border-white/[0.08] bg-card px-4 text-center text-sm text-muted-foreground">
             No messages yet. Start the conversation with your client.
           </div>
         ) : (
@@ -106,7 +106,7 @@ const FreelancerProjectDetailSidebar = ({
               <React.Fragment key={message.id || index}>
                 {showDateDivider ? (
                   <div className="my-4 flex justify-center">
-                    <span className="rounded-full border border-white/[0.06] bg-card px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span className="rounded-full border border-border dark:border-white/[0.06] bg-card px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       {isToday(currentDate)
                         ? "Today"
                         : isYesterday(currentDate)
@@ -120,7 +120,7 @@ const FreelancerProjectDetailSidebar = ({
                     className={`flex max-w-[88%] flex-col overflow-hidden rounded-2xl px-4 py-2.5 text-sm ${
                       isSelf
                         ? "rounded-tr-sm bg-primary text-primary-foreground shadow-sm"
-                        : "rounded-tl-sm border border-white/[0.06] bg-card text-white"
+                        : "rounded-tl-sm border border-border dark:border-white/[0.06] bg-card text-foreground dark:text-white"
                     }`}
                   >
                     {message.sender === "other" && message.senderName ? (
@@ -160,7 +160,7 @@ const FreelancerProjectDetailSidebar = ({
                             rel="noopener noreferrer"
                             className={`flex items-center gap-2 rounded-lg p-2 transition-colors ${
                               !isSelf
-                                ? "border border-white/[0.06] bg-card"
+                                ? "border border-border dark:border-white/[0.06] bg-card"
                                 : "bg-black/10"
                             }`}
                           >
@@ -196,19 +196,19 @@ const FreelancerProjectDetailSidebar = ({
           })
         )}
       </CardContent>
-      <div className="flex gap-2 border-t border-white/[0.06] p-3">
+      <div className="flex gap-2 border-t border-border dark:border-white/[0.06] p-3">
         <Input
           placeholder="Type your message..."
           value={input}
           onChange={(event) => setInput(event.target.value)}
           onKeyPress={(event) => event.key === "Enter" && handleSendMessage()}
-          className="h-10 border-white/[0.08] bg-card text-sm text-white placeholder:text-[#6b7280]"
+          className="h-10 border-border bg-background dark:border-white/[0.08] dark:bg-card text-sm text-foreground dark:text-white placeholder:text-muted-foreground"
         />
         <Button
           onClick={() => fileInputRef.current?.click()}
           size="sm"
           variant="outline"
-          className="h-10 w-10 border-white/[0.08] bg-card p-0 text-[#cfd3da] hover:bg-card/80"
+          className="h-10 w-10 border-border bg-background dark:border-white/[0.08] dark:bg-card p-0 text-foreground dark:text-[#cfd3da] hover:bg-accent dark:hover:bg-card/80"
           disabled={isSending}
           title="Upload document"
         >
@@ -238,10 +238,10 @@ const FreelancerProjectDetailSidebar = ({
     </Card>
 
     <Card className={panelClassName}>
-      <CardHeader className="pb-3">
+      <CardHeader className="px-4 pb-2 pt-4">
         <CardTitle className={eyebrowClassName}>Client Documents</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-2 pt-0">
+      <CardContent className="px-4 pb-4 pt-2">
         {docs.length > 0 ? (
           docs.slice(0, 6).map((doc, idx) => {
             const isImage =
@@ -255,7 +255,7 @@ const FreelancerProjectDetailSidebar = ({
                 href={doc.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 rounded-[16px] border border-white/[0.06] bg-[#111111] px-3 py-3 text-sm transition-colors hover:bg-white/[0.03]"
+                className="flex items-center gap-3 rounded-[16px] border border-border bg-muted/40 dark:border-white/[0.06] dark:bg-[#111111] px-3 py-3 text-sm transition-colors hover:bg-muted/60 dark:hover:bg-white/[0.03]"
               >
                 <span
                   className={cn(
@@ -264,13 +264,13 @@ const FreelancerProjectDetailSidebar = ({
                   )}
                 >
                   {isImage ? (
-                    <Image className="h-4 w-4 text-emerald-300" />
+                    <Image className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
                   ) : (
                     <FileText className="h-4 w-4 text-primary" />
                   )}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-white">
+                  <p className="truncate text-sm font-medium text-foreground dark:text-white">
                     {doc.name}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
@@ -288,7 +288,7 @@ const FreelancerProjectDetailSidebar = ({
             );
           })
         ) : (
-          <p className="text-sm text-white">
+          <p className="text-sm text-muted-foreground">
             No documents attached yet. Upload project documentation here.
           </p>
         )}
@@ -296,30 +296,30 @@ const FreelancerProjectDetailSidebar = ({
     </Card>
 
     <Card className={panelClassName}>
-      <CardHeader className="pb-3">
-        <CardTitle className={cn(eyebrowClassName, "flex items-center gap-2")}>
-          <IndianRupee className="h-3.5 w-3.5" />
-          Your Earnings Summary
+      <CardHeader className="px-4 pb-2 pt-4">
+        <CardTitle className={cn(eyebrowClassName, "flex items-center gap-1.5")}>
+          <IndianRupee className="h-3 w-3" />
+          Earnings Summary
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3 pt-0 text-sm text-white">
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+      <CardContent className="space-y-2 px-4 pb-4 pt-2 text-sm text-foreground dark:text-white">
+        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
           <span>Your Total Share</span>
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-foreground dark:text-white">
             {project?.currency || "₹"}
             {totalBudget.toLocaleString()}
           </span>
         </div>
-        <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
           <span>Paid to You</span>
-          <span className="font-semibold text-emerald-400">
+          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
             {project?.currency || "₹"}
             {spentBudget.toLocaleString()}
           </span>
         </div>
         <div className="flex items-center justify-between">
           <span>Pending Payout</span>
-          <span className="font-semibold text-white">
+          <span className="font-semibold text-foreground dark:text-white">
             {project?.currency || "₹"}
             {remainingBudget.toLocaleString()}
           </span>
@@ -351,7 +351,7 @@ const FreelancerProjectDetailSidebar = ({
                 <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {milestone.label}
                 </p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white">
+                <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
                   {project?.currency || "₹"}
                   {milestone.amount.toLocaleString()}
                 </p>
@@ -360,11 +360,11 @@ const FreelancerProjectDetailSidebar = ({
                 className={cn(
                   "border px-2.5 py-1 text-[10px] font-medium",
                   milestone.status === "paid" &&
-                    "border-emerald-500/10 bg-emerald-500/15 text-emerald-200",
+                    "border-emerald-200 dark:border-emerald-500/10 bg-emerald-100/40 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200",
                   milestone.status === "active" &&
                     "border-primary/10 bg-primary/15 text-primary",
                   milestone.status === "scheduled" &&
-                    "border-white/[0.08] bg-[#111111] text-muted-foreground",
+                    "border-border bg-muted dark:border-white/[0.08] dark:bg-[#111111] text-muted-foreground",
                 )}
               >
                 {milestone.status === "paid"

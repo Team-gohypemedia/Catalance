@@ -46,7 +46,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-white">About</h3>
+      <h3 className="text-sm font-semibold text-foreground dark:text-white">About</h3>
 
       <div className="space-y-2.5">
         <div className="flex flex-col gap-2">
@@ -57,7 +57,7 @@ const ClientAboutCard = ({ client, project, onUpdateLink }) => {
                 <Input
                   value={linkValue}
                   onChange={(event) => setLinkValue(event.target.value)}
-                  className="h-9 border-white/[0.08] bg-[#111111] pl-9 text-sm text-white"
+                  className="h-9 border-border bg-background dark:border-white/[0.08] dark:bg-[#111111] pl-9 text-sm text-foreground dark:text-white"
                   placeholder="https://project-link.com"
                   autoFocus
                 />
@@ -132,25 +132,25 @@ const ClientInfoCard = ({
 
   return (
     <Card className={panelClassName}>
-      <CardHeader className="pb-3">
-        <CardTitle className={eyebrowClassName}>Client Information</CardTitle>
+      <CardHeader className="px-4 pb-2 pt-4">
+        <CardTitle className={eyebrowClassName}>Client</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5 pt-0">
+      <CardContent className="px-4 pb-4 pt-2 space-y-3">
         <div className="flex items-center gap-3">
-          <Avatar className="h-11 w-11 border border-white/[0.08] bg-[#111111]">
+          <Avatar className="h-9 w-9 border border-border dark:border-white/[0.08] bg-muted dark:bg-[#111111]">
             <AvatarImage src={client.avatar} alt={client.fullName} />
-            <AvatarFallback className="bg-[#111111] text-white">
+            <AvatarFallback className="bg-muted dark:bg-[#111111] text-sm font-semibold text-foreground dark:text-white">
               {(client.fullName || "C").charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex flex-col">
+          <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="font-semibold text-white">
+              <span className="text-sm font-semibold text-foreground dark:text-white truncate">
                 {client.fullName || "Client Name"}
               </span>
               {client.isVerified ? (
                 <CheckCircle2
-                  className="h-3.5 w-3.5 text-blue-500"
+                  className="h-3.5 w-3.5 shrink-0 text-blue-500"
                   fill="currentColor"
                   stroke="white"
                 />
@@ -159,7 +159,7 @@ const ClientInfoCard = ({
           </div>
         </div>
 
-        <div className="border-t border-white/[0.06] pt-4">
+        <div className="border-t border-border dark:border-white/[0.06] pt-3">
           <ClientAboutCard
             client={client}
             project={project}

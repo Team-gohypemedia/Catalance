@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useState, useEffect } from "react";
 
 
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -210,7 +210,7 @@ const groupFreelancersForDisplay = (freelancers = []) => {
       ? {
           key: "multi-service",
           title: "Multi-Service Matches",
-          description: "These freelancers cover every required service in this proposal.",
+          description: "Matches covering all required services.",
           freelancers: multiServiceMatches,
         }
       : null,
@@ -218,7 +218,7 @@ const groupFreelancersForDisplay = (freelancers = []) => {
       ? {
           key: "standard",
           title: "Other Matches",
-          description: "Strong service-aligned matches ranked by the standard proposal matcher.",
+          description: "Service-aligned matches ranked by standard proposal matcher.",
           freelancers: standardMatches,
         }
       : null,
@@ -279,44 +279,72 @@ const FreelancerSelectionDialog = ({
 }) => {
   const [activeIndices, setActiveIndices] = useState({});
 
+  // Prevent background scrolling on mobile/iOS when dialog is open
+  useEffect(() => {
+    if (!open) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalTop = document.body.style.top;
+    const originalWidth = document.body.style.width;
+    const scrollY = window.scrollY;
+
+    // Lock body scroll by making it position fixed
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = "100%";
+
+    return () => {
+      // Restore styles
+      document.body.style.overflow = originalOverflow;
+      document.body.style.position = originalPosition;
+      document.body.style.top = originalTop;
+      document.body.style.width = originalWidth;
+      
+      // Restore scroll position
+      window.scrollTo(0, scrollY);
+    };
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="h-[78vh] w-[94vw] max-w-300 p-3 sm:p-4 flex flex-col">
+    <DialogContent className="h-[78vh] w-[94vw] max-w-300 p-3 sm:p-4 flex flex-col overscroll-contain">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-lg">
           <Send className="w-5 h-5 text-primary" />
           Choose a Freelancer
         </DialogTitle>
-        <DialogDescription>
-          Select a freelancer to send your proposal:{" "}
+        <DialogDescription className="truncate whitespace-nowrap overflow-hidden">
+          Send proposal for:{" "}
           <span className="font-medium text-foreground">
             {savedProposal?.projectTitle}
           </span>
         </DialogDescription>
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-2 px-1">
-        <div className="mb-2.5 flex flex-col gap-2 rounded-xl border border-border/60 bg-muted/20 p-2.5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-md">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={freelancerSearch}
               onChange={(event) => onFreelancerSearchChange(event.target.value)}
-              placeholder="Search by name, skills, niche, or stack"
-              className="pl-9"
+              placeholder="Search name, skills, niche..."
+              className="h-9 pl-9 pr-4 text-xs sm:text-sm"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge className="border-primary/20 bg-primary/10 text-primary">
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Badge className="h-9 px-2.5 border-primary/20 bg-primary/10 text-primary font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
               {filteredFreelancers.length} available
             </Badge>
             {freelancerSelectionData.invitedCount > 0 && (
-              <Badge variant="outline" className="text-muted-foreground">
+              <Badge variant="outline" className="h-9 px-2.5 text-muted-foreground font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
                 Invited {freelancerSelectionData.invitedCount}
               </Badge>
             )}
           </div>
         </div>
-        <div className="min-h-0 w-full flex-1 overflow-y-auto pr-2 pb-4 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+        <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain pr-2 pb-4 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
           <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(() => {
               const hasSearchQuery = String(freelancerSearch || "").trim().length > 0;
@@ -404,20 +432,23 @@ const FreelancerSelectionDialog = ({
               }
 
               const freelancerGroups = groupFreelancersForDisplay(filteredFreelancers);
+              const showGroupCount = freelancerGroups.length > 1;
 
               return freelancerGroups.map((group) => (
                 <div key={group.key} className="col-span-full">
-                  <div className="mb-3 flex flex-col gap-1 rounded-2xl border border-border/60 bg-background/40 px-3 py-2.5">
-                    <div className="flex items-center gap-2">
+                  <div className="mb-2 flex flex-col gap-0.5 px-1 pb-1 pt-1.5 border-b border-border/40">
+                    <div className="flex items-center gap-1.5">
                       {group.key === "multi-service" ? (
-                        <Layers3 className="h-4 w-4 text-muted-foreground" />
+                        <Layers3 className="h-3.5 w-3.5 text-muted-foreground" />
                       ) : null}
-                      <p className="text-sm font-semibold text-foreground">{group.title}</p>
-                      <Badge variant="outline" className="border-border/70 bg-transparent text-[10px] text-muted-foreground">
-                        {group.freelancers.length}
-                      </Badge>
+                      <p className="text-xs font-semibold text-foreground">{group.title}</p>
+                      {showGroupCount && (
+                        <Badge variant="secondary" className="h-4 px-1.5 text-[9px] font-medium bg-muted text-muted-foreground border-none">
+                          {group.freelancers.length}
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{group.description}</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">{group.description}</p>
                   </div>
                   <div
                     onScroll={(e) => {

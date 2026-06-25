@@ -50,14 +50,14 @@ export const getFreelancerAvailabilityMeta = (freelancer = {}) => {
     openToWork,
     label: openToWork ? "Open to Work" : hasOpenToWorkSignal ? "At Capacity" : "Offline",
     badgeClass: openToWork
-      ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-300"
+      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
       : hasOpenToWorkSignal
-        ? "border-primary/20/20 bg-primary/10/10 text-primary"
+        ? "border-primary/25 bg-primary/10 text-primary"
         : "border-border/70 bg-background/35 text-muted-foreground",
     dotClass: openToWork
-      ? "bg-emerald-400"
+      ? "bg-emerald-500 dark:bg-emerald-400"
       : hasOpenToWorkSignal
-        ? "bg-primary/10"
+        ? "bg-primary"
         : "bg-muted-foreground/80",
   };
 };
