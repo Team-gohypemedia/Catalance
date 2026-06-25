@@ -211,8 +211,8 @@ const MobileProfileSwitchCard = ({
               <p className="truncate text-[0.92rem] font-bold tracking-tight text-foreground transition-colors group-hover:text-primary">
                 {displayName}
               </p>
-              <p className="mt-0.5 text-[0.7rem] font-medium leading-tight text-muted-foreground">
-                Current: <span className="font-semibold text-foreground/80">{currentDashboardLabel}</span> dashboard
+              <p className="mt-0.5 text-[0.7rem] font-semibold leading-tight text-foreground/80">
+                {currentDashboardLabel}
               </p>
             </div>
           </button>
@@ -222,7 +222,7 @@ const MobileProfileSwitchCard = ({
           <button
             type="button"
             onClick={onLogout}
-            className="shrink-0 flex items-center gap-1.5 rounded-xl border border-orange-500/20 bg-orange-500/5 px-2.5 py-1.5 text-orange-500 hover:bg-orange-500/10 dark:border-orange-400/20 dark:bg-orange-400/5 dark:text-orange-400 dark:hover:bg-orange-400/10 transition-colors shadow-2xs"
+            className="shrink-0 flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-primary hover:bg-primary/10 transition-colors shadow-2xs"
           >
             <LogOut className="size-3.5" />
             <span className="text-[0.75rem] font-bold tracking-tight">Sign Out</span>
@@ -260,7 +260,7 @@ const MobileProfileSwitchCard = ({
                 checked={isFreelancer}
                 onCheckedChange={handleSwitchDashboard}
                 aria-label={`${switchLabel} dashboard`}
-                className="h-5.5 w-[3.05rem] shrink-0 border-0 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[var(--primary)] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-muted [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-none [&_[data-slot=switch-thumb]]:data-[state=checked]:bg-background [&_[data-slot=switch-thumb]]:data-[state=unchecked]:bg-foreground"
+                className="h-5.5 w-[3.05rem] shrink-0 border border-neutral-300 dark:border-neutral-700/60 px-0.5 shadow-none data-[state=checked]:justify-end data-[state=checked]:bg-[var(--primary)] data-[state=checked]:border-[var(--primary)] data-[state=unchecked]:justify-start data-[state=unchecked]:bg-neutral-200 dark:data-[state=unchecked]:bg-neutral-800/80 [&_[data-slot=switch-thumb]]:size-4 [&_[data-slot=switch-thumb]]:!translate-x-0 [&_[data-slot=switch-thumb]]:shadow-xs [&_[data-slot=switch-thumb]]:bg-white dark:[&_[data-slot=switch-thumb]]:bg-neutral-200"
               />
             </SheetClose>
           </div>
@@ -391,28 +391,16 @@ const WorkspaceMobileSidebar = ({
                     <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
                       Home
                     </p>
-                    <div className="mt-1 grid grid-cols-2 gap-1.5">
-                      {marketingNavItems.map((item, index) => {
-                        const shouldSpanFullWidth =
-                          currentDashboard === "freelancer" &&
-                          item.key === "contact" &&
-                          index === marketingNavItems.length - 1;
-
-                        return (
-                          <MobileMenuLink
-                            key={item.key}
-                            item={item}
-                            active={item.key === activeMarketingKey}
-                            className={
-                              shouldSpanFullWidth
-                                ? "col-span-2 [&>div]:justify-center"
-                                : undefined
-                            }
-                            onSelect={onSiteNav}
-                            priority="secondary"
-                          />
-                        );
-                      })}
+                    <div className="mt-1 space-y-0 px-2">
+                      {marketingNavItems.map((item) => (
+                        <MobileMenuLink
+                          key={item.key}
+                          item={item}
+                          active={item.key === activeMarketingKey}
+                          onSelect={onSiteNav}
+                          priority="primary"
+                        />
+                      ))}
                     </div>
                   </section>
 
@@ -420,7 +408,7 @@ const WorkspaceMobileSidebar = ({
                     <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-[#5d6476]">
                       Main
                     </p>
-                    <div className="mt-1 space-y-0">
+                    <div className="mt-1 space-y-0 px-2">
                       {workspaceNavItems.map((item) => (
                         <MobileMenuLink
                           key={item.key}

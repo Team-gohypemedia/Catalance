@@ -127,8 +127,8 @@ describe("WorkspaceMobileSidebar", () => {
     expect(switchControl.getAttribute("aria-checked")).toBe("true");
   });
 
-  it("makes only the freelancer contact tile full width", () => {
-    const { rerender } = render(
+  it("renders the marketing nav items as full width vertical items", () => {
+    render(
       <MemoryRouter>
         <WorkspaceMobileSidebar
           currentDashboard="client"
@@ -143,28 +143,8 @@ describe("WorkspaceMobileSidebar", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("link", { name: /^contact$/i }).className).not.toContain(
-      "col-span-2",
-    );
-
-    rerender(
-      <MemoryRouter>
-        <WorkspaceMobileSidebar
-          currentDashboard="freelancer"
-          displayName="Mohd Kaif"
-          profile={{}}
-          profileInitial="M"
-          profileTo="/freelancer/profile"
-          marketingNavItems={marketingNavItems}
-          workspaceNavItems={freelancerWorkspaceNavItems}
-          onLogout={vi.fn()}
-        />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole("link", { name: /^contact$/i }).className).toContain(
-      "col-span-2 [&>div]:justify-center",
-    );
+    expect(screen.getByRole("link", { name: /^home$/i }).className).toContain("w-full");
+    expect(screen.getByRole("link", { name: /^contact$/i }).className).toContain("w-full");
   });
 
   it("can flush dashboard container padding for workspace pages", () => {
