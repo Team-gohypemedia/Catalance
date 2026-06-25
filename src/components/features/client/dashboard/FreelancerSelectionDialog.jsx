@@ -1,4 +1,4 @@
-import { memo, useState, useEffect } from "react";
+import { memo, useState, useEffect, useRef } from "react";
 
 
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -278,6 +278,7 @@ const FreelancerSelectionDialog = ({
   formatRating,
 }) => {
   const [activeIndices, setActiveIndices] = useState({});
+  const dialogContentRef = useRef(null);
 
   // Prevent background scrolling on mobile/iOS when dialog is open
   useEffect(() => {
@@ -307,9 +308,48 @@ const FreelancerSelectionDialog = ({
     };
   }, [open]);
 
+  // Prevent background dialog/panel containers from scrolling when this nested dialog is open
+  useEffect(() => {
+    if (!open) return;
+
+    const scrollElements = document.querySelectorAll(".overflow-y-auto, [data-slot='dialog-content']");
+    const originalStyles = [];
+
+    scrollElements.forEach((el) => {
+      // Skip our own dialog content and its children
+      if (
+        dialogContentRef.current &&
+        (el === dialogContentRef.current || dialogContentRef.current.contains(el))
+      ) {
+        return;
+      }
+
+      originalStyles.push({
+        el,
+        overflow: el.style.overflow,
+      });
+      el.style.overflow = "hidden";
+    });
+
+    return () => {
+      originalStyles.forEach(({ el, overflow }) => {
+        el.style.overflow = overflow;
+      });
+    };
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-    <DialogContent className="h-[78vh] w-[94vw] max-w-300 p-3 sm:p-4 flex flex-col overscroll-contain">
+    <DialogContent 
+      ref={dialogContentRef}
+      onOpenAutoFocus={(event) => {
+        // Prevent autofocus on mobile to avoid keyboard popup
+        if (window.innerWidth < 640) {
+          event.preventDefault();
+        }
+      }}
+      className="h-[78vh] w-[94vw] max-w-300 p-3 sm:p-4 flex flex-col overscroll-contain"
+    >
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-lg">
           <Send className="w-5 h-5 text-primary" />
