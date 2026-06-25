@@ -374,8 +374,7 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
         >
           <div className="flex min-w-0 items-center gap-2">
             <FolderOpen className="size-4 shrink-0" />
-            <span className="hidden sm:inline">Project Filter</span>
-            <span className="sm:hidden">Filter</span>
+            <span>Filter</span>
             <span className="max-w-[8.5rem] truncate rounded-full bg-black/10 dark:bg-black/20 px-2.5 py-0.5 text-[11px] font-semibold text-white shadow-sm sm:max-w-[10rem]">
               {selectedLabel}
             </span>

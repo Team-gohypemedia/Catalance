@@ -4044,10 +4044,22 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                             {previewMessages.map((message) => (
                               <li
                                 key={message.id}
-                                className="rounded-[18px] dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.04] border-black/[0.04] px-3.5 py-3.5"
+                                onClick={() => navigate("/freelancer/messages")}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") {
+                                    e.preventDefault();
+                                    navigate("/freelancer/messages");
+                                  }
+                                }}
+                                className="group rounded-[18px] dark:bg-white/[0.03] bg-black/[0.03] border dark:border-white/[0.04] border-black/[0.04] px-3.5 py-3.5 cursor-pointer hover:bg-black/[0.06] hover:dark:bg-white/[0.06] hover:border-primary/35 dark:hover:border-primary/30 transition-all duration-200"
                               >
                                 <div className="flex items-start gap-3">
-                                  <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-100">
+                                  <div
+                                    className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#272a31] text-[11px] font-bold text-zinc-100 group-hover:scale-105 transition-transform duration-200"
+                                    aria-hidden="true"
+                                  >
                                     {message.initial}
                                   </div>
                                   <div className="min-w-0 flex-1">

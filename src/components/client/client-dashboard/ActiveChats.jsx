@@ -19,8 +19,20 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
   const actionLabel = item.actionLabel || "MESSAGE";
 
   return (
-    <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 sm:gap-4">
-      <Avatar className="size-11 shrink-0 border border-border">
+    <div
+      onClick={handleMessageClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleMessageClick();
+        }
+      }}
+      className="group grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3.5 sm:gap-4 cursor-pointer hover:bg-black/[0.02] hover:dark:bg-white/[0.02] -mx-3 px-3 py-2 rounded-xl transition-all duration-200"
+      aria-label={`Open messages from ${item.name}`}
+    >
+      <Avatar className="size-11 shrink-0 border border-border group-hover:scale-105 transition-transform duration-200">
         <AvatarImage src={item.avatar} alt={item.name} />
         <AvatarFallback className="bg-muted text-sm text-foreground">
           {item.initial}
@@ -45,7 +57,10 @@ const AcceptedFreelancerRow = memo(function AcceptedFreelancerRow({
 
       <button
         type="button"
-        onClick={handleMessageClick}
+        onClick={(e) => {
+          e.stopPropagation(); // Prevent duplicate trigger from parent div's onClick
+          handleMessageClick();
+        }}
         className="inline-flex h-10 min-w-23.5 shrink-0 items-center justify-center rounded-xl bg-primary px-4 text-[13px] font-medium uppercase tracking-[0.01em] text-primary-foreground transition-colors hover:bg-primary/80"
       >
         {actionLabel}

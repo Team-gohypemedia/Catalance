@@ -616,7 +616,13 @@ const ServiceDetailArticle = ({
 
       <div className="mt-3.5 border-t border-border pt-3.5">
         {selectedSubcategories.length > 0 ? (
-          <Carousel opts={subcategoryCarouselOptions} className="w-full">
+          <Carousel
+            opts={subcategoryCarouselOptions}
+            className="w-full"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
             <SectionHeading
               icon={Layers3}
               title={labels.categoriesTitle}
@@ -676,7 +682,13 @@ const ServiceDetailArticle = ({
 
       <div className="mt-3.5 border-t border-border pt-3.5">
         {activeSkillTags.length > 0 ? (
-          <Carousel opts={skillCarouselOptions} className="w-full">
+          <Carousel
+            opts={skillCarouselOptions}
+            className="w-full"
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+          >
             <SectionHeading
               icon={Wrench}
               title={
