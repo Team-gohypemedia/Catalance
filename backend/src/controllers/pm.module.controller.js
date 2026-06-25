@@ -4,6 +4,8 @@ import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { listUsers } from "../modules/users/user.service.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import { sendEmail } from "../lib/email-service.js";
+import { env } from "../config/env.js";
 import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
 import {
   resolveUserProfileDetails,
@@ -2539,7 +2541,12 @@ export const updatePmProjectSop = asyncHandler(async (req, res) => {
       title: true,
       proposals: {
         where: { status: { in: ["ACCEPTED", "REPLACED"] } },
-        select: { freelancerId: true }
+        select: { 
+          freelancerId: true,
+          freelancer: {
+            select: { email: true, fullName: true }
+          }
+        }
       }
     }
   });
@@ -2560,9 +2567,13 @@ export const updatePmProjectSop = asyncHandler(async (req, res) => {
       );
     }
 
-    // Freelancer notification
+    // Freelancer notification and email
     if (fullProject.proposals && fullProject.proposals.length > 0) {
-      const activeFreelancerId = fullProject.proposals[fullProject.proposals.length - 1].freelancerId;
+      const activeProposal = fullProject.proposals[fullProject.proposals.length - 1];
+      const activeFreelancerId = activeProposal.freelancerId;
+      const freelancerEmail = activeProposal.freelancer?.email;
+      const freelancerName = activeProposal.freelancer?.fullName || "Freelancer";
+
       if (activeFreelancerId) {
         notificationPromises.push(
           sendNotificationToUser(activeFreelancerId, {
@@ -2572,6 +2583,22 @@ export const updatePmProjectSop = asyncHandler(async (req, res) => {
             data: { projectId },
           }).catch(() => null)
         );
+
+        if (freelancerEmail) {
+          notificationPromises.push(
+            sendEmail({
+              to: freelancerEmail,
+              subject: `Project Timeline Updated: ${fullProject.title}`,
+              title: "Project Timeline Updated",
+              html: `
+                <p>Hi ${freelancerName},</p>
+                <p>The Project Manager has just updated the SOP and phase timelines for your project <strong>${fullProject.title}</strong>.</p>
+                <p>Please log in to your dashboard to review the new deadlines and ensure you are aligned with the schedule.</p>
+                <a href="${env.FRONTEND_URL || 'http://localhost:5173'}/freelancer/project/${projectId}" class="button">View Project Dashboard</a>
+              `
+            }).catch(() => null)
+          );
+        }
       }
     }
 
