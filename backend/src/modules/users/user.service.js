@@ -3309,23 +3309,7 @@ export const requestWhatsappOtp = async ({
       `[WhatsApp OTP] Created phone-only login user for ${maskLoginPhone(normalizedPhone)}.`
     );
   } else {
-    // Existing user — reject if role doesn't match (Option A: explicit 409)
-    const requestedRole = normalizeRoleValue(role);
-    if (requestedRole && !hasRole(user, requestedRole)) {
-      console.warn("[WhatsApp OTP] Role mismatch", {
-        phone: maskLoginPhone(normalizedPhone),
-        existingRoles: user.roles,
-        requestedRole
-      });
-
-      throw new AppError(
-        "This WhatsApp number is already registered with a different account type. Please select the correct role or contact support.",
-        409,
-        { code: "ROLE_MISMATCH" }
-      );
-    }
-
-    // Role matches (or no role requested) — save OTP and send
+    // Existing user — save OTP and send (role resolution will happen during verification)
     await prisma.user.update({
       where: { id: user.id },
       data: {
