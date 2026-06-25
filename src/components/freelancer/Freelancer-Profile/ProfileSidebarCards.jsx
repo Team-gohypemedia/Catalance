@@ -1,5 +1,4 @@
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
-import FilePlus2 from "lucide-react/dist/esm/icons/file-plus-2";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import GraduationCap from "lucide-react/dist/esm/icons/graduation-cap";
 import Linkedin from "lucide-react/dist/esm/icons/linkedin";
@@ -137,30 +136,18 @@ const ProfileSidebarCards = ({
   return (
     <div className="space-y-5">
       <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h3 className="text-xl font-bold tracking-tight text-foreground">
-              Work Experience
-            </h3>
-            <p className="mt-1.5 text-sm text-muted-foreground">
-              Add your job history and achievements to give clients insight into
-              your expertise.
-            </p>
-            <button
-              type="button"
-              onClick={openCreateExperienceModal}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              Add work experience
-            </button>
-          </div>
-
-          {!hasExperience ? (
-            <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-muted/40">
-              <FilePlus2 className="h-10 w-10 text-muted-foreground/60" aria-hidden="true" />
-            </div>
-          ) : null}
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-xl font-bold tracking-tight text-foreground">
+            Work Experience
+          </h3>
+          <button
+            type="button"
+            onClick={openCreateExperienceModal}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-primary/5 hover:shadow-md active:scale-[0.98]"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            Add Experience
+          </button>
         </div>
 
         {hasExperience ? (
@@ -297,7 +284,13 @@ const ProfileSidebarCards = ({
               );
             })}
           </div>
-        ) : null}
+        ) : (
+          <div className="mt-4 rounded-xl border border-dashed border-border/50 bg-muted/10 p-4">
+            <p className="text-sm text-muted-foreground">
+              Add your job history and achievements to give clients insight into your expertise.
+            </p>
+          </div>
+        )}
       </Card>
 
       <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
@@ -308,7 +301,7 @@ const ProfileSidebarCards = ({
           <button
             type="button"
             onClick={() => openFullProfileEditor("education")}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-foreground shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-muted hover:shadow-md active:scale-[0.98]"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-primary/5 hover:shadow-md active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Edit Details

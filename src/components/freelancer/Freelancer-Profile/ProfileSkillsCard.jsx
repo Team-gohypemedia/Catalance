@@ -679,7 +679,7 @@ const ProfileSkillsCard = ({
                       deleteServiceProfile(activeService.serviceKey);
                     }
                   }}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-destructive transition-colors hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Delete service"
                   title="Delete service"
                 >
@@ -695,18 +695,18 @@ const ProfileSkillsCard = ({
                       openEditServiceProfileModal(activeService.serviceKey);
                     }
                   }}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-primary/30 bg-card text-primary transition-colors hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-40"
                   aria-label="Edit service details"
                   title="Edit service details"
                 >
-                  <Pencil className="h-4 w-4 text-foreground" aria-hidden="true" />
+                  <Pencil className="h-4 w-4" aria-hidden="true" />
                 </button>
               ) : null}
               <button
                 type="button"
                 disabled={!canScrollPrevService}
                 onClick={() => serviceCarouselApi?.scrollPrev()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Previous specialization"
               >
                 <ChevronLeft className="h-5 w-5 text-foreground" aria-hidden="true" />
@@ -715,7 +715,7 @@ const ProfileSkillsCard = ({
                 type="button"
                 disabled={!canScrollNextService}
                 onClick={() => serviceCarouselApi?.scrollNext()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent/90 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Next specialization"
               >
                 <ChevronRight className="h-5 w-5 text-foreground" aria-hidden="true" />

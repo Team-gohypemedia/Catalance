@@ -19,6 +19,15 @@ import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carouse
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DashboardPanel,
   ProjectCarouselControls,
   ProjectCarouselDots,
@@ -717,6 +726,7 @@ const Proposals = memo(function Proposals({
   const [freelancerSearch, setFreelancerSearch] = useState("");
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
+  const [showSentInfo, setShowSentInfo] = useState(false);
   const [draftProposalCarouselApi, setDraftProposalCarouselApi] = useState(null);
   const [canGoToPreviousDraftProposal, setCanGoToPreviousDraftProposal] = useState(false);
   const [canGoToNextDraftProposal, setCanGoToNextDraftProposal] = useState(false);
@@ -911,11 +921,13 @@ const Proposals = memo(function Proposals({
   }, [showFreelancerSelect]);
 
   const handleDeleteDraft = useCallback(
-    (draftId) => {
+    (draftId, silent = false) => {
       if (isControlled || !draftId) return;
       
-      const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
-      if (!confirmed) return;
+      if (!silent) {
+        const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
+        if (!confirmed) return;
+      }
 
       const storageKeys = getProposalStorageKeys(sessionUser?.id);
       const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage(
@@ -1092,14 +1104,17 @@ const Proposals = memo(function Proposals({
           throw new Error(proposalPayload?.message || "Failed to send proposal.");
         }
 
-        handleDeleteDraft(proposal.id);
+        handleDeleteDraft(proposal.id, true);
         await refreshDashboardData?.({ silent: true });
 
         toast.success(`Proposal sent to ${freelancer.fullName || "freelancer"}!`);
         setShowFreelancerSelect(false);
+        setShowSentInfo(true);
+        return true;
       } catch (error) {
         console.error("Failed to send proposal:", error);
         toast.error(error?.message || "Failed to send proposal. Please try again.");
+        return false;
       } finally {
         setSendingProposalId(null);
         setSendingFreelancerId(null);
@@ -1308,6 +1323,22 @@ const Proposals = memo(function Proposals({
             }}
             viewingFreelancer={viewingFreelancer}
           />
+
+          <AlertDialog open={showSentInfo} onOpenChange={setShowSentInfo}>
+            <AlertDialogContent className="border border-border dark:border-white/[0.08] rounded-2xl">
+              <AlertDialogHeader>
+                <AlertDialogTitle>Proposal Sent</AlertDialogTitle>
+                <AlertDialogDescription className="text-muted-foreground text-sm leading-relaxed">
+                  This proposal draft has been moved from your drafts to the active pending proposals section.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogAction className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-[12px] h-9 text-xs sm:text-sm shadow-none">
+                  Got It
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </>
       ) : null}
     </>

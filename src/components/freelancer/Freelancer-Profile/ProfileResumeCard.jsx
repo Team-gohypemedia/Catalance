@@ -89,7 +89,7 @@ const ProfileResumeCard = ({ resumeUrl }) => {
 
   return (
     <Card className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm md:p-6">
-      <h3 className="text-lg font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
+      <h3 className="text-xl font-bold tracking-tight text-foreground">
         Resume Details
       </h3>
       <div className="mt-4">
@@ -97,11 +97,11 @@ const ProfileResumeCard = ({ resumeUrl }) => {
           href={resumeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-4 rounded-xl border border-border/40 bg-background/30 p-4 transition-all duration-200 hover:border-emerald-500/20 hover:bg-emerald-500/5 group"
+          className="flex items-center gap-4 rounded-xl border border-border/40 bg-background/30 p-4 transition-all duration-200 hover:border-primary/20 hover:bg-primary/5 group"
           title="Click to view resume in a new tab"
         >
           {/* PDF Document SVG Icon */}
-          <div className="relative flex h-12 w-10 shrink-0 items-center justify-center text-red-500">
+          <div className="relative flex h-12 w-10 shrink-0 items-center justify-center text-red-600 dark:text-red-400">
             <svg className="h-full w-full" viewBox="0 0 40 48" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path
                 d="M38 12V44C38 45.1 37.1 46 36 46H4C2.9 46 2 45.1 2 44V4C2 2.9 2.9 2 4 2H28L38 12Z"
@@ -132,7 +132,7 @@ const ProfileResumeCard = ({ resumeUrl }) => {
           </div>
 
           <div className="min-w-0 flex-1">
-            <h4 className="truncate text-sm font-semibold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+            <h4 className="truncate text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
               {fileName}
             </h4>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -143,7 +143,7 @@ const ProfileResumeCard = ({ resumeUrl }) => {
             </p>
           </div>
 
-          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-emerald-600 dark:text-emerald-400 shrink-0">
+          <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-primary shrink-0">
             <ExternalLink className="h-4 w-4" />
           </div>
         </a>

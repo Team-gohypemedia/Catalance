@@ -1565,9 +1565,11 @@ export const ClientProposalDataProvider = ({ children }) => {
         );
 
         await fetchProposals();
+        return true;
       } catch (error) {
         console.error("Failed to send proposal:", error);
         toast.error(error?.message || "Failed to send proposal. Please try again.");
+        return false;
       } finally {
         setSendingProposalId(null);
         setSendingFreelancerId(null);

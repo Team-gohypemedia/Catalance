@@ -53,11 +53,11 @@ export const getFreelancerAvailabilityMeta = (freelancer = {}) => {
       ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-300"
       : hasOpenToWorkSignal
         ? "border-primary/25 bg-primary/10 text-primary"
-        : "border-border/70 bg-background/35 text-muted-foreground",
+        : "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400",
     dotClass: openToWork
       ? "bg-emerald-500 dark:bg-emerald-400"
       : hasOpenToWorkSignal
         ? "bg-primary"
-        : "bg-muted-foreground/80",
+        : "bg-red-500 dark:bg-red-400",
   };
 };

@@ -270,7 +270,7 @@ const ProfileHeroCard = ({
                   title="Auto-managed from your active project count."
                   className={`h-6 px-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] ${isOpenToWorkActive
                     ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                    : "border-primary/20/20 bg-primary/10/10 text-primary dark:text-primary"
+                    : "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400"
                     }`}
                 >
                   {openToWorkLabel}
@@ -330,30 +330,35 @@ const ProfileHeroCard = ({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-center lg:absolute lg:right-5 lg:top-4 lg:mt-0 lg:flex-wrap lg:justify-end xl:right-6">
-          <div className="flex h-10 w-full items-center justify-between gap-4 rounded-md border bg-card px-3 text-sm text-foreground transition-all duration-200 hover:bg-accent/90 min-[420px]:w-auto min-[420px]:min-w-[16rem]">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
-                {openToWorkLabel}
-              </p>
-            </div>
+        <div className="mt-6 flex flex-row flex-nowrap items-start gap-2 justify-center lg:absolute lg:right-5 lg:top-4 lg:mt-0 lg:flex-wrap lg:justify-end xl:right-6 w-full lg:w-auto">
+          <div className="flex flex-col gap-1.5 flex-1 lg:flex-none lg:min-w-[16rem]">
+            <div className="flex h-10 w-full items-center justify-between gap-4 rounded-md border bg-card px-3 text-sm text-foreground transition-all duration-200 hover:bg-accent/90">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
+                  {openToWorkLabel}
+                </p>
+              </div>
 
-            <Switch
-              checked={isOpenToWorkActive}
-              onCheckedChange={onToggleAvailability}
-              disabled={availabilitySaving}
-              aria-label="Toggle open to work status"
-              title={`Set profile status to ${isOpenToWorkActive ? "Offline" : "Open to Work"
-                }`}
-              className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-neutral-200 dark:data-[state=unchecked]:bg-white/15"
-            />
+              <Switch
+                checked={isOpenToWorkActive}
+                onCheckedChange={onToggleAvailability}
+                disabled={availabilitySaving}
+                aria-label="Toggle open to work status"
+                title={`Set profile status to ${isOpenToWorkActive ? "Offline" : "Open to Work"}`}
+                className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-neutral-200 dark:data-[state=unchecked]:bg-white/15"
+              />
+            </div>
+            <div className="flex items-center gap-1.5 px-1 text-xs text-muted-foreground/85">
+              <span className={`h-1.5 w-1.5 rounded-full ${isOpenToWorkActive ? "bg-emerald-500" : "bg-red-500"}`} />
+              <span>{isOpenToWorkActive ? "Visible to clients" : "Not visible to clients"}</span>
+            </div>
           </div>
           {uploadingResume ? (
             <Button
               type="button"
               size="sm"
               disabled
-              className="h-10 w-full justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 min-[420px]:w-auto"
+              className="h-10 flex-1 lg:flex-none justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 lg:w-auto"
             >
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Uploading...
@@ -368,17 +373,17 @@ const ProfileHeroCard = ({
                 <Button
                   type="button"
                   size="sm"
-                  className="h-10 w-full justify-between rounded-md border border-emerald-600/30 dark:border-emerald-400/30 bg-emerald-500/5 px-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 min-[420px]:w-auto gap-2.5 shadow-none"
+                  className="h-10 flex-1 lg:flex-none justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-semibold text-primary hover:bg-primary/10 lg:w-auto gap-2.5 shadow-none"
                   title="Resume uploaded. Click for options."
                 >
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                    <FileText className="h-4 w-4 text-primary" aria-hidden="true" />
                     <span>Resume uploaded</span>
                   </div>
                   {dropdownOpen ? (
-                    <ChevronUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400 transition-transform duration-200" aria-hidden="true" />
+                    <ChevronUp className="h-4 w-4 text-primary transition-transform duration-200" aria-hidden="true" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 text-emerald-600 dark:text-emerald-400 transition-transform duration-200" aria-hidden="true" />
+                    <ChevronDown className="h-4 w-4 text-primary transition-transform duration-200" aria-hidden="true" />
                   )}
                 </Button>
               </DropdownMenuTrigger>
@@ -386,7 +391,7 @@ const ProfileHeroCard = ({
                 data-resume-dropdown-content
                 align="center"
                 side="bottom"
-                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[13rem] rounded-xl p-1.5 border border-border bg-popover text-popover-foreground shadow-md"
+                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[13rem] rounded-xl p-1.5 border border-border bg-popover text-popover-foreground shadow-md z-40"
               >
                 <DropdownMenuItem
                   onClick={() => window.open(resolvedLinks.resume, "_blank")}
@@ -420,9 +425,9 @@ const ProfileHeroCard = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={handleResumeDelete}
-                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold cursor-pointer text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold cursor-pointer text-red-600 hover:bg-red-600/10 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
                 >
-                  <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
+                  <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
                   Delete Resume
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -432,7 +437,7 @@ const ProfileHeroCard = ({
               type="button"
               size="sm"
               onClick={() => resumeInputRef.current?.click()}
-              className="h-10 w-full justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 min-[420px]:w-auto"
+              className="h-10 flex-1 lg:flex-none justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 lg:w-auto"
               title="Upload resume"
             >
               <Upload className="h-4 w-4" aria-hidden="true" />
