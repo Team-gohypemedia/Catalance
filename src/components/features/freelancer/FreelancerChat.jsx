@@ -372,14 +372,35 @@ const isOwnMessage = (message, currentUser) => {
   return String(message?.senderRole || "").toUpperCase() === "FREELANCER";
 };
 
+const formatRoleLabel = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
+
 const getMessageRoleLabel = (message, ownMessage) => {
   if (ownMessage) {
     return "Freelancer";
   }
 
   const senderRole = String(message?.senderRole || "").toUpperCase();
+  if (senderRole === "PROJECT_MANAGER") {
+    return "Project Manager";
+  }
+
+  if (senderRole === "ADMIN") {
+    return "Admin";
+  }
+
   if (senderRole === "CLIENT") {
     return "Client";
+  }
+
+  if (senderRole) {
+    return formatRoleLabel(senderRole);
   }
 
   return "Client";
@@ -910,10 +931,22 @@ const ChatArea = ({
                 <div className={cn("flex items-end gap-3", ownMessage ? "justify-end" : "justify-start")}>
                   {!ownMessage ? (
                     <Avatar className="hidden size-8 shrink-0 self-end border border-border sm:flex">
-                      <AvatarImage src={conversation?.avatar || undefined} alt={conversationAvatarLabel} />
-                      <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground">
-                        {getInitials(conversationAvatarLabel)}
-                      </AvatarFallback>
+                      {roleLabel.toUpperCase() === "PROJECT MANAGER" ? (
+                        <AvatarFallback className="bg-blue-100 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                          P
+                        </AvatarFallback>
+                      ) : roleLabel.toUpperCase() === "ADMIN" ? (
+                        <AvatarFallback className="bg-rose-100 text-[11px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                          A
+                        </AvatarFallback>
+                      ) : (
+                        <>
+                          <AvatarImage src={message?.avatar || conversation?.avatar || undefined} alt={message?.senderName || conversationAvatarLabel} />
+                          <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground">
+                            {getInitials(message?.senderName || conversationAvatarLabel)}
+                          </AvatarFallback>
+                        </>
+                      )}
                     </Avatar>
                   ) : null}
 
@@ -923,16 +956,25 @@ const ChatArea = ({
                       ownMessage ? "items-end" : "items-start",
                     )}
                   >
-                    {showRoleLabel ? (
-                      <p
-                        className={cn(
-                          "mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]",
-                          ownMessage ? "text-right text-[var(--primary)]" : "text-left text-muted-foreground",
-                        )}
-                      >
-                        {roleLabel}
-                      </p>
-                    ) : null}
+                    {showRoleLabel ? (() => {
+                      let displaySenderName = message?.senderName || "";
+                      if (roleLabel?.toUpperCase() === "PROJECT MANAGER" && displaySenderName.toUpperCase() === "PROJECT MANAGER") {
+                        displaySenderName = conversation?.projectManagerName || conversation?.projectManager?.fullName || conversation?.projectManager?.name || conversation?.managerName || conversation?.pmName || displaySenderName;
+                      }
+                      if (displaySenderName.toUpperCase() === roleLabel?.toUpperCase()) {
+                        displaySenderName = "";
+                      }
+                      return (
+                        <p
+                          className={cn(
+                            "mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]",
+                            ownMessage ? "text-right text-[var(--primary)]" : "text-left text-muted-foreground",
+                          )}
+                        >
+                          {roleLabel}{displaySenderName ? ` • ${displaySenderName}` : ""}
+                        </p>
+                      );
+                    })() : null}
 
                     <div className="flex max-w-full flex-col gap-3">
                       {deleted ? (
