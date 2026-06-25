@@ -315,14 +315,17 @@ const ProfileDisplayField = ({ icon: Icon, label, value, placeholder }) => (
     <div className="flex min-w-0 w-full min-h-12 items-center gap-3 rounded-[14px] border border-border bg-muted/50 px-4 sm:px-5">
       <Icon className="size-4 shrink-0 text-primary" />
       <span
-        className="min-w-0 flex-1 truncate text-sm text-muted-foreground"
+        className={cn(
+          "min-w-0 flex-1 truncate text-sm",
+          value ? "text-foreground font-medium" : "text-muted-foreground/50"
+        )}
       >
         {value || placeholder}
       </span>
     </div>
   </div>
 );
-
+ 
 const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
   <div className="min-w-0 w-full space-y-3">
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -331,7 +334,7 @@ const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
     <div
       className={cn(
         "rounded-[14px] border border-border bg-muted/50 px-4 py-4 text-sm leading-7 whitespace-pre-wrap sm:px-6 sm:py-5",
-        "text-muted-foreground",
+        value ? "text-foreground" : "text-muted-foreground/50",
         className,
       )}
     >
@@ -339,7 +342,7 @@ const ProfileTextDisplay = ({ label, value, placeholder, className }) => (
     </div>
   </div>
 );
-
+ 
 const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick }) => (
   <div className="min-w-0 w-full space-y-3">
     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -352,7 +355,7 @@ const ReadonlyActionField = ({ icon: Icon, label, value, actionLabel, onClick })
     >
       <div className="flex w-full min-w-0 items-center gap-3">
         <Icon className="size-4 shrink-0 text-primary" />
-        <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{value}</span>
+        <span className="min-w-0 flex-1 truncate text-sm text-foreground font-medium">{value}</span>
       </div>
       <span className="inline-flex items-center gap-1 text-sm font-semibold text-primary sm:ml-auto">
         {actionLabel}

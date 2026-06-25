@@ -41,7 +41,26 @@ const ProjectDetailSkeleton = () => (
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border border-border/60 bg-card/80">
+            <CardHeader className="pb-3">
+              <Skeleton className="h-4 w-32" />
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <div
+                    key={`detail-${index}`}
+                    className="space-y-2 border-l border-border/60 pl-4"
+                  >
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-5 w-40" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex flex-col gap-4">
             {[1, 2].map((item) => (
               <Card
                 key={`narrative-${item}`}
@@ -59,25 +78,6 @@ const ProjectDetailSkeleton = () => (
               </Card>
             ))}
           </div>
-
-          <Card className="border border-border/60 bg-card/80">
-            <CardHeader className="pb-3">
-              <Skeleton className="h-4 w-32" />
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid gap-6 sm:grid-cols-2">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <div
-                    key={`detail-${index}`}
-                    className="space-y-2 border-l border-border/60 pl-4"
-                  >
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-5 w-40" />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           <Card className="border border-border/60 bg-card/80">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-6">

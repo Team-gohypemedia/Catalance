@@ -1339,14 +1339,14 @@ const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) =>
     }
   }, [isMobile]);
 
-  const hasOverflow = recentActivities.length > FREELANCER_MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT;
-  const visibleActivities =
-    isMobile && !showAllRecentActivities
-      ? recentActivities.slice(0, FREELANCER_MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT)
-      : recentActivities;
+  const previewCount = isMobile ? 3 : 4;
+  const hasOverflow = recentActivities.length > previewCount;
+  const visibleActivities = !showAllRecentActivities
+    ? recentActivities.slice(0, previewCount)
+    : recentActivities;
   const remainingActivityCount = Math.max(
     0,
-    recentActivities.length - FREELANCER_MOBILE_RECENT_ACTIVITY_PREVIEW_COUNT,
+    recentActivities.length - previewCount,
   );
 
   return (
@@ -1355,13 +1355,15 @@ const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) =>
         <h2 className="text-[22px] sm:text-[1.65rem] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
           Recent Activity
         </h2>
-        <button
-          type="button"
-          onClick={onOpenViewAll}
-          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)] transition-colors hover:text-[#ffd54f]"
-        >
-          View All
-        </button>
+        {hasOverflow && (
+          <button
+            type="button"
+            onClick={() => setShowAllRecentActivities((current) => !current)}
+            className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)] transition-colors hover:text-[#ffd54f]"
+          >
+            {showAllRecentActivities ? "Show Less" : "View All"}
+          </button>
+        )}
       </div>
 
       <FreelancerDashboardPanel className="overflow-hidden bg-card">
@@ -1383,29 +1385,22 @@ const FreelancerRecentActivitySection = ({ recentActivities, onOpenViewAll }) =>
                 <button
                   type="button"
                   onClick={() => setShowAllRecentActivities((current) => !current)}
-                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#cbd5e1] transition-colors hover:dark:text-white text-[#1C1B1F]"
-                  aria-expanded={showAllRecentActivities}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <span>
-                    {showAllRecentActivities
-                      ? "Show Less"
-                      : `View ${remainingActivityCount} More`}
-                  </span>
-                  <ChevronDown
-                    className={cn(
-                      "size-4 transition-transform duration-200",
-                      showAllRecentActivities ? "rotate-180" : "rotate-0",
-                    )}
-                  />
+                  {showAllRecentActivities
+                    ? "Show Less"
+                    : `View ${remainingActivityCount} More`}
                 </button>
               </div>
             ) : null}
           </div>
         ) : (
-          <div>
-            {recentActivities.map((item) => (
-              <FreelancerActivityRow key={item.id} item={item} />
-            ))}
+          <div className="px-3 pb-3 pt-3">
+            <div className="space-y-1">
+              {visibleActivities.map((item) => (
+                <FreelancerActivityRow key={item.id} item={item} />
+              ))}
+            </div>
           </div>
         )}
       </FreelancerDashboardPanel>

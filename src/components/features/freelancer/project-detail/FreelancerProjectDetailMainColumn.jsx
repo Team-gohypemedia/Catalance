@@ -77,6 +77,8 @@ const FreelancerProjectDetailMainColumn = ({
   const [expandedPhaseId, setExpandedPhaseId] = useState(() =>
     activePhase?.id != null ? String(activePhase.id) : "",
   );
+  const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
+  const [isFeaturesExpanded, setIsFeaturesExpanded] = useState(false);
 
   useEffect(() => {
     const activePhaseId =
@@ -116,6 +118,18 @@ const FreelancerProjectDetailMainColumn = ({
     return grouped;
   }, [billingRoadmap]);
 
+  const overviewText = projectDetailSnapshot.overview || "";
+  const isOverviewLong = overviewText.length > 180;
+  const truncatedOverview = isOverviewLong && !isOverviewExpanded
+    ? `${overviewText.slice(0, 180)}...`
+    : overviewText;
+ 
+  const featuresList = projectDetailSnapshot.featuresDeliverables || [];
+  const isFeaturesLong = featuresList.length > 4;
+  const visibleFeaturesList = isFeaturesLong && !isFeaturesExpanded
+    ? featuresList.slice(0, 4)
+    : featuresList;
+
   return (
     <div className="space-y-3">
       {/* Compact stat pills */}
@@ -153,60 +167,49 @@ const FreelancerProjectDetailMainColumn = ({
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-1">
           <p className="text-sm leading-6 text-muted-foreground dark:text-[#d4d4d8]">
-            {projectDetailSnapshot.overview ||
-              "Project scope, priorities, and delivery context will appear here once the brief is fully structured."}
+            <span className="lg:hidden">
+              {truncatedOverview ||
+                "Project scope, priorities, and delivery context will appear here once the brief is structured."}
+            </span>
+            <span className="hidden lg:inline">
+              {overviewText ||
+                "Project scope, priorities, and delivery context will appear here once the brief is structured."}
+            </span>
           </p>
+          {isOverviewLong && (
+            <button
+              type="button"
+              onClick={() => setIsOverviewExpanded(!isOverviewExpanded)}
+              className="mt-2.5 text-xs font-semibold text-primary hover:underline lg:hidden"
+            >
+              {isOverviewExpanded ? "Read Less" : "Read More"}
+            </button>
+          )}
         </CardContent>
       </Card>
-
-      {/* Features & Specs side-by-side */}
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <Card className={panelClassName}>
-          <CardHeader className="px-4 pb-2 pt-4">
-            <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-1">
-            {projectDetailSnapshot.featuresDeliverables.length > 0 ? (
-              <ul className="space-y-2">
-                {projectDetailSnapshot.featuresDeliverables.map((feature, index) => (
-                  <li
-                    key={`feature-${index}`}
-                    className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
-                  >
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#ffd400]" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground dark:text-[#d4d4d8]">
-                Feature and deliverable details will appear once the brief is structured.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
+      {/* Features & Specs stacked vertically */}
+      <div className="flex flex-col gap-3">
         <Card className={panelClassName}>
           <CardHeader className="px-4 pb-2 pt-4">
             <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-1">
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
               {projectDetailSnapshot.websiteDetails.map((item) => {
                 const IconComponent = getMetadataIcon(item.label);
                 return (
                   <div
                     key={item.label}
-                    className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 dark:border-white/[0.04] dark:bg-[#262626]/40 px-3 py-2.5"
+                    className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 dark:border-white/[0.04] dark:bg-[#262626]/40 px-3 py-2.5"
                   >
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5">
                       <IconComponent className="size-3.5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60 dark:text-white/45">
                         {item.label}
                       </p>
-                      <p className="truncate text-[13px] font-semibold text-foreground dark:text-white/90">
+                      <p className="text-[13px] font-semibold text-foreground dark:text-white/90 leading-snug">
                         {item.value || "—"}
                       </p>
                     </div>
@@ -214,6 +217,56 @@ const FreelancerProjectDetailMainColumn = ({
                 );
               })}
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className={panelClassName}>
+          <CardHeader className="px-4 pb-2 pt-4">
+            <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-1">
+            {featuresList.length > 0 ? (
+              <div className="space-y-2">
+                {/* Mobile/Tablet view */}
+                <ul className="space-y-2 lg:hidden">
+                  {visibleFeaturesList.map((feature, index) => (
+                    <li
+                      key={`feature-mob-${index}`}
+                      className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
+                    >
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#ffd400]" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                {/* Desktop view */}
+                <ul className="hidden space-y-2 lg:block">
+                  {featuresList.map((feature, index) => (
+                    <li
+                      key={`feature-desk-${index}`}
+                      className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
+                    >
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#ffd400]" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+ 
+                {isFeaturesLong && (
+                  <button
+                    type="button"
+                    onClick={() => setIsFeaturesExpanded(!isFeaturesExpanded)}
+                    className="mt-2.5 text-xs font-semibold text-primary hover:underline lg:hidden"
+                  >
+                    {isFeaturesExpanded ? "Read Less" : "Read More"}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground dark:text-[#d4d4d8]">
+                Feature and deliverable details will appear once the brief is structured.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
