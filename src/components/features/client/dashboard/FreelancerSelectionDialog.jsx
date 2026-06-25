@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useState } from "react";
+
 
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
@@ -275,8 +276,11 @@ const FreelancerSelectionDialog = ({
   _freelancerMatchesRequiredSkill,
   generateGradient,
   formatRating,
-}) => (
-  <Dialog open={open} onOpenChange={onOpenChange}>
+}) => {
+  const [activeIndices, setActiveIndices] = useState({});
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent className="h-[78vh] w-[94vw] max-w-300 p-3 sm:p-4 flex flex-col">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-lg">
@@ -323,12 +327,13 @@ const FreelancerSelectionDialog = ({
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       Fetching matched freelancers...
                     </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="flex flex-row gap-3 overflow-x-auto pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 sm:snap-none lg:grid-cols-3">
                       {Array.from({ length: 6 }).map((_, index) => (
                         <Card
                           key={`freelancer-loading-${index}`}
-                          className="min-h-[25rem] rounded-[20px] border border-border/60 bg-card/90 p-2.5"
+                          className="min-h-[25rem] w-[290px] shrink-0 snap-start rounded-[20px] border border-border/60 bg-card/90 p-2.5 sm:w-auto sm:shrink sm:snap-align-none"
                         >
+
                           <Skeleton className="h-28 w-full rounded-xl" />
                           <div className="mt-10 space-y-2">
                             <Skeleton className="h-5 w-2/3" />
@@ -414,7 +419,19 @@ const FreelancerSelectionDialog = ({
                     </div>
                     <p className="text-xs text-muted-foreground">{group.description}</p>
                   </div>
-                  <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <div
+                    onScroll={(e) => {
+                      const container = e.currentTarget;
+                      const scrollLeft = container.scrollLeft;
+                      const cardWidth = 290 + 12; // card width + gap (gap-3 is 12px)
+                      const newIndex = Math.round(scrollLeft / cardWidth);
+                      setActiveIndices((prev) => {
+                        if (prev[group.key] === newIndex) return prev;
+                        return { ...prev, [group.key]: newIndex };
+                      });
+                    }}
+                    className="flex flex-row gap-3 overflow-x-auto pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 sm:snap-none lg:grid-cols-3"
+                  >
                     {group.freelancers.map((freelancer) => {
                 const displayName =
                   freelancer.fullName || freelancer.name || "Freelancer";
@@ -467,7 +484,7 @@ const FreelancerSelectionDialog = ({
                 return (
                   <Card
                     key={freelancer.id}
-                    className="group relative flex min-h-[22.5rem] cursor-pointer flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-2.5 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55"
+                    className="group relative flex min-h-[22.5rem] w-[290px] shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-2.5 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55 sm:w-auto sm:shrink sm:snap-align-none"
                     onClick={() => onViewFreelancer(freelancer)}
                   >
                     <div
@@ -648,6 +665,21 @@ const FreelancerSelectionDialog = ({
                 );
                     })}
                   </div>
+                  {group.freelancers.length > 1 && (
+                    <div className="flex items-center justify-center gap-1.5 mt-1 pb-2.5 sm:hidden">
+                      {group.freelancers.map((_, idx) => {
+                        const isActive = (activeIndices[group.key] || 0) === idx;
+                        return (
+                          <div
+                            key={idx}
+                            className={`h-1 rounded-full transition-all duration-300 ${
+                              isActive ? "w-3 bg-primary" : "w-1.5 bg-border"
+                            }`}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ));
             })()}
@@ -661,7 +693,8 @@ const FreelancerSelectionDialog = ({
       </DialogFooter>
     </DialogContent>
   </Dialog>
-);
+  );
+};
 
 export default memo(FreelancerSelectionDialog);
 

@@ -68,6 +68,10 @@ const ProposalDetailsDialog = ({
   const activeProposalDetails = activeProposal ? extractProposalDetails(activeProposal) : null;
   const isAgency = activeProposal ? resolveProposalAgencyFlag(activeProposal) : false;
   const agencyServiceEntries = isAgency ? extractAgencyProposalServiceEntries(activeProposal) : [];
+  const normalizedStatus = useMemo(() => {
+    return normalizeProposalStatus(activeProposal?.status || "");
+  }, [activeProposal?.status]);
+
   const activeProposalStructuredData = useMemo(
     () =>
       activeProposal
@@ -76,7 +80,6 @@ const ProposalDetailsDialog = ({
     [activeProposal, headerDisplayName],
   );
   const canEditActiveProposal = useMemo(() => {
-    const normalizedStatus = normalizeProposalStatus(activeProposal?.status || "");
     return (
       Boolean(activeProposal) &&
       !activeProposal?.requiresPayment &&
@@ -84,7 +87,7 @@ const ProposalDetailsDialog = ({
         normalizedStatus === "pending" ||
         normalizedStatus === "sent")
     );
-  }, [activeProposal]);
+  }, [activeProposal, normalizedStatus]);
   const proposalModalTitle = useMemo(() => {
     const baseTitle = resolveProposalTitle(activeProposal) || "Proposal";
     if (!isEditingProposal) return baseTitle;
@@ -97,39 +100,39 @@ const ProposalDetailsDialog = ({
       onOpenChange={handleProposalDialogOpenChange}
     >
       <DialogContent className={cn(
-        "flex max-h-[92vh] flex-col overflow-hidden border border-border/60 bg-background p-0 transition-all duration-300 ease-in-out [&>button]:right-5 [&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4",
+        "flex h-dvh w-full max-h-screen flex-col overflow-hidden border-none bg-background p-0 rounded-none transition-all duration-300 ease-in-out [&>button]:right-3.5 [&>button]:top-3.5 sm:[&>button]:right-5 sm:[&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4 sm:h-auto sm:max-h-[92vh] sm:rounded-[28px] sm:border sm:border-border/60",
         isAIChatOpen 
-          ? "w-[min(95vw,1220px)] sm:max-w-[1220px]" 
-          : "w-[min(92vw,820px)] sm:max-w-[820px]"
+          ? "sm:w-[min(95vw,1220px)] sm:max-w-[1220px]" 
+          : "sm:w-[min(96vw,820px)] sm:max-w-[820px]"
       )}>
         <div className={cn(
-          "shrink-0 border-b border-border/60 dark:border-white/10 px-6 py-4 transition-all duration-300",
+          "shrink-0 border-b border-border/60 dark:border-white/10 px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300",
           isAIChatOpen && "sm:pr-[424px]"
         )}>
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 space-y-3">
+          <div className="flex flex-col gap-3 sm:gap-5">
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0 space-y-2 sm:space-y-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
+                  <DialogTitle className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground">
                     {proposalModalTitle}
                   </DialogTitle>
-                  {activeProposal?.status ? (
+                  {normalizedStatus ? (
                     <Badge
                       variant="outline"
                       className={cn(
                         "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em]",
-                        statusColors[activeProposal.status] || statusColors.pending,
+                        statusColors[normalizedStatus] || statusColors.pending,
                       )}
                     >
-                      {statusLabels[activeProposal.status] || activeProposal.status}
+                      {statusLabels[normalizedStatus] || activeProposal.status}
                     </Badge>
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
                   <Badge
                     variant="outline"
-                    className="h-8 w-fit rounded-full border-border dark:border-white/10 bg-background/40 px-3 text-muted-foreground dark:text-[#a6adbb]"
+                    className="h-7 sm:h-8 w-fit rounded-full border-border dark:border-white/10 bg-background/40 px-3 text-muted-foreground dark:text-[#a6adbb]"
                   >
                     {activeProposal?.submittedDate || "No date"}
                   </Badge>
@@ -139,14 +142,14 @@ const ProposalDetailsDialog = ({
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 pr-10 sm:justify-end sm:pr-12">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pr-10 sm:justify-end sm:pr-12">
                 {canEditActiveProposal ? (
                   isEditingProposal ? (
                     <>
                       <Button
                         type="button"
                         variant="outline"
-                        className="h-9 rounded-full border-border dark:border-white/10 bg-background/30 px-4 text-sm text-foreground dark:text-white hover:bg-muted dark:hover:bg-background/50"
+                        className="h-8 rounded-full border-border dark:border-white/10 bg-background/30 px-3.5 text-xs text-foreground dark:text-white hover:bg-muted dark:hover:bg-background/50 sm:h-9 sm:px-4 sm:text-sm"
                         onClick={handleCancelProposalEditing}
                         disabled={isSavingProposal}
                       >
@@ -154,7 +157,7 @@ const ProposalDetailsDialog = ({
                       </Button>
                       <Button
                         type="button"
-                        className="h-9 rounded-full bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90"
+                        className="h-8 rounded-full bg-primary px-3.5 text-xs text-primary-foreground hover:bg-primary/90 sm:h-9 sm:px-4 sm:text-sm"
                         onClick={handleSaveProposalChanges}
                         disabled={isSavingProposal}
                       >
@@ -168,10 +171,10 @@ const ProposalDetailsDialog = ({
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-9 rounded-full border-primary/25 bg-primary/10 px-4 text-sm text-primary hover:bg-primary/15"
+                      className="h-8 rounded-full border-primary/25 bg-primary/10 px-3.5 text-xs text-primary hover:bg-primary/15 sm:h-9 sm:px-4 sm:text-sm"
                       onClick={startEditingProposal}
                     >
-                      <Pencil className="mr-2 h-3.5 w-3.5" />
+                      <Pencil className="mr-1.5 h-3.5 w-3.5" />
                       Edit Proposal
                     </Button>
                   )
@@ -185,17 +188,17 @@ const ProposalDetailsDialog = ({
                       startEditingProposal();
                       setIsAIChatOpen(true);
                     }}
-                    className="h-9 rounded-full border-primary/25 bg-background/30 px-4 text-sm text-foreground hover:bg-primary/20 hover:text-primary transition-colors"
+                    className="h-8 rounded-full border-primary/25 bg-background/30 px-3.5 text-xs text-foreground hover:bg-primary/20 hover:text-primary transition-colors sm:h-9 sm:px-4 sm:text-sm"
                   >
-                    <Sparkles className="mr-2 h-3.5 w-3.5 text-primary" />
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5 text-primary" />
                     Edit with AI
                   </Button>
                 )}
               </div>
             </div>
 
-            <DialogDescription className="max-w-2xl text-sm leading-6 text-muted-foreground">
-              {activeProposal?.status === "draft"
+            <DialogDescription className="max-w-2xl text-xs sm:text-sm leading-5 sm:leading-6 text-muted-foreground">
+              {normalizedStatus === "draft"
                 ? "Review the draft, polish the scope, and send it to the right freelancer."
                 : canEditActiveProposal
                   ? "Review the proposal details and update the scope while the freelancer decision is still pending."
@@ -205,7 +208,7 @@ const ProposalDetailsDialog = ({
         </div>
 
         <div className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-6 py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2",
+          "min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2",
           isAIChatOpen && "sm:pr-[424px]"
         )}>
           <div className="space-y-6 pb-2">
@@ -540,25 +543,25 @@ const ProposalDetailsDialog = ({
         </div>
 
         <DialogFooter className={cn(
-          "shrink-0 flex flex-col gap-4 border-t border-border/60 bg-muted/40 px-6 py-3.5 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-accent/60 transition-all duration-300",
+          "shrink-0 flex flex-col gap-3 border-t border-border/60 bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-accent/60 transition-all duration-300",
           isAIChatOpen && "sm:pr-[424px]"
         )}>
-          <p className="text-xs leading-6 text-muted-foreground">
+          <p className="text-xs leading-5 text-muted-foreground">
             Use the action buttons to continue the proposal lifecycle from here.
           </p>
-          <div className="flex flex-wrap items-center gap-2">
-            {activeProposal?.status === "draft" && !activeProposal?.requiresPayment ? (
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {normalizedStatus === "draft" && !activeProposal?.requiresPayment ? (
               <Button
                 type="button"
                 variant="outline"
-                className="h-9 rounded-full border-primary/25 bg-primary/10 px-4 text-sm text-primary hover:bg-primary/15"
+                className="h-8 rounded-full border-primary/25 bg-primary/10 px-3.5 text-xs text-primary hover:bg-primary/15 sm:h-9 sm:px-4 sm:text-sm"
                 onClick={() => openFreelancerSelection(activeProposal)}
                 disabled={sendingProposalId === activeProposal?.id}
               >
                 {sendingProposalId === activeProposal?.id ? (
                   <Loader size="sm" className="mr-2" />
                 ) : (
-                  <Send className="mr-2 h-3.5 w-3.5" />
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
                 )}
                 {sendingProposalId === activeProposal?.id
                   ? "Sending..."
@@ -569,7 +572,7 @@ const ProposalDetailsDialog = ({
             {canIncreaseBudget ? (
               <Button
                 type="button"
-                className="h-9 rounded-full bg-primary px-4 text-sm text-primary-foreground hover:bg-primary/90"
+                className="h-8 rounded-full bg-primary px-3.5 text-xs text-primary-foreground hover:bg-primary/90 sm:h-9 sm:px-4 sm:text-sm"
                 onClick={() => openBudgetDialogForProposal(activeProposal)}
                 disabled={isSavingProposal || isLoadingProposal}
               >
@@ -581,14 +584,14 @@ const ProposalDetailsDialog = ({
               <Button
                 type="button"
                 variant="outline"
-                className="h-9 rounded-full border-primary/25 bg-primary/10 px-4 text-sm text-primary hover:bg-primary/15"
+                className="h-8 rounded-full border-primary/25 bg-primary/10 px-3.5 text-xs text-primary hover:bg-primary/15 sm:h-9 sm:px-4 sm:text-sm"
                 onClick={() => openFreelancerSelection(activeProposal)}
                 disabled={sendingProposalId === activeProposal?.id}
               >
                 {sendingProposalId === activeProposal?.id ? (
                   <Loader size="sm" className="mr-2" />
                 ) : (
-                  <Send className="mr-2 h-3.5 w-3.5" />
+                  <Send className="mr-1.5 h-3.5 w-3.5" />
                 )}
                 {sendingProposalId === activeProposal?.id
                   ? "Sending..."
@@ -599,14 +602,14 @@ const ProposalDetailsDialog = ({
             {activeProposal?.requiresPayment ? (
               <Button
                 type="button"
-                className="h-9 rounded-full bg-emerald-500 px-4 text-sm text-black hover:bg-emerald-400"
+                className="h-8 rounded-full bg-emerald-500 px-3.5 text-xs text-black hover:bg-emerald-400 sm:h-9 sm:px-4 sm:text-sm"
                 onClick={() => handleApproveAndPay(activeProposal)}
                 disabled={processingPaymentProposalId === activeProposal?.id}
               >
                 {processingPaymentProposalId === activeProposal?.id ? (
                   <Loader size="sm" className="mr-2" />
                 ) : (
-                  <CreditCard className="mr-2 h-3.5 w-3.5" />
+                  <CreditCard className="mr-1.5 h-3.5 w-3.5" />
                 )}
                 {processingPaymentProposalId === activeProposal?.id
                   ? "Processing..."
@@ -618,10 +621,10 @@ const ProposalDetailsDialog = ({
               <Button
                 type="button"
                 variant="ghost"
-                className="h-9 rounded-full px-3 text-sm text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300"
+                className="h-8 rounded-full px-2.5 text-xs text-muted-foreground hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-300 sm:h-9 sm:px-3 sm:text-sm"
                 onClick={() => handleDelete(activeProposal)}
               >
-                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 Delete
               </Button>
             ) : null}

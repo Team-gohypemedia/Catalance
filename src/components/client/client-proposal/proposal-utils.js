@@ -20,11 +20,11 @@ export const HIDDEN_REJECTION_REASON_KEYS = new Set(["system_awarded_to_another"
 export const GENERIC_PROPOSAL_CATEGORIES = new Set(["project", "general"]);
 
 export const statusColors = {
-  draft: "border-sky-400/30 bg-sky-500/10 text-sky-200",
-  accepted: "border-emerald-400/30 bg-emerald-500/10 text-emerald-200",
-  sent: "border-blue-400/30 bg-blue-500/10 text-blue-200",
-  pending: "border-primary/20/30 bg-primary/10/10 text-primary",
-  rejected: "border-rose-400/30 bg-rose-500/10 text-rose-200",
+  draft: "border-sky-300 bg-sky-50/60 !text-sky-700 dark:border-sky-500/30 dark:bg-sky-500/10 dark:!text-sky-300",
+  accepted: "border-emerald-300 bg-emerald-50/60 !text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:!text-emerald-300",
+  sent: "border-blue-300 bg-blue-50/60 !text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:!text-blue-300",
+  pending: "border-primary/30 bg-primary/10 !text-primary",
+  rejected: "border-rose-300 bg-rose-50/60 !text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:!text-rose-300",
 };
 
 export const statusLabels = {
