@@ -42,7 +42,7 @@ export const clientProposalMetricBlockClassName =
 
 export const proposalCardStatusClasses = {
   draft: "border-border bg-transparent text-muted-foreground",
-  accepted: "border-emerald-500/30 bg-transparent text-emerald-300",
+  accepted: "border-emerald-500/30 bg-transparent text-emerald-600 dark:text-emerald-300",
   sent: "border-primary/35 bg-transparent text-primary",
   pending: "border-primary/35 bg-transparent text-primary",
   rejected: "border-destructive/30 bg-transparent text-destructive",

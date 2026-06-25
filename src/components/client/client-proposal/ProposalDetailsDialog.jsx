@@ -100,7 +100,7 @@ const ProposalDetailsDialog = ({
       onOpenChange={handleProposalDialogOpenChange}
     >
       <DialogContent className={cn(
-        "flex h-dvh w-full max-h-screen flex-col overflow-hidden border-none bg-background p-0 rounded-none transition-all duration-300 ease-in-out [&>button]:right-3.5 [&>button]:top-3.5 sm:[&>button]:right-5 sm:[&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4 sm:h-auto sm:max-h-[92vh] sm:rounded-[28px] sm:border sm:border-border/60",
+        "fixed top-0 left-0 translate-x-0 translate-y-0 flex h-dvh w-full max-h-none max-w-none flex-col overflow-hidden border-none bg-background p-0 rounded-none transition-all duration-300 ease-in-out [&>button]:right-3.5 [&>button]:top-3.5 sm:[&>button]:right-5 sm:[&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4 sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:h-auto sm:max-h-[92vh] sm:rounded-[28px] sm:border sm:border-border/60",
         isAIChatOpen 
           ? "sm:w-[min(95vw,1220px)] sm:max-w-[1220px]" 
           : "sm:w-[min(96vw,820px)] sm:max-w-[820px]"
@@ -543,10 +543,10 @@ const ProposalDetailsDialog = ({
         </div>
 
         <DialogFooter className={cn(
-          "shrink-0 flex flex-col gap-3 border-t border-border/60 bg-muted/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-accent/60 transition-all duration-300",
+          "shrink-0 flex flex-row items-center justify-end gap-3 border-t border-border/60 bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-accent/60 transition-all duration-300",
           isAIChatOpen && "sm:pr-[424px]"
         )}>
-          <p className="text-xs leading-5 text-muted-foreground">
+          <p className="hidden sm:block text-xs leading-5 text-muted-foreground">
             Use the action buttons to continue the proposal lifecycle from here.
           </p>
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">

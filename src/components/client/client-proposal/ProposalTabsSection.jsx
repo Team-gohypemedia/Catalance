@@ -147,6 +147,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
       return (
         <ProposalCardsCarousel
           proposals={items}
+          showCreateCard={true}
           onOpen={handleOpenProposal}
           onDelete={handleDelete}
           onIncreaseBudget={openBudgetDialogForProposal}

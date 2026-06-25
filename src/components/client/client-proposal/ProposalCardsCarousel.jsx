@@ -1,6 +1,8 @@
 import React, { memo, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import { Button } from "@/components/ui/button";
 import {
   Carousel,
@@ -48,6 +50,7 @@ const ClientProposalCarouselDots = memo(function ClientProposalCarouselDots({
 
 const ProposalCardsCarousel = ({
   proposals,
+  showCreateCard = false,
   onDelete,
   onIncreaseBudget,
   onOpen,
@@ -57,6 +60,7 @@ const ProposalCardsCarousel = ({
   processingPaymentProposalId,
   sendingProposalId,
 }) => {
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [proposalCarouselApi, setProposalCarouselApi] = useState(null);
   const [canGoToPreviousProposal, setCanGoToPreviousProposal] = useState(false);
@@ -111,6 +115,22 @@ const ProposalCardsCarousel = ({
             isSending={sendingProposalId === proposal.id}
           />
         ))}
+        {showCreateCard && (
+          <div 
+            onClick={() => navigate("/service")}
+            className="group flex h-full w-full max-w-[340px] mx-auto overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center min-h-[360px] p-6 text-center shadow-none"
+          >
+            <div className="rounded-full bg-primary/10 p-4 text-primary group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
+              <Plus className="h-6 w-6" strokeWidth={2.5} />
+            </div>
+            <div className="mt-5 space-y-2">
+              <h3 className="text-base font-semibold text-foreground tracking-tight">Create New Proposal</h3>
+              <p className="max-w-[200px] text-xs leading-relaxed text-muted-foreground">
+                Start from scratch or use AI to draft a perfect proposal for your next project.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -206,6 +226,24 @@ const ProposalCardsCarousel = ({
               />
             </CarouselItem>
           ))}
+          {showCreateCard && (
+            <CarouselItem className="pl-0 basis-full md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-3rem)/4)]">
+              <div 
+                onClick={() => navigate("/service")}
+                className="group flex h-full w-full max-w-[340px] mx-auto overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center min-h-[360px] p-6 text-center shadow-none"
+              >
+                <div className="rounded-full bg-primary/10 p-4 text-primary group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
+                  <Plus className="h-6 w-6" strokeWidth={2.5} />
+                </div>
+                <div className="mt-5 space-y-2">
+                  <h3 className="text-base font-semibold text-foreground tracking-tight">Create New Proposal</h3>
+                  <p className="max-w-[200px] text-xs leading-relaxed text-muted-foreground">
+                    Start from scratch or use AI to draft a perfect proposal for your next project.
+                  </p>
+                </div>
+              </div>
+            </CarouselItem>
+          )}
         </CarouselContent>
       </Carousel>
 
