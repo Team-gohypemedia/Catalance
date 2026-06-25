@@ -507,7 +507,7 @@ const normalizeWhatsappPhone = ({ countryCode, phoneNumber }) => {
   return normalizedPhone;
 };
 
-const consumeOtpRateLimit = ({ store, key, maxAttempts, message }) => {
+const consumeOtpRateLimit = ({ store, key, maxAttempts, message, enforceCooldown = true }) => {
   const now = Date.now();
   const attempts = (store.get(key) || []).filter(
     (timestamp) => now - timestamp < WHATSAPP_OTP_RATE_LIMIT_WINDOW_MS
@@ -517,10 +517,12 @@ const consumeOtpRateLimit = ({ store, key, maxAttempts, message }) => {
     throw new AppError(message, 429);
   }
 
-  const lastAttempt = attempts[attempts.length - 1];
-  // Use 58 seconds to provide a 2-second grace period for network latency and clock drift
-  if (lastAttempt && now - lastAttempt < 58 * 1000) {
-    throw new AppError("Please wait 1 minute before requesting another OTP.", 429);
+  if (enforceCooldown) {
+    const lastAttempt = attempts[attempts.length - 1];
+    // Use 58 seconds to provide a 2-second grace period for network latency and clock drift
+    if (lastAttempt && now - lastAttempt < 58 * 1000) {
+      throw new AppError("Please wait 1 minute before requesting another OTP.", 429);
+    }
   }
 
   attempts.push(now);
@@ -3350,7 +3352,8 @@ export const verifyWhatsappOtp = async ({
     store: whatsappOtpVerifyAttempts,
     key: rateLimitKey,
     maxAttempts: WHATSAPP_OTP_MAX_VERIFY_ATTEMPTS_PER_WINDOW,
-    message: "Too many OTP attempts. Please request a new code."
+    message: "Too many OTP attempts. Please request a new code.",
+    enforceCooldown: false
   });
 
   // Resolve user from phone — do NOT trust the frontend role for lookup
