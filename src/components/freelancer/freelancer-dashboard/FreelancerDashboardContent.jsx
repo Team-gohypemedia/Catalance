@@ -374,7 +374,7 @@ const isProjectAwaitingKickoff = (project = {}) => {
 };
 
 const buildProjectPhaseSteps = (project) => {
-  const sop = getSopFromTitle(project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title);
+  const sop = project?.customSop || getSopFromTitle(project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title);
   const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
   const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
 
@@ -469,7 +469,7 @@ const resolvePhaseStepsForDisplay = (steps, phaseLike, fallbackLabel = "Upcoming
 };
 
 const buildProjectPhases = (project) => {
-  const sop = getSopFromTitle(
+  const sop = project?.customSop || getSopFromTitle(
     project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title,
   );
   const phaseSteps = buildProjectPhaseSteps(project);
@@ -2737,7 +2737,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         
         // Build full phase structure with steps using the same logic as client dashboard
         const basePhases = buildProjectPhases(project);
-        const sop = getSopFromTitle(
+        const sop = project?.customSop || getSopFromTitle(
           project?.sourceTitle || project?.templateTitle || project?.serviceType || project?.title,
         );
         const phaseSteps = buildProjectPhaseSteps(project);

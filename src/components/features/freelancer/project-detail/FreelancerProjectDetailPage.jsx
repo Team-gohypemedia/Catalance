@@ -754,6 +754,9 @@ const FreelancerProjectDetailContent = () => {
             owner: match.project.owner, // Store full owner object for details card
             externalLink: match.project.externalLink || null, // Project link
             description: match.project.description || null, // Project description
+            customSop: typeof match.project.customSop === "string" 
+              ? (() => { try { return JSON.parse(match.project.customSop); } catch { return null; } })()
+              : (match.project.customSop || null),
           });
           setIsFallback(false);
 
@@ -1048,8 +1051,8 @@ const FreelancerProjectDetailContent = () => {
   }, [messages]);
 
   const activeSOP = useMemo(() => {
-    return getSopFromTitle(project?.title);
-  }, [project]);
+    return project?.customSop || getSopFromTitle(project?.title);
+  }, [project?.title, project?.customSop]);
 
   const overallProgress = useMemo(() => {
     if (project?.progress !== undefined && project?.progress !== null) {
@@ -1160,6 +1163,7 @@ const FreelancerProjectDetailContent = () => {
       return {
         phaseId: phase.id,
         phaseName: phase.name,
+        phaseTimeline: phase.timeline,
         phaseStatus: phase.status,
         tasks,
         isLocked,
@@ -1266,11 +1270,13 @@ const FreelancerProjectDetailContent = () => {
       return 0;
     }
 
-    const milestones = [
-      { phaseOrder: 1, percentage: 20 },
-      { phaseOrder: 2, percentage: 40 },
-      { phaseOrder: 4, percentage: 40 },
-    ];
+    const milestones = derivedPhases.length > 0
+      ? derivedPhases.map((p, i) => ({ phaseOrder: Number(p.id) || (i + 1), percentage: p.progress || 0 }))
+      : [
+          { phaseOrder: 1, percentage: 20 },
+          { phaseOrder: 2, percentage: 40 },
+          { phaseOrder: 4, percentage: 40 },
+        ];
 
     const firstIncompletePhaseIndex = derivedPhases.findIndex(
       (phase) => phase?.status !== "completed",
@@ -1440,29 +1446,37 @@ const FreelancerProjectDetailContent = () => {
   }, [project, totalBudget]);
 
   const billingRoadmap = useMemo(() => {
-    const milestones = [
-      {
-        id: "kickoff",
-        label: "Phase 1 / Kickoff Payout",
-        phaseOrder: 1,
-        percentage: 20,
-        note: "Released to you after kickoff is approved.",
-      },
-      {
-        id: "review",
-        label: "Phase 2 / Progress Payout",
-        phaseOrder: 2,
-        percentage: 40,
-        note: "Released to you after the mid-project review is approved.",
-      },
-      {
-        id: "handover",
-        label: "Phase 4 / Final Payout",
-        phaseOrder: 4,
-        percentage: 40,
-        note: "Released to you once final handover is approved.",
-      },
-    ];
+    const milestones = derivedPhases.length > 0
+      ? derivedPhases.map((p, i) => ({
+          id: `phase-${p.id}`,
+          label: p.name || `Phase ${i + 1} Payout`,
+          phaseOrder: Number(p.id) || (i + 1),
+          percentage: p.progress || 0,
+          note: `Payout for Phase ${i + 1}.`,
+        }))
+      : [
+          {
+            id: "kickoff",
+            label: "Phase 1 / Kickoff Payout",
+            phaseOrder: 1,
+            percentage: 20,
+            note: "Released to you after kickoff is approved.",
+          },
+          {
+            id: "review",
+            label: "Phase 2 / Progress Payout",
+            phaseOrder: 2,
+            percentage: 40,
+            note: "Released to you after the mid-project review is approved.",
+          },
+          {
+            id: "handover",
+            label: "Phase 4 / Final Payout",
+            phaseOrder: 4,
+            percentage: 40,
+            note: "Released upon final handover and closure.",
+          },
+        ];
 
     const hasPhaseProgress = Array.isArray(derivedPhases) && derivedPhases.length > 0;
     const firstIncompletePhaseIndex = hasPhaseProgress

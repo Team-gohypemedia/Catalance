@@ -256,8 +256,15 @@ const FreelancerProjectDetailMainColumn = ({
                     phaseValue ? "cursor-pointer hover:border-primary/20" : "",
                   )}
                 >
-                  <div className="mb-2 text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
-                    Phase {index + 1}
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground/60">
+                      Phase {index + 1}
+                    </div>
+                    {phase?.timeline && (
+                      <div className="text-[9px] uppercase font-semibold tracking-wider text-muted-foreground/60">
+                        Due: {phase.timeline}
+                      </div>
+                    )}
                   </div>
                   <div className={`mb-3 text-[13px] font-semibold leading-tight ${
                     isPending ? "text-muted-foreground/50 dark:text-white/40" : "text-foreground dark:text-white"
@@ -318,11 +325,16 @@ const FreelancerProjectDetailMainColumn = ({
                     <AccordionTrigger className="py-3 hover:no-underline">
                       <div className="flex flex-1 items-center gap-3">
                         {getPhaseIcon(phaseGroup.phaseStatus)}
-                        <div className="flex-1 text-left">
-                          <div className="text-sm font-semibold text-foreground">
-                            Phase {phaseGroup.phaseId}: {phaseGroup.phaseName}
+                        <div className="flex-1">
+                          <div className="font-semibold text-foreground flex flex-col">
+                            <span>Phase {phaseGroup.phaseId}: {phaseGroup.phaseName}</span>
+                            {phaseGroup.phaseTimeline && (
+                              <span className="text-xs text-muted-foreground mt-0.5 font-normal">
+                                Deadline: {phaseGroup.phaseTimeline}
+                              </span>
+                            )}
                           </div>
-                          <div className="text-xs text-muted-foreground">
+                          <div className="text-xs text-muted-foreground mt-1">
                             {
                               phaseGroup.tasks.filter(
                                 (task) => task.status === "completed",
@@ -374,18 +386,25 @@ const FreelancerProjectDetailMainColumn = ({
                               <Circle className="h-5 w-5 shrink-0 text-muted-foreground" />
                             )}
                             <span
-                              className={`flex-1 text-sm ${
+                              className={`flex-1 text-sm flex flex-col ${
                                 task.status === "completed"
                                   ? "line-through text-muted-foreground"
                                   : "text-foreground"
                               }`}
                             >
-                              {task.title}
-                              {phaseGroup.isLocked ? (
-                                <span className="ml-2 inline-block text-xs font-medium text-primary no-underline">
-                                  (Locked)
+                              <span>
+                                {task.title}
+                                {phaseGroup.isLocked ? (
+                                  <span className="ml-2 inline-block text-xs font-medium text-primary no-underline">
+                                    (Locked)
+                                  </span>
+                                ) : null}
+                              </span>
+                              {task.timeline && (
+                                <span className="text-xs text-muted-foreground mt-0.5 no-underline">
+                                  Due: {task.timeline}
                                 </span>
-                              ) : null}
+                              )}
                             </span>
                             {task.status === "pending-review" ? (
                               <Badge className="h-6 border-primary/20/20 bg-primary/10/12 px-2 text-[10px] text-primary">

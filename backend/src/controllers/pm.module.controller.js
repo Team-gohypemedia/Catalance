@@ -673,14 +673,23 @@ const buildMilestonesForProject = (project) => {
   const firstTaskCompleted = hasFirstTaskCompletion(project);
   const phase1Done = firstTaskCompleted || approved.has(2) || approved.has(3) || approved.has(4);
 
-  const phaseRows = [
-    { phase: 1, title: "Kickoff & UI Design", percent: 0 },
-    { phase: 2, title: "Core Development", percent: 25 },
-    { phase: 3, title: "Integration & Testing", percent: 25 },
-    { phase: 4, title: "Launch & Documentation", percent: 50 },
-  ];
+  let phaseRows = [];
+  if (project?.customSop?.phases && Array.isArray(project.customSop.phases) && project.customSop.phases.length > 0) {
+    phaseRows = project.customSop.phases.map((p, index) => ({
+      phase: Number(p.id) || (index + 1),
+      title: p.name || `Phase ${index + 1}`,
+      percent: p.progress || 0
+    }));
+  } else {
+    phaseRows = [
+      { phase: 1, title: "Kickoff & UI Design", percent: 0 },
+      { phase: 2, title: "Core Development", percent: 25 },
+      { phase: 3, title: "Integration & Testing", percent: 25 },
+      { phase: 4, title: "Launch & Documentation", percent: 50 },
+    ];
+  }
 
-  return phaseRows.map((entry) => {
+  return phaseRows.map((entry, index) => {
     const amount = Math.round((Number(project?.budget || 0) * entry.percent) / 100);
     const isApproved = entry.phase === 1 ? phase1Done : approved.has(entry.phase);
 
@@ -1096,6 +1105,7 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
         progress: Number(project.progress || 0),
         completedTasks: Array.isArray(project.completedTasks) ? project.completedTasks : [],
         verifiedTasks: Array.isArray(project.verifiedTasks) ? project.verifiedTasks : [],
+        customSop: typeof project.customSop === "string" ? JSON.parse(project.customSop) : (project.customSop || null),
         createdAt: toIsoOrNull(project.createdAt),
         updatedAt: toIsoOrNull(project.updatedAt),
       },
@@ -2496,5 +2506,80 @@ export const getPmNotificationSnapshot = asyncHandler(async (req, res) => {
       unreadCount,
       recentAlerts: alerts,
     },
+  });
+});
+
+export const updatePmProjectSop = asyncHandler(async (req, res) => {
+  const userId = getRequestUserId(req);
+  if (!userId) throw new AppError("Authentication required", 401);
+
+  const { id: projectId } = req.params;
+  const { phases, tasks } = req.body;
+
+  if (!projectId) throw new AppError("Project ID required", 400);
+
+  const project = await ensureAssignedPm({ projectId, pmId: userId });
+
+  // Save the custom SOP
+  const customSop = {
+    phases: Array.isArray(phases) ? phases : [],
+    tasks: Array.isArray(tasks) ? tasks : [],
+  };
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { customSop },
+  });
+
+  // Notify freelancer and client
+  const fullProject = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      ownerId: true,
+      title: true,
+      proposals: {
+        where: { status: { in: ["ACCEPTED", "REPLACED"] } },
+        select: { freelancerId: true }
+      }
+    }
+  });
+
+  if (fullProject) {
+    const notificationPromises = [];
+    const message = `Project Manager has updated the SOP / timeline for "${fullProject.title}".`;
+
+    // Client notification
+    if (fullProject.ownerId) {
+      notificationPromises.push(
+        sendNotificationToUser(fullProject.ownerId, {
+          type: "sop_updated",
+          title: "Project SOP Updated",
+          message,
+          data: { projectId },
+        }).catch(() => null)
+      );
+    }
+
+    // Freelancer notification
+    if (fullProject.proposals && fullProject.proposals.length > 0) {
+      const activeFreelancerId = fullProject.proposals[fullProject.proposals.length - 1].freelancerId;
+      if (activeFreelancerId) {
+        notificationPromises.push(
+          sendNotificationToUser(activeFreelancerId, {
+            type: "sop_updated",
+            title: "Project SOP Updated",
+            message,
+            data: { projectId },
+          }).catch(() => null)
+        );
+      }
+    }
+
+    await Promise.all(notificationPromises);
+  }
+
+  res.json({
+    message: "Project SOP updated successfully",
+    data: { customSop }
   });
 });

@@ -57,6 +57,14 @@ export const pmApi = {
     return request(authFetch, `/pm/projects/${projectId}/milestones`);
   },
 
+  updateProjectSop(authFetch, projectId, payload) {
+    return request(authFetch, `/pm/projects/${projectId}/sop`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
+
   approveMilestone(authFetch, projectId, phase, pmNote) {
     return request(authFetch, `/pm/projects/${projectId}/milestone-approval`, {
       method: "POST",

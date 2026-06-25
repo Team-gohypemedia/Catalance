@@ -34,6 +34,7 @@ import {
   getPmReportDetails,
   createPmProjectSetup,
   getPmNotificationSnapshot,
+  updatePmProjectSop,
 } from "../controllers/pm.module.controller.js";
 
 const pmRouter = Router();
@@ -48,6 +49,7 @@ pmRouter.get("/projects/:id/details", getPmProjectDetails);
 pmRouter.get("/projects/:id/messages", getPmProjectMessages);
 pmRouter.post("/projects/:id/messages", sendPmProjectMessage);
 pmRouter.get("/projects/:id/milestones", getPmProjectMilestones);
+pmRouter.put("/projects/:id/sop", updatePmProjectSop);
 
 pmRouter.get("/meetings", listPmMeetings);
 pmRouter.post("/meetings/conflicts", detectPmMeetingConflicts);

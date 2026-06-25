@@ -377,7 +377,7 @@ const buildDefaultPhases = (count = 4) =>
   }));
 
 const buildProjectPhaseSteps = (project) => {
-  const sop = getSopFromTitle(resolveProjectTemplateSource(project));
+  const sop = project?.customSop || getSopFromTitle(resolveProjectTemplateSource(project));
   const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
   const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
 
@@ -582,6 +582,7 @@ const normalizeFreelancerProjects = (remote = []) => {
       currentPhaseIndex: Number(project?.currentPhaseIndex),
       completedTasks: project?.completedTasks ?? null,
       verifiedTasks: project?.verifiedTasks ?? null,
+      customSop: project?.customSop ?? null,
       sourceTitle: project?.title || serviceType || "",
       templateTitle: project?.title || serviceType || "",
       statusBucket: isFullyCompleted ? "completed" : "ongoing",

@@ -96,7 +96,9 @@ const buildInstallmentAmounts = (totalAmount, version = "v1") => {
 };
 
 export const getProjectPhaseCompletionSummary = (project) => {
-  const sop = getSopFromTitle(project?.title || "");
+  const sop = typeof project?.customSop === "object" && project?.customSop
+    ? project.customSop
+    : (typeof project?.customSop === "string" ? JSON.parse(project.customSop) : getSopFromTitle(project?.title || ""));
   const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
 
   const phases = sop.phases.map((phase) => {

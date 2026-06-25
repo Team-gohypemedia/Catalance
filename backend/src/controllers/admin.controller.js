@@ -537,6 +537,8 @@ const ensureProjectBelongsToManager = async (projectId, managerId) => {
       closureNoIssuesConfirmed: true,
       milestoneApprovals: { select: { phase: true } },
       completedTasks: true,
+      verifiedTasks: true,
+      customSop: true,
       disputes: { select: { status: true } },
     },
   });
@@ -870,6 +872,8 @@ export const getProjectManagerProjectDetails = asyncHandler(async (req, res) => 
       ownerId: true,
       managerId: true,
       completedTasks: true,
+      verifiedTasks: true,
+      customSop: true,
       closureHandoverConfirmed: true,
       closureDeliverablesConfirmed: true,
       closureReceiptConfirmed: true,
@@ -988,6 +992,7 @@ export const getProjectManagerProjectDetails = asyncHandler(async (req, res) => 
         budget: project.budget,
         spent: project.spent,
         progress: project.progress,
+        customSop: typeof project.customSop === "string" ? JSON.parse(project.customSop) : (project.customSop || null),
         createdAt: toIsoOrNull(project.createdAt),
         updatedAt: toIsoOrNull(project.updatedAt),
       },
@@ -1339,6 +1344,9 @@ export const getProjects = asyncHandler(async (req, res) => {
         spent: true,
         status: true,
         progress: true,
+        completedTasks: true,
+        verifiedTasks: true,
+        customSop: true,
         managerId: true,
         createdAt: true,
         owner: {
@@ -1484,6 +1492,8 @@ export const getUserDetails = asyncHandler(async (req, res) => {
             progress: true,
             updatedAt: true,
             completedTasks: true,
+            verifiedTasks: true,
+            customSop: true,
             createdAt: true,
             owner: {
               select: {
