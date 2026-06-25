@@ -1,4 +1,4 @@
-﻿import { asyncHandler } from "../utils/async-handler.js";
+import { asyncHandler } from "../utils/async-handler.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { attachProjectPaymentPlan, resolveProjectPaymentPlan } from "../modules/projects/project-payment-plan.js";
@@ -563,6 +563,14 @@ const hydrateProjectForResponse = (project) => {
   const safeProject = { ...project };
   delete safeProject.internalReviews;
   delete safeProject.freelancerMatchingJson;
+
+  if (typeof safeProject.customSop === "string") {
+    try {
+      safeProject.customSop = JSON.parse(safeProject.customSop);
+    } catch (e) {
+      safeProject.customSop = null;
+    }
+  }
 
   return attachProjectPaymentPlan({
     ...safeProject,

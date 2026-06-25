@@ -1721,6 +1721,47 @@ const buildBudgetCeilingLabel = (minAmount = 0, currencyCode = "INR") => {
     return formattedMin ? `${formattedMin}+` : "";
 };
 
+const extractBudgetAmountFromOptionLabel = (optionLabel = "") => {
+    const parsedBudget = parseFlexibleBudgetFromText(String(optionLabel || "").trim());
+    return parsedBudget?.amount && Number.isFinite(Number(parsedBudget.amount))
+        ? Number(parsedBudget.amount)
+        : null;
+};
+
+const pickAffordableBudgetOptionLabel = (visibleOptionObjects = []) => {
+    const concreteOptions = (Array.isArray(visibleOptionObjects) ? visibleOptionObjects : [])
+        .map((option, index) => {
+            const label = String(
+                option?.label
+                || option?.value
+                || option?.canonicalLabel
+                || option?.canonicalValue
+                || ""
+            ).trim();
+            return {
+                index,
+                label,
+                amount: extractBudgetAmountFromOptionLabel(label),
+            };
+        })
+        .filter((option) =>
+            option.label
+            && !HELPER_OPTION_TRIGGER_REGEX.test(option.label)
+            && !NEGATIVE_OPTION_REGEX.test(option.label)
+        );
+
+    const parsedConcreteOptions = concreteOptions.filter((option) => Number.isFinite(option.amount) && option.amount > 0);
+    if (parsedConcreteOptions.length > 0) {
+        parsedConcreteOptions.sort((left, right) => {
+            if (left.amount !== right.amount) return left.amount - right.amount;
+            return left.index - right.index;
+        });
+        return parsedConcreteOptions[0]?.label || "";
+    }
+
+    return concreteOptions[0]?.label || "";
+};
+
 const buildBudgetRuntimeOptions = ({
     question = {},
     serviceCurrency = "INR",
@@ -1842,7 +1883,7 @@ const getBudgetMinimumValidationResult = ({
     return {
         isValid: false,
         status: "invalid_answer",
-        message: `The budget you shared (${enteredBudget}) is below the minimum for ${serviceLabel}. Please increase your budget to at least ${minimumBudget} and share the updated amount.`,
+        message: `The budget you shared (${enteredBudget}) is below the minimum for ${serviceLabel}. I’m asking this again because work for this service starts at ${minimumBudget}. Please send an updated budget of at least ${minimumBudget}.`,
         normalizedAnswer: "",
     };
 };
@@ -2663,10 +2704,14 @@ const resolveAdviceRecommendedAnswer = ({
     payload = {},
     visibleOptionObjects = [],
     fallbackRecommendedAnswer = "",
+    currentQuestion = null,
 }) => {
     const requestedAnswer = String(payload?.recommendedAnswer || "").trim();
     const noticeText = String(payload?.notice || "").trim();
     const normalizedVisibleOptions = Array.isArray(visibleOptionObjects) ? visibleOptionObjects : [];
+    const affordableBudgetOption = isBudgetQuestion(currentQuestion)
+        ? pickAffordableBudgetOptionLabel(normalizedVisibleOptions)
+        : "";
 
     if (normalizedVisibleOptions.length > 0) {
         const optionMatch =
@@ -2675,17 +2720,33 @@ const resolveAdviceRecommendedAnswer = ({
             || findMatchingOptionsFromText(fallbackRecommendedAnswer, normalizedVisibleOptions)[0];
 
         if (optionMatch) {
-            return String(
+            const matchedLabel = String(
                 optionMatch?.label
                 || optionMatch?.value
                 || optionMatch?.canonicalLabel
                 || optionMatch?.canonicalValue
                 || ""
             ).trim();
+
+            if (affordableBudgetOption) {
+                const matchedAmount = extractBudgetAmountFromOptionLabel(matchedLabel);
+                const affordableAmount = extractBudgetAmountFromOptionLabel(affordableBudgetOption);
+                if (
+                    Number.isFinite(affordableAmount)
+                    && (
+                        !Number.isFinite(matchedAmount)
+                        || matchedAmount > affordableAmount
+                    )
+                ) {
+                    return affordableBudgetOption;
+                }
+            }
+
+            return matchedLabel;
         }
     }
 
-    return requestedAnswer || String(fallbackRecommendedAnswer || "").trim();
+    return affordableBudgetOption || requestedAnswer || String(fallbackRecommendedAnswer || "").trim();
 };
 
 const normalizeGuestAdvicePayload = ({
@@ -2693,6 +2754,7 @@ const normalizeGuestAdvicePayload = ({
     isRecommendationMode = false,
     visibleOptionObjects = [],
     fallbackRecommendedAnswer = "",
+    currentQuestion = null,
 }) => {
     const rawNotice = String(payload?.notice || "").trim();
     const rawPlaceholder = String(payload?.placeholder || "").trim();
@@ -2709,6 +2771,7 @@ const normalizeGuestAdvicePayload = ({
         payload,
         visibleOptionObjects,
         fallbackRecommendedAnswer,
+        currentQuestion,
     });
     const notice = rawNotice || (recommendedAnswer ? `Recommended: ${recommendedAnswer}.` : "");
     const placeholder = rawPlaceholder || (recommendedAnswer ? `e.g. ${recommendedAnswer}` : "e.g. go with the recommended direction");
@@ -4027,6 +4090,7 @@ const buildDeferredQuestionAnswer = (question = {}) => {
 
 const getFastLocalValidationResult = ({
     question = null,
+    service = {},
     userMessage = "",
     runtimeOptionsByQuestionSlug = {},
     hasAttachmentContext = false,
@@ -4045,6 +4109,29 @@ const getFastLocalValidationResult = ({
             status: "valid_answer",
             message: "No problem, I’ll leave that open for now and recommend the best fit based on the rest of your answers.",
             normalizedAnswer,
+        };
+    }
+
+    if (isBudgetQuestion(question)) {
+        const parsedBudget = extractParsedBudgetFromAnswerText(rawMessage);
+        if (!parsedBudget?.amount || !Number.isFinite(parsedBudget.amount)) {
+            return null;
+        }
+
+        const minimumBudgetValidation = getBudgetMinimumValidationResult({
+            question,
+            service,
+            answerText: rawMessage,
+        });
+        if (minimumBudgetValidation) {
+            return minimumBudgetValidation;
+        }
+
+        return {
+            isValid: true,
+            status: "valid_answer",
+            message: buildLocalValidationAckMessage(question, rawMessage),
+            normalizedAnswer: rawMessage,
         };
     }
 
@@ -7237,6 +7324,7 @@ const shouldUseConversationalRecovery = ({
     ) {
         return true;
     }
+    if (validationResult?.status === "invalid_answer") return false;
     if (validationResult?.status === "info_request") return true;
     if (CONTEXT_SUGGESTION_REGEX.test(normalizedMessage) || CONVERSATIONAL_DISCOVERY_REGEX.test(normalizedMessage)) {
         return true;
@@ -8502,6 +8590,7 @@ export const guestChat = asyncHandler(async (req, res) => {
         if (!validationResult) {
             const fastLocalValidation = getFastLocalValidationResult({
                 question: currentQuestion,
+                service,
                 userMessage: userMessageText,
                 runtimeOptionsByQuestionSlug: sessionRuntimeOptionsByQuestionSlug,
                 hasAttachmentContext: Boolean(attachmentContextText),
@@ -9655,6 +9744,7 @@ Do not use markdown formatting, code fences, or bold text.`;
                 isRecommendationMode,
                 visibleOptionObjects,
                 fallbackRecommendedAnswer,
+                currentQuestion: resolvedCurrentQuestion,
             });
             return res.json({
                 success: true,
@@ -9681,6 +9771,7 @@ Do not use markdown formatting, code fences, or bold text.`;
             isRecommendationMode: true,
             visibleOptionObjects,
             fallbackRecommendedAnswer,
+            currentQuestion: resolvedCurrentQuestion,
         })
         : {
             notice: `Got it. Tell me what you have in mind for ${option || 'this'}.`,

@@ -160,8 +160,8 @@ const AdminProjectDetail = () => {
 
   // --- SOP LOGIC ---
   const activeSOP = useMemo(() => {
-    return getSopFromTitle(project?.title);
-  }, [project]);
+    return project?.customSop || getSopFromTitle(project?.title);
+  }, [project?.title, project?.customSop]);
 
   const overallProgress = useMemo(() => {
     if (project?.progress !== undefined && project?.progress !== null) {

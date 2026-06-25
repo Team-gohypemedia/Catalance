@@ -146,6 +146,44 @@ test("uses conversational recovery for a greeting on the opening name step", () 
   );
 });
 
+test("accepts numeric budget answers that meet the service minimum via fast local validation", () => {
+  const result = getFastLocalValidationResult({
+    question: { slug: "estimated_budget", text: "What is your estimated budget for this project?" },
+    service: { name: "Branding Kit", minBudget: 5000, currency: "INR" },
+    userMessage: "5555",
+  });
+
+  assert.ok(result);
+  assert.equal(result.isValid, true);
+  assert.equal(result.status, "valid_answer");
+  assert.equal(result.normalizedAnswer, "5555");
+});
+
+test("rejects numeric budget answers below the service minimum via fast local validation", () => {
+  const result = getFastLocalValidationResult({
+    question: { slug: "estimated_budget", text: "What is your estimated budget for this project?" },
+    service: { name: "Branding Kit", minBudget: 5000, currency: "INR" },
+    userMessage: "2000",
+  });
+
+  assert.ok(result);
+  assert.equal(result.isValid, false);
+  assert.equal(result.status, "invalid_answer");
+  assert.match(result.message, /at least INR 5,000/i);
+});
+
+test("does not use conversational recovery for invalid budget answers", () => {
+  assert.equal(
+    shouldUseConversationalRecovery({
+      userMessage: "2000",
+      validationResult: { status: "invalid_answer" },
+      extractedAnswers: [{ slug: "estimated_budget", answer: "2000" }],
+      currentQuestion: { slug: "estimated_budget", text: "What is your estimated budget for this project?" },
+    }),
+    false
+  );
+});
+
 test("scores discovery coverage for early proposal readiness", () => {
   const summary = buildDiscoveryCoverageSummary({
     questions: [
@@ -218,6 +256,31 @@ test("keeps binary recommendation answers hidden from visible helper copy", () =
   assert.match(payload.notice, /^Recommended direction:/);
   assert.doesNotMatch(payload.notice, /^Recommended:\s*(yes|no)\b/i);
   assert.notEqual(payload.placeholder.toLowerCase(), "e.g. yes");
+});
+
+test("clamps budget recommendations to the most affordable visible option", () => {
+  const visibleOptionObjects = normalizeAdviceVisibleOptions([
+    { number: 1, text: "Within INR 25,000" },
+    { number: 2, text: "Within INR 50,000" },
+    { number: 3, text: "Within INR 1,00,000" },
+    { number: 4, text: "INR 2,50,000+" },
+  ]);
+
+  const payload = normalizeGuestAdvicePayload({
+    payload: {
+      notice: "Recommended: Within INR 2,50,000 so the project has room for advanced features.",
+      placeholder: "e.g. Within INR 2,50,000",
+      recommendedAnswer: "Within INR 2,50,000",
+    },
+    isRecommendationMode: true,
+    visibleOptionObjects,
+    currentQuestion: {
+      slug: "estimated_budget",
+      text: "What is your estimated budget for this project?",
+    },
+  });
+
+  assert.equal(payload.recommendedAnswer, "Within INR 25,000");
 });
 
 test("reorders displayed options from question-level admin priority directives", () => {
@@ -1407,7 +1470,8 @@ test("rejects budget answers below the service minimum", () => {
   assert.equal(result.status, "invalid_answer");
   assert.match(result.message, /below the minimum for Web Development/i);
   assert.match(result.message, /INR 10,000/);
-  assert.match(result.message, /Please increase your budget/i);
+  assert.match(result.message, /I.?m asking this again because/i);
+  assert.match(result.message, /Please send an updated budget/i);
 });
 
 test("accepts budget answers that meet the service minimum", () => {

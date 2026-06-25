@@ -2064,8 +2064,8 @@ const ProjectDashboard = () => {
   */
 
   const activeSOP = useMemo(() => {
-    return getSopFromTitle(project?.title);
-  }, [project]);
+    return project?.customSop || getSopFromTitle(project?.title);
+  }, [project?.title, project?.customSop]);
 
   const overallProgress = useMemo(() => {
     // If progress is explicit in the DB, use it

@@ -297,6 +297,7 @@ model Project {
   spent                    Int           @default(0)
   completedTasks           Json          @default("[]")
   verifiedTasks            Json          @default("[]")
+  customSop                Json?
   notes                    String?       @db.Text
   owner                    User          @relation("ProjectOwner", fields: [ownerId], references: [id])
   ownerId                  String

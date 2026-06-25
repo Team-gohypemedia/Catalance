@@ -35,6 +35,7 @@ import {
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import { getSopFromTitle } from "@/shared/data/sopTemplates";
 import { PhaseAccordionItem } from "@/modules/project-manager/components/PhaseAccordionItem";
+import { SopEditorDialog } from "@/modules/project-manager/components/SopEditorDialog";
 
 const getTaskLeadRole = (phaseId) => {
   const normalizedPhase = String(phaseId || "");
@@ -112,6 +113,7 @@ const ProjectDetailsPage = () => {
   const [freelancerProfileOpen, setFreelancerProfileOpen] = useState(false);
   const [projectSummaryOpen, setProjectSummaryOpen] = useState(false);
   const [meetingDialogOpen, setMeetingDialogOpen] = useState(false);
+  const [sopEditorOpen, setSopEditorOpen] = useState(false);
   const [meetingSubmitting, setMeetingSubmitting] = useState(false);
   const [meetingForm, setMeetingForm] = useState(() => buildMeetingFormDefaults());
   const [activePhaseValue, setActivePhaseValue] = useState("");
@@ -341,7 +343,7 @@ const ProjectDetailsPage = () => {
     });
   }, [recentAlerts, projectId]);
 
-  const sopTemplate = useMemo(() => getSopFromTitle(project.title), [project.title]);
+  const sopTemplate = useMemo(() => project?.customSop || getSopFromTitle(project.title), [project?.customSop, project.title]);
   const completedTaskSet = useMemo(
     () => new Set(Array.isArray(project.completedTasks) ? project.completedTasks : []),
     [project.completedTasks]
@@ -367,7 +369,7 @@ const ProjectDetailsPage = () => {
       const key = `${task.phase}-${task.id}`;
       const isVerified = verifiedTaskSet.has(key);
       const isCompleted = completedTaskSet.has(key);
-      const leadRole = getTaskLeadRole(task.phase);
+      const leadRole = task.assignedRole || getTaskLeadRole(task.phase);
       const phaseName =
         sopTemplate?.phases?.find((phase) => String(phase.id) === String(task.phase))?.name ||
         `Phase ${task.phase}`;
@@ -380,6 +382,7 @@ const ProjectDetailsPage = () => {
         title: task.title,
         leadRole,
         leadName: assigneeNames[leadRole],
+        timeline: task.timeline,
         status: isVerified ? "VERIFIED" : isCompleted ? "COMPLETED" : "PENDING",
       };
     });
@@ -746,12 +749,23 @@ const ProjectDetailsPage = () => {
                         </p>
                       </div>
                     </div>
-                    <Badge
-                      variant="outline"
-                      className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700"
-                    >
-                      {completedPhases} Completed
-                    </Badge>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[10px] font-bold uppercase tracking-wider"
+                        onClick={() => setSopEditorOpen(true)}
+                      >
+                        <Settings className="mr-1 h-3 w-3" />
+                        Edit SOP
+                      </Button>
+                      <Badge
+                        variant="outline"
+                        className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700"
+                      >
+                        {completedPhases} Completed
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-emerald-50/70 p-4">
@@ -1745,6 +1759,13 @@ const ProjectDetailsPage = () => {
             <span className="text-xs text-slate-600">(c) 2024 Catalance Platform. All rights reserved.</span>
          </div>
       </div>
+      <SopEditorDialog
+        open={sopEditorOpen}
+        onOpenChange={setSopEditorOpen}
+        project={project}
+        currentSop={sopTemplate}
+        onSaved={() => details.refresh()}
+      />
     </PmShell>
   );
 };

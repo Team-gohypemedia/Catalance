@@ -6604,22 +6604,7 @@ const GuestAIDemo = () => {
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
-                        <div className="mt-3 flex items-center justify-between gap-2">
-                            <button
-                                type="button"
-                                className={`text-xs font-medium ${isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}
-                                onClick={() => {
-                                    if (pendingOptionFollowup?.autoSuggestion && pendingOptionFollowup?.questionKey) {
-                                        dismissedAutoHelperKeysRef.current.add(pendingOptionFollowup.questionKey);
-                                    }
-                                    setPendingOptionFollowup(null);
-                                    setSelectedOptions([]);
-                                    setInput('');
-                                    setIsRecommendationPanelOpen(false);
-                                }}
-                            >
-                                Clear helper
-                            </button>
+                        <div className="mt-3 flex items-center justify-end gap-2">
                             {pendingRecommendedAnswer && (
                                 <button
                                     type="button"
@@ -7258,7 +7243,7 @@ const GuestAIDemo = () => {
                                     </div>
 
                                     {/* content */}
-                                    <div className="flex-1 min-w-0 max-w-[85%]">
+                                    <div className="flex-1 min-w-0 max-w-[85%] space-y-2.5">
                                         {proposalCard ? (
                                             <div className="space-y-4">
                                                 <div className={`flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
@@ -7298,7 +7283,7 @@ const GuestAIDemo = () => {
                                             </div>
                                         )}
                                         {thinkingMeta && (
-                                            <div className={`mt-1 text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                            <div className={`pt-0.5 text-[11px] leading-none ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
                                                 Responded in {formatThinkingDuration(thinkingMeta.durationMs)}
                                             </div>
                                         )}

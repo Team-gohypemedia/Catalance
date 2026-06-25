@@ -422,7 +422,7 @@ const buildDefaultProgressPhases = (count = 4) =>
   }));
 
 const buildProjectPhaseSteps = (project = {}) => {
-  const sop = getSopFromTitle(
+  const sop = project?.customSop || getSopFromTitle(
     project?.templateTitle || project?.sourceTitle || project?.title || "",
   );
   const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
