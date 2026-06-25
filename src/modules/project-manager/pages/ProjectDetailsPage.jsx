@@ -576,11 +576,11 @@ const ProjectDetailsPage = () => {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-6 h-auto w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-          <TabsTrigger value="overview" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Overview</TabsTrigger>
-          <TabsTrigger value="messages" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Messages</TabsTrigger>
-          <TabsTrigger value="milestones" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Milestones</TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Notifications</TabsTrigger>
+        <TabsList className="mb-6 flex w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm overflow-x-auto subtle-scrollbar">
+          <TabsTrigger value="overview" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Overview</TabsTrigger>
+          <TabsTrigger value="messages" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Messages</TabsTrigger>
+          <TabsTrigger value="milestones" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Milestones</TabsTrigger>
+          <TabsTrigger value="notifications" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Notifications</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-0 overflow-x-clip">
@@ -1028,7 +1028,7 @@ const ProjectDetailsPage = () => {
                  <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover:opacity-100 transition-opacity">
                     <CheckCircle className="h-48 w-48 text-[#D9692A]" />
                  </div>
-                 <div className="flex flex-col lg:flex-row items-center gap-10">
+                 <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
                     <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[30px] bg-white text-[#D9692A] shadow-xl shadow-[#D9692A]/5">
                        <Download className="h-8 w-8" />
                     </div>
@@ -1037,7 +1037,7 @@ const ProjectDetailsPage = () => {
                        <p className="mb-8 text-sm font-medium text-slate-700 leading-relaxed max-w-xl">
                           Ensure all deliverables, source files, and credentials have been securely verified by you before initiating Final Release.
                        </p>
-                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                           <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-orange-50/60 transition-colors border border-orange-100 shadow-sm">
                              <Checkbox 
                                 checked={checklist.sourceCodeTransferred} 
@@ -1297,25 +1297,25 @@ const ProjectDetailsPage = () => {
                             .slice(0, 4);
 
                           return (
-                          <div key={idx} className="flex gap-10">
+                          <div key={idx} className="flex gap-4 md:gap-10">
                              <div className="flex flex-col items-center">
-                                <div className={`h-12 w-12 rounded-2xl flex items-center justify-center font-black ${milestone.status === 'Approved' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'}`}>
+                                <div className={`h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center font-black ${milestone.status === 'Approved' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'}`}>
                                    {idx + 1}
                                 </div>
                                 {idx < milestoneRows.length - 1 && <div className="flex-1 w-0.5 bg-slate-100 my-4" />}
                              </div>
-                             <div className="flex-1 pb-10 border-b border-slate-50 last:border-0 last:pb-0">
-                                <div className="flex justify-between items-start mb-4">
-                                   <div>
-                                      <h4 className="text-lg font-black text-slate-900">{milestone.title}</h4>
+                             <div className="flex-1 pb-10 border-b border-slate-50 last:border-0 last:pb-0 min-w-0">
+                                <div className="flex flex-col sm:flex-row sm:justify-between items-start mb-4 gap-2">
+                                   <div className="min-w-0">
+                                      <h4 className="text-lg font-black text-slate-900 truncate">{milestone.title}</h4>
                                       <Badge variant="outline" className={`mt-2 font-black text-[9px] uppercase ${milestone.status === 'Approved' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-slate-200 text-slate-600'}`}>{milestone.status}</Badge>
                                    </div>
-                                   <div className="text-right">
+                                   <div className="sm:text-right mt-2 sm:mt-0">
                                       <p className="text-xl font-black text-slate-900">INR {milestone.amount?.toLocaleString("en-IN")}</p>
                                       <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Payout Volume</p>
                                    </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-8 mt-6 p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mt-6 p-4 md:p-6 rounded-2xl bg-slate-50 border border-slate-100">
                                    <div>
                                       <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Deliverables Verified</p>
                                       {phaseTasks.length > 0 ? (
