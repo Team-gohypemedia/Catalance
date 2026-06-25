@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import Camera from "lucide-react/dist/esm/icons/camera";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Link from "lucide-react/dist/esm/icons/link";
@@ -7,10 +7,23 @@ import MapPin from "lucide-react/dist/esm/icons/map-pin";
 import Languages from "lucide-react/dist/esm/icons/languages";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Upload from "lucide-react/dist/esm/icons/upload";
+import Download from "lucide-react/dist/esm/icons/download";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const normalizeProfileLink = (value = "") => {
   const raw = String(value || "").trim();
@@ -71,6 +84,7 @@ const ProfileHeroCard = ({
   handleImageUpload,
   handleCoverImageUpload,
   handleResumeUpload,
+  handleResumeDelete,
   coverImageUrl,
   displayBio,
   displayLocation,
@@ -105,6 +119,9 @@ const ProfileHeroCard = ({
       : Boolean(personal.available);
   const openToWorkLabel = isOpenToWorkActive ? "Open to Work" : "Offline";
   const [hasCoverImageError, setHasCoverImageError] = useState(false);
+  
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   useEffect(() => {
     setHasCoverImageError(false);
   }, [coverImageUrl]);
@@ -130,8 +147,8 @@ const ProfileHeroCard = ({
   ].filter((item) => Boolean(item.href)));
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
-      <div className="relative h-36 w-full sm:h-44 md:h-64">
+    <section className="relative rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
+      <div className="relative h-36 w-full sm:h-44 md:h-64 rounded-t-2xl overflow-hidden">
         {resolvedCoverImage ? (
           <img
             src={resolvedCoverImage}
@@ -229,7 +246,7 @@ const ProfileHeroCard = ({
           </div>
         </div>
 
-        <div className="mt-2 min-w-0 space-y-3 sm:mt-0">
+        <div className="mt-2 min-w-0 space-y-3 lg:mt-0 lg:pr-[450px]">
           <div className="flex flex-col gap-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1
@@ -313,8 +330,8 @@ const ProfileHeroCard = ({
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-2 min-[420px]:grid-cols-2 sm:absolute sm:right-5 sm:top-4 sm:mt-0 sm:flex sm:flex-wrap sm:items-center sm:justify-end md:right-6">
-          <div className="flex h-10 w-full items-center justify-between gap-4 rounded-md border bg-card px-3 text-sm text-foreground transition-all duration-200 hover:bg-accent/90 sm:w-auto sm:min-w-[16rem]">
+        <div className="mt-6 flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-center lg:absolute lg:right-5 lg:top-4 lg:mt-0 lg:flex-wrap lg:justify-end xl:right-6">
+          <div className="flex h-10 w-full items-center justify-between gap-4 rounded-md border bg-card px-3 text-sm text-foreground transition-all duration-200 hover:bg-accent/90 min-[420px]:w-auto min-[420px]:min-w-[16rem]">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold tracking-[-0.02em] text-foreground">
                 {openToWorkLabel}
@@ -328,38 +345,100 @@ const ProfileHeroCard = ({
               aria-label="Toggle open to work status"
               title={`Set profile status to ${isOpenToWorkActive ? "Offline" : "Open to Work"
                 }`}
-              className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-white/15"
+              className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-neutral-200 dark:data-[state=unchecked]:bg-white/15"
             />
           </div>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => resumeInputRef.current?.click()}
-            disabled={uploadingResume}
-            className="h-10 w-full justify-center rounded-md border bg-card px-3 text-sm text-foreground hover:bg-accent/90 sm:w-auto"
-            title={
-              resolvedLinks.resume
-                ? "Resume uploaded. Click to replace."
-                : "Upload resume"
-            }
-          >
-            {uploadingResume ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-                Uploading...
-              </>
-            ) : resolvedLinks.resume ? (
-              <>
-                <FileText className="h-4 w-4" aria-hidden="true" />
-                Resume uploaded
-              </>
-            ) : (
-              <>
-                <Upload className="h-4 w-4" aria-hidden="true" />
-                Upload resume
-              </>
-            )}
-          </Button>
+          {uploadingResume ? (
+            <Button
+              type="button"
+              size="sm"
+              disabled
+              className="h-10 w-full justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 min-[420px]:w-auto"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Uploading...
+            </Button>
+          ) : resolvedLinks.resume ? (
+            <DropdownMenu
+              modal={false}
+              open={dropdownOpen}
+              onOpenChange={setDropdownOpen}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-10 w-full justify-between rounded-md border border-emerald-600/30 dark:border-emerald-400/30 bg-emerald-500/5 px-3 text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 min-[420px]:w-auto gap-2.5 shadow-none"
+                  title="Resume uploaded. Click for options."
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                    <span>Resume uploaded</span>
+                  </div>
+                  {dropdownOpen ? (
+                    <ChevronUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400 transition-transform duration-200" aria-hidden="true" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-emerald-600 dark:text-emerald-400 transition-transform duration-200" aria-hidden="true" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                data-resume-dropdown-content
+                align="center"
+                side="bottom"
+                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[13rem] rounded-xl p-1.5 border border-border bg-popover text-popover-foreground shadow-md"
+              >
+                <DropdownMenuItem
+                  onClick={() => window.open(resolvedLinks.resume, "_blank")}
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  View Resume
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    const link = document.createElement("a");
+                    link.href = resolvedLinks.resume;
+                    link.setAttribute("download", "Resume");
+                    link.setAttribute("target", "_blank");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                >
+                  <Download className="h-4 w-4 text-muted-foreground" />
+                  Download Resume
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-1 border-t border-border/60" />
+                <DropdownMenuItem
+                  onClick={() => resumeInputRef.current?.click()}
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                >
+                  <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                  Replace Resume
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleResumeDelete}
+                  className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-semibold cursor-pointer text-red-500 hover:bg-red-500/10 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
+                  Delete Resume
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => resumeInputRef.current?.click()}
+              className="h-10 w-full justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 min-[420px]:w-auto"
+              title="Upload resume"
+            >
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              Upload resume
+            </Button>
+          )}
         </div>
 
         <input

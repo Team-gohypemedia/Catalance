@@ -72,6 +72,7 @@ import {
   ProfileSidebarCards,
   ProfileSkillsCard,
   ProfileSummaryCards,
+  ProfileResumeCard,
   ProjectCoverMedia,
   ServicesFromOnboardingCard,
   WorkExperienceModalContent,
@@ -1835,6 +1836,17 @@ const FreelancerProfile = () => {
           throw new Error("Resume upload failed: missing URL");
         }
 
+        try {
+          const metadata = {
+            name: file.name,
+            size: file.size,
+            uploadedAt: new Date().toISOString()
+          };
+          localStorage.setItem(`resume_metadata_${resumeUrl}`, JSON.stringify(metadata));
+        } catch (e) {
+          console.error("Failed to save resume metadata to localStorage:", e);
+        }
+
         setPortfolio((prev) => ({ ...prev, resume: resumeUrl }));
         setInitialData((prev) =>
           prev
@@ -1857,6 +1869,43 @@ const FreelancerProfile = () => {
     },
     [authFetch]
   );
+
+  const handleResumeDelete = useCallback(async () => {
+    setUploadingResume(true);
+    try {
+      const nextPortfolio = { ...portfolio, resume: "" };
+      setPortfolio(nextPortfolio);
+
+      const saved = await handleSave(
+        buildProfileSnapshot({ portfolio: nextPortfolio }),
+        { suppressSuccessToast: true }
+      );
+
+      if (saved) {
+        setInitialData((prev) =>
+          prev
+            ? {
+                ...prev,
+                portfolio: {
+                  ...(prev.portfolio || {}),
+                  resume: "",
+                },
+              }
+            : prev
+        );
+        toast.success("Resume deleted");
+      } else {
+        setPortfolio(portfolio);
+        toast.error("Failed to delete resume");
+      }
+    } catch (error) {
+      console.error("Resume deletion failed:", error);
+      setPortfolio(portfolio);
+      toast.error("Failed to delete resume");
+    } finally {
+      setUploadingResume(false);
+    }
+  }, [portfolio, handleSave, buildProfileSnapshot]);
 
   const removeCoverImage = async () => {
     const currentCoverImage = String(personal.coverImage || "").trim();
@@ -3956,6 +4005,7 @@ const FreelancerProfile = () => {
             handleImageUpload={handleImageUpload}
             handleCoverImageUpload={handleCoverImageUpload}
             handleResumeUpload={handleResumeUpload}
+            handleResumeDelete={handleResumeDelete}
             removeCoverImage={removeCoverImage}
             coverImageUrl={profileCoverUrl}
             displayHeadline={displayHeadline}
@@ -4017,6 +4067,9 @@ const FreelancerProfile = () => {
                 profileCompletionMessage={profileCompletionMessage}
                 profileCompletionMissingDetails={profileCompletionMissingDetails}
               />
+              {hasResumeUploaded && (
+                <ProfileResumeCard resumeUrl={resolvedResumeLink} />
+              )}
             </div>
 
           </div>

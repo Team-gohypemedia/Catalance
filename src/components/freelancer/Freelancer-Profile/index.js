@@ -8,6 +8,7 @@ export { default as ProfileOnboardingSnapshotCard } from "./ProfileOnboardingSna
 export { default as ProfileSidebarCards } from "./ProfileSidebarCards";
 export { default as ProfileSkillsCard } from "./ProfileSkillsCard";
 export { default as ProfileSummaryCards } from "./ProfileSummaryCards";
+export { default as ProfileResumeCard } from "./ProfileResumeCard";
 export { default as ProjectCoverMedia } from "./ProjectCoverMedia";
 export { default as ServicesFromOnboardingCard } from "./ServicesFromOnboardingCard";
 
