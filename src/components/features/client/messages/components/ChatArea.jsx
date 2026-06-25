@@ -550,18 +550,39 @@ const ChatArea = React.memo(function ChatArea({
                 <div className={cn("flex items-end gap-3", ownsMessage ? "justify-end" : "justify-start")}>
                   {!ownsMessage ? (
                     <Avatar className="hidden size-8 shrink-0 self-end border border-border dark:border-white/10 sm:flex">
-                      <AvatarImage src={conversation?.avatar || undefined} alt={conversationTitle} />
-                      <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground dark:bg-[#2b2b31] dark:text-white">
-                        {getInitials(conversationTitle)}
-                      </AvatarFallback>
+                      {roleLabel.toUpperCase() === "PROJECT MANAGER" ? (
+                        <AvatarFallback className="bg-blue-100 text-[11px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                          P
+                        </AvatarFallback>
+                      ) : roleLabel.toUpperCase() === "ADMIN" ? (
+                        <AvatarFallback className="bg-rose-100 text-[11px] font-semibold text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                          A
+                        </AvatarFallback>
+                      ) : (
+                        <>
+                          <AvatarImage src={message?.avatar || conversation?.avatar || undefined} alt={message?.senderName || conversationTitle} />
+                          <AvatarFallback className="bg-muted text-[11px] font-semibold text-foreground dark:bg-[#2b2b31] dark:text-white">
+                            {getInitials(message?.senderName || conversationTitle)}
+                          </AvatarFallback>
+                        </>
+                      )}
                     </Avatar>
                   ) : null}
                   <div className={cn("flex max-w-[88%] flex-col md:max-w-[74%]", ownsMessage ? "items-end" : "items-start")}>
-                    {showRoleLabel ? (
-                      <p className={cn("mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]", ownsMessage ? "text-right text-[var(--primary)]" : "text-left text-[#94a3b8]")}>
-                        {roleLabel}
-                      </p>
-                    ) : null}
+                    {showRoleLabel ? (() => {
+                      let displaySenderName = message?.senderName || "";
+                      if (roleLabel?.toUpperCase() === "PROJECT MANAGER" && displaySenderName.toUpperCase() === "PROJECT MANAGER") {
+                        displaySenderName = conversation?.projectManagerName || conversation?.projectManager?.fullName || conversation?.projectManager?.name || conversation?.managerName || conversation?.pmName || displaySenderName;
+                      }
+                      if (displaySenderName.toUpperCase() === roleLabel?.toUpperCase()) {
+                        displaySenderName = "";
+                      }
+                      return (
+                        <p className={cn("mb-1.5 px-1 text-[10px] font-semibold uppercase tracking-[0.16em]", ownsMessage ? "text-right text-[var(--primary)]" : "text-left text-[#94a3b8]")}>
+                          {roleLabel}{displaySenderName ? ` • ${displaySenderName}` : ""}
+                        </p>
+                      );
+                    })() : null}
                     {message.deleted || message.isDeleted ? (
                       <div className={cn("rounded-[14px] border px-4 py-3 text-sm italic", ownsMessage ? "border-black/10 bg-primary text-primary-foreground" : "border-border bg-muted text-muted-foreground dark:border-white/[0.06] dark:bg-[#1d1d1d] dark:text-[#8f96a3]")}>
                         <div className="flex items-start gap-2">

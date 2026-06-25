@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications } from "@/shared/context/NotificationContext";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const resolveProjectIdFromNotification = (notification) => {
   const directProjectId = notification?.data?.projectId;
@@ -81,6 +82,9 @@ export const ManagerTopBar = () => {
 
   return (
     <div className="sticky top-0 z-50 flex min-h-16 w-full items-center justify-between gap-3 border-b border-slate-100 bg-white/80 px-3 py-3 backdrop-blur-md sm:px-4 md:h-20 md:px-4">
+      <div className="flex items-center gap-2 lg:hidden">
+        <SidebarTrigger className="-ml-1 text-slate-500 hover:text-[#D9692A]" />
+      </div>
       <div className="hidden flex-1 lg:block" />
 
       <div className="ml-auto flex min-w-0 items-center gap-2">

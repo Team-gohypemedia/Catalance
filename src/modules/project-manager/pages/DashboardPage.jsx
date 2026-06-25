@@ -117,19 +117,19 @@ const DashboardPage = () => {
       </div>
 
       <section className="mb-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 sm:gap-0">
            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
+              <div className="h-10 w-10 shrink-0 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
                 <CalendarIcon className="h-5 w-5" />
              </div>
-              <div>
-                 <h2 className="text-xl font-black text-slate-900 leading-tight">Meeting Pipeline</h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Vetting & Sync Schedules</p>
+              <div className="min-w-0">
+                 <h2 className="text-xl font-black text-slate-900 leading-tight truncate">Meeting Pipeline</h2>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate">Vetting & Sync Schedules</p>
               </div>
            </div>
            <Button 
             variant="link" 
-            className="text-[10px] font-black text-[#D9692A] uppercase tracking-widest p-0 h-auto hover:text-[#B85A24] transition-colors flex items-center gap-2 group" 
+            className="text-[10px] self-start sm:self-auto font-black text-[#D9692A] uppercase tracking-widest p-0 h-auto hover:text-[#B85A24] transition-colors flex items-center gap-2 group shrink-0" 
             onClick={() => navigate("/project-manager/appointments?time=UPCOMING")}
           >
             Expanded View
@@ -166,17 +166,17 @@ const DashboardPage = () => {
       </section>
 
       <section className="space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
            <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
+              <div className="h-10 w-10 shrink-0 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
                  <LayoutGrid className="h-5 w-5" />
               </div>
-              <div>
-                 <h2 className="text-xl font-black text-slate-900 leading-tight">Elite Portfolios</h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">High-Security Operational Workspaces</p>
+              <div className="min-w-0">
+                 <h2 className="text-xl font-black text-slate-900 leading-tight truncate">Elite Portfolios</h2>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate">High-Security Operational Workspaces</p>
               </div>
            </div>
-           <div className="flex items-center gap-2">
+           <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
              <div className="flex items-center gap-2 bg-slate-100/50 p-1 rounded-[7px] border border-slate-100">
              <Button
                variant="ghost"
@@ -199,7 +199,7 @@ const DashboardPage = () => {
              </div>
              <Button
                variant="link"
-               className="h-auto p-0 text-[10px] font-black text-[#D9692A] uppercase tracking-widest hover:text-[#B85A24] transition-colors"
+               className="h-auto p-0 text-[10px] font-black text-[#D9692A] uppercase tracking-widest hover:text-[#B85A24] transition-colors shrink-0"
                onClick={() => navigate("/project-manager/projects")}
              >
                Full List
@@ -229,15 +229,15 @@ const DashboardPage = () => {
                   key={project.id}
                   type="button"
                   onClick={() => navigate(`/project-manager/projects/${project.id}`)}
-                  className="flex w-full items-center justify-between border-b border-slate-100 px-5 py-4 text-left last:border-b-0 hover:bg-slate-50"
+                  className="flex w-full flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 px-5 py-4 text-left last:border-b-0 hover:bg-slate-50 gap-3 sm:gap-0"
                 >
-                  <div>
-                    <p className="text-sm font-black text-slate-900">{project.projectName}</p>
-                    <p className="text-[11px] font-medium text-slate-500">
+                  <div className="min-w-0 w-full sm:w-auto">
+                    <p className="text-sm font-black text-slate-900 truncate">{project.projectName}</p>
+                    <p className="text-[11px] font-medium text-slate-500 truncate">
                       {project.clientName} | {project.assignedFreelancer}
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 shrink-0">
                     <Badge
                       className={`text-[9px] font-black uppercase ${
                         project.statusColor === "red"
