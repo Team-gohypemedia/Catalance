@@ -2700,6 +2700,97 @@ const getPreferredAdviceOptionLabel = (visibleOptionObjects = [], adviceAdminCon
     ).trim();
 };
 
+const buildFreeformAdviceRecommendation = ({
+    currentQuestion = null,
+    service = null,
+    answersByQuestionText = {},
+    adviceAdminControls = {},
+    assistantContext = "",
+    minimumBudgetText = "",
+}) => {
+    const adminRecommendedAnswer = String(adviceAdminControls?.recommendedOption || "").trim();
+    if (adminRecommendedAnswer) {
+        return {
+            recommendedAnswer: adminRecommendedAnswer,
+            notice: `Recommended: ${adminRecommendedAnswer}. This follows the preferred direction for this question.`,
+            placeholder: `e.g. ${adminRecommendedAnswer}`,
+        };
+    }
+
+    const questionText = String(currentQuestion?.text || "").trim();
+    const normalizedPrompt = normalizeTextToken(`${questionText} ${assistantContext}`);
+    const serviceName = String(service?.name || "").trim();
+    const normalizedServiceName = normalizeTextToken(serviceName);
+    const businessName =
+        findAnswerByQuestionPattern(answersByQuestionText, /business name|brand name|company name|project name|client name/i)
+        || "";
+    const businessDescription =
+        findAnswerByQuestionPattern(answersByQuestionText, /business description|what do you offer|what you offer|industry|business type|company overview/i)
+        || "";
+
+    const subject = businessName || businessDescription || "our business";
+
+    if (/\b(budget|price|pricing|cost)\b/i.test(normalizedPrompt)) {
+        const recommendedAnswer = minimumBudgetText || "around INR 25,000";
+        return {
+            recommendedAnswer,
+            notice: `Recommended: ${recommendedAnswer}. This keeps the project realistic for the expected scope.`,
+            placeholder: `e.g. ${recommendedAnswer}`,
+        };
+    }
+
+    if (/\b(timeline|deadline|launch|ready|how soon|when would you like)\b/i.test(normalizedPrompt)) {
+        const recommendedAnswer = "within 3-4 weeks";
+        return {
+            recommendedAnswer,
+            notice: `Recommended: ${recommendedAnswer}. This is a practical timeline for a focused first version.`,
+            placeholder: `e.g. ${recommendedAnswer}`,
+        };
+    }
+
+    if (/\b(service type|which service|what service|service do you need)\b/i.test(normalizedPrompt)) {
+        const recommendedAnswer = /\b(cgi|3d|animation|vfx)\b/i.test(normalizedServiceName)
+            ? "CGI Video"
+            : "The core service that best fits the project";
+        return {
+            recommendedAnswer,
+            notice: `Recommended: ${recommendedAnswer}. This is the strongest fit based on what the user has shared so far.`,
+            placeholder: `e.g. ${recommendedAnswer}`,
+        };
+    }
+
+    if (/\b(what would you like us to create|what do you want to create|what do you want to build|project overview|project brief|what are you looking for)\b/i.test(normalizedPrompt)) {
+        const recommendedAnswer = /\b(cgi|3d|animation|vfx)\b/i.test(normalizedServiceName)
+            ? `A short CGI promo video for ${subject}.`
+            : `A focused first version for ${subject}.`;
+        return {
+            recommendedAnswer,
+            notice: `Recommended: ${recommendedAnswer} This gives the project a clear and usable direction immediately.`,
+            placeholder: `e.g. ${recommendedAnswer}`,
+        };
+    }
+
+    if (/\b(business description|what do you offer|tell me about your business|describe your business)\b/i.test(normalizedPrompt)) {
+        const recommendedAnswer = businessDescription
+            ? `We provide ${businessDescription}.`
+            : "We help clients with our core service and want a clear, professional presentation.";
+        return {
+            recommendedAnswer,
+            notice: `Recommended: ${recommendedAnswer} This gives enough context to move the discussion forward.`,
+            placeholder: `e.g. ${recommendedAnswer}`,
+        };
+    }
+
+    const recommendedAnswer = businessDescription
+        ? `We need this for ${businessDescription}.`
+        : `We need a strong first version for ${subject}.`;
+    return {
+        recommendedAnswer,
+        notice: `Recommended: ${recommendedAnswer} This is a safe starting answer for this step.`,
+        placeholder: `e.g. ${recommendedAnswer}`,
+    };
+};
+
 const resolveAdviceRecommendedAnswer = ({
     payload = {},
     visibleOptionObjects = [],
@@ -7511,15 +7602,11 @@ Return plain text only.
         if (explicitProposalRequest && (coverageSummary?.enoughForExplicitRequest || coverageSummary?.enoughForProposal)) {
             return "I have enough context to put the proposal together now.";
         }
-        if (openingNameStep) {
-            const phrasing = getServiceActionPhrasing(service);
-            return `Happy to help with ${service?.name || "this"}.\nTell me a bit about ${phrasing.target}, and I will guide you from there.`;
-        }
         return nextQuestion
             ? (getQuestionOptionLabels(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug).length > 0
                 ? formatQuestionWithOptions(nextQuestion, runtimeOptionsByQuestionSlug, answersBySlug)
                 : String(nextQuestion?.text || "Tell me a bit more about what you need."))
-            : "Tell me a bit more about what you need, and I will shape it into a proposal-ready brief.";
+            : "Tell me a bit more about what you need.";
     }
 };
 
@@ -9653,6 +9740,21 @@ export const getGuestAdvice = asyncHandler(async (req, res) => {
     const fallbackRecommendedAnswer = isRecommendationMode
         ? getPreferredAdviceOptionLabel(visibleOptionObjects, adviceAdminControls)
         : "";
+    const minimumBudgetText = Number(service?.minBudget || 0) > 0
+        ? formatServiceBudgetAmount(service.minBudget, service.currency || "INR")
+        : "";
+    const freeformFallbackRecommendation = isRecommendationMode
+        ? buildFreeformAdviceRecommendation({
+            currentQuestion: resolvedCurrentQuestion,
+            service,
+            answersByQuestionText,
+            adviceAdminControls,
+            assistantContext: adviceQuestionContext,
+            minimumBudgetText,
+        })
+        : null;
+    const effectiveFallbackRecommendedAnswer = fallbackRecommendedAnswer
+        || String(freeformFallbackRecommendation?.recommendedAnswer || "").trim();
 
     const recentSessionContext = Array.isArray(session?.messages)
         ? session.messages
@@ -9660,10 +9762,6 @@ export const getGuestAdvice = asyncHandler(async (req, res) => {
             .map((message) => `${message.role}: ${String(message.content || "").trim()}`)
             .filter(Boolean)
             .join("\n")
-        : "";
-
-    const minimumBudgetText = Number(service?.minBudget || 0) > 0
-        ? formatServiceBudgetAmount(service.minBudget, service.currency || "INR")
         : "";
 
     const taskBlock = isRecommendationMode
@@ -9743,14 +9841,23 @@ Do not use markdown formatting, code fences, or bold text.`;
                 payload: parsed,
                 isRecommendationMode,
                 visibleOptionObjects,
-                fallbackRecommendedAnswer,
+                fallbackRecommendedAnswer: effectiveFallbackRecommendedAnswer,
                 currentQuestion: resolvedCurrentQuestion,
             });
+            const hydratedRecommendationPayload = isRecommendationMode
+                && !String(normalizedPayload.recommendedAnswer || "").trim()
+                && freeformFallbackRecommendation
+                ? {
+                    notice: normalizedPayload.notice || freeformFallbackRecommendation.notice,
+                    placeholder: normalizedPayload.placeholder || freeformFallbackRecommendation.placeholder,
+                    recommendedAnswer: freeformFallbackRecommendation.recommendedAnswer,
+                }
+                : normalizedPayload;
             return res.json({
                 success: true,
-                notice: normalizedPayload.notice,
-                placeholder: normalizedPayload.placeholder,
-                recommendedAnswer: normalizedPayload.recommendedAnswer,
+                notice: hydratedRecommendationPayload.notice,
+                placeholder: hydratedRecommendationPayload.placeholder,
+                recommendedAnswer: hydratedRecommendationPayload.recommendedAnswer,
             });
         }
     } catch (e) {
@@ -9759,18 +9866,18 @@ Do not use markdown formatting, code fences, or bold text.`;
 
     const fallbackPayload = isRecommendationMode
         ? normalizeGuestAdvicePayload({
-            payload: {
-                notice: fallbackRecommendedAnswer
-                    ? `Recommended: ${fallbackRecommendedAnswer}. This matches the preferred flow for this question.`
+            payload: freeformFallbackRecommendation || {
+                notice: effectiveFallbackRecommendedAnswer
+                    ? `Recommended: ${effectiveFallbackRecommendedAnswer}. This matches the preferred flow for this question.`
                     : "Recommended direction: use the strongest fit for this step based on your project direction.",
-                placeholder: fallbackRecommendedAnswer
-                    ? `e.g. ${fallbackRecommendedAnswer}`
+                placeholder: effectiveFallbackRecommendedAnswer
+                    ? `e.g. ${effectiveFallbackRecommendedAnswer}`
                     : "e.g. go with the recommended direction",
-                recommendedAnswer: fallbackRecommendedAnswer,
+                recommendedAnswer: effectiveFallbackRecommendedAnswer,
             },
             isRecommendationMode: true,
             visibleOptionObjects,
-            fallbackRecommendedAnswer,
+            fallbackRecommendedAnswer: effectiveFallbackRecommendedAnswer,
             currentQuestion: resolvedCurrentQuestion,
         })
         : {

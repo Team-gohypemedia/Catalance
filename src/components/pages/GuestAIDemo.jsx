@@ -3466,6 +3466,15 @@ const GuestAIDemo = () => {
         }
     }, [getVisibleMessageInput, shouldShowTextInput]);
 
+    const resizeMessageInput = useCallback((field = null) => {
+        const target = field || getVisibleMessageInput();
+        if (!target) return;
+
+        target.style.height = 'auto';
+        target.style.height = `${Math.min(target.scrollHeight, 220)}px`;
+        target.style.overflowY = target.scrollHeight > 220 ? 'auto' : 'hidden';
+    }, [getVisibleMessageInput]);
+
     const clearSpeechDraftRefs = useCallback(() => {
         speechBaseInputRef.current = "";
         speechFinalRef.current = "";
@@ -3885,15 +3894,19 @@ const GuestAIDemo = () => {
         if (!isTyping && shouldShowTextInput) {
             const rafId = window.requestAnimationFrame(() => {
                 focusMessageInput();
+                resizeMessageInput();
             });
             const timeoutId = window.setTimeout(() => {
                 focusMessageInput();
+                resizeMessageInput();
             }, 120);
             const retryTimeoutId = window.setTimeout(() => {
                 focusMessageInput();
+                resizeMessageInput();
             }, 280);
             const finalRetryTimeoutId = window.setTimeout(() => {
                 focusMessageInput();
+                resizeMessageInput();
             }, 520);
 
             return () => {
@@ -3905,7 +3918,11 @@ const GuestAIDemo = () => {
         }
 
         return undefined;
-    }, [messages, isTyping, shouldShowTextInput, inputConfig, selectedService, focusMessageInput]);
+    }, [messages, isTyping, shouldShowTextInput, inputConfig, selectedService, focusMessageInput, resizeMessageInput]);
+
+    useEffect(() => {
+        resizeMessageInput();
+    }, [input, resizeMessageInput]);
 
     useEffect(() => {
         setSelectedOptions([]);
@@ -6679,8 +6696,7 @@ const GuestAIDemo = () => {
                                     value={input}
                                     onChange={(e) => {
                                         setInput(e.target.value);
-                                        e.target.style.height = 'auto';
-                                        e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                                        resizeMessageInput(e.target);
                                     }}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -6692,7 +6708,7 @@ const GuestAIDemo = () => {
                                     }}
                                     rows={1}
                                     placeholder={composerPlaceholder}
-                                    className={`max-h-[120px] min-h-[clamp(2.5rem,8vw,2.75rem)] w-full resize-none overflow-y-hidden bg-transparent px-[clamp(0.75rem,3vw,1rem)] py-[clamp(0.65rem,2.8vw,0.75rem)] text-[clamp(0.95rem,3.6vw,1rem)] outline-none placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap md:min-h-[44px] md:px-4 md:py-3 md:text-base ${isDark
+                                    className={`max-h-[220px] min-h-[clamp(2.5rem,8vw,2.75rem)] w-full resize-none overflow-y-hidden bg-transparent px-[clamp(0.75rem,3vw,1rem)] py-[clamp(0.65rem,2.8vw,0.75rem)] text-[clamp(0.95rem,3.6vw,1rem)] outline-none placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap md:min-h-[44px] md:px-4 md:py-3 md:text-base ${isDark
                                         ? 'text-white placeholder:text-slate-400'
                                         : 'text-slate-900 placeholder:text-slate-500'
                                         }`}
