@@ -11,7 +11,6 @@ import {
   ProjectProgress,
   RecentActivity,
   Proposals,
-  WishlistedFreelancers,
 } from "@/components/client/client-dashboard";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 

@@ -206,9 +206,10 @@ export const ClientProposalDataProvider = ({ children }) => {
             (project) => String(project?.status || "").toUpperCase() === "DRAFT",
           )
         : [];
-      const existingDraftProjectMap = new Map(
-        existingDraftProjects.map((project) => [buildDraftProjectMatchKey(project), project]),
-      );
+      const existingDraftProjectMap = new Map();
+      if (existingDraftProjects.length > 0) {
+        existingDraftProjectMap.set(buildDraftProjectMatchKey(savedProposals[0]), existingDraftProjects[0]);
+      }
 
       const now = new Date().toISOString();
       draftSyncStateRef.current = {
@@ -219,9 +220,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       try {
         const results = await Promise.all(
           unsyncedDrafts.map(async (proposal) => {
-            const existingDraftProject = existingDraftProjectMap.get(
-              buildDraftProjectMatchKey(proposal),
-            );
+            const existingDraftProject = existingDraftProjects.length > 0 ? existingDraftProjects[0] : null;
             if (existingDraftProject?.id) {
               return {
                 localId: proposal.id,

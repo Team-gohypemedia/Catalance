@@ -34,7 +34,7 @@ import {
 const FreelancerDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [isWelcomeDismissed, setIsWelcomeDismissed] = React.useState(false);
+  const [isWelcomeDismissed] = React.useState(false);
   const shouldShowOnboardingWelcome = requiresFreelancerOnboarding(user) && !isWelcomeDismissed;
 
   useEffect(() => {

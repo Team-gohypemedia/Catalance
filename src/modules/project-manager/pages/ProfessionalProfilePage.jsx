@@ -323,8 +323,6 @@ const ProfessionalProfilePage = () => {
   const testimonialRows = resolveList(profile.testimonials);
   const pmChecklist = buildPmChecklist(pmForm);
   const completedChecklist = pmChecklist.filter((item) => item.complete).length;
-  const isOnboardingComplete = completedChecklist === pmChecklist.length;
-
   const updatePmField = (key, value) => {
     setPmForm((current) => ({ ...current, [key]: value }));
   };

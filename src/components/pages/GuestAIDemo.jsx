@@ -1214,11 +1214,7 @@ const upsertStoredGeneratedProposal = (proposalContent, userId, extraMetadata = 
     const normalizedExtraMetadata = extraMetadata && typeof extraMetadata === 'object'
         ? extraMetadata
         : {};
-    const existingIndex = existingProposals.findIndex((proposal) => {
-        const existingFingerprint = proposal?.fingerprint
-            || toProposalFingerprint(proposal?.content || proposal?.summary || proposal?.projectTitle || '');
-        return existingFingerprint === fingerprint;
-    });
+    const existingIndex = existingProposals.length > 0 ? 0 : -1;
     const existingProposal = existingIndex >= 0 ? existingProposals[existingIndex] : null;
     const nextProposalContext = normalizedExtraMetadata?.proposalContext
         && typeof normalizedExtraMetadata.proposalContext === 'object'
@@ -1252,17 +1248,15 @@ const upsertStoredGeneratedProposal = (proposalContent, userId, extraMetadata = 
         ...(nextProposalContext ? { proposalContext: nextProposalContext } : {}),
     };
 
-    if (existingIndex >= 0) {
-        existingProposals[existingIndex] = proposalToSave;
-    } else {
-        existingProposals.push(proposalToSave);
-    }
+    const nextProposals = [proposalToSave];
 
-    const sortedProposals = sortStoredGeneratedProposals(existingProposals);
-    window.localStorage.setItem(listKey, JSON.stringify(sortedProposals));
-    window.localStorage.setItem(singleKey, JSON.stringify(proposalToSave));
+    const finalSorted = sortStoredGeneratedProposals(nextProposals);
+    window.localStorage.setItem(listKey, JSON.stringify(finalSorted));
+    if (finalSorted.length > 0) {
+        window.localStorage.setItem(singleKey, JSON.stringify(finalSorted[0]));
+    }
     if (syncedKey) window.localStorage.removeItem(syncedKey);
-    return readStoredGeneratedProposals(userId);
+    return finalSorted;
 };
 
 const unwrapPayload = (value) => {

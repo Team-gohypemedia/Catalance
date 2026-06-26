@@ -8422,9 +8422,9 @@ export const guestChat = asyncHandler(async (req, res) => {
             `;
         const minimumBudgetValidationRule = Number(service?.minBudget || 0) > 0
             ? `
-            - If the user introduces or updates any project budget below ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")} for this service, treat it as INVALID.
-            - In that case, tell them to increase the budget to at least ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")}.
-            - Do NOT say you will note, save, or proceed with the lower budget.
+            - IMPORTANT: The absolute minimum budget is ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")}.
+            - If the user provides a budget >= this minimum, you MUST accept it as VALID. Do not reject it for being "too tight" or "too low".
+            - If the user provides a budget below this minimum, treat it as INVALID and tell them to increase it to at least ${formatServiceBudgetAmount(service.minBudget, service.currency || "INR")}.
             `
             : "";
 
