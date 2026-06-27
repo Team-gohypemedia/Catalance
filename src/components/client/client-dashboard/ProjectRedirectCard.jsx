@@ -6,7 +6,7 @@ const ProjectRedirectCard = memo(function ProjectRedirectCard({ item, className 
     <div
       onClick={item.onClick}
       className={cn(
-        "group flex h-full w-full overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center p-6 text-center shadow-none",
+        "group flex h-full w-full overflow-hidden rounded-[20px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center p-6 text-center shadow-none",
         className,
       )}
     >

@@ -15,7 +15,19 @@ import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Folder from "lucide-react/dist/esm/icons/folder";
 import Send from "lucide-react/dist/esm/icons/send";
 import Eye from "lucide-react/dist/esm/icons/eye";
+import MoreVertical from "lucide-react/dist/esm/icons/more-vertical";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import ProjectRedirectCard from "./ProjectRedirectCard.jsx";
 import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 import FreelancerSelectionDialog from "@/components/features/client/dashboard/FreelancerSelectionDialog";
 import {
@@ -392,309 +404,172 @@ const parseProposalString = (text) => {
   }
 
   return result;
-};
-
-const DraftProposalRow = memo(function DraftProposalRow({ item }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const serviceEntries = resolveDraftRowServiceEntries(item);
-  const shouldShowAgencyServiceCards =
-    (Boolean(item.isAgencyProposal) || serviceEntries.length > 1)
-    && serviceEntries.length > 0;
+};const DraftProposalRow = memo(function DraftProposalRow({ item }) {
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
+  const [objectivesExpanded, setObjectivesExpanded] = useState(false);
 
   const parsedData = parseProposalString(item.summary);
+  const projectOverview = parsedData?.projectOverview || item.summary || "";
+  const objectives = parsedData?.objectives || [];
+  
+  const dateStr = item.dateLabel || (item.updatedAt || item.createdAt
+    ? new Date(item.updatedAt || item.createdAt).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : new Date().toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }));
 
-  const actionButtons = (
-    <div className="mt-8 flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end border-t border-border pt-6">
-      <button
-        type="button"
-        onClick={item.onView}
-        className={cn(
-          draftProposalActionButtonClassName,
-          "h-12 w-full justify-center gap-2 border border-border bg-background text-[0.92rem] text-foreground hover:bg-muted/80 sm:w-[160px] rounded-lg",
-        )}
-      >
-        <Eye className="size-4 shrink-0" />
-        View Details
-      </button>
-
-      <button
-        type="button"
-        onClick={item.onSend}
-        className={cn(
-          draftProposalActionButtonClassName,
-          "h-12 w-full justify-center gap-2 bg-primary px-7 text-[0.92rem] text-primary-foreground hover:bg-primary/90 sm:w-[180px] rounded-lg",
-        )}
-      >
-        <Send className="size-4 shrink-0" />
-        Send Proposal
-      </button>
-    </div>
-  );
-
-  let contentPanels;
-
-  if (shouldShowAgencyServiceCards) {
-    contentPanels = (
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3 xl:auto-rows-fr">
-        {serviceEntries.map((entry, index) => (
-          <div
-            key={`${entry.name}-${index}`}
-            className={cn(draftProposalDetailBlockClassName, "h-full")}
-          >
-            <p className="min-h-[2.5rem] break-words text-[0.82rem] font-medium leading-5 text-foreground">
-              {entry.name}
-            </p>
-
-            <div className="mt-2.5 flex items-center gap-3 text-[0.9rem] leading-none">
-              <p className="truncate font-semibold tracking-[-0.02em] text-muted-foreground">
-                {entry.budget}
-              </p>
-              <span className="h-4 w-px shrink-0 bg-border dark:bg-white/[0.12]" aria-hidden="true" />
-              <p className="truncate font-medium text-muted-foreground">
-                {entry.timeline}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  } else if (parsedData) {
-    contentPanels = (
-      <div className="flex flex-col gap-8 w-full mt-2">
-        
-        {/* Top Header Section */}
-        <div className="flex flex-col gap-2">
-          <h2 className="text-[22px] sm:text-3xl font-bold tracking-tight text-foreground">{item.title || parsedData.businessName || "Proposal"}</h2>
-          <div className="flex flex-wrap items-center gap-4 text-[0.85rem] font-medium text-muted-foreground">
-            {parsedData.clientName && (
-              <div className="flex items-center gap-1.5">
-                <User className="size-4" />
-                <span>Client: {parsedData.clientName}</span>
-              </div>
-            )}
-            {parsedData.serviceType && (
-              <div className="flex items-center gap-1.5">
-                <Folder className="size-4" />
-                <span>Service: {parsedData.serviceType}</span>
-              </div>
-            )}
-          </div>
+  return (
+    <div className="w-full min-w-0">
+      {/* Top Header Section */}
+      <div className="flex items-center justify-between">
+        <div className="inline-flex items-center justify-center rounded bg-[#FFF0EA] dark:bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6A39]">
+          DRAFT
         </div>
+        
+        <div className="flex items-center gap-1">
+          <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+            {dateStr}
+          </span>
+          
+          {/* Three-dot dropdown menu */}
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex size-7 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Draft options"
+              >
+                <MoreVertical className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="rounded-xl border border-border bg-card p-1 shadow-md">
+              <DropdownMenuItem
+                onClick={item.onDelete}
+                className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+              >
+                <Trash2 className="size-3.5" />
+                <span>Delete Draft</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
-        {/* Middle Collapsible Section */}
-        <div className={cn(
-          "relative flex flex-col gap-8 w-full overflow-hidden transition-[max-height] duration-500 ease-in-out",
-          !isExpanded ? "max-h-[280px]" : "max-h-[2500px]"
-        )}>
-          {/* Project Overview */}
-          {parsedData.projectOverview && (
-            <div className="space-y-3">
-              <h3 className="text-[1.1rem] font-semibold text-foreground tracking-tight">Project Overview</h3>
-              <div className="rounded-[10px] border border-primary/20 bg-primary/5 p-4 text-[0.95rem] leading-relaxed text-foreground">
-                {parsedData.projectOverview}
-              </div>
+      {/* Title */}
+      <h3 
+        title={item.title}
+        className="mt-4 truncate text-xl font-bold tracking-tight text-foreground"
+      >
+        {item.title}
+      </h3>
+
+      {/* Service Type Line */}
+      <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Briefcase className="size-3.5 text-muted-foreground/70 shrink-0" />
+        <span className="truncate">Service: {item.tag || "General"}</span>
+      </div>
+
+      {/* Collapsible Sections Container */}
+      <div className="mt-4 flex flex-col gap-2.5">
+        {/* Project Overview Collapsible Box */}
+        {projectOverview && (
+          <div className="border border-border/60 bg-background rounded-xl overflow-hidden">
+            <div
+              onClick={() => setOverviewExpanded(!overviewExpanded)}
+              className="flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+            >
+              <span className="text-xs font-semibold text-foreground">Project Overview</span>
+              {overviewExpanded ? (
+                <ChevronUp className="size-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="size-4 text-muted-foreground" />
+              )}
             </div>
-          )}
+            {overviewExpanded && (
+              <div className="border-t border-border/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground bg-muted/10">
+                {projectOverview}
+              </div>
+            )}
+          </div>
+        )}
 
-          {/* Main Content Split */}
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            
-            {/* Key Objectives */}
-            {parsedData.objectives.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Key Objectives</h3>
-                <ul className="flex flex-col gap-3">
-                  {parsedData.objectives.map((obj, i) => (
-                    <li key={i} className="flex items-start gap-2.5 text-[0.9rem] text-foreground">
-                      <CheckCircle2 className="size-5 shrink-0 text-primary mt-[1px]" />
+        {/* Key Objectives Collapsible Box */}
+        {objectives.length > 0 && (
+          <div className="border border-border/60 bg-background rounded-xl overflow-hidden">
+            <div
+              onClick={() => setObjectivesExpanded(!objectivesExpanded)}
+              className="flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+            >
+              <span className="text-xs font-semibold text-foreground">Key Objectives</span>
+              {objectivesExpanded ? (
+                <ChevronUp className="size-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="size-4 text-muted-foreground" />
+              )}
+            </div>
+            {objectivesExpanded && (
+              <div className="border-t border-border/40 px-4 py-3 bg-muted/10">
+                <ul className="flex flex-col gap-2">
+                  {objectives.map((obj, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                      <CheckCircle2 className="size-3.5 shrink-0 text-primary mt-[1px]" />
                       <span className="leading-relaxed">{obj}</span>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
-
-            {/* Technical Stack */}
-            {(parsedData.techStack.frontend || parsedData.techStack.backend || parsedData.techStack.database || parsedData.techStack.hosting) && (
-              <div className="space-y-4">
-                <div className="rounded-[12px] bg-muted/40 dark:bg-muted/20 border border-border/50 p-6">
-                  <h3 className="text-[0.75rem] font-bold uppercase tracking-wider text-primary mb-5">Technical Stack</h3>
-                  <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                    {parsedData.techStack.frontend && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Frontend</span>
-                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.frontend}</span>
-                      </div>
-                    )}
-                    {parsedData.techStack.backend && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Backend</span>
-                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.backend}</span>
-                      </div>
-                    )}
-                    {parsedData.techStack.database && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Database</span>
-                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.database}</span>
-                      </div>
-                    )}
-                    {parsedData.techStack.hosting && (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[0.7rem] uppercase font-semibold text-muted-foreground">Hosting</span>
-                        <span className="text-[0.95rem] font-bold text-foreground">{parsedData.techStack.hosting}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
+        )}
+      </div>
 
-          {/* Included Deliverables */}
-          {parsedData.deliverables.length > 0 && (
-            <div className="space-y-4 border-t border-border/60 pt-6">
-              <h3 className="text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Included Deliverables</h3>
-              <div className="flex flex-wrap gap-2.5">
-                {parsedData.deliverables.map((del, i) => (
-                  <div key={i} className="rounded-full bg-secondary border border-border/40 px-4 py-2 text-[0.8rem] font-semibold text-secondary-foreground">
-                    {del}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          
-          {/* Fading Overlay */}
-          {!isExpanded && (
-            <div className="absolute bottom-0 left-0 right-0 h-28 bg-gradient-to-t from-background dark:from-card to-transparent pointer-events-none" />
-          )}
+      {/* Budget and Timeline Boxes */}
+      <div className="grid grid-cols-2 gap-3 mt-4">
+        <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#F8F9FA] dark:bg-muted/10 py-3.5 text-center">
+          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/85 leading-none">Budget</span>
+          <span className="text-[17px] font-extrabold text-foreground truncate max-w-full px-2 mt-1.5">{item.budget}</span>
         </div>
+        <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#F8F9FA] dark:bg-muted/10 py-3.5 text-center">
+          <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/85 leading-none">Timeline</span>
+          <span className="text-[17px] font-extrabold text-foreground truncate max-w-full px-2 mt-1.5">{item.timeline || "Not set"}</span>
+        </div>
+      </div>
 
-        {/* Read More Toggle */}
+      {/* Action Buttons */}
+      <div className="mt-5 flex items-center gap-3 w-full">
         <button
           type="button"
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-[0.85rem] font-bold text-primary hover:underline self-start"
+          onClick={item.onView}
+          className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] hover:bg-muted/80 text-xs font-bold text-foreground transition-colors cursor-pointer border border-transparent"
         >
-          {isExpanded ? "Show less" : "Read more"}
+          <Eye className="size-4 text-muted-foreground" />
+          <span>View Details</span>
         </button>
 
-        {/* Budget and Timeline */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-4">
-          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-muted/30 dark:bg-muted/10 py-4 sm:py-6 text-center">
-            <span className="text-[0.65rem] sm:text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Budget</span>
-            <span className="text-[1.15rem] sm:text-[1.5rem] font-bold text-foreground truncate max-w-full px-2">{item.budget}</span>
-          </div>
-          <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-border/60 bg-muted/30 dark:bg-muted/10 py-4 sm:py-6 text-center">
-            <span className="text-[0.65rem] sm:text-[0.75rem] font-bold uppercase tracking-wider text-muted-foreground">Timeline</span>
-            <span className="text-[1.15rem] sm:text-[1.5rem] font-bold text-foreground truncate max-w-full px-2">{item.timeline || "Not set"}</span>
-          </div>
-        </div>
-
-      </div>
-    );
-  } else {
-    // Fallback original view
-    contentPanels = (
-      <div className="space-y-4">
-        <div className="flex flex-col items-start gap-1">
-          <p className={cn("max-w-[42rem] text-[1.05rem] leading-7 text-muted-foreground", !isExpanded && "line-clamp-3")}>
-            {item.summary || "Draft proposal ready to review and send."}
-          </p>
-          {item.summary?.length > 150 && (
-            <button
-              type="button"
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-[0.88rem] font-semibold text-primary hover:underline"
-            >
-              {isExpanded ? "Read less" : "Read more"}
-            </button>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
-          <div className={cn(draftProposalDetailBlockClassName, "px-3 py-3 sm:px-4 sm:py-4")}>
-            <p className="text-[0.65rem] sm:text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
-              Budget
-            </p>
-            <p className="mt-2 text-[1rem] sm:text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground truncate max-w-full">
-              {item.budget}
-            </p>
-          </div>
-
-          <div className={cn(draftProposalDetailBlockClassName, "px-3 py-3 sm:px-4 sm:py-4")}>
-            <p className="text-[0.65rem] sm:text-[0.78rem] uppercase tracking-[0.18em] text-muted-foreground">
-              Timeline
-            </p>
-            <p className="mt-2 text-[1rem] sm:text-[1.15rem] font-semibold tracking-[-0.02em] text-foreground truncate max-w-full">
-              {item.timeline || "Not set"}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full min-w-0 pb-2">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-primary">
-            DRAFT
-          </div>
-          <p className="text-[0.8rem] font-medium tracking-[0.02em] text-muted-foreground sm:text-[0.85rem]">
-            {item.dateLabel || new Date().toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
-        </div>
         <button
           type="button"
-          onClick={item.onDelete}
-          className="flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted/60 hover:text-foreground"
-          aria-label={`Delete ${item.title}`}
+          onClick={item.onSend}
+          className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#FF5A1F] hover:bg-[#E54E18] text-xs font-bold text-white transition-colors cursor-pointer"
         >
-          <Trash2 className="size-4" />
+          <Send className="size-3.5" />
+          <span>Send Proposal</span>
         </button>
       </div>
-
-      {!parsedData && (
-        <p className="min-w-0 truncate text-[1.15rem] font-bold tracking-tight text-foreground sm:text-[1.25rem] lg:text-[1.35rem] mb-4">
-          {item.title}
-        </p>
-      )}
-
-      <div className="w-full min-w-0">
-        {contentPanels}
-      </div>
-      {actionButtons}
     </div>
   );
 });
 
 const DraftProposalCard = memo(function DraftProposalCard({ item }) {
   return (
-    <article className="flex h-auto w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-border bg-background p-4 shadow-[0_20px_50px_-35px_rgba(16,24,40,0.22)] transition-transform duration-200 hover:-translate-y-1 sm:max-w-[400px] sm:p-4 lg:max-w-[440px] xl:max-w-[460px] dark:border-white/[0.06] dark:bg-card dark:shadow-[0_20px_50px_-35px_rgba(0,0,0,0.65)]">
+    <article className="flex w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[20px] border border-border bg-card p-6 shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-transform duration-200 hover:-translate-y-1">
       <DraftProposalRow item={item} />
     </article>
-  );
-});
-
-const DraftProposalListPanel = memo(function DraftProposalListPanel({
-  draftProposalRows,
-}) {
-  return (
-    <DashboardPanel className="overflow-hidden bg-card">
-      <div className="divide-y divide-white/[0.06]">
-        {draftProposalRows.map((item) => (
-          <div key={item.id} className="px-4 py-5 sm:px-6 sm:py-6">
-            <DraftProposalRow item={item} />
-          </div>
-        ))}
-      </div>
-    </DashboardPanel>
   );
 });
 
@@ -732,6 +607,8 @@ const Proposals = memo(function Proposals({
   const [canGoToNextDraftProposal, setCanGoToNextDraftProposal] = useState(false);
   const [draftProposalSnapCount, setDraftProposalSnapCount] = useState(0);
   const [activeDraftProposalSnap, setActiveDraftProposalSnap] = useState(0);
+  const [draftCardHeight, setDraftCardHeight] = useState(0);
+  const draftCardRefs = useRef({});
   const hasAutoOpenedProposalIntentRef = useRef(false);
 
   const handleOpenQuickProject = useCallback(() => {
@@ -982,7 +859,77 @@ const Proposals = memo(function Proposals({
     [draftProposalRows, internalDraftProposalRows, isControlled],
   );
 
-  const shouldUseDraftProposalCarousel = isMobile && items.length > 1;
+  const draftRedirectCards = useMemo(() => {
+    return [
+      {
+        id: "create-proposal-redirect",
+        title: "Create New Proposal",
+        onClick: handleOpenQuickProject,
+      },
+    ];
+  }, [handleOpenQuickProject]);
+
+  const totalVisibleDraftCards = items.length + draftRedirectCards.length;
+  const shouldUseDraftProposalCarousel = isMobile
+    ? totalVisibleDraftCards > 1
+    : totalVisibleDraftCards > 2;
+
+  const measureDraftCardHeights = useCallback(() => {
+    const heights = Object.values(draftCardRefs.current)
+      .map((card) => card?.getBoundingClientRect().height || 0)
+      .filter((height) => height > 0);
+
+    if (heights.length === 0) {
+      setDraftCardHeight(0);
+      return;
+    }
+
+    const maxHeight = Math.ceil(Math.max(...heights));
+    setDraftCardHeight((currentHeight) =>
+      currentHeight === maxHeight ? currentHeight : maxHeight,
+    );
+  }, []);
+
+  useEffect(() => {
+    if (items.length === 0) {
+      setDraftCardHeight(0);
+      return undefined;
+    }
+
+    let frameId = 0;
+    const scheduleMeasure = () => {
+      if (typeof window === "undefined") {
+        return;
+      }
+      window.cancelAnimationFrame(frameId);
+      frameId = window.requestAnimationFrame(measureDraftCardHeights);
+    };
+
+    scheduleMeasure();
+
+    const resizeObserver =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => {
+            scheduleMeasure();
+          })
+        : null;
+
+    Object.values(draftCardRefs.current).forEach((card) => {
+      if (card && resizeObserver) {
+        resizeObserver.observe(card);
+      }
+    });
+
+    window.addEventListener("resize", scheduleMeasure);
+
+    return () => {
+      window.removeEventListener("resize", scheduleMeasure);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [measureDraftCardHeights, items.length]);
 
   useEffect(() => {
     if (!draftProposalCarouselApi || !shouldUseDraftProposalCarousel) {
@@ -1204,11 +1151,16 @@ const Proposals = memo(function Proposals({
   return (
     <>
       <section className={cn("w-full min-w-0", className)}>
-        <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-          <div className="min-w-0">
-            <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
-              Proposals
-            </h2>
+        <div className="mb-4 flex flex-col gap-3.5 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
+            <div className="flex items-center gap-3">
+              <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+                Proposals
+              </h2>
+              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-2 text-[11px] font-bold text-primary">
+                {items.length}
+              </span>
+            </div>
           </div>
 
           {shouldUseDraftProposalCarousel ? (
@@ -1261,9 +1213,40 @@ const Proposals = memo(function Proposals({
                 {items.map((item) => (
                   <CarouselItem
                     key={item.id}
-                    className="basis-full pl-[2px] pr-[2px] pt-1 sm:basis-auto sm:max-w-[400px] lg:max-w-[440px]"
+                    className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-2.5rem)/3)]"
                   >
-                    <DraftProposalCard item={item} />
+                    <div
+                      ref={(node) => {
+                        draftCardRefs.current[item.id] = node;
+                      }}
+                    >
+                      <DraftProposalCard item={item} />
+                    </div>
+                  </CarouselItem>
+                ))}
+                {draftRedirectCards.map((item) => (
+                  <CarouselItem
+                    key={item.id}
+                    className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-2.5rem)/3)]"
+                  >
+                    <div
+                      className="h-full"
+                      style={
+                        draftCardHeight > 0
+                          ? { height: `${draftCardHeight}px` }
+                          : undefined
+                      }
+                    >
+                      <ProjectRedirectCard
+                        item={{
+                          id: item.id,
+                          Icon: Plus,
+                          title: item.title,
+                          onClick: item.onClick,
+                        }}
+                        className="w-full h-full"
+                      />
+                    </div>
                   </CarouselItem>
                 ))}
               </CarouselContent>
@@ -1276,10 +1259,41 @@ const Proposals = memo(function Proposals({
               getDotLabel={(index) => `Go to draft proposal ${index + 1}`}
             />
           </div>
-        ) : isMobile ? (
-          <DraftProposalCard item={items[0]} />
         ) : (
-          <DraftProposalListPanel draftProposalRows={items} />
+          <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 lg:gap-6 xl:gap-7">
+            {items.map((item) => (
+              <div
+                key={item.id}
+                ref={(node) => {
+                  draftCardRefs.current[item.id] = node;
+                }}
+                className="w-full"
+              >
+                <DraftProposalCard item={item} />
+              </div>
+            ))}
+            {draftRedirectCards.map((item) => (
+              <div
+                key={item.id}
+                style={
+                  draftCardHeight > 0
+                    ? { height: `${draftCardHeight}px` }
+                    : undefined
+                }
+                className="w-full"
+              >
+                <ProjectRedirectCard
+                  item={{
+                    id: item.id,
+                    Icon: Plus,
+                    title: item.title,
+                    onClick: item.onClick,
+                  }}
+                  className="w-full h-full"
+                />
+              </div>
+            ))}
+          </div>
         )}
       </section>
 
