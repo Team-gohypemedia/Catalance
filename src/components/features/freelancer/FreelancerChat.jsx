@@ -32,6 +32,7 @@ import Search from "lucide-react/dist/esm/icons/search";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import X from "lucide-react/dist/esm/icons/x";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import { apiClient, SOCKET_IO_URL, SOCKET_OPTIONS, SOCKET_ENABLED } from "@/shared/lib/api-client";
 import { migrateChatConversationStorageKey } from "@/shared/lib/storage-keys";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -288,6 +289,7 @@ const RequestDetailsPanel = ({
   onReject,
   accepting = false,
   rejecting = false,
+  onBack,
 }) => {
   if (!request) {
     return (
@@ -310,7 +312,16 @@ const RequestDetailsPanel = ({
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col bg-card">
       <div className="border-b border-border px-5 py-5 md:px-7">
-        <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-foreground transition-colors hover:bg-muted lg:hidden"
+            >
+              <ArrowLeft className="size-4.5" />
+            </button>
+          )}
+          <div className="flex flex-col gap-2">
           <p className="text-[1.2rem] font-semibold tracking-[-0.3px] text-foreground">
             {getFirstNonEmptyText(request.serviceTitle, request.title, "Marketplace Request")}
           </p>
@@ -318,6 +329,7 @@ const RequestDetailsPanel = ({
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
             {getFirstNonEmptyText(request.serviceType, "Marketplace request")}
           </p>
+        </div>
         </div>
       </div>
 
@@ -537,6 +549,7 @@ const ChatArea = ({
   onClearChat,
   isClearingChat = false,
   loading = false,
+  onBack,
 }) => {
   const messagesViewportRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -826,7 +839,15 @@ const ChatArea = ({
     <div className="flex h-full min-h-0 flex-1 flex-col bg-card">
       <div className="flex items-center justify-between gap-4 border-b border-border bg-card px-5 py-4 md:px-7">
         <div className="flex min-w-0 items-center gap-4">
-          <div className="relative shrink-0">
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-foreground transition-colors hover:bg-muted lg:hidden"
+            >
+              <ArrowLeft className="size-4.5" />
+            </button>
+          )}
+          <div className={cn("relative shrink-0", showMessageSearch && "hidden sm:block")}>
             <Avatar className="size-12 border border-border">
               <AvatarImage src={conversation?.avatar || undefined} alt={conversationAvatarLabel} />
               <AvatarFallback className="bg-muted text-sm font-semibold text-foreground">
@@ -841,25 +862,25 @@ const ChatArea = ({
             />
           </div>
 
-          <div className="min-w-0">
+          <div className={cn("min-w-0", showMessageSearch && "hidden sm:block")}>
             <p className="truncate text-[1.15rem] font-semibold tracking-[-0.3px] text-foreground">
               {conversationTitle}
             </p>
             <p className="truncate text-[13px] text-foreground/80">{conversationMembers}</p>
-            <p className={cn("text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[var(--primary)]" : "text-muted-foreground")}>
+            <p className={cn("truncate text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[var(--primary)]" : "text-muted-foreground")}>
               {online ? `${conversationSubtitle} • Online` : conversationSubtitle}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className={cn("flex shrink-0 items-center gap-2", showMessageSearch && "flex-1")}>
           {showMessageSearch ? (
             <Input
               ref={messageSearchInputRef}
               value={messageSearch}
               onChange={(event) => setMessageSearch(event.target.value)}
               placeholder="Search in chat..."
-              className="h-9 w-[220px] rounded-[14px] border-border bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0"
+              className="h-9 w-full rounded-[14px] border-border bg-transparent px-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:ring-0 sm:w-[220px]"
             />
           ) : null}
 
@@ -1467,7 +1488,9 @@ const FreelancerChatContent = () => {
     }
 
     if (!pendingRequests.some((request) => String(request.id) === String(selectedRequestId))) {
-      setSelectedRequestId(pendingRequests[0].id);
+      if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+        setSelectedRequestId(pendingRequests[0].id);
+      }
     }
   }, [pendingRequests, selectedRequestId]);
 
@@ -1476,7 +1499,9 @@ const FreelancerChatContent = () => {
 
     if (!currentKey) {
       if (!selectedConversation && conversations.length > 0 && activeTab === "messages") {
-        setSelectedConversation(conversations[0]);
+        if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+          setSelectedConversation(conversations[0]);
+        }
       }
       return;
     }
@@ -1570,7 +1595,9 @@ const FreelancerChatContent = () => {
             }
             
             if (!target) {
+              if (typeof window !== "undefined" && window.innerWidth >= 1024) {
                 target = finalList[0];
+              }
             }
             setSelectedConversation(target);
           } else if (!selectedConversation?.isMarketplaceRequestChat) {
@@ -2171,8 +2198,11 @@ const FreelancerChatContent = () => {
               </div>
             </div>
 
-            <div className="flex min-h-[680px] w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card lg:h-[calc(100vh-13.5rem)] lg:flex-row">
-              <aside className="flex w-full shrink-0 flex-col border-b border-border bg-card lg:w-[360px] lg:border-b-0 lg:border-r">
+            <div className="flex h-[calc(100dvh-14.5rem)] min-h-[500px] w-full flex-col overflow-hidden rounded-[28px] border border-border bg-card lg:h-[calc(100vh-13.5rem)] lg:min-h-[680px] lg:flex-row">
+              <aside className={cn(
+                "flex w-full shrink-0 flex-col border-b border-border bg-card lg:w-[360px] lg:border-b-0 lg:border-r",
+                (selectedConversationKey || selectedRequestId) ? "hidden lg:flex" : "flex"
+              )}>
                 <div className="px-4 pb-5 pt-5 md:px-6 md:pt-6">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-[#6b7280]" />
@@ -2300,7 +2330,10 @@ const FreelancerChatContent = () => {
                 </div>
               </aside>
 
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <div className={cn(
+                "min-h-0 min-w-0 flex-1 flex-col",
+                (selectedConversationKey || selectedRequestId) ? "flex" : "hidden lg:flex"
+              )}>
                 {activeTab === "requests" ? (
                   <RequestDetailsPanel
                     request={activeRequest}
@@ -2308,6 +2341,7 @@ const FreelancerChatContent = () => {
                     onReject={handleRejectRequest}
                     accepting={requestAction === `accept:${activeRequest?.id}`}
                     rejecting={requestAction === `reject:${activeRequest?.id}`}
+                    onBack={() => setSelectedRequestId(null)}
                   />
                 ) : selectedConversation ? (
                   <ChatArea
@@ -2325,6 +2359,7 @@ const FreelancerChatContent = () => {
                     onClearChat={selectedConversation?.isMarketplaceRequestChat ? undefined : handleClearChat}
                     isClearingChat={clearingChat}
                     loading={messagesLoading}
+                    onBack={() => setSelectedConversation(null)}
                   />
                 ) : (
                   <div className="flex h-full min-h-0 items-center justify-center bg-card px-6 py-12 md:py-16">
