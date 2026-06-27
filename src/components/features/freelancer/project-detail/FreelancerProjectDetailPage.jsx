@@ -122,7 +122,12 @@ const projectSectionEyebrowClassName =
   "text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-muted-foreground";
 const projectSectionSubheadingClassName = "text-foreground dark:text-white";
 const projectDetailFieldNames = [
+  "Client Name",
+  "Business Name",
+  "Company Name",
+  "Brand Name",
   "Service",
+  "Service Type",
   "Project",
   "Client",
   "Website type",
@@ -130,13 +135,16 @@ const projectDetailFieldNames = [
   "Website Build Type",
   "Tech stack",
   "Pages",
+  "Page Count",
   "Timeline",
   "Launch Timeline",
   "Budget",
   "Next Steps",
   "Summary",
   "Project Overview",
+  "Primary Objectives",
   "Deliverables",
+  "Features/Deliverables Included",
   "Pages & Features",
   "Core pages",
   "Core pages included",
@@ -146,6 +154,11 @@ const projectDetailFieldNames = [
   "Payment Gateway",
   "Designs",
   "Design Style",
+  "Reference Designs",
+  "Engagement Model",
+  "Delivery Timeline",
+  "Volume",
+  "Creative Type",
   "Hosting",
   "Domain",
   "Deployment",
@@ -1500,6 +1513,58 @@ const FreelancerProjectDetailContent = () => {
       toNarrativeBulletItems(featuresDeliverablesRaw),
     );
 
+    const excludedLower = [
+      "freelancer",
+      "freelancer name",
+      "service",
+      "service type",
+      "service name",
+      "project",
+      "projects",
+      "client",
+      "client name",
+      "business name",
+      "company name",
+      "brand name",
+      "summary",
+      "project overview",
+      "primary objectives",
+      "budget",
+      "timeline",
+      "launch timeline",
+    ];
+
+    const topItems = [];
+    const normalItems = [];
+    const seenVals = new Set();
+
+    for (const field of projectDetailFieldNames) {
+      if (excludedLower.includes(field.toLowerCase())) continue;
+      const val = extractField(field);
+      if (val && !seenVals.has(val.toLowerCase())) {
+        const item = { label: field, value: val };
+        const isList = val.includes(" - ") || val.match(/^[-•]\s/m);
+        if (isList) {
+          topItems.push(item);
+        } else {
+          normalItems.push(item);
+        }
+        seenVals.add(val.toLowerCase());
+      }
+    }
+
+    const websiteDetails = [...topItems, ...normalItems];
+
+    // fallback if absolutely empty
+    if (websiteDetails.length === 0 && (websiteType || designStyle || frontend || backend)) {
+      websiteDetails.push(
+        { label: "Category", value: websiteType || "Not specified" },
+        { label: "Visual Style", value: designStyle || "Not specified" },
+        { label: "Frontend", value: frontend || techStack || "Not specified" },
+        { label: "Backend", value: backend || "Not specified" }
+      );
+    }
+
     return {
       service,
       budget,
@@ -1508,14 +1573,7 @@ const FreelancerProjectDetailContent = () => {
       overview: sanitizedOverview,
       businessName,
       featuresDeliverables,
-      websiteDetails: [
-        { label: "Website Type", value: websiteType || "Not specified" },
-        { label: "Build Type", value: buildType || "Not specified" },
-        { label: "Page Count", value: pageSummary },
-        { label: "Design Style", value: designStyle || "Not specified" },
-        { label: "Framework", value: frontend || techStack || "Not specified" },
-        { label: "Database", value: database || "Not specified" },
-      ],
+      websiteDetails,
       pageTags: allPages,
     };
   }, [project, totalBudget]);

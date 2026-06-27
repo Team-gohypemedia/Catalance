@@ -271,6 +271,11 @@ const projectDetailFieldNames = [
   "Payment Gateway",
   "Designs",
   "Design Style",
+  "Reference Designs",
+  "Engagement Model",
+  "Delivery Timeline",
+  "Volume",
+  "Creative Type",
   "Hosting",
   "Domain",
   "Deployment",
@@ -286,6 +291,44 @@ const readProjectDetailField = (description = "", fieldName = "") =>
     ?.replace(/^[\s-]+/, "")
     ?.replace(/[\s-]+$/, "")
     ?.trim() || "";
+
+const toNarrativeBulletItems = (value = "") =>
+  String(value || "")
+    .split(/\s+-\s+|[\r\n]+|•/)
+    .map((item) =>
+      item
+        .replace(/^[\s-]+/, "")
+        .replace(/[\s-]+$/, "")
+        .trim(),
+    )
+    .filter((item) => item.length > 2);
+
+const websiteDetailDuplicatePrefixes = [
+  "website type",
+  "pages",
+  "design style",
+  "client",
+  "frontend",
+  "frontend framework",
+  "backend",
+  "backend technology",
+  "database",
+  "website build type",
+  "hosting",
+  "page count",
+  "launch timeline",
+  "budget",
+];
+
+const removeWebsiteDetailDuplicates = (items = []) =>
+  items.filter((item) => {
+    const normalized = String(item || "").trim().toLowerCase();
+    if (!normalized) return false;
+
+    return !websiteDetailDuplicatePrefixes.some((prefix) =>
+      normalized.startsWith(`${prefix}:`),
+    );
+  });
 
 const parseProjectDetailList = (value = "") =>
   String(value || "")
@@ -1935,7 +1978,9 @@ const ProjectDashboard = () => {
           ? "Deliverables"
           : "Pages & Features"
       : "";
-    const deliverablesItems = parseProjectDetailList(featuresDeliverables);
+    const deliverablesItems = removeWebsiteDetailDuplicates(
+      toNarrativeBulletItems(featuresDeliverables)
+    );
 
     const corePages = parseProjectDetailList(
       extractField("Core pages included") || extractField("Core pages"),

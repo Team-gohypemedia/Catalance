@@ -189,36 +189,52 @@ const FreelancerProjectDetailMainColumn = ({
       </Card>
       {/* Features & Specs stacked vertically */}
       <div className="flex flex-col gap-3">
-        <Card className={panelClassName}>
-          <CardHeader className="px-4 pb-2 pt-4">
-            <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-1">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-              {projectDetailSnapshot.websiteDetails.map((item) => {
-                const IconComponent = getMetadataIcon(item.label);
-                return (
-                  <div
-                    key={item.label}
-                    className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 dark:border-white/[0.04] dark:bg-[#262626]/40 px-3 py-2.5"
-                  >
-                    <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5">
-                      <IconComponent className="size-3.5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60 dark:text-white/45">
-                        {item.label}
-                      </p>
-                      <p className="text-[13px] font-semibold text-foreground dark:text-white/90 leading-snug">
-                        {item.value || "—"}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+        {(() => {
+          const filteredSpecs = projectDetailSnapshot.websiteDetails.filter((item) => {
+            if (!featuresList.length) return true;
+            const normalizedLabel = item.label.toLowerCase();
+            return ![
+              "deliverables",
+              "features/deliverables included",
+              "pages & features",
+            ].includes(normalizedLabel);
+          });
+
+          if (filteredSpecs.length === 0) return null;
+
+          return (
+            <Card className={panelClassName}>
+              <CardHeader className="px-4 pb-2 pt-4">
+                <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-1">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                  {filteredSpecs.map((item) => {
+                    const IconComponent = getMetadataIcon(item.label);
+                    return (
+                      <div
+                        key={item.label}
+                        className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 dark:border-white/[0.04] dark:bg-[#262626]/40 px-3 py-2.5"
+                      >
+                        <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary mt-0.5">
+                          <IconComponent className="size-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/60 dark:text-white/45">
+                            {item.label}
+                          </p>
+                          <p className="whitespace-pre-line text-[13px] font-semibold text-foreground dark:text-white/90 leading-snug">
+                            {item.value || "—"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         <Card className={panelClassName}>
           <CardHeader className="px-4 pb-2 pt-4">

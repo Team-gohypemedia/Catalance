@@ -157,26 +157,25 @@ const ClientProjectDetailMainColumn = ({
       </CardContent>
     </Card>
 
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-      <Card className={panelClassName}>
-        <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-          <CardTitle className={eyebrowClassName}>Features</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {projectDetailSnapshot.deliverablesItems.length > 0 ? (
-            <ul className="flex flex-col gap-3 px-2 pb-2 sm:space-y-5 sm:px-2">
-              {projectDetailSnapshot.deliverablesItems.map((item) => (
-                <li
-                  key={item}
-                  className="flex min-w-0 items-start gap-3 text-sm leading-7 text-foreground dark:text-[#e4e4e7]"
-                >
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="px-2 pb-1 text-sm leading-7 text-muted-foreground dark:text-[#d4d4d8]">
+    <Card className={panelClassName}>
+      <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
+        <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {projectDetailSnapshot.deliverablesItems.length > 0 ? (
+          <ul className="space-y-2 px-2 pb-2">
+            {projectDetailSnapshot.deliverablesItems.map((item, index) => (
+              <li
+                key={index}
+                className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
+              >
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-2 pb-1 text-sm leading-7 text-muted-foreground dark:text-[#d4d4d8]">
               Feature and deliverable details will appear once the brief is
               structured.
             </p>
@@ -184,47 +183,52 @@ const ClientProjectDetailMainColumn = ({
         </CardContent>
       </Card>
 
-      <Card className={panelClassName}>
-      <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-        <CardTitle className={eyebrowClassName}>Website Specifications</CardTitle>
-      </CardHeader>
-      <CardContent className="px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
-        <div className="flex flex-col gap-3.5">
-          {projectDetailSnapshot.websiteDetails
-            .filter((item) => {
-              if (!projectDetailSnapshot.deliverablesItems.length) return true;
-              const normalizedLabel = item.label.toLowerCase();
-              return ![
-                "deliverables",
-                "features/deliverables included",
-                "pages & features",
-              ].includes(normalizedLabel);
-            })
-            .map((item) => {
-              const IconComponent = getMetadataIcon(item.label);
-              return (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-4 rounded-[16px] border border-border/50 bg-muted/30 px-4 py-3.5 dark:border-white/[0.04] dark:bg-[#262626]/40"
-                >
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary">
-                    <IconComponent className="size-5" />
+    {(() => {
+      const filteredSpecs = projectDetailSnapshot.websiteDetails.filter((item) => {
+        if (!projectDetailSnapshot.deliverablesItems.length) return true;
+        const normalizedLabel = item.label.toLowerCase();
+        return ![
+          "deliverables",
+          "features/deliverables included",
+          "pages & features",
+        ].includes(normalizedLabel);
+      });
+
+      if (filteredSpecs.length === 0) return null;
+
+      return (
+        <Card className={panelClassName}>
+          <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
+            <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+            <div className="flex flex-col gap-3.5">
+              {filteredSpecs.map((item) => {
+                const IconComponent = getMetadataIcon(item.label);
+                return (
+                  <div
+                    key={item.label}
+                    className="flex items-center gap-4 rounded-[16px] border border-border/50 bg-muted/30 px-4 py-3.5 dark:border-white/[0.04] dark:bg-[#262626]/40"
+                  >
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary dark:bg-primary/15 dark:text-primary">
+                      <IconComponent className="size-5" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="text-[0.66rem] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 dark:text-white/45">
+                        {item.label}
+                      </p>
+                      <p className="whitespace-pre-line break-words text-[0.95rem] font-semibold leading-relaxed text-foreground dark:text-white/90">
+                        {item.value || "Not specified"}
+                      </p>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-[0.66rem] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 dark:text-white/45">
-                      {item.label}
-                    </p>
-                    <p className="break-words text-[0.95rem] font-semibold leading-relaxed text-foreground dark:text-white/90">
-                      {item.value || "Not specified"}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      </CardContent>
-    </Card>
-    </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    })()}
 
     <Card className={panelClassName}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-6 pt-5 px-6">
