@@ -1,6 +1,8 @@
 import Headset from "lucide-react/dist/esm/icons/headset";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Store from "lucide-react/dist/esm/icons/store";
+import Bot from "lucide-react/dist/esm/icons/bot";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +23,7 @@ const ClientProjectDetailHeader = ({
   canToggleMarketplaceLive = false,
   isUpdatingMarketplaceLive = false,
   onToggleMarketplaceLive,
+  onOpenAiChat,
 }) => (
   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
     <div className="space-y-1.5">
@@ -34,7 +37,7 @@ const ClientProjectDetailHeader = ({
       </p>
     </div>
     <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:self-start">
-      {canToggleMarketplaceLive ? (
+      {/* canToggleMarketplaceLive ? (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -68,7 +71,20 @@ const ClientProjectDetailHeader = ({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-      ) : null}
+      ) : null */}
+
+      {/* <Button
+        size="sm"
+        className="h-9 rounded-full px-4 border-0 text-white bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 shadow-sm shadow-violet-500/25 transition-all duration-300 hover:shadow-violet-500/40"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (onOpenAiChat) onOpenAiChat();
+        }}
+      >
+        <Sparkles className="mr-2 h-4 w-4" />
+        Generate Code with AI
+      </Button> */}
 
       <TooltipProvider>
         <Tooltip>

@@ -104,6 +104,7 @@ import ClientProjectDetailHeader from "./ClientProjectDetailHeader";
 import ClientProjectDetailMainColumn from "./ClientProjectDetailMainColumn";
 import ClientProjectDetailSidebar from "./ClientProjectDetailSidebar";
 import ProjectDetailSkeleton from "./ProjectDetailSkeleton";
+import AICodeGeneratorChat from "./AICodeGeneratorChat";
 
 const DEFAULT_MEETING_TIME_SLOTS = [
   "09:00 AM",
@@ -486,6 +487,7 @@ const ProjectDashboard = () => {
   const [completedTaskIds, setCompletedTaskIds] = useState(new Set());
   const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
   const [verifyingTaskIds, setVerifyingTaskIds] = useState(() => new Set());
+  const [isAiChatOpen, setIsAiChatOpen] = useState(false);
   const fileInputRef = useRef(null);
   const reportDialogContentRef = useRef(null);
   const completedTaskIdsRef = useRef(new Set());
@@ -2683,7 +2685,16 @@ const ProjectDashboard = () => {
                 canToggleMarketplaceLive={canToggleMarketplaceLive}
                 isUpdatingMarketplaceLive={isUpdatingMarketplaceLive}
                 onToggleMarketplaceLive={handleToggleMarketplaceLive}
+                onOpenAiChat={() => setIsAiChatOpen(true)}
               />
+
+              {isAiChatOpen ? (
+                <AICodeGeneratorChat
+                  open={isAiChatOpen}
+                  onOpenChange={setIsAiChatOpen}
+                  project={project}
+                />
+              ) : null}
 
               {bookAppointmentOpen ? (
                 <BookAppointment

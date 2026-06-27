@@ -2097,6 +2097,13 @@ const isInternalAiTask = (selectedServiceName = "") =>
 const resolveChatRequestProfile = (selectedServiceName = "") => {
   const normalizedTaskName = String(selectedServiceName || "").trim();
   if (!isInternalAiTask(normalizedTaskName)) {
+    if (normalizedTaskName === "web_development") {
+      return {
+        ...DEFAULT_CHAT_REQUEST_PROFILE,
+        title: "Catalance AI Assistant - Web Development",
+        maxTokens: 8000,
+      };
+    }
     return DEFAULT_CHAT_REQUEST_PROFILE;
   }
 
