@@ -2136,7 +2136,7 @@ export const payUpfront = asyncHandler(async (req, res) => {
 
   const project = await getProjectForUpfrontPayment(id);
   assertProjectOwnerCanPay(project, userId);
-  const { paymentPlan, installment } = resolveDueInstallmentForPayment(project);
+  const { acceptedProposal, paymentPlan, installment } = resolveDueInstallmentForPayment(project);
 
   const nextSpentAmount = Math.min(
     paymentPlan.totalAmount,

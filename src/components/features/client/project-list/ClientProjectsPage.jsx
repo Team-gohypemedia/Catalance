@@ -6,6 +6,13 @@ import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Users from "lucide-react/dist/esm/icons/users";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { ProjectCarouselControls } from "@/components/client/client-dashboard/shared.jsx";
@@ -122,6 +129,8 @@ const ClientProjectsPage = () => {
   const [activeProjectSnap, setActiveProjectSnap] = useState(0);
   const [activeFilter, setActiveFilter] = useState("ongoing");
   const [mobileProjectCardHeight, setMobileProjectCardHeight] = useState(0);
+  const [activeServiceFilter, setActiveServiceFilter] = useState("all");
+
   const projectCardRefs = useRef({});
   const hasUserSelectedFilterRef = useRef(false);
   const requestedFilter = String(searchParams.get("filter") || "").toLowerCase();
@@ -179,14 +188,28 @@ const ClientProjectsPage = () => {
     [handleBrowseMarketplace, handleStartProject],
   );
 
+  const availableServices = useMemo(() => {
+    const services = new Set();
+    projectCards.forEach((project) => {
+      if (project.serviceType) {
+        services.add(project.serviceType);
+      }
+    });
+    return ["all", ...Array.from(services)];
+  }, [projectCards]);
+
   const visibleProjectCards = useMemo(
     () =>
-      projectCards.filter((project) =>
-        activeFilter === "completed"
-          ? project.statusMeta.label === "Completed"
-          : project.statusMeta.label !== "Completed",
-      ),
-    [activeFilter, projectCards],
+      projectCards.filter((project) => {
+        const matchesStatus =
+          activeFilter === "completed"
+            ? project.statusMeta.label === "Completed"
+            : project.statusMeta.label !== "Completed";
+        const matchesService =
+          activeServiceFilter === "all" ? true : project.serviceType === activeServiceFilter;
+        return matchesStatus && matchesService;
+      }),
+    [activeFilter, activeServiceFilter, projectCards],
   );
 
   const carouselProjectCards = useMemo(
@@ -316,7 +339,7 @@ const ClientProjectsPage = () => {
                   </h1>
                 </div>
 
-                <div className="flex flex-col items-end gap-3 sm:gap-2">
+                <div className="flex flex-col items-end gap-3 sm:flex-row sm:items-center sm:gap-4">
                   <div className="inline-flex h-auto w-full flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {projectFilterOptions.map((option) => {
                       const count =
@@ -340,6 +363,29 @@ const ClientProjectsPage = () => {
                       );
                     })}
                   </div>
+                  {availableServices.length > 1 && (
+                    <Select value={activeServiceFilter} onValueChange={setActiveServiceFilter}>
+                      <SelectTrigger className="w-full sm:w-[200px] h-10 sm:h-11 rounded-[24px] border-border bg-background font-medium">
+                        <SelectValue placeholder="Filter by Service" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {availableServices.map((service) => {
+                          const displayLabel = service === "all" 
+                            ? "All Services" 
+                            : service
+                                .split(/[_]/)
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(" ");
+                                
+                          return (
+                            <SelectItem key={service} value={service}>
+                              {displayLabel}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </section>
 
