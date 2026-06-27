@@ -1105,9 +1105,14 @@ export const ProjectProposalCard = ({
             </div>
           </div>
 
-          <span className="text-right text-xs font-semibold text-primary shrink-0">
-            {project.serviceType || project.sectionLabel}
-          </span>
+          <div className="flex flex-col items-end shrink-0 min-w-0">
+            <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80 leading-none mb-1.5">
+              Service
+            </span>
+            <span className="text-right text-xs font-semibold text-primary">
+              {project.serviceType || project.sectionLabel}
+            </span>
+          </div>
         </div>
 
         <div className="mt-4 border-t border-border/60" />
