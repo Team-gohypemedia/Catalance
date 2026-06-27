@@ -21,7 +21,7 @@ import {
   mergeProposalStructureDefinitions,
   resolveProjectAgencyProposalFlag,
 } from "../../../src/shared/lib/project-proposal-fields.js";
-import { generateFreelancerMatchingJson } from "../services/ai.service.js";
+import { generateFreelancerMatchingJson, generateProjectSopJson } from "../services/ai.service.js";
 import { archiveCompletedProject } from "../services/completed-projects.service.js";
 import {
   findLeastLoadedActiveProjectManager,
@@ -516,6 +516,71 @@ const buildProjectFreelancerMatchingData = async (
     : {};
 };
 
+const buildProjectSopGenerationContext = ({
+  input = {},
+  proposalData = null,
+  fallback = null,
+  proposalStructure = "",
+} = {}) => {
+  const matchingContext = buildProjectFreelancerMatchingContext({
+    input,
+    proposalData,
+    fallback,
+  });
+
+  return {
+    ...matchingContext,
+    category: normalizeProjectProposalText(
+      input?.category || fallback?.category || "",
+    ),
+    proposalStructure: normalizeProjectProposalText(
+      proposalStructure || input?.proposalStructure || fallback?.proposalStructure || "",
+    ),
+    selectedServiceNames: input?.selectedServiceNames || fallback?.selectedServiceNames || [],
+    selectedServiceIds: input?.selectedServiceIds || fallback?.selectedServiceIds || [],
+  };
+};
+
+const shouldRegenerateProjectSop = ({
+  existing = null,
+  updates = {},
+  shouldRefreshProposalFields = false,
+} = {}) => {
+  const hasRelevantProjectChanges =
+    shouldRefreshProposalFields ||
+    hasOwnField(updates, "title") ||
+    hasOwnField(updates, "description") ||
+    hasOwnField(updates, "serviceType") ||
+    hasOwnField(updates, "serviceKey") ||
+    hasOwnField(updates, "service") ||
+    hasOwnField(updates, "serviceName") ||
+    hasOwnField(updates, "category");
+
+  if (!hasRelevantProjectChanges) {
+    return false;
+  }
+
+  const existingCustomSop =
+    typeof existing?.customSop === "string"
+      ? safeJsonParse(existing.customSop, null)
+      : existing?.customSop && typeof existing.customSop === "object"
+        ? existing.customSop
+        : null;
+  const hasTrackedTaskProgress =
+    normalizeTaskIdArray(existing?.completedTasks).length > 0 ||
+    normalizeTaskIdArray(existing?.verifiedTasks).length > 0;
+
+  if (hasTrackedTaskProgress) {
+    return false;
+  }
+
+  if (!existingCustomSop) {
+    return true;
+  }
+
+  return String(existingCustomSop?._meta?.source || "").toLowerCase() === "ai";
+};
+
 const flattenFreelancerProfile = (freelancer = null) => {
   if (!freelancer || typeof freelancer !== "object") return freelancer;
   const profile =
@@ -879,6 +944,13 @@ export const createProject = asyncHandler(async (req, res) => {
   const freelancerMatchingData = await buildProjectFreelancerMatchingData(req.body, {
     proposalData: structuredProposalData,
   });
+  const generatedProjectSop = await generateProjectSopJson(
+    buildProjectSopGenerationContext({
+      input: proposalPayload,
+      proposalData: structuredProposalData,
+      proposalStructure: resolvedInternalProposalStructure,
+    }),
+  );
 
   console.log("Looking for an available Project Manager...");
   const projectManager = await findLeastLoadedActiveProjectManager({
@@ -894,6 +966,7 @@ export const createProject = asyncHandler(async (req, res) => {
       ...structuredProposalData,
       ...freelancerMatchingData,
       isAgencyProposal,
+      customSop: generatedProjectSop,
       status: status || "DRAFT",
       progress: 0,
       ownerId: userId,
@@ -1262,10 +1335,10 @@ export const updateProject = asyncHandler(async (req, res) => {
         fallback: existing,
       })
       : null;
+    const resolvedInternalProposalStructure =
+      resolvedProposalStructure?.proposalStructure || "";
 
     if (shouldRefreshProposalFields) {
-      const resolvedInternalProposalStructure =
-        resolvedProposalStructure?.proposalStructure || "";
       const proposalPayload = resolvedInternalProposalStructure
         ? {
           ...updates,
@@ -1299,6 +1372,26 @@ export const updateProject = asyncHandler(async (req, res) => {
             preserveFallback: true,
           },
         ),
+      );
+    }
+
+    if (
+      shouldRegenerateProjectSop({
+        existing,
+        updates,
+        shouldRefreshProposalFields,
+      })
+    ) {
+      sanitizedUpdates.customSop = await generateProjectSopJson(
+        buildProjectSopGenerationContext({
+          input: {
+            ...updates,
+            ...sanitizedUpdates,
+          },
+          proposalData: shouldRefreshProposalFields ? sanitizedUpdates : null,
+          fallback: existing,
+          proposalStructure: resolvedInternalProposalStructure,
+        }),
       );
     }
 

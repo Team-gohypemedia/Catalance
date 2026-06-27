@@ -579,7 +579,7 @@ const getRangeCenter = (range = {}) => {
   return (range.min + range.max) / 2;
 };
 
-const buildMatchingProfile = (source = {}) => {
+export const buildMatchingProfile = (source = {}) => {
   const matchingSeed = buildProjectMatchingSeed(source) || {};
   const project = isPlainObject(matchingSeed.project) ? matchingSeed.project : {};
   const matchingQuery = isPlainObject(matchingSeed.matchingQuery)
@@ -1517,11 +1517,51 @@ const evaluateCandidateMatch = ({
     niches.matchedValues.length > 0 ||
     projectTypes.matchedValues.length > 0 ||
     textRelevance.score > 0;
+          const ignoredSummaries = new Set([
+    "proposal",
+    (targetProfile.serviceKey || "").toLowerCase().trim(),
+    (targetProfile.serviceType || "").toLowerCase().trim()
+  ]);
+
+  const normalizedSummary = targetProfile.summary ? normalizeServiceSignal(targetProfile.summary) : "";
+  const serviceKeySet = new Set([
+    ...(targetProfile.serviceKeys || []),
+    ...(targetProfile.agencyServiceKeys || [])
+  ]);
+  const isSummaryJustAServiceKey = serviceKeySet.has(normalizedSummary);
+
+  const concreteProjectTypes = (targetProfile.projectTypes || []).filter(
+    (pt) => !serviceKeySet.has(normalizeServiceSignal(pt))
+  );
+
+  const targetHasConcreteSignals =
+    (targetProfile.skills || []).length > 0 ||
+    (targetProfile.niches || []).length > 0 ||
+    concreteProjectTypes.length > 0 ||
+    Boolean(
+      targetProfile.summary &&
+      targetProfile.summary.trim() !== "" &&
+      !ignoredSummaries.has(targetProfile.summary.toLowerCase().trim()) &&
+      !isSummaryJustAServiceKey
+    );
+
   const hasConcreteOverlap =
+    !targetHasConcreteSignals ||
     skills.matchedValues.length > 0 ||
     niches.matchedValues.length > 0 ||
     projectTypes.matchedValues.length > 0 ||
     textRelevance.score > 0;
+    
+  if (freelancer?.fullName === 'Shoaib Malik') {
+    console.log('Shoaib Match Debug:', {
+      targetHasConcreteSignals,
+      targetProfileSkills: targetProfile.skills,
+      targetProfileSummary: targetProfile.summary,
+      hasConcreteOverlap,
+      skillsMatched: skills.matchedValues.length,
+      textScore: textRelevance.score
+    });
+  }
 
   if (!hasSignalMatch) {
     const debug = buildLevelDebugSummary({
@@ -2606,10 +2646,13 @@ export const matchFreelancersForProposalPayload = async (
 
 export const matchFreelancersForProposal = async (
   proposalId,
-  { limit = DEFAULT_MATCH_LIMIT, minResults = DEFAULT_MIN_RESULTS } = {},
+  { limit = DEFAULT_MATCH_LIMIT, minResults = DEFAULT_MIN_RESULTS, overrides = {} } = {},
 ) => {
   const resolvedSource = await resolveProposalMatchingSource(proposalId);
-  const targetProfile = buildMatchingProfile(resolvedSource.source);
+  const targetProfile = buildMatchingProfile({
+    ...resolvedSource.source,
+    ...overrides,
+  });
   const agencyServiceKeys = uniqueItems(
     (Array.isArray(targetProfile?.agencyServiceKeys) ? targetProfile.agencyServiceKeys : [])
       .map((serviceKey) => normalizeServiceSignal(serviceKey))

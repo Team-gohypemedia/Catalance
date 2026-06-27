@@ -1965,6 +1965,13 @@ export const ClientProposalDataProvider = ({ children }) => {
     }
 
     if (!deepLinkProjectId) {
+      if (grouped?.draft?.length === 0) {
+        if (grouped?.pending?.length > 0) {
+          setActiveTab("pending");
+        } else if (grouped?.rejected?.length > 0) {
+          setActiveTab("rejected");
+        }
+      }
       setHasHandledDeepLink(true);
       return;
     }
@@ -2002,6 +2009,7 @@ export const ClientProposalDataProvider = ({ children }) => {
     deepLinkDraftId,
     deepLinkProjectId,
     deepLinkTab,
+    grouped,
     handleOpenProposal,
     hasHandledDeepLink,
     isLoading,

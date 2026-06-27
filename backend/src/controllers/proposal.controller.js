@@ -106,9 +106,18 @@ const normalizeProposalMatchPayload = (proposal = {}) => {
       project.budget ??
       resolvedProposal.projectBudget ??
       null,
+    budgetSummary:
+      resolvedProposal.budgetSummary ??
+      resolvedProposal.amount ??
+      resolvedProposal.budget ??
+      resolvedProposal.proposalContext?.budget ??
+      project.budgetSummary ??
+      project.budget ??
+      null,
     syncedProjectId:
       resolvedProposal.syncedProjectId || resolvedProposal.projectId || project.id || null,
     projectId: resolvedProposal.projectId || project.id || null,
+    freelancerMatchingJson: null,
   };
 };
 
@@ -145,6 +154,7 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     try {
       matchingResult = await matchFreelancersForProposal(proposalId, {
         limit: req.body?.limit,
+        overrides: hasProposalPayload ? proposal : {},
       });
     } catch (error) {
       const shouldFallbackToPayload =
