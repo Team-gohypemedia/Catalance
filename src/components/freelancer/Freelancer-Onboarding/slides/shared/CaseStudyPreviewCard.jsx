@@ -59,8 +59,8 @@ export const CaseStudyPreviewCard = ({
         )}
         
         {isActive && !isReviewMode && (
-          <div className="absolute top-4 left-4 flex items-center justify-center rounded-full bg-primary text-black p-1 shadow-md">
-            <CheckCircle2 className="w-5 h-5 fill-black stroke-primary" />
+          <div className="absolute top-4 left-4 flex items-center justify-center rounded-full bg-primary text-primary-foreground p-1 shadow-md">
+            <CheckCircle2 className="w-5 h-5 fill-primary-foreground stroke-primary" />
           </div>
         )}
 

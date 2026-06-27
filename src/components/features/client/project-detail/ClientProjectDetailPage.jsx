@@ -2651,8 +2651,8 @@ const ProjectDashboard = () => {
             primaryActionLabel="Projects"
             primaryActionTo="/client/project"
           />
+          <ProjectDetailSkeleton />
         </div>
-        <ProjectDetailSkeleton />
       </div>
     );
   }

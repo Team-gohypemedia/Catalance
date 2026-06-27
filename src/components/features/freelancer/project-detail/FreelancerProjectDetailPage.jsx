@@ -1588,8 +1588,8 @@ const FreelancerProjectDetailContent = () => {
             primaryActionLabel="Projects"
             primaryActionTo="/freelancer/project"
           />
+          <ProjectDetailSkeleton />
         </div>
-        <ProjectDetailSkeleton />
       </div>
     );
   }

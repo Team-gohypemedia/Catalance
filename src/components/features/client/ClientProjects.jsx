@@ -43,7 +43,7 @@ const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
 
 const projectStatusToneMap = {
   success: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  warning: "border-border bg-card text-primary",
+  warning: "border-transparent bg-primary/10 text-primary",
   slate: "border-border bg-card text-muted-foreground",
 };
 
@@ -959,11 +959,14 @@ export const ProjectProposalCard = ({
   const statusBadge = (
     <span
       className={cn(
-        "inline-flex h-7 min-w-0 max-w-full shrink items-center justify-center whitespace-nowrap rounded-[8px] border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] sm:h-8 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.14em]",
+        "inline-flex h-7 min-w-0 max-w-full shrink items-center gap-1.5 justify-center whitespace-nowrap rounded-full border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] sm:h-8 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.14em]",
         projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
       )}
       title={project.statusMeta.label}
     >
+      {project.statusMeta.tone === "warning" && (
+        <span className="size-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
+      )}
       {project.statusMeta.label}
     </span>
   );

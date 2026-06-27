@@ -136,7 +136,8 @@ const FreelancerRunningProjectCard = ({
             <p className="mt-1 text-[11px] text-muted-foreground">{item?.timeLabel}</p>
           </div>
 
-          <Badge className="rounded-[10px] border-0 bg-[#2f1e05] px-3 py-1 text-[11px] font-semibold text-[var(--primary)]">
+          <Badge className="inline-flex items-center gap-1.5 rounded-full border-0 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
+            <span className="size-1.5 rounded-full bg-primary animate-pulse" />
             {badgeLabel}
           </Badge>
         </div>
@@ -144,7 +145,7 @@ const FreelancerRunningProjectCard = ({
         <div className="mt-4">
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span>Freelancer share</span>
-            <span className="font-semibold text-zinc-100">{item?.amount}</span>
+            <span className="font-semibold text-foreground dark:text-zinc-100">{item?.amount}</span>
           </div>
           <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
             <div className="h-full rounded-full bg-primary" style={{ width: `${progress}%` }} />
@@ -874,7 +875,7 @@ const DeliveryPipeline = ({
                                             row.isCompleted
                                               ? "bg-emerald-500/20 text-emerald-300"
                                               : row.isActive
-                                                ? "bg-[var(--primary)] text-black"
+                                                ? "bg-primary text-primary-foreground"
                                                 : "bg-white/[0.06] text-zinc-400",
                                           )}
                                           style={{ left: `${rowLabelCenterPct}%` }}

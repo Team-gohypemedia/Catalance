@@ -1741,7 +1741,7 @@ const FreelancerRunningProjectCard = ({
   canShowSelection,
   onSelect,
 }) => {
-  const statusBg = "bg-[#2f1e05] text-[var(--primary)]";
+  const statusBg = "inline-flex items-center gap-1.5 bg-primary/10 text-primary";
   const lineBg = "bg-primary";
   const progress = Math.max(0, Math.min(100, Number(item?.progress) || 0));
   const badgeLabel =
@@ -1777,7 +1777,8 @@ const FreelancerRunningProjectCard = ({
               <p className="mt-1 text-[11px] text-muted-foreground">{item?.timeLabel}</p>
             </div>
 
-            <Badge className={cn("rounded-[10px] border-0 px-3 py-1 text-[11px] font-semibold", statusBg)}>
+            <Badge className={cn("rounded-full border-0 px-3 py-1 text-[11px] font-semibold", statusBg)}>
+              <span className="size-1.5 rounded-full bg-primary animate-pulse" />
               {badgeLabel}
             </Badge>
           </div>
@@ -1785,7 +1786,7 @@ const FreelancerRunningProjectCard = ({
           <div className="mt-4">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <span>Freelancer share</span>
-              <span className="font-semibold text-zinc-100">{item?.amount}</span>
+              <span className="font-semibold text-foreground dark:text-zinc-100">{item?.amount}</span>
             </div>
             <div className="mt-2 h-[3px] w-full overflow-hidden rounded-full bg-white/[0.06]">
               <div className={cn("h-full rounded-full", lineBg)} style={{ width: `${progress}%` }} />
@@ -1840,7 +1841,7 @@ const FreelancerPendingProposalRow = ({ item }) => (
         disabled={item.isAccepting}
         className={cn(
           freelancerPendingProposalActionButtonClassName,
-          "bg-[var(--primary)] text-black hover:bg-primary/80 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
+          "bg-primary text-primary-foreground hover:bg-primary/90 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
           item.isAccepting && "cursor-not-allowed opacity-60",
         )}
       >
@@ -1954,7 +1955,7 @@ const FreelancerPendingProposalsSection = ({
             <button
               type="button"
               onClick={onOpenAll}
-              className="mt-6 inline-flex h-11 min-w-[180px] items-center justify-center rounded-xl bg-[var(--primary)] px-6 text-sm font-bold text-black dark:text-[#1C1B1F] shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98"
+              className="mt-6 inline-flex h-11 min-w-[180px] items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98"
             >
               View Proposals
             </button>
@@ -4422,7 +4423,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                                               row.isCompleted
                                                 ? "bg-emerald-500/20 text-emerald-300"
                                                 : row.isActive
-                                                  ? "bg-[var(--primary)] text-black"
+                                                  ? "bg-primary text-primary-foreground"
                                                   : "bg-white/[0.06] text-zinc-400",
                                             )}
                                             style={{ left: `${rowLabelCenterPct}%` }}

@@ -32,7 +32,7 @@ const PROJECT_PROGRESS_BY_STATUS = Object.freeze({
 
 const projectStatusToneMap = {
   success: "border-emerald-600/40 bg-emerald-950/30 dark:border-[#14532d] dark:bg-[#0c2616] text-emerald-600 dark:text-[#34d399]",
-  warning: "border-primary/40 bg-primary/10 dark:border-[#5a3b0d] dark:bg-[#2f1e05] text-primary",
+  warning: "border-transparent bg-primary/10 text-primary",
   slate: "border-border bg-muted/50 text-muted-foreground",
 };
 
@@ -793,10 +793,13 @@ const FreelancerProjectCard = ({ project }) => {
 
           <span
             className={cn(
-              "inline-flex rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.82rem] font-semibold",
               projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
             )}
           >
+            {project.statusMeta.tone === "warning" && (
+              <span className="size-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
+            )}
             {project.statusMeta.label}
           </span>
         </div>
