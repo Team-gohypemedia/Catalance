@@ -215,7 +215,7 @@ const ActiveProjects = memo(function ActiveProjects({
   }, []);
 
   useEffect(() => {
-    if (!isMobile || !shouldUseProjectCarousel) {
+    if (filteredItems.length === 0) {
       setMobileProjectCardHeight(0);
       return undefined;
     }
@@ -403,14 +403,14 @@ const ActiveProjects = memo(function ActiveProjects({
                       <div
                         className="h-full"
                         style={
-                          isMobile && mobileProjectCardHeight > 0
+                          mobileProjectCardHeight > 0
                             ? { height: `${mobileProjectCardHeight}px` }
                             : undefined
                         }
                       >
                         <ProjectRedirectCard
                           item={item}
-                          className={activeProjectRedirectCardClassName}
+                          className="w-full h-full"
                         />
                       </div>
                     </CarouselItem>
@@ -428,21 +428,37 @@ const ActiveProjects = memo(function ActiveProjects({
           ) : (
             <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
               {filteredItems.map((item) => (
-                <ProjectProposalCard
+                <div
                   key={item.id}
-                  project={item}
-                  onPay={handlePayProject}
-                  isPaying={resolvedRunningProjectProcessingId === item.id}
-                  replaceSectionBadgeWithStatus
-                  className={activeProjectCardClassName}
-                />
+                  ref={(node) => {
+                    projectCardRefs.current[item.id] = node;
+                  }}
+                  className="w-full"
+                >
+                  <ProjectProposalCard
+                    project={item}
+                    onPay={handlePayProject}
+                    isPaying={resolvedRunningProjectProcessingId === item.id}
+                    replaceSectionBadgeWithStatus
+                    className={activeProjectCardClassName}
+                  />
+                </div>
               ))}
               {visibleRedirectCards.map((item) => (
-                <ProjectRedirectCard
+                <div
                   key={item.id}
-                  item={item}
-                  className={activeProjectRedirectCardClassName}
-                />
+                  style={
+                    mobileProjectCardHeight > 0
+                      ? { height: `${mobileProjectCardHeight}px` }
+                      : undefined
+                  }
+                  className="w-full"
+                >
+                  <ProjectRedirectCard
+                    item={item}
+                    className="w-full h-full"
+                  />
+                </div>
               ))}
             </div>
           )}
