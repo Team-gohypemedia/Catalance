@@ -2001,7 +2001,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => {
   return (
     <div
       className={cn(
-        "flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 sm:p-5 xl:p-6",
+        "flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[28px] border border-border bg-card p-4 sm:p-5 xl:p-6",
         className,
       )}
     >
@@ -2025,7 +2025,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => {
       <button
         type="button"
         onClick={item.onClick}
-        className="inline-flex h-[58px] w-full shrink-0 items-center justify-center rounded-[14px] bg-[#f5cd05] px-6 text-[1.02rem] font-bold uppercase tracking-[0.04em] text-black transition-colors hover:bg-[#ffdd4f]"
+        className="inline-flex h-[58px] w-full shrink-0 items-center justify-center rounded-[14px] bg-primary px-6 text-[1.02rem] font-bold uppercase tracking-[0.04em] text-primary-foreground transition-colors hover:bg-primary/90"
       >
         {String(item.actionLabel || "Action").toUpperCase()}
       </button>
@@ -2843,7 +2843,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     [metrics.acceptedProposals, resolveProjectProgress]
   );
   const shouldUseProjectCarousel = true;
-  const activeProjectCardClassName = "w-full md:min-h-[506px]";
+  const activeProjectCardClassName = "w-full h-full md:min-h-[506px]";
   const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
   const freelancerProjectRedirectCards = useMemo(() => {
     return [
@@ -3913,13 +3913,14 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                   }}
                   className="w-full"
                 >
-                  <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                  <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                     {runningProjectCards.map((projectCard) => (
                       <CarouselItem
                         key={projectCard.id}
                         className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                       >
                         <div
+                          className="h-full"
                           ref={(node) => {
                             projectCardRefs.current[projectCard.id] = node;
                           }}
@@ -3938,6 +3939,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                         className="pl-[2px] pr-[2px] pt-1 basis-full md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                       >
                         <div
+                          className="h-full"
                           style={
                             isMobile && mobileProjectCardHeight > 0
                               ? { height: `${mobileProjectCardHeight}px` }
@@ -3962,7 +3964,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                 />
               </div>
             ) : (
-              <div className="grid items-start gap-5 sm:gap-6 lg:gap-6 xl:gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+              <div className="grid items-stretch gap-5 sm:gap-6 lg:gap-6 xl:gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                   {runningProjectCards.map((projectCard) => (
                     <ProjectProposalCard
                       key={projectCard.id}
@@ -3977,7 +3979,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                       item={item}
                       className={activeProjectRedirectCardClassName}
                     />
-                ))}
+                  ))}
               </div>
             )}
           </section>

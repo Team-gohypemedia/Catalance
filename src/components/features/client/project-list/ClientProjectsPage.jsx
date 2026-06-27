@@ -32,7 +32,7 @@ const projectFilterOptions = [
 
 const projectFilterKeys = new Set(projectFilterOptions.map((option) => option.key));
 
-const activeProjectCardClassName = "w-full";
+const activeProjectCardClassName = "w-full h-full";
 const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
 
 const getDisplayName = (user) => resolveUserDisplayName(user, "Client");
@@ -362,7 +362,7 @@ const ClientProjectsPage = () => {
                 ) : null}
 
                 {isLoading ? (
-                  <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                     {[1, 2, 3].map((item) => (
                       <ProjectCardSkeleton key={item} />
                     ))}
@@ -380,7 +380,7 @@ const ClientProjectsPage = () => {
                         }}
                         className="w-full"
                       >
-                        <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                        <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                           {carouselProjectCards.map((item) => {
                             const isStaticCard =
                               item.id === "start-project" || item.id === "browse-marketplace";
@@ -388,10 +388,11 @@ const ClientProjectsPage = () => {
                             return (
                               <CarouselItem
                                 key={item.id}
-                                className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] xl:basis-[calc((100%-3.5rem)/3)]"
+                                className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                               >
                                 {isStaticCard ? (
                                   <div
+                                    className="h-full"
                                     style={
                                       isMobile && mobileProjectCardHeight > 0
                                         ? { height: `${mobileProjectCardHeight}px` }
@@ -405,6 +406,7 @@ const ClientProjectsPage = () => {
                                   </div>
                                 ) : (
                                   <div
+                                    className="h-full"
                                     ref={(node) => {
                                       projectCardRefs.current[item.id] = node;
                                     }}
@@ -445,7 +447,7 @@ const ClientProjectsPage = () => {
                       />
                     </div>
                   ) : (
-                    <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                       {carouselProjectCards.map((item) => {
                         const isStaticCard =
                           item.id === "start-project" || item.id === "browse-marketplace";
