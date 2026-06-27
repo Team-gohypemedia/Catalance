@@ -56,11 +56,15 @@ const FreelancerProjectDetailDialogs = ({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Submit Task for Client Review?</DialogTitle>
+          <DialogTitle>
+            {taskCompletionConfirm.isUnchecking 
+              ? "Remove from Pending Review?" 
+              : "Submit Task for Client Review?"}
+          </DialogTitle>
           <DialogDescription>
-            This will mark "{taskCompletionConfirm.taskTitle || "task"}" as
-            pending review and notify the client. The task becomes completed
-            only after client verification.
+            {taskCompletionConfirm.isUnchecking 
+              ? `This will remove "${taskCompletionConfirm.taskTitle || "task"}" from pending review and move it back to in-progress.` 
+              : `This will mark "${taskCompletionConfirm.taskTitle || "task"}" as pending review and notify the client. The task becomes completed only after client verification.`}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -77,8 +81,12 @@ const FreelancerProjectDetailDialogs = ({
           >
             Cancel
           </Button>
-          <Button type="button" onClick={handleConfirmTaskCompletion}>
-            Confirm and Submit
+          <Button 
+            type="button" 
+            onClick={handleConfirmTaskCompletion}
+            variant={taskCompletionConfirm.isUnchecking ? "destructive" : "default"}
+          >
+            {taskCompletionConfirm.isUnchecking ? "Remove" : "Confirm and Submit"}
           </Button>
         </DialogFooter>
       </DialogContent>

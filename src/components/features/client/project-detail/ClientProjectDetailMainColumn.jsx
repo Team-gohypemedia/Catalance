@@ -170,7 +170,7 @@ const ClientProjectDetailMainColumn = ({
                   key={item}
                   className="flex min-w-0 items-start gap-3 text-sm leading-7 text-foreground dark:text-[#e4e4e7]"
                 >
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[#ffd400]" />
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
                   <span>{item}</span>
                 </li>
               ))}

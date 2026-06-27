@@ -234,7 +234,7 @@ const FreelancerProjectDetailMainColumn = ({
                       key={`feature-mob-${index}`}
                       className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
                     >
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#ffd400]" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <span>{feature}</span>
                     </li>
                   ))}
@@ -246,7 +246,7 @@ const FreelancerProjectDetailMainColumn = ({
                       key={`feature-desk-${index}`}
                       className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
                     >
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#ffd400]" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <span>{feature}</span>
                     </li>
                   ))}

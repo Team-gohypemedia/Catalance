@@ -2030,8 +2030,9 @@ const CategorySkillBrowser = ({
         </div>
       ) : null}
 
+
       {isSearchOpen && query.trim() ? (
-        <div className="mt-2 max-h-80 overflow-y-auto rounded-2xl border border-border bg-card shadow-sm subtle-scrollbar">
+        <div className="absolute left-0 top-[56px] z-50 w-full max-h-80 overflow-y-auto rounded-2xl border border-border bg-card shadow-sm subtle-scrollbar">
           {!hasSearchResults ? (
             <div className="space-y-3 px-4 py-3">
               <p className="text-sm text-muted-foreground">No matching category or skill found.</p>
@@ -2121,7 +2122,7 @@ const CategorySkillBrowser = ({
       ) : null}
 
       {isBrowseOpen ? (
-        <div className="mt-2 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+        <div className="absolute left-0 top-[56px] z-50 w-full overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
           <div className="border-b border-border p-3">
             <Input
               value={categoryQuery}
@@ -2153,7 +2154,6 @@ const CategorySkillBrowser = ({
                           if (isSelected) onActiveCategoryChange(key);
                           else toggleCategory(category);
                         }}
-                        onMouseEnter={() => isSelected && onActiveCategoryChange(key)}
                         className={cn(
                           "flex min-h-10 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors",
                           isActive ? "bg-primary/12 text-foreground" : "text-foreground/85 hover:bg-muted/70",
