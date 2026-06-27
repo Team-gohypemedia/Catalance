@@ -31,18 +31,31 @@ const initialFormState = {
 };
 
 function PMRegister({ className, ...props }) {
-  const [formData, setFormData] = useState(initialFormState);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { login: setAuthSession } = useAuth();
+  const prefilledEmail =
+    typeof location.state?.verifyEmail === "string"
+      ? location.state.verifyEmail
+      : typeof location.state?.email === "string"
+        ? location.state.email
+        : "";
+  const prefilledPassword =
+    typeof location.state?.password === "string" ? location.state.password : "";
+  const shouldOpenVerification = Boolean(location.state?.showVerification);
+  const [formData, setFormData] = useState(() => ({
+    ...initialFormState,
+    ...(prefilledEmail ? { email: prefilledEmail } : {}),
+    ...(prefilledPassword ? { password: prefilledPassword } : {}),
+  }));
   const [formError, setFormError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(shouldOpenVerification);
   const [otpValue, setOtpValue] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isResendingOtp, setIsResendingOtp] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { login: setAuthSession } = useAuth();
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined;
@@ -51,6 +64,24 @@ function PMRegister({ className, ...props }) {
     }, 1000);
     return () => window.clearTimeout(timeoutId);
   }, [resendCooldown]);
+
+  useEffect(() => {
+    if (!prefilledEmail && !prefilledPassword && !shouldOpenVerification) {
+      return;
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      ...(prefilledEmail ? { email: prefilledEmail } : {}),
+      ...(prefilledPassword ? { password: prefilledPassword } : {}),
+    }));
+
+    if (shouldOpenVerification) {
+      setIsVerifying(true);
+      setOtpValue("");
+      setFormError("");
+    }
+  }, [prefilledEmail, prefilledPassword, shouldOpenVerification]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;

@@ -33,13 +33,20 @@ const initialFormState = {
 };
 
 function PMLogin({ className, ...props }) {
-    const [formData, setFormData] = useState(initialFormState);
+    const location = useLocation();
+    const [formData, setFormData] = useState(() => ({
+        ...initialFormState,
+        ...(typeof location.state?.verifyEmail === "string"
+            ? { email: location.state.verifyEmail }
+            : typeof location.state?.email === "string"
+                ? { email: location.state.email }
+                : {}),
+    }));
     const [formError, setFormError] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const navigate = useNavigate();
-    const location = useLocation();
     const { login: setAuthSession } = useAuth();
 
     const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -77,6 +84,19 @@ function PMLogin({ className, ...props }) {
                 password: formData.password,
                 role: "PROJECT_MANAGER",
             });
+
+            if (authPayload?.requiresVerification) {
+                toast.info(authPayload.message || "Please verify your email.");
+                navigate("/project-manager/register", {
+                    replace: true,
+                    state: {
+                        email: authPayload.email || formData.email.trim().toLowerCase(),
+                        showVerification: true,
+                        redirectTo: location?.state?.redirectTo,
+                    },
+                });
+                return;
+            }
 
             const role = String(authPayload?.user?.role || "").toUpperCase();
             const roles = Array.isArray(authPayload?.user?.roles)
