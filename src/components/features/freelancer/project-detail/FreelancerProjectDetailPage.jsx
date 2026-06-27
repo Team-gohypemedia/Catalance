@@ -280,6 +280,8 @@ const FreelancerProjectDetailContent = () => {
   });
   const fileInputRef = useRef(null);
   const reportDialogContentRef = useRef(null);
+  const isUpdatingTaskRef = useRef(false);
+  const lastMutationTimeRef = useRef(0);
 
   // Dispute Report State
   const [reportOpen, setReportOpen] = useState(false);
@@ -713,11 +715,24 @@ const FreelancerProjectDetailContent = () => {
     }
 
     let active = true;
-    const fetchProject = async () => {
-      setIsLoading(true);
+    const fetchProject = async (isBackground = false) => {
+      const fetchStartTime = Date.now();
+      if (isBackground && isUpdatingTaskRef.current) return;
+      if (!isBackground) setIsLoading(true);
       try {
-        const response = await authFetch("/proposals");
+        const response = await authFetch(`/proposals?t=${Date.now()}`);
         const payload = await response.json().catch(() => null);
+        
+        // Ignore stale fetch results if a mutation occurred during or right after the request started,
+        // or if a mutation was very recent (within 10 seconds, to allow backend replica sync).
+        if (
+          fetchStartTime < lastMutationTimeRef.current || 
+          isUpdatingTaskRef.current ||
+          Date.now() - lastMutationTimeRef.current < 10000
+        ) {
+          return;
+        }
+
         const proposals = Array.isArray(payload?.data) ? payload.data : [];
         const match = proposals.find(
           (p) => String(p?.project?.id) === String(projectId)
@@ -767,26 +782,28 @@ const FreelancerProjectDetailContent = () => {
           if (Array.isArray(match.project.verifiedTasks)) {
             setVerifiedTaskIds(new Set(match.project.verifiedTasks));
           }
-        } else if (active) {
+        } else if (active && !isBackground) {
           setProject(null);
           setIsFallback(true);
         }
       } catch (error) {
         console.error("Failed to load freelancer project detail:", error);
-        if (active) {
+        if (active && !isBackground) {
           setProject(null);
           setIsFallback(true);
         }
       } finally {
-        if (active) {
+        if (active && !isBackground) {
           setIsLoading(false);
         }
       }
     };
 
     fetchProject();
+    const interval = setInterval(() => fetchProject(true), 5000);
     return () => {
       active = false;
+      clearInterval(interval);
     };
   }, [authFetch, isAuthenticated, projectId]);
 
@@ -1177,23 +1194,24 @@ const FreelancerProjectDetailContent = () => {
       return;
     }
 
-    let newCompleted;
+    const prevCompleted = completedTaskIds;
+    const updated = new Set(prevCompleted);
     let isMarkingComplete = false;
-
-    setCompletedTaskIds((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(uniqueKey)) {
-        updated.delete(uniqueKey);
-      } else {
-        updated.add(uniqueKey);
-        isMarkingComplete = true;
-      }
-      newCompleted = Array.from(updated);
-      return updated;
-    });
+    
+    if (updated.has(uniqueKey)) {
+      updated.delete(uniqueKey);
+    } else {
+      updated.add(uniqueKey);
+      isMarkingComplete = true;
+    }
+    const newCompleted = Array.from(updated);
+    setCompletedTaskIds(updated);
 
     if (project?.id && authFetch) {
+      isUpdatingTaskRef.current = true;
       try {
+        isUpdatingTaskRef.current = true;
+        lastMutationTimeRef.current = Date.now();
         const payload = {
           completedTasks: newCompleted,
         };
@@ -1206,11 +1224,48 @@ const FreelancerProjectDetailContent = () => {
           };
         }
 
-        await authFetch(`/projects/${project.id}`, {
+        const updateRes = await authFetch(`/projects/${project.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+
+        if (!updateRes.ok) {
+          throw new Error("Failed to update task status on server.");
+        }
+
+        // Send automated chat message to notify the client
+        if (isMarkingComplete && taskTitle && conversationId) {
+          try {
+            const serviceKey =
+              project?.ownerId && user?.id
+                ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
+                : `project:${project?.id || projectId}`;
+
+            await authFetch(`/chat/conversations/${conversationId}/messages`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                content: `I have completed the task: "${taskTitle}". Please review it when you have a moment.`,
+                service: serviceKey,
+                senderRole: "FREELANCER",
+                senderName: resolveUserDisplayName(user, "Freelancer"),
+                skipAssistant: true, 
+              }),
+            });
+            
+            // Add optimistic message to the chat view
+            setMessages((prev) => [...prev, {
+              id: Date.now().toString(),
+              sender: "user",
+              text: `I have completed the task: "${taskTitle}". Please review it when you have a moment.`,
+              timestamp: new Date(),
+              pending: true,
+            }]);
+          } catch (e) {
+            console.error("Failed to send automated task completion message", e);
+          }
+        }
 
         if (isMarkingComplete) {
           toast.success("Task submitted for client review.");
@@ -1220,6 +1275,19 @@ const FreelancerProjectDetailContent = () => {
       } catch (error) {
         console.error("Failed to save task state:", error);
         toast.error("Failed to update task status.");
+        // Revert local state on failure
+        setCompletedTaskIds((prev) => {
+          const reverted = new Set(prev);
+          if (isMarkingComplete) {
+            reverted.delete(uniqueKey);
+          } else {
+            reverted.add(uniqueKey);
+          }
+          return reverted;
+        });
+      } finally {
+        isUpdatingTaskRef.current = false;
+        lastMutationTimeRef.current = Date.now();
       }
     }
   };
@@ -1241,11 +1309,18 @@ const FreelancerProjectDetailContent = () => {
         open: true,
         uniqueKey,
         taskTitle: taskTitle || "this task",
+        isUnchecking: false,
+      });
+      return;
+    } else {
+      setTaskCompletionConfirm({
+        open: true,
+        uniqueKey,
+        taskTitle: taskTitle || "this task",
+        isUnchecking: true,
       });
       return;
     }
-
-    await toggleTaskCompletion(uniqueKey, taskTitle);
   };
 
   const handleConfirmTaskCompletion = async () => {

@@ -51,8 +51,9 @@ import {
 
 const PdfAttachmentPreview = lazy(() => import("./PdfAttachmentPreview"));
 
-const ChatIconButton = ({ className, children, ...props }) => (
+const ChatIconButton = React.forwardRef(({ className, children, ...props }, ref) => (
   <button
+    ref={ref}
     type="button"
     className={cn(
       "flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-muted hover:text-foreground dark:hover:bg-white/[0.03] dark:hover:text-white disabled:pointer-events-none disabled:opacity-50",
@@ -62,7 +63,8 @@ const ChatIconButton = ({ className, children, ...props }) => (
   >
     {children}
   </button>
-);
+));
+ChatIconButton.displayName = "ChatIconButton";
 
 const ChatArea = React.memo(function ChatArea({
   conversation,

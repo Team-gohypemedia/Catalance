@@ -421,18 +421,20 @@ const updateConversationDetails = (list, targetKey, updater) =>
     }),
   );
 
-const ChatIconButton = ({ className, children, ...props }) => (
+const ChatIconButton = React.forwardRef(({ className, children, ...props }, ref) => (
   <button
+    ref={ref}
     type="button"
     className={cn(
-      "flex size-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-black/[0.05] dark:hover:bg-white/[0.05] hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
+      "flex size-9 items-center justify-center rounded-full text-[#8f96a3] transition hover:bg-muted hover:text-foreground dark:hover:bg-white/[0.03] dark:hover:text-white disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}
   >
     {children}
   </button>
-);
+));
+ChatIconButton.displayName = "ChatIconButton";
 
 const ConversationItem = ({
   conversation,

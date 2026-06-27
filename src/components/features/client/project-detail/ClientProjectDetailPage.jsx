@@ -494,6 +494,8 @@ const ProjectDashboard = () => {
   const verifiedTaskIdsRef = useRef(new Set());
   const latestProgressMutationIdRef = useRef(0);
   const latestMessageCreatedAtRef = useRef(null);
+  const isUpdatingTaskRef = useRef(false);
+  const lastMutationTimeRef = useRef(0);
 
   // Catalyst Request State
   const [reportOpen, setReportOpen] = useState(false);
@@ -1103,12 +1105,24 @@ const ProjectDashboard = () => {
     }
 
     let active = true;
-    const fetchProject = async () => {
-      setIsLoading(true);
+    const fetchProject = async (isBackground = false) => {
+      const fetchStartTime = Date.now();
+      if (isBackground && isUpdatingTaskRef.current) return;
+      if (!isBackground) setIsLoading(true);
       try {
-        const response = await authFetch(`/projects/${projectId}`);
+        const response = await authFetch(`/projects/${projectId}?t=${Date.now()}`);
         const payload = await response.json().catch(() => null);
         const data = payload?.data || null;
+
+        // Ignore stale fetch results if a mutation occurred during or right after the request started,
+        // or if a mutation was very recent (within 10 seconds, to allow backend replica sync).
+        if (
+          fetchStartTime < lastMutationTimeRef.current || 
+          isUpdatingTaskRef.current ||
+          Date.now() - lastMutationTimeRef.current < 10000
+        ) {
+          return;
+        }
 
         if (active && data) {
           syncProjectState(data);
@@ -1116,15 +1130,17 @@ const ProjectDashboard = () => {
       } catch (error) {
         console.error("Failed to load project detail:", error);
       } finally {
-        if (active) {
+        if (active && !isBackground) {
           setIsLoading(false);
         }
       }
     };
 
     fetchProject();
+    const interval = setInterval(() => fetchProject(true), 5000);
     return () => {
       active = false;
+      clearInterval(interval);
     };
   }, [authFetch, isAuthenticated, projectId, syncProjectState]);
 
@@ -1160,6 +1176,8 @@ const ProjectDashboard = () => {
     setCompletedTaskIds(nextCompletedTaskIds);
     setVerifiedTaskIds(nextVerifiedTaskIds);
 
+    isUpdatingTaskRef.current = true;
+    lastMutationTimeRef.current = Date.now();
     try {
       const payload = {
         progress: newProgress,
@@ -1192,6 +1210,48 @@ const ProjectDashboard = () => {
       ) {
         syncProjectState(updatePayload.data);
       }
+
+      // Send automated chat message if it was a verification action
+      if (updateRes.ok && notificationMeta && conversationId) {
+        try {
+          const serviceKey =
+            project?.ownerId && user?.id
+              ? `CHAT:${project?.id || projectId}:${project.ownerId}:${user.id}`
+              : `project:${project?.id || projectId}`;
+              
+          let content = "";
+          if (notificationMeta.type === "TASK_VERIFIED") {
+            content = `I have reviewed and verified the task: "${notificationMeta.taskName}".`;
+          } else if (notificationMeta.type === "TASK_UNVERIFIED") {
+            content = `I have unmarked the verified task: "${notificationMeta.taskName}".`;
+          }
+
+          if (content) {
+            await authFetch(`/chat/conversations/${conversationId}/messages`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                content,
+                service: serviceKey,
+                senderRole: "CLIENT",
+                senderName: resolveUserDisplayName(user, "Client"),
+                skipAssistant: true,
+              }),
+            });
+            
+            // Add optimistic message to the chat view
+            setMessages((prev) => [...prev, {
+              id: Date.now().toString(),
+              sender: "user",
+              text: content,
+              timestamp: new Date(),
+              pending: true,
+            }]);
+          }
+        } catch (e) {
+          console.error("Failed to send automated verification message", e);
+        }
+      }
     } catch (error) {
       console.error("Failed to update project progress:", error);
       if (requestId === latestProgressMutationIdRef.current) {
@@ -1211,6 +1271,9 @@ const ProjectDashboard = () => {
         setVerifiedTaskIds(previousVerifiedTaskIds);
       }
       toast.error(error?.message || "Failed to update project progress.");
+    } finally {
+      isUpdatingTaskRef.current = false;
+      lastMutationTimeRef.current = Date.now();
     }
   };
 
@@ -2414,34 +2477,27 @@ const ProjectDashboard = () => {
       return;
     }
 
-    let newCompleted, newVerified;
+    const prevCompleted = completedTaskIdsRef.current;
+    const updatedCompleted = new Set(prevCompleted);
+    if (updatedCompleted.has(uniqueKey)) {
+      updatedCompleted.delete(uniqueKey);
+    } else {
+      updatedCompleted.add(uniqueKey);
+    }
+    const newCompleted = Array.from(updatedCompleted);
 
-    setCompletedTaskIds((prev) => {
-      const updated = new Set(prev);
-      if (updated.has(uniqueKey)) {
-        updated.delete(uniqueKey);
-      } else {
-        updated.add(uniqueKey);
-      }
-      newCompleted = Array.from(updated);
-      return updated;
-    });
-
-    // Also remove from verified if unchecking
-    setVerifiedTaskIds((prev) => {
-      const updated = new Set(prev);
-      if (!newCompleted.includes(uniqueKey)) {
-        updated.delete(uniqueKey);
-      }
-      newVerified = Array.from(updated);
-      return updated;
-    });
+    const prevVerified = verifiedTaskIdsRef.current;
+    const updatedVerified = new Set(prevVerified);
+    if (!updatedCompleted.has(uniqueKey)) {
+      updatedVerified.delete(uniqueKey);
+    }
+    const newVerified = Array.from(updatedVerified);
 
     // Calculate new progress based on VERIFIED tasks
     const allTasks = activeSOP.tasks;
     const totalTasks = allTasks.length;
     const verifiedCount = allTasks.filter((t) =>
-      newVerified.includes(`${t.phase}-${t.id}`)
+      updatedVerified.has(`${t.phase}-${t.id}`)
     ).length;
     const newProgress = Math.round((verifiedCount / totalTasks) * 100);
 
