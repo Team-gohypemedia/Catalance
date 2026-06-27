@@ -2890,7 +2890,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     [metrics.acceptedProposals, resolveProjectProgress]
   );
   const shouldUseProjectCarousel = true;
-  const activeProjectCardClassName = "w-full h-full md:min-h-[506px]";
+  const activeProjectCardClassName = "w-full";
   const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
   const freelancerProjectRedirectCards = useMemo(() => {
     return [

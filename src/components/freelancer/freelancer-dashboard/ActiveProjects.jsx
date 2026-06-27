@@ -276,7 +276,6 @@ const ActiveProjects = ({
                   className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                 >
                   <div
-                    className="h-full"
                     ref={(node) => {
                       projectCardRefs.current[projectCard.id] = node;
                     }}

@@ -1081,7 +1081,7 @@ export const ProjectProposalCard = ({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
             <Avatar className="size-9 shrink-0 border border-border">
               {canRenderFreelancerAvatar ? (
                 <img
@@ -1099,17 +1099,20 @@ export const ProjectProposalCard = ({
               ) : null}
             </Avatar>
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-foreground leading-tight">{project.freelancerName}</p>
               <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">{project.freelancerRole}</p>
             </div>
           </div>
 
-          <div className="flex flex-col items-end shrink-0 min-w-0">
+          <div className="flex flex-col items-end min-w-0 max-w-[45%]">
             <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80 leading-none mb-1.5">
               Service
             </span>
-            <span className="text-right text-xs font-semibold text-primary">
+            <span 
+              className="text-right text-xs font-semibold text-primary truncate w-full"
+              title={project.serviceType || project.sectionLabel}
+            >
               {project.serviceType || project.sectionLabel}
             </span>
           </div>

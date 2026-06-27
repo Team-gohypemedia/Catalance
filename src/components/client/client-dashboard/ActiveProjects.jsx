@@ -9,6 +9,14 @@ import React, {
 import { useNavigate } from "react-router-dom";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Users from "lucide-react/dist/esm/icons/users";
+import Filter from "lucide-react/dist/esm/icons/filter";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
   ProjectCarouselControls,
@@ -25,8 +33,8 @@ import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
 
-const activeProjectCardClassName = "w-full h-full";
-const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
+const activeProjectCardClassName = "w-full";
+const activeProjectRedirectCardClassName = "w-full md:min-h-[506px]";
 
 const ActiveProjects = memo(function ActiveProjects({
   showcaseItems,
@@ -88,6 +96,41 @@ const ActiveProjects = memo(function ActiveProjects({
     ];
   }, [navigate, onOpenHireFreelancer, onOpenQuickProject]);
 
+  const [selectedCategory, setSelectedCategory] = useState("All projects");
+
+  // Get categories and their item counts
+  const categoriesWithCounts = useMemo(() => {
+    const counts = {};
+    items.forEach((project) => {
+      if (project.serviceType) {
+        counts[project.serviceType] = (counts[project.serviceType] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [items]);
+
+  const categoryOptions = useMemo(() => {
+    return Object.keys(categoriesWithCounts);
+  }, [categoriesWithCounts]);
+
+  // Filter project cards based on selected category
+  const filteredItems = useMemo(() => {
+    if (selectedCategory === "All projects") {
+      return items;
+    }
+    return items.filter(
+      (project) => project.serviceType === selectedCategory
+    );
+  }, [items, selectedCategory]);
+
+  // Only show redirect cards when viewing "All projects"
+  const visibleRedirectCards = useMemo(() => {
+    if (selectedCategory === "All projects") {
+      return projectRedirectCards;
+    }
+    return [];
+  }, [projectRedirectCards, selectedCategory]);
+
   const handlePayProject = useCallback(
     async (project) => {
       if (!project?.id) return;
@@ -122,7 +165,7 @@ const ActiveProjects = memo(function ActiveProjects({
     [dashboardData, onPayRunningProject],
   );
 
-  const totalVisibleProjectCards = items.length + projectRedirectCards.length;
+  const totalVisibleProjectCards = filteredItems.length + visibleRedirectCards.length;
   const shouldUseProjectCarousel = isMobile
     ? totalVisibleProjectCards > 1
     : totalVisibleProjectCards > 3;
@@ -210,7 +253,7 @@ const ActiveProjects = memo(function ActiveProjects({
       }
       window.cancelAnimationFrame(frameId);
     };
-  }, [isMobile, measureProjectCardHeights, shouldUseProjectCarousel, items.length]);
+  }, [isMobile, measureProjectCardHeights, shouldUseProjectCarousel, filteredItems.length]);
 
   if (shouldHideEmptySection) {
     return null;
@@ -225,7 +268,7 @@ const ActiveProjects = memo(function ActiveProjects({
               Active Projects
             </h2>
             <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-2 text-[11px] font-bold text-primary">
-              {items?.length || 0}
+              {filteredItems.length}
             </span>
             <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
               <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
@@ -235,16 +278,69 @@ const ActiveProjects = memo(function ActiveProjects({
           </div>
         </div>
 
-        {!resolvedIsLoading && shouldUseProjectCarousel ? (
-          <ProjectCarouselControls
-            onPrevious={() => projectCarouselApi?.scrollPrev()}
-            onNext={() => projectCarouselApi?.scrollNext()}
-            canGoPrevious={canGoToPreviousProjects}
-            canGoNext={canGoToNextProjects}
-            previousLabel="Show previous active projects"
-            nextLabel="Show next active projects"
-          />
-        ) : null}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Service Category Dropdown Filter */}
+          {!resolvedIsLoading && items.length > 0 && (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer sm:text-sm"
+                >
+                  <Filter className="size-3.5" />
+                  <span>
+                    {selectedCategory === "All projects"
+                      ? "All projects"
+                      : selectedCategory}
+                  </span>
+                  <ChevronDown className="size-3.5 opacity-80" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={6}
+                className="w-[280px] min-w-[var(--radix-dropdown-menu-trigger-width)] rounded-2xl bg-card p-1.5 border border-border shadow-md"
+              >
+                <DropdownMenuItem
+                  onClick={() => setSelectedCategory("All projects")}
+                  className={`flex justify-between items-center px-3 py-2.5 text-xs sm:text-sm rounded-xl cursor-pointer hover:bg-muted focus:bg-muted focus:text-foreground ${
+                    selectedCategory === "All projects" ? "bg-muted font-semibold" : ""
+                  }`}
+                >
+                  <span>All projects</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded-full">
+                    {items.length}
+                  </span>
+                </DropdownMenuItem>
+                {categoryOptions.map((category) => (
+                  <DropdownMenuItem
+                    key={category}
+                    onClick={() => setSelectedCategory(category)}
+                    className={`flex justify-between items-center px-3 py-2.5 text-xs sm:text-sm rounded-xl cursor-pointer hover:bg-muted focus:bg-muted focus:text-foreground ${
+                      selectedCategory === category ? "bg-muted font-semibold" : ""
+                    }`}
+                  >
+                    <span className="pr-2">{category}</span>
+                    <span className="text-[10px] sm:text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded-full shrink-0">
+                      {categoriesWithCounts[category]}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {!resolvedIsLoading && shouldUseProjectCarousel ? (
+            <ProjectCarouselControls
+              onPrevious={() => projectCarouselApi?.scrollPrev()}
+              onNext={() => projectCarouselApi?.scrollNext()}
+              canGoPrevious={canGoToPreviousProjects}
+              canGoNext={canGoToNextProjects}
+              previousLabel="Show previous active projects"
+              nextLabel="Show next active projects"
+            />
+          ) : null}
+        </div>
       </div>
 
       {resolvedIsLoading ? (
@@ -255,7 +351,18 @@ const ActiveProjects = memo(function ActiveProjects({
         </div>
       ) : items.length > 0 ? (
         <>
-          {shouldUseProjectCarousel ? (
+          {filteredItems.length === 0 && visibleRedirectCards.length === 0 ? (
+            <DashboardPanel className="flex h-[220px] items-center justify-center rounded-[28px] border border-white/[0.06] bg-card p-8 text-center sm:h-[260px]">
+              <div className="max-w-md">
+                <p className="text-[1.35rem] font-semibold tracking-[-0.03em] dark:text-white text-[#1C1B1F]">
+                  No projects in this category
+                </p>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  Try selecting another category or "All projects" to view your active pipeline.
+                </p>
+              </div>
+            </DashboardPanel>
+          ) : shouldUseProjectCarousel ? (
             <div className="w-full">
               <Carousel
                 setApi={setProjectCarouselApi}
@@ -268,13 +375,12 @@ const ActiveProjects = memo(function ActiveProjects({
                 className="w-full"
               >
                 <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
-                  {items.map((item) => (
+                  {filteredItems.map((item) => (
                     <CarouselItem
                       key={item.id}
                       className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
                     >
                       <div
-                        className="h-full"
                         ref={(node) => {
                           projectCardRefs.current[item.id] = node;
                         }}
@@ -289,7 +395,7 @@ const ActiveProjects = memo(function ActiveProjects({
                       </div>
                     </CarouselItem>
                   ))}
-                  {projectRedirectCards.map((item) => (
+                  {visibleRedirectCards.map((item) => (
                     <CarouselItem
                       key={item.id}
                       className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]"
@@ -321,7 +427,7 @@ const ActiveProjects = memo(function ActiveProjects({
             </div>
           ) : (
             <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
-              {items.map((item) => (
+              {filteredItems.map((item) => (
                 <ProjectProposalCard
                   key={item.id}
                   project={item}
@@ -331,7 +437,7 @@ const ActiveProjects = memo(function ActiveProjects({
                   className={activeProjectCardClassName}
                 />
               ))}
-              {projectRedirectCards.map((item) => (
+              {visibleRedirectCards.map((item) => (
                 <ProjectRedirectCard
                   key={item.id}
                   item={item}
