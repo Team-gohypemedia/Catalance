@@ -261,9 +261,9 @@ const ActiveProjects = memo(function ActiveProjects({
 
   return (
     <section className={cn("mt-6 sm:mt-14", className)}>
-      <div className="mb-4 flex items-center justify-between gap-4 sm:mb-5">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
+      <div className="mb-4 flex flex-col gap-3.5 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
+          <div className="flex items-center gap-3">
             <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
               Active Projects
             </h2>
@@ -278,7 +278,7 @@ const ActiveProjects = memo(function ActiveProjects({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
           {/* Service Category Dropdown Filter */}
           {!resolvedIsLoading && items.length > 0 && (
             <DropdownMenu modal={false}>

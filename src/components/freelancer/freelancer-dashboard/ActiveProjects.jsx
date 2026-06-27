@@ -164,9 +164,9 @@ const ActiveProjects = ({
 
   return (
     <section>
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-3">
+      <div className="mb-6 flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
+          <div className="flex items-center gap-3">
             <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
               Active Projects
             </h2>
@@ -181,7 +181,7 @@ const ActiveProjects = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
           {/* Service Category Dropdown Filter */}
           {runningProjectCards.length > 0 && (
             <DropdownMenu modal={false}>

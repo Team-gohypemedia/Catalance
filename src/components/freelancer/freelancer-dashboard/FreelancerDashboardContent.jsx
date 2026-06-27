@@ -2892,32 +2892,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   const shouldUseProjectCarousel = true;
   const activeProjectCardClassName = "w-full";
   const activeProjectRedirectCardClassName = "w-full h-full md:min-h-[506px]";
-  const freelancerProjectRedirectCards = useMemo(() => {
-    return [
-      {
-        id: "proposal-pipeline",
-        Icon: ClipboardList,
-        eyebrow: "Proposal Pipeline",
-        title: "Keep your pipeline moving",
-        description:
-          "Review, manage, and respond to incoming proposals all in one place.",
-        highlights: ["View new proposals", "Track client interest", "Respond faster"],
-        actionLabel: "Open Proposals",
-        onClick: () => navigate("/freelancer/proposals"),
-      },
-      {
-        id: "client-inbox",
-        Icon: MessageSquare,
-        eyebrow: "Client Inbox",
-        title: "Stay close to your clients",
-        description:
-          "Communicate, clarify, and build stronger relationships with your clients.",
-        highlights: ["All messages in one place", "Real-time notifications", "Never miss an update"],
-        actionLabel: "Open Messages",
-        onClick: () => navigate("/freelancer/messages"),
-      },
-    ];
-  }, [navigate]);
+  const freelancerProjectRedirectCards = [];
 
   useEffect(() => {
     if (!isMobile || !shouldUseProjectCarousel) {

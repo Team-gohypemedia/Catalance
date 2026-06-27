@@ -182,13 +182,13 @@ const ProjectProgressTooltip = ({ active, payload, label, seriesMetaMap }) => {
   }
 
   return (
-    <div className="min-w-[188px] rounded-[18px] border border-border bg-card px-4 py-3 text-foreground shadow-lg">
+    <div className="min-w-[220px] max-w-[280px] rounded-[18px] border border-border bg-card px-4 py-3 text-foreground shadow-lg">
       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         Progress Snapshot
       </p>
       <p className="mt-1.5 text-sm font-semibold text-foreground">{point?.fullLabel || label}</p>
 
-      <div className="mt-3 space-y-2.5">
+      <div className="mt-3 max-h-[220px] overflow-y-auto pr-1.5 space-y-2.5 [scrollbar-color:rgba(0,0,0,0.16)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.16)_transparent] [scrollbar-width:thin] [overscroll-behavior:contain] touch-pan-y [&::-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/[0.14] dark:[&::-webkit-scrollbar-thumb]:bg-white/[0.14]">
         {visiblePayload.map((entry) => {
           const meta = seriesMetaMap.get(entry.dataKey);
           const stageLabel =
@@ -197,7 +197,7 @@ const ProjectProgressTooltip = ({ active, payload, label, seriesMetaMap }) => {
 
           return (
             <div key={entry.dataKey} className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <span
                   className="size-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: meta?.color || entry.color }}
@@ -400,6 +400,7 @@ const ProjectProgressChartCard = ({
                 ) : null}
                 <ChartTooltip
                   cursor={false}
+                  wrapperStyle={{ pointerEvents: "auto" }}
                   content={<ProjectProgressTooltip seriesMetaMap={seriesMetaMap} />}
                 />
                 {seriesMeta.map((entry, index) => (
