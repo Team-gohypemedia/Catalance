@@ -3771,62 +3771,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             </div>
           </section>
 
-          {metricsLoading ? (
-            <FreelancerMetricCardsSkeleton />
-          ) : (
-            <section className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-5 lg:grid-cols-4">
-              <FreelancerMetricCard
-                icon={FolderKanban}
-                title="Active Projects"
-                value={String(metrics.activeProjects).padStart(2, "0")}
-                onClick={() => navigate("/freelancer/project?view=ongoing")}
-                aria-label="Open active projects"
-              />
-              <FreelancerMetricCard
-                icon={CheckCircle2}
-                title="Completed Projects"
-                value={String(metrics.completedProjects).padStart(2, "0")}
-                onClick={() => navigate("/freelancer/project?view=completed")}
-                aria-label="Open completed projects"
-              />
-              <FreelancerMetricCard
-                icon={ClipboardList}
-                title="Pending Proposals"
-                value={String(metrics.pendingProposals.length).padStart(2, "0")}
-                onClick={() => navigate("/freelancer/proposals?tab=pending")}
-                aria-label="Open pending proposals"
-                className="col-span-1"
-              />
-              <FreelancerMetricCard
-                icon={CreditCard}
-                title={showPendingPaymentsStat ? "Pending Payments" : "Total Earnings"}
-                value={
-                  showPendingPaymentsStat
-                    ? formatFreelancerDashboardCurrency(metrics.pendingEarnings)
-                    : formatFreelancerDashboardCurrency(metrics.earnings)
-                }
-                onClick={() => navigate("/freelancer/payments")}
-                aria-label="Open payments"
-                className="col-span-1"
-                control={
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setShowPendingPaymentsStat((previous) => !previous);
-                    }}
-                    onKeyDown={(event) => {
-                      event.stopPropagation();
-                    }}
-                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-[12px] bg-white/[0.06] text-muted-foreground/75 transition-colors hover:bg-white/[0.12] hover:text-[var(--primary)] sm:size-9 sm:rounded-lg"
-                    aria-label={showPendingPaymentsStat ? "Show total earnings" : "Show pending payments"}
-                  >
-                    <Repeat2 className="size-4 text-muted-foreground/75" />
-                  </button>
-                }
-              />
-            </section>
-          )}
+
 
           {shouldShowProfileCompletionPanel && !showProfileCompletionSkeleton ? (
             <div className="fixed bottom-6 right-6 z-[60] flex items-center gap-3 rounded-full border border-white/10 bg-[#1e293b] p-2 pr-5 shadow-2xl backdrop-blur-md">

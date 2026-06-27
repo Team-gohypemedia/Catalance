@@ -25,7 +25,6 @@ import {
   FreelancerProfileCompletionSkeleton,
   FreelancerRecentActivitySkeleton,
   HeroGreetingBlock,
-  OverviewMetricsGrid,
   PendingProposals,
   ProfileCompletionPanel,
   RecentActivity,
@@ -99,11 +98,6 @@ const FreelancerDashboard = () => {
                   greeting={model.hero.greeting}
                   firstName={model.hero.firstName}
                   dateLabel={model.hero.dateLabel}
-                />
-
-                <OverviewMetricsGrid
-                  metrics={model.dashboardMetricCards}
-                  isLoading={model.metricsLoading}
                 />
 
                 {shouldShowProfileProgressPanel ? (
