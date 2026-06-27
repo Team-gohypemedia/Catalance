@@ -15,6 +15,13 @@ import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTop
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
@@ -1014,6 +1021,7 @@ const FreelancerProjectsContent = () => {
   const [canGoToNextProject, setCanGoToNextProject] = useState(false);
   const [projectCarouselSnapCount, setProjectCarouselSnapCount] = useState(0);
   const [activeProjectSnap, setActiveProjectSnap] = useState(0);
+  const [activeServiceFilter, setActiveServiceFilter] = useState("all");
   const hasUserSelectedFilterRef = React.useRef(false);
 
   const activeFilter = searchParams.get("view") === "completed" ? "completed" : "ongoing";
@@ -1060,14 +1068,28 @@ const FreelancerProjectsContent = () => {
     () => projectCards.filter((project) => project.statusBucket === "completed").length,
     [projectCards],
   );
+  const availableServices = useMemo(() => {
+    const services = new Set();
+    projectCards.forEach((project) => {
+      if (project.serviceType) {
+        services.add(project.serviceType);
+      }
+    });
+    return ["all", ...Array.from(services)];
+  }, [projectCards]);
+
   const visibleProjectCards = useMemo(
     () =>
-      projectCards.filter((project) =>
-        activeFilter === "completed"
-          ? project.statusBucket === "completed"
-          : project.statusBucket !== "completed",
-      ),
-    [activeFilter, projectCards],
+      projectCards.filter((project) => {
+        const matchesStatus =
+          activeFilter === "completed"
+            ? project.statusBucket === "completed"
+            : project.statusBucket !== "completed";
+        const matchesService =
+          activeServiceFilter === "all" ? true : project.serviceType === activeServiceFilter;
+        return matchesStatus && matchesService;
+      }),
+    [activeFilter, activeServiceFilter, projectCards],
   );
   const shouldUseProjectCarousel = isMobile && visibleProjectCards.length > 1;
 
@@ -1130,34 +1152,57 @@ const FreelancerProjectsContent = () => {
                 </h1>
               </div>
 
-              <div className="flex justify-start lg:justify-end">
-                <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
-                  {projectFilterOptions.map((option) => {
-                    const count =
-                      option.key === "completed" ? completedProjectCount : ongoingProjectCount;
-                    const isActive = activeFilter === option.key;
+                <div className="flex flex-col sm:flex-row justify-start lg:justify-end gap-3 sm:gap-4 items-start sm:items-center">
+                  <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
+                    {projectFilterOptions.map((option) => {
+                      const count =
+                        option.key === "completed" ? completedProjectCount : ongoingProjectCount;
+                      const isActive = activeFilter === option.key;
 
-                    return (
-                      <button
-                        key={option.key}
-                        type="button"
-                        onClick={() => {
-                          hasUserSelectedFilterRef.current = true;
-                          setActiveFilter(option.key);
-                        }}
-                        className={cn(
-                          "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
-                          isActive
-                            ? "border-primary/70 bg-primary text-primary-foreground"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {option.label} ({count})
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={option.key}
+                          type="button"
+                          onClick={() => {
+                            hasUserSelectedFilterRef.current = true;
+                            setActiveFilter(option.key);
+                          }}
+                          className={cn(
+                            "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
+                            isActive
+                              ? "border-primary/70 bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:text-foreground",
+                          )}
+                        >
+                          {option.label} ({count})
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {availableServices.length > 1 && (
+                    <Select value={activeServiceFilter} onValueChange={setActiveServiceFilter}>
+                      <SelectTrigger className="w-full sm:w-[200px] h-10 sm:h-11 rounded-[24px] border-border bg-card font-medium">
+                        <SelectValue placeholder="Filter by Service" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        {availableServices.map((service) => {
+                          const displayLabel = service === "all" 
+                            ? "All Services" 
+                            : service
+                                .split(/[_]/)
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(" ");
+                                
+                          return (
+                            <SelectItem key={service} value={service}>
+                              {displayLabel}
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
-              </div>
             </div>
           </section>
 

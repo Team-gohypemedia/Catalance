@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import { prisma, prismaInitError } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
 import { buildProjectFreelancerMatchingSeed } from "../../../src/shared/lib/project-proposal-fields.js";
+import { getSopFromTitle } from "../../../src/shared/data/sopTemplates.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -200,6 +201,23 @@ const FALLBACK_MODEL =
   "";
 const DEFAULT_REFERER =
   process.env.FRONTEND_URL || env.CORS_ORIGIN || "http://localhost:5173";
+const PROJECT_SOP_PHASE_COUNT = 4;
+const PROJECT_SOP_MIN_TASKS_PER_PHASE = 4;
+const PROJECT_SOP_MAX_TASKS_PER_PHASE = 6;
+const PROJECT_SOP_MAX_TASK_TITLE_WORDS = 6;
+const PROJECT_SOP_MAX_TASK_TITLE_LENGTH = 56;
+const PROJECT_SOP_GENERIC_PHASE_LABELS = Object.freeze([
+  "Scope and planning",
+  "Direction and approval",
+  "Execution and review",
+  "Delivery and handover",
+]);
+const PROJECT_SOP_GENERIC_TASK_TEMPLATES = Object.freeze([
+  ["Confirm goals", "Lock scope", "Share references", "Align timeline", "Define deliverables", "Confirm owners"],
+  ["Draft first approach", "Review direction", "Collect feedback", "Refine output", "Approve direction", "Lock next steps"],
+  ["Build core work", "Apply revisions", "Run quality check", "Resolve blockers", "Track progress", "Prepare final assets"],
+  ["Test final output", "Share final files", "Handover access", "Document next steps", "Close approvals", "Confirm closure"],
+]);
 
 const OPENROUTER_AUTH_ERROR_REGEX =
   /user not found|invalid api key|unauthorized|forbidden|invalid token/i;
@@ -4058,6 +4076,426 @@ const toUniqueTextList = (...values) => {
 const asPlainObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
 
+const cloneProjectSopTemplate = (value) => {
+  try {
+    return JSON.parse(JSON.stringify(value ?? {}));
+  } catch {
+    return { phases: [], tasks: [] };
+  }
+};
+
+const sanitizeProjectSopText = (value = "") =>
+  String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const stripProjectSopPhaseSuffix = (value = "") =>
+  sanitizeProjectSopText(value).replace(/\s*\(\s*phase[-\s]?\d+\s*\)\s*$/i, "").trim();
+
+const countProjectSopWords = (value = "") =>
+  sanitizeProjectSopText(value)
+    .split(/\s+/)
+    .filter(Boolean).length;
+
+const humanizeProjectSopServiceLabel = (value = "") => {
+  const normalized = sanitizeProjectSopText(String(value || "").replace(/[_-]+/g, " "));
+  if (!normalized) return "";
+  return normalized
+    .split(/\s+/)
+    .map((part) => (part ? `${part.charAt(0).toUpperCase()}${part.slice(1)}` : ""))
+    .join(" ");
+};
+
+const resolveProjectSopServiceLabel = (projectContext = {}) => {
+  const proposalJson = asPlainObject(projectContext?.proposalJson);
+  const contextSnapshot = asPlainObject(proposalJson?.contextSnapshot);
+  const candidates = toUniqueTextList(
+    projectContext?.serviceType,
+    projectContext?.serviceName,
+    projectContext?.service,
+    projectContext?.category,
+    projectContext?.serviceKey,
+    proposalJson?.serviceType,
+    contextSnapshot?.serviceType,
+    proposalJson?.serviceKey,
+    contextSnapshot?.serviceKey,
+  );
+  for (const candidate of candidates) {
+    const definition = getServiceDefinition(candidate);
+    if (definition?.name) {
+      return sanitizeProjectSopText(definition.name);
+    }
+    const humanized = humanizeProjectSopServiceLabel(candidate);
+    if (humanized) return humanized;
+  }
+  return "Project";
+};
+
+const buildProjectSopLookupText = (projectContext = {}) => {
+  const proposalJson = asPlainObject(projectContext?.proposalJson);
+  const contextSnapshot = asPlainObject(proposalJson?.contextSnapshot);
+  return toUniqueTextList(
+    projectContext?.serviceType,
+    projectContext?.serviceName,
+    projectContext?.service,
+    projectContext?.category,
+    projectContext?.serviceKey,
+    proposalJson?.serviceType,
+    proposalJson?.serviceKey,
+    contextSnapshot?.serviceType,
+    contextSnapshot?.serviceKey,
+    projectContext?.title,
+  ).join(" ");
+};
+
+const buildProjectSopFallbackTemplate = (projectContext = {}) =>
+  cloneProjectSopTemplate(getSopFromTitle(buildProjectSopLookupText(projectContext)));
+
+const buildGenericProjectSopPhaseName = (serviceLabel = "Project", phaseNumber = 1) => {
+  const baseLabel =
+    PROJECT_SOP_GENERIC_PHASE_LABELS[phaseNumber - 1] || `Phase ${phaseNumber}`;
+  const safeServiceLabel = sanitizeProjectSopText(serviceLabel);
+  if (!safeServiceLabel || safeServiceLabel.toLowerCase() === "project") {
+    return `${baseLabel} ( Phase-${phaseNumber} )`;
+  }
+  return `${safeServiceLabel} ${baseLabel} ( Phase-${phaseNumber} )`;
+};
+
+const normalizeProjectSopPhaseName = (
+  value = "",
+  phaseNumber = 1,
+  fallbackName = "",
+) => {
+  let base = stripProjectSopPhaseSuffix(value);
+  if (!base) {
+    base = stripProjectSopPhaseSuffix(fallbackName);
+  }
+  if (!base) {
+    base = stripProjectSopPhaseSuffix(buildGenericProjectSopPhaseName("Project", phaseNumber));
+  }
+  return `${base} ( Phase-${phaseNumber} )`;
+};
+
+const normalizeProjectSopTaskTitle = (value = "") => {
+  let title = sanitizeProjectSopText(value);
+  if (!title) return null;
+
+  title = title
+    .replace(/^\d+[\).\-\s]*/g, "")
+    .replace(/\s*\([^)]*\)\s*/g, " ")
+    .replace(/[–—]+/g, "-")
+    .replace(/[•]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (
+    countProjectSopWords(title) > PROJECT_SOP_MAX_TASK_TITLE_WORDS ||
+    title.length > PROJECT_SOP_MAX_TASK_TITLE_LENGTH
+  ) {
+    const shortSegment = title.split(/[\/+:;,]/)[0]?.trim();
+    if (shortSegment && countProjectSopWords(shortSegment) >= 2) {
+      title = shortSegment;
+    }
+  }
+
+  const words = title.split(/\s+/).filter(Boolean);
+  if (words.length > PROJECT_SOP_MAX_TASK_TITLE_WORDS) {
+    title = words.slice(0, PROJECT_SOP_MAX_TASK_TITLE_WORDS).join(" ");
+  }
+
+  if (title.length > PROJECT_SOP_MAX_TASK_TITLE_LENGTH) {
+    title = title.slice(0, PROJECT_SOP_MAX_TASK_TITLE_LENGTH).trim();
+    if (title.includes(" ")) {
+      title = title.slice(0, title.lastIndexOf(" ")).trim();
+    }
+  }
+
+  title = title.replace(/[-:;,/.]+$/g, "").trim();
+  if (countProjectSopWords(title) < 2) return null;
+  return `${title.charAt(0).toUpperCase()}${title.slice(1)}`;
+};
+
+const collectProjectSopTaskTitles = ({
+  rawTasks = [],
+  fallbackTasks = [],
+  genericTasks = [],
+  phaseId = "1",
+  rawPhaseIdMap = new Map(),
+} = {}) => {
+  const titles = [];
+  const seen = new Set();
+
+  const pushTitle = (candidate) => {
+    const normalized = normalizeProjectSopTaskTitle(candidate);
+    if (!normalized) return;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    titles.push(normalized);
+  };
+
+  rawTasks.forEach((task = {}) => {
+    const mappedPhaseId =
+      rawPhaseIdMap.get(String(task?.phase || "")) ||
+      sanitizeProjectSopText(task?.phase) ||
+      "";
+    if (mappedPhaseId === phaseId) {
+      pushTitle(task?.title);
+    }
+  });
+
+  fallbackTasks.forEach((task = {}) => {
+    if (sanitizeProjectSopText(task?.phase) === phaseId) {
+      pushTitle(task?.title);
+    }
+  });
+
+  genericTasks.forEach(pushTitle);
+
+  return titles.slice(0, PROJECT_SOP_MAX_TASKS_PER_PHASE);
+};
+
+const buildProjectSopMeta = (projectContext = {}, source = "fallback") => ({
+  source,
+  generatedAt: new Date().toISOString(),
+  serviceLabel: resolveProjectSopServiceLabel(projectContext),
+  constraints: {
+    phases: PROJECT_SOP_PHASE_COUNT,
+    minTasksPerPhase: PROJECT_SOP_MIN_TASKS_PER_PHASE,
+    maxTasksPerPhase: PROJECT_SOP_MAX_TASKS_PER_PHASE,
+    maxTaskWords: PROJECT_SOP_MAX_TASK_TITLE_WORDS,
+  },
+});
+
+const normalizeProjectSopJson = (rawValue = null, projectContext = {}) => {
+  const candidate = asPlainObject(rawValue);
+  const fallbackTemplate = buildProjectSopFallbackTemplate(projectContext);
+  const fallbackPhases = Array.isArray(fallbackTemplate?.phases)
+    ? fallbackTemplate.phases
+    : [];
+  const fallbackTasks = Array.isArray(fallbackTemplate?.tasks)
+    ? fallbackTemplate.tasks
+    : [];
+  const rawPhases = Array.isArray(candidate?.phases) ? candidate.phases : [];
+  const rawTasks = Array.isArray(candidate?.tasks) ? candidate.tasks : [];
+  const serviceLabel = resolveProjectSopServiceLabel(projectContext);
+  const rawPhaseIdMap = new Map();
+
+  rawPhases.slice(0, PROJECT_SOP_PHASE_COUNT).forEach((phase, index) => {
+    rawPhaseIdMap.set(String(phase?.id || index + 1), String(index + 1));
+  });
+
+  const phases = [];
+  const tasks = [];
+
+  for (let index = 0; index < PROJECT_SOP_PHASE_COUNT; index += 1) {
+    const phaseNumber = index + 1;
+    const phaseId = String(phaseNumber);
+    const rawPhase = rawPhases[index] || {};
+    const fallbackPhase = fallbackPhases[index] || {};
+    const genericPhaseName = buildGenericProjectSopPhaseName(serviceLabel, phaseNumber);
+    const phaseName = normalizeProjectSopPhaseName(
+      rawPhase?.name,
+      phaseNumber,
+      fallbackPhase?.name || genericPhaseName,
+    );
+
+    phases.push({
+      id: phaseId,
+      name: phaseName,
+      status: phaseNumber === 1 ? "in-progress" : "pending",
+      progress: 0,
+    });
+
+    const genericTasks =
+      PROJECT_SOP_GENERIC_TASK_TEMPLATES[index] || [];
+    const taskTitles = collectProjectSopTaskTitles({
+      rawTasks,
+      fallbackTasks,
+      genericTasks,
+      phaseId,
+      rawPhaseIdMap,
+    });
+
+    while (taskTitles.length < PROJECT_SOP_MIN_TASKS_PER_PHASE) {
+      const fallbackTitle =
+        genericTasks[taskTitles.length] ||
+        `Phase ${phaseNumber} task ${taskTitles.length + 1}`;
+      const normalizedFallbackTitle = normalizeProjectSopTaskTitle(fallbackTitle);
+      if (!normalizedFallbackTitle) break;
+      if (!taskTitles.some((entry) => entry.toLowerCase() === normalizedFallbackTitle.toLowerCase())) {
+        taskTitles.push(normalizedFallbackTitle);
+      } else {
+        break;
+      }
+    }
+
+    taskTitles
+      .slice(0, PROJECT_SOP_MAX_TASKS_PER_PHASE)
+      .forEach((title, taskIndex) => {
+        tasks.push({
+          id: `p${phaseId}t${taskIndex + 1}`,
+          title,
+          phase: phaseId,
+          status: "pending",
+        });
+      });
+  }
+
+  return {
+    phases,
+    tasks,
+    _meta: buildProjectSopMeta(
+      projectContext,
+      Object.keys(candidate).length > 0 ? "ai" : "fallback",
+    ),
+  };
+};
+
+const truncateProjectSopPromptText = (value = "", maxLength = 1200) => {
+  const normalized = sanitizeProjectSopText(value);
+  if (!normalized) return "";
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, maxLength).trim()}...`;
+};
+
+const limitProjectSopPromptList = (values = [], maxItems = 8, maxItemLength = 120) =>
+  toUniqueTextList(values)
+    .slice(0, maxItems)
+    .map((entry) => truncateProjectSopPromptText(entry, maxItemLength));
+
+const buildProjectSopPromptContext = (projectContext = {}) => {
+  const proposalJson = asPlainObject(projectContext?.proposalJson);
+  const contextSnapshot = asPlainObject(proposalJson?.contextSnapshot);
+  const selectedServices = limitProjectSopPromptList([
+    projectContext?.serviceType,
+    projectContext?.serviceName,
+    projectContext?.service,
+    projectContext?.category,
+    projectContext?.serviceKey,
+    proposalJson?.serviceType,
+    proposalJson?.serviceKey,
+    contextSnapshot?.serviceType,
+    contextSnapshot?.serviceKey,
+    ...(Array.isArray(projectContext?.selectedServiceNames)
+      ? projectContext.selectedServiceNames
+      : []),
+    ...(Array.isArray(projectContext?.selectedServiceIds)
+      ? projectContext.selectedServiceIds
+      : []),
+  ]);
+
+  return {
+    title: truncateProjectSopPromptText(projectContext?.title, 200),
+    description: truncateProjectSopPromptText(projectContext?.description, 800),
+    serviceType: truncateProjectSopPromptText(projectContext?.serviceType, 120),
+    serviceKey: truncateProjectSopPromptText(projectContext?.serviceKey, 120),
+    category: truncateProjectSopPromptText(projectContext?.category, 120),
+    timeline:
+      truncateProjectSopPromptText(projectContext?.timeline, 160) ||
+      truncateProjectSopPromptText(proposalJson?.timeline, 160),
+    budget: truncateProjectSopPromptText(projectContext?.budget, 120),
+    projectOverview:
+      truncateProjectSopPromptText(projectContext?.projectOverview, 500) ||
+      truncateProjectSopPromptText(proposalJson?.projectOverview, 500),
+    primaryObjectives: limitProjectSopPromptList(
+      projectContext?.primaryObjectives || proposalJson?.primaryObjectives || [],
+      8,
+      140,
+    ),
+    featuresDeliverables: limitProjectSopPromptList(
+      projectContext?.featuresDeliverables || proposalJson?.featuresDeliverables || [],
+      10,
+      140,
+    ),
+    targetAudience:
+      truncateProjectSopPromptText(projectContext?.targetAudience, 200) ||
+      truncateProjectSopPromptText(proposalJson?.targetAudience, 200),
+    websiteType:
+      truncateProjectSopPromptText(projectContext?.websiteType, 120) ||
+      truncateProjectSopPromptText(proposalJson?.websiteType, 120),
+    appType:
+      truncateProjectSopPromptText(projectContext?.appType, 120) ||
+      truncateProjectSopPromptText(proposalJson?.appType, 120),
+    proposalStructure: truncateProjectSopPromptText(
+      projectContext?.proposalStructure,
+      1600,
+    ),
+    proposalContent: truncateProjectSopPromptText(
+      projectContext?.proposalContent,
+      2200,
+    ),
+    selectedServices,
+  };
+};
+
+const buildProjectSopSystemPrompt = ({
+  serviceLabel = "Project",
+  serviceHint = "",
+} = {}) => `You create internal SOP JSON for digital-service projects.
+
+Return JSON only. Do not return markdown, notes, or explanations.
+
+Required rules:
+- Always return exactly 4 phases.
+- Always return 4 to 6 tasks in each phase.
+- Every task title must be short and practical.
+- Every task title must use 2 to 6 words only.
+- Never write long sentence-style tasks.
+- Keep each task logical, genuine, and execution-focused.
+- Make the task flow realistic from planning to delivery.
+- Make the phase names concise and service-appropriate.
+- First phase status must be "in-progress".
+- Remaining phase statuses must be "pending".
+- Every phase progress must be 0.
+- Every task status must be "pending".
+- Phase ids must be "1", "2", "3", "4".
+- Task phase values must be "1", "2", "3", or "4".
+
+Output schema:
+{
+  "phases": [
+    { "id": "1", "name": "${serviceLabel} Scope and planning ( Phase-1 )", "status": "in-progress", "progress": 0 },
+    { "id": "2", "name": "${serviceLabel} Direction and approval ( Phase-2 )", "status": "pending", "progress": 0 },
+    { "id": "3", "name": "${serviceLabel} Execution and review ( Phase-3 )", "status": "pending", "progress": 0 },
+    { "id": "4", "name": "${serviceLabel} Delivery and handover ( Phase-4 )", "status": "pending", "progress": 0 }
+  ],
+  "tasks": [
+    { "id": "p1t1", "title": "Confirm goals", "phase": "1", "status": "pending" }
+  ]
+}
+
+${serviceHint ? `Service guidance:\n${serviceHint}\n` : ""}Use plain English and keep the output production-ready.`;
+
+const buildProjectSopUserPrompt = ({
+  promptContext = {},
+  fallbackTemplate = {},
+} = {}) => {
+  const fallbackPhaseReference = Array.isArray(fallbackTemplate?.phases)
+    ? fallbackTemplate.phases
+        .slice(0, PROJECT_SOP_PHASE_COUNT)
+        .map((phase, index) => `${index + 1}. ${stripProjectSopPhaseSuffix(phase?.name || "")}`)
+        .join("\n")
+    : "";
+
+  return `Generate a project SOP JSON from this project data.
+
+Project context:
+${JSON.stringify(promptContext, null, 2)}
+
+Reference phase pattern for this service:
+${fallbackPhaseReference || "Use a standard 4-phase delivery flow."}
+
+Important output rules:
+- Keep exactly 4 phases.
+- Keep 4 to 6 tasks inside every phase.
+- Keep every task title short.
+- Keep every task title logical and realistic.
+- Do not use vague tasks like "Work on project" or "Do changes".
+- Do not use placeholders, filler text, or duplicate tasks.
+- Return JSON only.`;
+};
+
 const normalizeMatchingBudgetValue = (value, fallback = null) => {
   if (value === null || value === undefined || value === "") {
     return fallback ?? null;
@@ -4410,6 +4848,72 @@ export const generateProposalMarkdown = async (
   });
 };
 
+export const generateProjectSopJson = async (projectContext = {}) => {
+  await ensureServicesCatalogLoaded();
+
+  const contextPayload =
+    projectContext && typeof projectContext === "object"
+      ? { ...projectContext }
+      : {};
+  const fallbackSop = normalizeProjectSopJson(null, contextPayload);
+  const apiKey = env.OPENROUTER_API_KEY?.trim();
+
+  if (!apiKey) {
+    return fallbackSop;
+  }
+
+  try {
+    const serviceLabel = resolveProjectSopServiceLabel(contextPayload);
+    const serviceDefinition =
+      getServiceDefinition(contextPayload?.serviceType) ||
+      getServiceDefinition(contextPayload?.serviceKey) ||
+      getServiceDefinition(serviceLabel);
+    const serviceHint = [
+      serviceDefinition?.name ? `Service name: ${serviceDefinition.name}` : "",
+      serviceDefinition?.description
+        ? `Service description: ${truncateProjectSopPromptText(serviceDefinition.description, 400)}`
+        : "",
+      serviceDefinition?.aiPrompt
+        ? `Service AI guidance: ${truncateProjectSopPromptText(serviceDefinition.aiPrompt, 500)}`
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const promptContext = buildProjectSopPromptContext(contextPayload);
+    const fallbackTemplate = buildProjectSopFallbackTemplate(contextPayload);
+
+    const { data } = await requestOpenRouterCompletion({
+      apiKey,
+      title: "Catalance Project SOP Generator",
+      messages: [
+        {
+          role: "system",
+          content: buildProjectSopSystemPrompt({
+            serviceLabel,
+            serviceHint,
+          }),
+        },
+        {
+          role: "user",
+          content: buildProjectSopUserPrompt({
+            promptContext,
+            fallbackTemplate,
+          }),
+        },
+      ],
+      temperature: 0.2,
+      maxTokens: 1800,
+    });
+
+    const rawContent = data?.choices?.[0]?.message?.content || "";
+    const parsed = parseJsonObjectFromRaw(rawContent);
+    return normalizeProjectSopJson(parsed, contextPayload);
+  } catch (error) {
+    console.warn("[Project SOP] AI fallback used:", error?.message || error);
+    return fallbackSop;
+  }
+};
+
 export const generateFreelancerMatchingJson = async (
   proposalContext = {},
   chatHistory = [],
@@ -4666,6 +5170,8 @@ export const __testables = {
   normalizeProposalBudgetValue,
   normalizeProposalTimelineValue,
   normalizeNumericFieldValue,
-  resolveChatRequestProfile
+  resolveChatRequestProfile,
+  normalizeProjectSopJson,
+  resolveProjectSopServiceLabel,
 };
 
