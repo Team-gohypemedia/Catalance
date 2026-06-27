@@ -269,7 +269,7 @@ const ActiveProjects = ({
             }}
             className="w-full"
           >
-            <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+            <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
               {filteredProjectCards.map((projectCard) => (
                 <CarouselItem
                   key={projectCard.id}
@@ -320,7 +320,7 @@ const ActiveProjects = ({
           />
         </div>
       ) : (
-        <div className="grid items-stretch gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid items-start gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {filteredProjectCards.map((projectCard) => (
             <ProjectProposalCard
               key={projectCard.id}

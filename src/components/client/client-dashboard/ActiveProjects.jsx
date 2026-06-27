@@ -7,7 +7,7 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import Users from "lucide-react/dist/esm/icons/users";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
@@ -73,7 +73,7 @@ const ActiveProjects = memo(function ActiveProjects({
     return [
       {
         id: "start-project",
-        Icon: Sparkles,
+        Icon: Plus,
         title: "Create New Proposal",
         actionLabel: "Start New Project",
         onClick: handleStartProject,
@@ -267,7 +267,7 @@ const ActiveProjects = memo(function ActiveProjects({
                 }}
                 className="w-full"
               >
-                <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                   {items.map((item) => (
                     <CarouselItem
                       key={item.id}
@@ -320,7 +320,7 @@ const ActiveProjects = memo(function ActiveProjects({
               />
             </div>
           ) : (
-            <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
+            <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 lg:gap-6 xl:grid-cols-3 xl:gap-7">
               {items.map((item) => (
                 <ProjectProposalCard
                   key={item.id}

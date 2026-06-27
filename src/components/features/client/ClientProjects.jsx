@@ -258,14 +258,47 @@ const resolveProjectServiceType = (project = {}, acceptedProposal = null) => {
 
   if (!rawService) return "";
 
-  const normalized = String(rawService).trim().toLowerCase();
+  const trimmed = String(rawService).trim();
+  const lower = trimmed.toLowerCase();
+
+  const mapping = {
+    website_uiux: "Website Development",
+    creative_design: "Creative & Design",
+    web_development: "Website Development",
+    website_development: "Website Development",
+    social_media: "Social Media Marketing",
+    social_media_marketing: "Social Media Marketing",
+    digital_marketing: "Digital Marketing",
+    seo: "Search Engine Optimization",
+    content_writing: "Content Writing",
+    copywriting: "Copywriting & Content",
+    graphic_design: "Graphic Design",
+    logo_design: "Logo Design",
+    branding: "Branding & Identity",
+  };
+
+  if (mapping[lower]) {
+    return mapping[lower];
+  }
+  if (mapping[trimmed]) {
+    return mapping[trimmed];
+  }
+
+  if (trimmed.includes("_") || trimmed.includes("-")) {
+    return trimmed
+      .split(/[_-]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
+
   if (
-    normalized.includes("web") &&
-    (normalized.includes("develop") || normalized.includes("dev"))
+    lower.includes("web") &&
+    (lower.includes("develop") || lower.includes("dev"))
   ) {
     return "Website Development";
   }
-  return rawService;
+
+  return trimmed;
 };
 
 const normalizeTimelineValue = (value = "") => {
@@ -898,7 +931,7 @@ const ProjectPhaseStep = ({ item }) => {
         label: "Completed",
         Icon: CheckCircle2,
         badgeClassName: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-[#4ade80]",
-        textClassName: "text-[#f3f4f6]",
+        textClassName: "text-foreground",
         iconClassName: "text-[#22c55e]",
       }
     : isCurrent
@@ -906,7 +939,7 @@ const ProjectPhaseStep = ({ item }) => {
           label: "In Progress",
           Icon: Clock3,
           badgeClassName: "border-primary/25 bg-primary/10 text-primary",
-          textClassName: "text-[#f3f4f6]",
+          textClassName: "text-foreground",
           iconClassName: "text-[var(--primary)]",
         }
       : {
@@ -1040,7 +1073,7 @@ export const ProjectProposalCard = ({
             Project Name
           </p>
           <h2 
-            className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-foreground"
+            className="mt-1 text-[18px] font-semibold tracking-[-0.03em] text-foreground truncate"
             title={project.title}
           >
             {project.title}

@@ -125,9 +125,6 @@ const ProposalCardsCarousel = ({
             </div>
             <div className="mt-5 space-y-2">
               <h3 className="text-base font-semibold text-foreground tracking-tight">Create New Proposal</h3>
-              <p className="max-w-[200px] text-xs leading-relaxed text-muted-foreground">
-                Start from scratch or use AI to draft a perfect proposal for your next project.
-              </p>
             </div>
           </div>
         )}
@@ -139,9 +136,9 @@ const ProposalCardsCarousel = ({
     ? proposals.length > 1
     : proposals.length > 3;
   const proposalCarouselDesktopControlClassName =
-    "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
+    "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed";
   const proposalCarouselMobileControlClassName =
-    "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
+    "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <div className="w-full">
@@ -237,9 +234,6 @@ const ProposalCardsCarousel = ({
                 </div>
                 <div className="mt-5 space-y-2">
                   <h3 className="text-base font-semibold text-foreground tracking-tight">Create New Proposal</h3>
-                  <p className="max-w-[200px] text-xs leading-relaxed text-muted-foreground">
-                    Start from scratch or use AI to draft a perfect proposal for your next project.
-                  </p>
                 </div>
               </div>
             </CarouselItem>

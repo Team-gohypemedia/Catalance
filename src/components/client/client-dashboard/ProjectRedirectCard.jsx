@@ -1,44 +1,24 @@
 import React, { memo } from "react";
-import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import { DashboardPanel } from "./shared.jsx";
 import { cn } from "@/shared/lib/utils";
 
 const ProjectRedirectCard = memo(function ProjectRedirectCard({ item, className }) {
   return (
-    <DashboardPanel
+    <div
+      onClick={item.onClick}
       className={cn(
-        "flex min-h-[320px] flex-col justify-between overflow-hidden bg-card p-4 sm:p-5 xl:p-6",
+        "group flex h-full w-full overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center p-6 text-center shadow-none",
         className,
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col">
-        <h3 className="w-full text-center text-[22px] sm:text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-[#1C1B1F] dark:text-white">
+      <div className="rounded-full bg-primary/10 p-4 text-primary group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
+        {item.Icon ? <item.Icon className="size-6" strokeWidth={2.5} /> : null}
+      </div>
+      <div className="mt-5 space-y-2">
+        <h3 className="text-base font-semibold text-foreground tracking-tight">
           {item.title}
         </h3>
-
-        <div className="flex flex-1 items-center justify-center">
-          {item.Icon ? (
-            <button
-              type="button"
-              aria-label={item.title}
-              onClick={item.onClick}
-              className="inline-flex h-[104px] w-[104px] items-center justify-center rounded-[14px] border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/28"
-            >
-              <item.Icon className="size-10" strokeWidth={2.6} />
-            </button>
-          ) : null}
-        </div>
       </div>
-
-      <button
-        type="button"
-        onClick={item.onClick}
-        className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-[14px] bg-[var(--primary)] px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
-      >
-        <span>{String(item.actionLabel || "").toUpperCase()}</span>
-        <ChevronRight className="size-4" />
-      </button>
-    </DashboardPanel>
+    </div>
   );
 });
 

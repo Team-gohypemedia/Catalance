@@ -122,8 +122,8 @@ const resolveProjectBusinessName = (project = {}, acceptedProposal = null) =>
     ),
   );
 
-const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
-  getFirstNonEmptyText(
+const resolveProjectServiceType = (project = {}, acceptedProposal = null) => {
+  const rawService = getFirstNonEmptyText(
     project?.service,
     project?.serviceName,
     project?.serviceKey,
@@ -143,6 +143,51 @@ const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
     ),
     project?.title,
   );
+
+  if (!rawService) return "";
+
+  const trimmed = String(rawService).trim();
+  const lower = trimmed.toLowerCase();
+
+  const mapping = {
+    website_uiux: "Website Development",
+    creative_design: "Creative & Design",
+    web_development: "Website Development",
+    website_development: "Website Development",
+    social_media: "Social Media Marketing",
+    social_media_marketing: "Social Media Marketing",
+    digital_marketing: "Digital Marketing",
+    seo: "Search Engine Optimization",
+    content_writing: "Content Writing",
+    copywriting: "Copywriting & Content",
+    graphic_design: "Graphic Design",
+    logo_design: "Logo Design",
+    branding: "Branding & Identity",
+  };
+
+  if (mapping[lower]) {
+    return mapping[lower];
+  }
+  if (mapping[trimmed]) {
+    return mapping[trimmed];
+  }
+
+  if (trimmed.includes("_") || trimmed.includes("-")) {
+    return trimmed
+      .split(/[_-]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
+
+  if (
+    lower.includes("web") &&
+    (lower.includes("develop") || lower.includes("dev"))
+  ) {
+    return "Website Development";
+  }
+
+  return trimmed;
+};
 
 const getAcceptedProposal = (project) => {
   const proposals = Array.isArray(project?.proposals) ? project.proposals : [];

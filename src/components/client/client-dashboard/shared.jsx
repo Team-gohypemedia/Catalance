@@ -45,7 +45,7 @@ export const ProjectCarouselControls = memo(function ProjectCarouselControls({
         onClick={onPrevious}
         disabled={!canGoPrevious}
         aria-label={previousLabel}
-        className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-card disabled:text-foreground/35"
+        className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <ChevronLeft className="size-4" />
       </button>
@@ -55,7 +55,7 @@ export const ProjectCarouselControls = memo(function ProjectCarouselControls({
         onClick={onNext}
         disabled={!canGoNext}
         aria-label={nextLabel}
-        className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-card disabled:text-foreground/35"
+        className="inline-flex size-8 items-center justify-center rounded-full border border-border bg-card text-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <ChevronRight className="size-4" />
       </button>

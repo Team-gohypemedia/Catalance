@@ -151,14 +151,47 @@ const resolveProjectServiceType = (project = {}, acceptedProposal = null) => {
 
   if (!rawService) return "";
 
-  const normalized = String(rawService).trim().toLowerCase();
+  const trimmed = String(rawService).trim();
+  const lower = trimmed.toLowerCase();
+
+  const mapping = {
+    website_uiux: "Website Development",
+    creative_design: "Creative & Design",
+    web_development: "Website Development",
+    website_development: "Website Development",
+    social_media: "Social Media Marketing",
+    social_media_marketing: "Social Media Marketing",
+    digital_marketing: "Digital Marketing",
+    seo: "Search Engine Optimization",
+    content_writing: "Content Writing",
+    copywriting: "Copywriting & Content",
+    graphic_design: "Graphic Design",
+    logo_design: "Logo Design",
+    branding: "Branding & Identity",
+  };
+
+  if (mapping[lower]) {
+    return mapping[lower];
+  }
+  if (mapping[trimmed]) {
+    return mapping[trimmed];
+  }
+
+  if (trimmed.includes("_") || trimmed.includes("-")) {
+    return trimmed
+      .split(/[_-]+/)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  }
+
   if (
-    normalized.includes("web") &&
-    (normalized.includes("develop") || normalized.includes("dev"))
+    lower.includes("web") &&
+    (lower.includes("develop") || lower.includes("dev"))
   ) {
     return "Website Development";
   }
-  return rawService;
+
+  return trimmed;
 };
 
 const resolveProjectTimelineMeta = (project = {}, acceptedProposal = null) => {
