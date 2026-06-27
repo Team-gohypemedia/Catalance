@@ -345,7 +345,7 @@ const DeliveryPipeline = ({
               <Button
                 type="button"
                 variant="outline"
-                className="h-8 w-[12rem] justify-between rounded-full border-white/[0.12] bg-card px-3 text-[11px] font-semibold text-zinc-200 hover:bg-card data-[state=open]:bg-card"
+                className="h-8 w-[12rem] justify-between rounded-full border-border bg-card px-3 text-[11px] font-semibold text-foreground dark:text-zinc-200 hover:bg-card data-[state=open]:bg-card"
               >
                 <span className="flex min-w-0 items-center gap-2">
                   <SlidersHorizontal className="size-3.5 shrink-0" />
@@ -356,7 +356,7 @@ const DeliveryPipeline = ({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-[12rem] rounded-xl border-white/[0.12] bg-card p-1.5"
+              className="w-[12rem] rounded-xl border-border bg-card p-1.5"
             >
               {runningProjectFilterOptions.map((option) => (
                 <DropdownMenuItem

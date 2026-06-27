@@ -234,13 +234,25 @@ export const getConversationDisplaySubtitle = (
   conversation = {},
   currentUser = null,
 ) => {
+  let rawService = getFirstNonEmptyText(
+    conversation?.serviceType,
+    conversation?.projectServiceLabel,
+    conversation?.label,
+  );
+
+  if (rawService) {
+    const normalized = String(rawService).trim().toLowerCase();
+    if (
+      normalized.includes("web") &&
+      (normalized.includes("develop") || normalized.includes("dev"))
+    ) {
+      rawService = "Website Development";
+    }
+  }
+
   const subtitleParts = [
     getFirstNonEmptyText(conversation?.clientName, getDisplayName(currentUser)),
-    getFirstNonEmptyText(
-      conversation?.serviceType,
-      conversation?.projectServiceLabel,
-      conversation?.label,
-    ),
+    rawService,
   ].filter(Boolean);
 
   const uniqueParts = subtitleParts.filter(

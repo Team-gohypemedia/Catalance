@@ -78,13 +78,13 @@ const ActiveProjects = memo(function ActiveProjects({
         actionLabel: "Start New Project",
         onClick: handleStartProject,
       },
-      {
-        id: "browse-marketplace",
-        Icon: Users,
-        title: "Find your next specialist",
-        actionLabel: "Browse Marketplace",
-        onClick: handleBrowseMarketplace,
-      },
+      // {
+      //   id: "browse-marketplace",
+      //   Icon: Users,
+      //   title: "Find your next specialist",
+      //   actionLabel: "Browse Marketplace",
+      //   onClick: handleBrowseMarketplace,
+      // },
     ];
   }, [navigate, onOpenHireFreelancer, onOpenQuickProject]);
 
@@ -224,6 +224,9 @@ const ActiveProjects = memo(function ActiveProjects({
             <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
               Active Projects
             </h2>
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-2 text-[11px] font-bold text-primary">
+              {items?.length || 0}
+            </span>
             <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
               <span className="absolute inset-0 rounded-full bg-[#10b981]/10" />
               <span className="absolute inset-0 rounded-full bg-[#10b981]/20 animate-ping" />

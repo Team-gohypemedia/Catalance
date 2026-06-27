@@ -234,8 +234,8 @@ const resolveProjectBusinessName = (project = {}, acceptedProposal = null) =>
     ),
   );
 
-const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
-  getFirstNonEmptyText(
+const resolveProjectServiceType = (project = {}, acceptedProposal = null) => {
+  const rawService = getFirstNonEmptyText(
     project?.service,
     project?.serviceName,
     project?.serviceKey,
@@ -255,6 +255,18 @@ const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
     ),
     project?.title,
   );
+
+  if (!rawService) return "";
+
+  const normalized = String(rawService).trim().toLowerCase();
+  if (
+    normalized.includes("web") &&
+    (normalized.includes("develop") || normalized.includes("dev"))
+  ) {
+    return "Website Development";
+  }
+  return rawService;
+};
 
 const normalizeTimelineValue = (value = "") => {
   const normalizedValue = cleanDisplayText(value);
@@ -948,10 +960,10 @@ export const ProjectProposalCard = ({
   const progressText = `${project.phaseProgressValue}%`;
 
   const detailPanelClassName =
-    "border border-border bg-card shadow-none";
+    "border border-primary/10 bg-primary/[0.03] dark:bg-white/[0.02] shadow-none";
   const phaseSteps = Array.isArray(project.currentPhaseSteps) ? project.currentPhaseSteps : [];
   const actionClassName = cn(
-    "flex w-full items-center justify-center rounded-[14px] px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
+    "flex w-full items-center justify-center rounded-full px-4 py-3 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-80",
     projectActionToneMap[project.actionTone] || projectActionToneMap.slate,
   );
   const canRenderFreelancerAvatar =
@@ -959,13 +971,13 @@ export const ProjectProposalCard = ({
   const statusBadge = (
     <span
       className={cn(
-        "inline-flex h-7 min-w-0 max-w-full shrink items-center gap-1.5 justify-center whitespace-nowrap rounded-full border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em] sm:h-8 sm:px-3 sm:text-[0.68rem] sm:tracking-[0.14em]",
+        "inline-flex h-6 min-w-0 max-w-full shrink items-center gap-1.5 justify-center whitespace-nowrap rounded-full border px-2.5 text-[8px] font-bold uppercase tracking-[0.12em] sm:h-6.5 sm:px-2.5 sm:text-[9px] sm:tracking-[0.12em]",
         projectStatusToneMap[project.statusMeta.tone] || projectStatusToneMap.slate,
       )}
       title={project.statusMeta.label}
     >
       {project.statusMeta.tone === "warning" && (
-        <span className="size-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
+        <span className="size-1 shrink-0 rounded-full bg-primary animate-pulse" />
       )}
       {project.statusMeta.label}
     </span>
@@ -1019,69 +1031,53 @@ export const ProjectProposalCard = ({
       )}
     >
       <div className="flex h-full min-w-0 flex-1 flex-col">
-        <div className="flex items-start justify-between gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="flex min-w-0 items-center gap-2">
-            {!replaceSectionBadgeWithStatus ? (
-              <span className="inline-flex h-7 shrink-0 items-center justify-center whitespace-nowrap rounded-[8px] bg-white/[0.06] px-2.5 text-[9px] font-bold uppercase tracking-[0.16em] text-[#23d18b] sm:h-8 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
-                {project.sectionLabel}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="flex min-w-0 items-start justify-end gap-2">
-            {statusBadge}
-          </div>
+        <div className="flex items-center justify-end">
+          {statusBadge}
         </div>
 
-        <h2 
-          className="mt-4 line-clamp-1 text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] text-foreground sm:mt-5"
-          title={project.title}
-        >
-          {project.title}
-        </h2>
-
-
-        <div className="mt-5 flex items-center gap-3 sm:mt-6">
-          <Avatar className="size-11 shrink-0 border border-border">
-            {canRenderFreelancerAvatar ? (
-              <img
-                src={project.freelancerAvatar}
-                alt={project.freelancerName}
-                referrerPolicy="no-referrer"
-                className="size-full object-cover"
-                onError={() => setHasFreelancerAvatarError(true)}
-              />
-            ) : null}
-            {!canRenderFreelancerAvatar ? (
-              <AvatarFallback className="bg-muted text-sm text-foreground">
-                {project.freelancerInitial}
-              </AvatarFallback>
-            ) : null}
-          </Avatar>
-
-          <div className="min-w-0">
-            <p className="truncate text-[1rem] font-medium text-foreground">{project.freelancerName}</p>
-            <p className="truncate text-sm text-muted-foreground">{project.freelancerRole}</p>
-          </div>
+        <div className="mt-3">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+            Project Name
+          </p>
+          <h2 
+            className="mt-1 text-[20px] font-semibold tracking-[-0.03em] text-foreground"
+            title={project.title}
+          >
+            {project.title}
+          </h2>
         </div>
 
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4">
-          <div className={cn("rounded-[14px] p-3 sm:p-4", detailPanelClassName)}>
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">Budget</p>
-            <p className="mt-3 text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
-              {project.budgetLabel}
-            </p>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Avatar className="size-9 shrink-0 border border-border">
+              {canRenderFreelancerAvatar ? (
+                <img
+                  src={project.freelancerAvatar}
+                  alt={project.freelancerName}
+                  referrerPolicy="no-referrer"
+                  className="size-full object-cover"
+                  onError={() => setHasFreelancerAvatarError(true)}
+                />
+              ) : null}
+              {!canRenderFreelancerAvatar ? (
+                <AvatarFallback className="bg-muted text-xs text-foreground font-semibold">
+                  {project.freelancerInitial}
+                </AvatarFallback>
+              ) : null}
+            </Avatar>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-foreground leading-tight">{project.freelancerName}</p>
+              <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">{project.freelancerRole}</p>
+            </div>
           </div>
 
-          <div className={cn("rounded-[14px] p-3 sm:p-4", detailPanelClassName)}>
-            <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-              {project.dateLabel}
-            </p>
-            <p className="mt-3 break-words text-[1.1rem] font-semibold tracking-[-0.02em] text-foreground">
-              {project.dateValue}
-            </p>
-          </div>
+          <span className="text-right text-xs font-semibold text-primary shrink-0">
+            {project.serviceType || project.sectionLabel}
+          </span>
         </div>
+
+        <div className="mt-4 border-t border-border/60" />
 
         <button 
           type="button"
@@ -1102,9 +1098,9 @@ export const ProjectProposalCard = ({
           <span className="text-sm font-semibold text-[var(--primary)]">{progressText}</span>
         </button>
 
-        <div className="mt-3 h-2 rounded-full bg-white/[0.08]">
+        <div className="mt-3 h-2 rounded-full bg-muted dark:bg-white/[0.08]">
           <div
-            className="h-full rounded-full bg-[linear-gradient(90deg,rgba(255,255,255,0.92),rgba(255,255,255,0.62))]"
+            className="h-full rounded-full bg-primary"
             style={{ width: `${project.phaseProgressValue}%` }}
           />
         </div>
@@ -1184,7 +1180,7 @@ export const ProjectProposalCard = ({
               <Link
                 to={project.actionHref || `/client/project/${project.id}`}
                 className={cn(
-                  "flex w-full items-center justify-center rounded-[14px] px-4 py-3 text-sm font-semibold transition-colors",
+                  "flex w-full items-center justify-center rounded-full px-4 py-3 text-sm font-semibold transition-colors",
                   projectActionToneMap.slate,
                 )}
               >
@@ -1221,7 +1217,7 @@ const EmptyProjectsState = ({
       {showAction ? (
         <Link
           to="/client/proposal"
-          className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
+          className="mt-6 inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
         >
           Create New Proposal
         </Link>

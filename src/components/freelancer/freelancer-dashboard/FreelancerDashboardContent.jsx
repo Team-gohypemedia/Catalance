@@ -14,6 +14,8 @@ import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import SlidersHorizontal from "lucide-react/dist/esm/icons/sliders-horizontal";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import Check from "lucide-react/dist/esm/icons/check";
 import Loader from "@/components/common/Loader";
 import FreelancerWorkspaceHeader from "@/components/features/freelancer/FreelancerWorkspaceHeader";
 import { getSession } from "@/shared/lib/auth-storage";
@@ -322,8 +324,8 @@ const resolveFreelancerProjectBusinessName = (project = {}, proposal = null) =>
     ]),
   );
 
-const resolveFreelancerProjectServiceType = (project = {}, proposal = null) =>
-  getFirstNonEmptyText(
+const resolveFreelancerProjectServiceType = (project = {}, proposal = null) => {
+  const rawService = getFirstNonEmptyText(
     project?.serviceType,
     project?.service,
     project?.serviceName,
@@ -350,6 +352,18 @@ const resolveFreelancerProjectServiceType = (project = {}, proposal = null) =>
     proposal?.title,
     project?.title,
   );
+
+  if (!rawService) return "";
+
+  const normalized = String(rawService).trim().toLowerCase();
+  if (
+    normalized.includes("web") &&
+    (normalized.includes("develop") || normalized.includes("dev"))
+  ) {
+    return "Website Development";
+  }
+  return rawService;
+};
 
 const buildDefaultPhases = (count = 4) =>
   Array.from({ length: Math.max(1, count) }, (_, index) => ({
@@ -2002,33 +2016,65 @@ const FreelancerProjectRedirectCard = ({ item, className }) => {
   return (
     <div
       className={cn(
-        "flex min-h-[320px] flex-col justify-between overflow-hidden rounded-[28px] border border-border bg-card p-4 sm:p-5 xl:p-6",
+        "flex min-h-[506px] flex-col justify-between overflow-hidden rounded-[28px] border border-border bg-card p-5 sm:p-6 xl:p-7 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] transition-all hover:border-primary/20",
         className,
       )}
     >
       <div className="flex flex-1 flex-col items-center text-center">
-        <h3 className="text-[22px] sm:text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+        {/* Illustrative Graphical Header */}
+        <div className="relative mb-5 flex h-[110px] w-full items-center justify-center">
+          {/* Background Glow */}
+          <div className="absolute size-20 rounded-full bg-primary/5 blur-md" />
+          
+          {/* Main Icon Container */}
+          <div className="relative flex size-16 items-center justify-center rounded-[20px] bg-primary/10 border border-primary/25 text-primary shadow-sm">
+            <item.Icon className="size-8" strokeWidth={2} />
+          </div>
+
+          {/* Floating Illustrative Elements */}
+          {item.id === "proposal-pipeline" ? (
+            <div className="absolute right-[calc(50%-44px)] top-5 flex size-5 items-center justify-center rounded-full border border-primary/25 bg-white p-0.5 text-primary shadow-sm dark:bg-zinc-950">
+              <Check className="size-3 stroke-[3]" />
+            </div>
+          ) : (
+            <div className="absolute right-[calc(50%-44px)] top-5 flex size-5 items-center justify-center rounded-full border border-primary/25 bg-white p-0.5 text-primary shadow-sm dark:bg-zinc-950">
+              <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+            </div>
+          )}
+        </div>
+
+        {/* Text Details */}
+        <h3 className="text-[20px] font-bold tracking-[-0.03em] text-[#1C1B1F] dark:text-white sm:text-[1.35rem]">
           {item.title}
         </h3>
+        
+        <p className="mt-2.5 max-w-[260px] text-[0.82rem] leading-relaxed text-muted-foreground sm:text-xs">
+          {item.description}
+        </p>
 
-        <div className="flex w-full flex-1 items-center justify-center">
-          <button
-            type="button"
-            aria-label={item.title}
-            onClick={item.onClick}
-            className="inline-flex h-[104px] w-[104px] items-center justify-center rounded-[14px] border border-primary/30 bg-primary/20 text-primary transition-colors hover:bg-primary/28"
-          >
-            <item.Icon className="size-10" strokeWidth={2} />
-          </button>
+        {/* Feature list box */}
+        <div className="mt-6 w-full rounded-[18px] border border-primary/10 bg-primary/[0.03] dark:bg-white/[0.01] p-4 space-y-3.5">
+          {item.highlights.map((highlight, index) => (
+            <div
+              key={index}
+              className="flex items-center gap-3 text-left text-[0.82rem] font-semibold text-foreground/80 sm:text-xs"
+            >
+              <div className="flex size-4 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary">
+                <Check className="size-2.5 stroke-[3]" />
+              </div>
+              <span className="truncate">{highlight}</span>
+            </div>
+          ))}
         </div>
       </div>
 
+      {/* Button */}
       <button
         type="button"
         onClick={item.onClick}
-        className="inline-flex h-[58px] w-full shrink-0 items-center justify-center rounded-[14px] bg-primary px-6 text-[1.02rem] font-bold uppercase tracking-[0.04em] text-primary-foreground transition-colors hover:bg-primary/90"
+        className="flex w-full items-center justify-center rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 mt-6"
       >
-        {String(item.actionLabel || "Action").toUpperCase()}
+        {item.actionLabel}
       </button>
     </div>
   );
@@ -2854,8 +2900,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         eyebrow: "Proposal Pipeline",
         title: "Keep your pipeline moving",
         description:
-          "Review pending opportunities, send your next pitch, and keep new work flowing in.",
-        highlights: ["Review pending proposals", "Follow up on open leads", "Send your next proposal"],
+          "Review, manage, and respond to incoming proposals all in one place.",
+        highlights: ["View new proposals", "Track client interest", "Respond faster"],
         actionLabel: "Open Proposals",
         onClick: () => navigate("/freelancer/proposals"),
       },
@@ -2865,8 +2911,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         eyebrow: "Client Inbox",
         title: "Stay close to your clients",
         description:
-          "Reply faster, jump into conversations, and keep project decisions moving without delay.",
-        highlights: ["Check unread messages", "Prep for meetings", "Keep delivery updates aligned"],
+          "Communicate, clarify, and build stronger relationships with your clients.",
+        highlights: ["All messages in one place", "Real-time notifications", "Never miss an update"],
         actionLabel: "Open Messages",
         onClick: () => navigate("/freelancer/messages"),
       },
@@ -4140,7 +4186,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                     <Button
                       type="button"
                       variant="outline"
-                      className="h-8 w-[12rem] justify-between rounded-full border-white/[0.12] bg-card px-3 text-[11px] font-semibold text-zinc-200 hover:bg-card data-[state=open]:bg-card"
+                      className="h-8 w-[12rem] justify-between rounded-full border-border bg-card px-3 text-[11px] font-semibold text-foreground dark:text-zinc-200 hover:bg-card data-[state=open]:bg-card"
                     >
                       <span className="flex min-w-0 items-center gap-2">
                         <SlidersHorizontal className="size-3.5 shrink-0" />
@@ -4151,7 +4197,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="w-[12rem] rounded-xl border-white/[0.12] bg-card p-1.5"
+                    className="w-[12rem] rounded-xl border-border bg-card p-1.5"
                   >
                     {runningProjectFilterOptions.map((option) => (
                       <DropdownMenuItem

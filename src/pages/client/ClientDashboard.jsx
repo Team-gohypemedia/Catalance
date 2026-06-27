@@ -27,7 +27,6 @@ const ClientDashboardContent = () => {
 
         <main className="flex-1 pb-12">
           <HeroGreetingBlock />
-          <OverviewMetricsGrid />
           <ActiveProjects />
 
           <section className={useEmptyWorkspaceLayout ? "mt-14" : "mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]"}>

@@ -96,11 +96,11 @@ const ProposalCardsCarousel = ({
 
   if (!proposals.length) return null;
 
-  const shouldUseProposalCarousel = isMobile || proposals.length > 4;
+  const shouldUseProposalCarousel = isMobile || proposals.length > 3;
 
   if (!shouldUseProposalCarousel) {
     return (
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {proposals.map((proposal) => (
           <ProposalRowCard
             key={proposal.id}
@@ -137,7 +137,7 @@ const ProposalCardsCarousel = ({
 
   const shouldShowProposalCarouselControls = isMobile
     ? proposals.length > 1
-    : proposals.length > 4;
+    : proposals.length > 3;
   const proposalCarouselDesktopControlClassName =
     "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
   const proposalCarouselMobileControlClassName =
@@ -211,7 +211,7 @@ const ProposalCardsCarousel = ({
           {proposals.map((proposal) => (
             <CarouselItem
               key={proposal.id}
-              className="pl-0 basis-full md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-3rem)/4)]"
+              className="pl-0 basis-full md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)]"
             >
               <ProposalRowCard
                 proposal={proposal}
@@ -227,7 +227,7 @@ const ProposalCardsCarousel = ({
             </CarouselItem>
           ))}
           {showCreateCard && (
-            <CarouselItem className="pl-0 basis-full md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-3rem)/4)]">
+            <CarouselItem className="pl-0 basis-full md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)]">
               <div 
                 onClick={() => navigate("/service")}
                 className="group flex h-full w-full max-w-[340px] mx-auto overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center min-h-[360px] p-6 text-center shadow-none"

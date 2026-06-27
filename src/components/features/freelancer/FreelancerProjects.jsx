@@ -127,8 +127,8 @@ const resolveProjectBusinessName = (project = {}, acceptedProposal = null) =>
     ),
   );
 
-const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
-  getFirstNonEmptyText(
+const resolveProjectServiceType = (project = {}, acceptedProposal = null) => {
+  const rawService = getFirstNonEmptyText(
     project?.service,
     project?.serviceName,
     project?.serviceKey,
@@ -148,6 +148,18 @@ const resolveProjectServiceType = (project = {}, acceptedProposal = null) =>
     ),
     project?.title,
   );
+
+  if (!rawService) return "";
+
+  const normalized = String(rawService).trim().toLowerCase();
+  if (
+    normalized.includes("web") &&
+    (normalized.includes("develop") || normalized.includes("dev"))
+  ) {
+    return "Website Development";
+  }
+  return rawService;
+};
 
 const resolveProjectTimelineMeta = (project = {}, acceptedProposal = null) => {
   const timelineText = getFirstNonEmptyText(

@@ -188,9 +188,20 @@ const getConversationDisplayTitle = (conversation = {}) =>
   );
 
 const getConversationDisplaySubtitle = (conversation = {}) => {
+  let rawService = getFirstNonEmptyText(conversation?.serviceType, conversation?.label);
+  if (rawService) {
+    const normalized = String(rawService).trim().toLowerCase();
+    if (
+      normalized.includes("web") &&
+      (normalized.includes("develop") || normalized.includes("dev"))
+    ) {
+      rawService = "Website Development";
+    }
+  }
+
   const subtitleParts = [
     getFirstNonEmptyText(conversation?.clientName, conversation?.name),
-    getFirstNonEmptyText(conversation?.serviceType, conversation?.label),
+    rawService,
   ].filter(Boolean);
 
   const uniqueParts = subtitleParts.filter(

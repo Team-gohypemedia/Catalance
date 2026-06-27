@@ -168,13 +168,13 @@ const ClientProjectsPage = () => {
         actionLabel: "Start New Project",
         onClick: handleStartProject,
       },
-      {
-        id: "browse-marketplace",
-        Icon: Users,
-        title: "Find your next specialist",
-        actionLabel: "Browse Marketplace",
-        onClick: handleBrowseMarketplace,
-      },
+      // {
+      //   id: "browse-marketplace",
+      //   Icon: Users,
+      //   title: "Find your next specialist",
+      //   actionLabel: "Browse Marketplace",
+      //   onClick: handleBrowseMarketplace,
+      // },
     ],
     [handleBrowseMarketplace, handleStartProject],
   );
