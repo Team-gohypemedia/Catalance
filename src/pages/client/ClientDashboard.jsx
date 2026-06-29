@@ -31,7 +31,7 @@ const ClientDashboardContent = () => {
 
           <section className={useEmptyWorkspaceLayout ? "mt-14" : "mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]"}>
             <div className={useEmptyWorkspaceLayout ? "" : "min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7"}>
-              <Proposals />
+              <Proposals isWide={useEmptyWorkspaceLayout} />
             </div>
 
             {!useEmptyWorkspaceLayout && (

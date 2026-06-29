@@ -23,8 +23,8 @@ export const EmptyStateCard = memo(function EmptyStateCard({ title, description 
 
 export const ProposalLoadingState = memo(function ProposalLoadingState() {
   return (
-    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, index) => (
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+      {Array.from({ length: 3 }).map((_, index) => (
         <Skeleton key={index} className="h-[28rem] w-full rounded-[32px]" />
       ))}
     </div>

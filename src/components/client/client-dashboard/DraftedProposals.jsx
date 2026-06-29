@@ -555,7 +555,7 @@ const parseProposalString = (text) => {
         <button
           type="button"
           onClick={item.onSend}
-          className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#FF5A1F] hover:bg-[#E54E18] text-xs font-bold text-white transition-colors cursor-pointer"
+          className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors cursor-pointer"
         >
           <Send className="size-3.5" />
           <span>Send Proposal</span>
@@ -577,6 +577,7 @@ const Proposals = memo(function Proposals({
   draftProposalRows,
   onOpenQuickProject,
   className = "",
+  isWide = false,
 }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -872,7 +873,17 @@ const Proposals = memo(function Proposals({
   const totalVisibleDraftCards = items.length + draftRedirectCards.length;
   const shouldUseDraftProposalCarousel = isMobile
     ? totalVisibleDraftCards > 1
-    : totalVisibleDraftCards > 2;
+    : isWide
+      ? totalVisibleDraftCards > 3
+      : totalVisibleDraftCards > 2;
+
+  const carouselItemClassName = isWide
+    ? "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-2.5rem)/3)] 2xl:basis-[calc((100%-2.5rem)/3)]"
+    : "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-2.5rem)/3)]";
+
+  const gridClassName = isWide
+    ? "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 lg:gap-6 xl:gap-7"
+    : "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 lg:gap-6 xl:gap-7";
 
   const measureDraftCardHeights = useCallback(() => {
     const heights = Object.values(draftCardRefs.current)
@@ -1213,7 +1224,7 @@ const Proposals = memo(function Proposals({
                 {items.map((item) => (
                   <CarouselItem
                     key={item.id}
-                    className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-2.5rem)/3)]"
+                    className={carouselItemClassName}
                   >
                     <div
                       ref={(node) => {
@@ -1227,7 +1238,7 @@ const Proposals = memo(function Proposals({
                 {draftRedirectCards.map((item) => (
                   <CarouselItem
                     key={item.id}
-                    className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-2.5rem)/3)]"
+                    className={carouselItemClassName}
                   >
                     <div
                       className="h-full"
@@ -1260,7 +1271,7 @@ const Proposals = memo(function Proposals({
             />
           </div>
         ) : (
-          <div className="grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 2xl:grid-cols-3 lg:gap-6 xl:gap-7">
+          <div className={gridClassName}>
             {items.map((item) => (
               <div
                 key={item.id}

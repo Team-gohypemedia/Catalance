@@ -51,8 +51,8 @@ const ActivityActionButtons = memo(function ActivityActionButtons({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-center gap-2",
-        compact ? "mt-3" : "",
+        "flex items-center gap-2 shrink-0",
+        compact ? "mt-3 flex-wrap" : "flex-nowrap",
       )}
     >
       {hasSecondaryAction ? (
@@ -63,8 +63,10 @@ const ActivityActionButtons = memo(function ActivityActionButtons({
             item.onSecondaryAction();
           }}
           className={cn(
-            "inline-flex h-8 items-center justify-center rounded-xl border border-border bg-background/40 px-3 text-xs font-semibold text-foreground transition-colors hover:bg-muted",
-            compact ? "" : "text-[11px] uppercase tracking-[0.06em]",
+            "inline-flex items-center justify-center transition-colors border border-border bg-background/40 hover:bg-muted font-semibold text-foreground",
+            compact 
+              ? "h-8 px-3 text-xs rounded-xl" 
+              : "h-7 px-2.5 text-[10px] rounded-lg uppercase tracking-[0.06em]"
           )}
         >
           {item.secondaryActionLabel || "View Details"}
@@ -79,8 +81,10 @@ const ActivityActionButtons = memo(function ActivityActionButtons({
             item.onAction();
           }}
           className={cn(
-            "inline-flex h-8 items-center justify-center rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/80",
-            compact ? "" : "text-[11px] uppercase tracking-[0.06em]",
+            "inline-flex items-center justify-center transition-colors bg-primary hover:bg-primary/80 font-semibold text-primary-foreground",
+            compact 
+              ? "h-8 px-3 text-xs rounded-xl" 
+              : "h-7 px-2.5 text-[10px] rounded-lg uppercase tracking-[0.06em]"
           )}
         >
           {item.actionLabel || "View"}
@@ -156,9 +160,9 @@ const ActivityRow = memo(function ActivityRow({ item, compact = false }) {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-3 pl-12 sm:pl-13 lg:pl-0">
+      <div className="flex items-center gap-3 pl-12 sm:pl-13 lg:pl-0 shrink-0">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">{item.timeLabel}</span>
         <ActivityActionButtons item={item} />
-        <span className="text-xs text-muted-foreground">{item.timeLabel}</span>
       </div>
     </div>
   );
