@@ -1966,13 +1966,6 @@ const FreelancerPendingProposalsSection = ({
             <p className="mt-2 max-w-[320px] text-sm text-muted-foreground">
               New proposal requests from clients will appear here.
             </p>
-            <button
-              type="button"
-              onClick={onOpenAll}
-              className="mt-6 inline-flex h-11 min-w-[180px] items-center justify-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:bg-primary/90 active:scale-98"
-            >
-              View Proposals
-            </button>
           </div>
         </FreelancerDashboardPanel>
       ) : shouldUsePendingProposalCarousel ? (
