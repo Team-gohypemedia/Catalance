@@ -4,6 +4,7 @@ import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { fetchMatchedFreelancersForProposal } from "@/shared/lib/api-client";
 import {
+  getProposalSignature,
   getProposalStorageKeys,
   loadSavedProposalsFromStorage,
   persistSavedProposalsToStorage,
@@ -334,12 +335,26 @@ export const ClientProposalDataProvider = ({ children }) => {
         { seen: new Set(), list: [] },
       ).list;
 
-      setProposals(
-        mergeProposalCollections(
-          [...uniqueById, ...remoteDraftProjects],
-          localDrafts,
-        ),
+      const allProposals = mergeProposalCollections(
+        [...uniqueById, ...remoteDraftProjects],
+        localDrafts,
       );
+
+      // Deduplicate backend drafts by signature to prevent identical UI cards
+      // from showing if a user clicked "Save Proposal" multiple times.
+      const deduplicated = [];
+      const seenSignatures = new Set();
+      
+      for (const proposal of allProposals) {
+        if (String(proposal.status).toUpperCase() === "DRAFT") {
+          const sig = getProposalSignature(proposal);
+          if (seenSignatures.has(sig)) continue;
+          seenSignatures.add(sig);
+        }
+        deduplicated.push(proposal);
+      }
+
+      setProposals(deduplicated);
     } catch (error) {
       console.error("Failed to load proposals from API:", error);
       const fallbackLocalDrafts = initialLocalSavedProposals.map(mapLocalDraftProposal);
