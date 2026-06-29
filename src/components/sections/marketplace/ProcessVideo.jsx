@@ -40,8 +40,8 @@ const itemVariants = {
 
 const ProcessVideo = () => {
   const { theme } = useTheme();
-  const isDarkMode = 
-    theme === "dark" || 
+  const isDarkMode =
+    theme === "dark" ||
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   const videoSrc = "https://assets.catalance.in/assets/Catalance.mp4";
@@ -157,9 +157,8 @@ const ProcessVideo = () => {
                   {STEPS.map((s, i) => (
                     <div
                       key={s.id}
-                      className={`h-1.5 rounded-full transition-all duration-500 ${
-                        i === 2 ? "w-10 bg-primary" : "w-4 bg-white/20"
-                      }`}
+                      className={`h-1.5 rounded-full transition-all duration-500 ${i === 2 ? "w-10 bg-primary" : "w-4 bg-white/20"
+                        }`}
                     />
                   ))}
                   <span className="ml-1 text-[12px] font-medium text-slate-500">3 / 3</span>
@@ -221,7 +220,7 @@ const ProcessVideo = () => {
                 className="group inline-flex items-center gap-2.5 rounded-full border border-primary/30 bg-primary/10 px-6 py-3 text-[14px] font-semibold text-primary transition-all hover:bg-primary/15 hover:border-primary/50"
               >
                 Start exploring services
-                
+
               </a>
             </motion.div>
           </motion.div>

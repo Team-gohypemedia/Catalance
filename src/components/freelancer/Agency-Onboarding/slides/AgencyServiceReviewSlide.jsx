@@ -960,7 +960,7 @@ const AgencyServiceReviewSlide = ({
                     </p>
                   </div>
                   <div className="p-5">
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 grid-cols-2">
                       <div className="rounded-xl border border-border bg-muted/40 p-4">
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
                           Agency Name
@@ -1006,7 +1006,7 @@ const AgencyServiceReviewSlide = ({
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-border bg-muted/40 p-4 sm:col-span-2">
+                      <div className="rounded-xl border border-border bg-muted/40 p-4 col-span-2">
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
                           Industries
                         </p>
@@ -1021,7 +1021,7 @@ const AgencyServiceReviewSlide = ({
                         </p>
                       </div>
 
-                      <div className="rounded-xl border border-border bg-muted/40 p-4 sm:col-span-2">
+                      <div className="rounded-xl border border-border bg-muted/40 p-4 col-span-2">
                         <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
                           Core Roles
                         </p>
@@ -1106,7 +1106,86 @@ const AgencyServiceReviewSlide = ({
                   </p>
                 </div>
               </div>
+            </div>
 
+            {/* Sidebar */}
+            <aside className="space-y-0 lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 lg:pt-0">
+              <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                {/* Grid: Starting Price, Experience Level, Delivery Timeline */}
+                <div className="grid grid-cols-2 border-b border-border lg:grid-cols-1 lg:divide-y lg:divide-border">
+                  {/* Starting Price */}
+                  <div className="col-span-2 border-b border-border p-5 lg:col-span-1 lg:border-b-0 lg:border-r-0">
+                    <p className={CARD_LABEL_CLASS}>Starting Price</p>
+                    <p className={CARD_VALUE_CLASS}>
+                      {startingPriceDisplay.label}
+                    </p>
+                  </div>
+
+                  {/* Experience Level */}
+                  <div className="border-r border-border p-5 lg:border-r-0">
+                    <p className={CARD_LABEL_CLASS}>Experience Level</p>
+                    <p className={CARD_VALUE_CLASS}>
+                      {experienceLabel}
+                    </p>
+                  </div>
+
+                  {/* Delivery Timeline */}
+                  <div className="p-5">
+                    <p className={CARD_LABEL_CLASS}>Delivery Timeline</p>
+                    <p className={CARD_VALUE_CLASS}>
+                      {deliveryLabel}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Skills Category */}
+                <div className="border-b border-border p-5">
+                  <p className={CARD_LABEL_CLASS}>Skills Category</p>
+                  <div className="mt-3">
+                    {selectedCategoryLabels.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedCategoryLabels.map((tag) => (
+                          <PreviewTag key={tag} label={tag} variant="category-compact" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
+                        Select sub-category.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Skills */}
+                <div className="p-5">
+                  <p className={CARD_LABEL_CLASS}>Skills</p>
+                  <div className="mt-3">
+                    {skillsBySubCategory.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {skillsBySubCategory.map((group) =>
+                          group.skills.map((tag) => (
+                            <PreviewTag key={`${group.id}-${tag}`} label={tag} variant="compact" />
+                          ))
+                        )}
+                      </div>
+                    ) : skillTags.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {skillTags.map((tag) => (
+                          <PreviewTag key={tag} label={tag} variant="compact" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
+                        No tools/skills added.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* Part 2: Case Studies */}
+            <div className="space-y-7 lg:col-start-1 lg:col-end-2">
               {/* Case Studies Card */}
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="border-b border-border p-5">
@@ -1250,82 +1329,6 @@ const AgencyServiceReviewSlide = ({
                 )}
               </div>
             </div>
-
-            {/* Sidebar */}
-            <aside className="space-y-0 lg:col-start-2 lg:col-end-3 lg:row-start-1 lg:row-span-2 lg:pt-0">
-              <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                {/* Grid: Starting Price, Experience Level, Delivery Timeline */}
-                <div className="grid grid-cols-2 border-b border-border lg:grid-cols-1 lg:divide-y lg:divide-border">
-                  {/* Starting Price */}
-                  <div className="col-span-2 border-b border-border p-5 lg:col-span-1 lg:border-b-0 lg:border-r-0">
-                    <p className={CARD_LABEL_CLASS}>Starting Price</p>
-                    <p className={CARD_VALUE_CLASS}>
-                      {startingPriceDisplay.label}
-                    </p>
-                  </div>
-
-                  {/* Experience Level */}
-                  <div className="border-r border-border p-5 lg:border-r-0">
-                    <p className={CARD_LABEL_CLASS}>Experience Level</p>
-                    <p className={CARD_VALUE_CLASS}>
-                      {experienceLabel}
-                    </p>
-                  </div>
-
-                  {/* Delivery Timeline */}
-                  <div className="p-5">
-                    <p className={CARD_LABEL_CLASS}>Delivery Timeline</p>
-                    <p className={CARD_VALUE_CLASS}>
-                      {deliveryLabel}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Skills Category */}
-                <div className="border-b border-border p-5">
-                  <p className={CARD_LABEL_CLASS}>Skills Category</p>
-                  <div className="mt-3">
-                    {selectedCategoryLabels.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {selectedCategoryLabels.map((tag) => (
-                          <PreviewTag key={tag} label={tag} variant="category-compact" />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
-                        Select sub-category.
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Skills */}
-                <div className="p-5">
-                  <p className={CARD_LABEL_CLASS}>Skills</p>
-                  <div className="mt-3">
-                    {skillsBySubCategory.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {skillsBySubCategory.map((group) =>
-                          group.skills.map((tag) => (
-                            <PreviewTag key={`${group.id}-${tag}`} label={tag} variant="compact" />
-                          ))
-                        )}
-                      </div>
-                    ) : skillTags.length > 0 ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {skillTags.map((tag) => (
-                          <PreviewTag key={tag} label={tag} variant="compact" />
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
-                        No tools/skills added.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </aside>
           </div>
         </div>
       </div>

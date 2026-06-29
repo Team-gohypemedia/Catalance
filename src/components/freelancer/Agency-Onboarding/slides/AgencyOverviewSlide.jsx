@@ -6,6 +6,15 @@ import { ONBOARDING_FIELD_LABEL_CLASS, ONBOARDING_PAGE_TITLE_CLASS } from "../ty
 import { CustomSelect } from "./shared/ServiceInfoComponents";
 import { AGENCY_TYPE_OPTIONS } from "../agency-details";
 
+const currentYear = new Date().getFullYear();
+const FOUNDED_YEAR_OPTIONS = Array.from(
+  { length: currentYear - 1970 + 1 },
+  (_, i) => {
+    const year = (currentYear - i).toString();
+    return { value: year, label: year };
+  }
+);
+
 const inputClassName =
   "h-[46px] rounded-[10px] border border-input bg-card px-5 !text-[14px] !leading-5 text-foreground shadow-none placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground/50 placeholder:font-normal [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 [&::placeholder]:font-normal focus-visible:border-primary/45 focus-visible:ring-primary/15";
 const textAreaClassName =
@@ -106,15 +115,12 @@ const AgencyOverviewSlide = ({
             <Label className={getFieldLabelClasses(Boolean(foundedYearError))}>
               Founded Year
             </Label>
-            <Input
+            <CustomSelect
               value={agencyProfileForm.foundedYear}
-              onChange={(event) =>
-                onAgencyFieldChange("foundedYear", event.target.value)
-              }
-              placeholder="2021"
-              inputMode="numeric"
-              maxLength={4}
-              className={getInputClasses(Boolean(foundedYearError))}
+              onChange={(value) => onAgencyFieldChange("foundedYear", value)}
+              options={FOUNDED_YEAR_OPTIONS}
+              placeholder="Select founded year"
+              hasError={Boolean(foundedYearError)}
             />
             {foundedYearError ? (
               <p className="text-sm text-destructive">{foundedYearError}</p>

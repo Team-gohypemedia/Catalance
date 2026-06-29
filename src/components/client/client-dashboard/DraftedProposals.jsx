@@ -428,7 +428,7 @@ const parseProposalString = (text) => {
     <div className="w-full min-w-0">
       {/* Top Header Section */}
       <div className="flex items-center justify-between">
-        <div className="inline-flex items-center justify-center rounded bg-[#FFF0EA] dark:bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6A39]">
+        <div className="inline-flex items-center justify-center rounded bg-[#FFF0EA] dark:bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6A39] dark:text-primary">
           DRAFT
         </div>
         
@@ -546,7 +546,7 @@ const parseProposalString = (text) => {
         <button
           type="button"
           onClick={item.onView}
-          className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] hover:bg-muted/80 text-xs font-bold text-foreground transition-colors cursor-pointer border border-transparent"
+          className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors cursor-pointer border border-transparent"
         >
           <Eye className="size-4 text-muted-foreground" />
           <span>View Details</span>
