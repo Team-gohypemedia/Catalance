@@ -513,9 +513,9 @@ html.marketplace-page:not(.dark) main h4 {
 }
 
 /* ── All body text ── */
-html.home-page:not(.dark) main p:not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-green"]),
-html.onboarding-page:not(.dark) main p:not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-green"]),
-html.marketplace-page:not(.dark) main p:not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-green"]) {
+html.home-page:not(.dark) main p:not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-green"]):not(.keep-white):not(.dark-card *),
+html.onboarding-page:not(.dark) main p:not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-green"]):not(.keep-white):not(.dark-card *),
+html.marketplace-page:not(.dark) main p:not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-green"]):not(.keep-white):not(.dark-card *) {
   color: #000000 !important;
 }
 
@@ -1198,4 +1198,15 @@ input[data-input-otp-input] {
   border: none !important;
   box-shadow: none !important;
   outline: none !important;
+}
+
+/* Prevent Radix UI (Select/Dialog) scroll lock from causing page layout shifts */
+html {
+  scrollbar-gutter: stable;
+}
+
+body[data-radix-scroll-locked] {
+  overflow: auto !important;
+  padding-right: 0px !important;
+  margin-right: 0px !important;
 }

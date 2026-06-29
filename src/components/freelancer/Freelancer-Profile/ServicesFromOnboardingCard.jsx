@@ -433,6 +433,7 @@ const createDefaultMetricDefinitions = (labels) => [
     getValue: ({ detail, fieldPaths, helpers }) =>
       helpers.resolveExperienceLabel(getFirstValue(detail, fieldPaths.experience)),
   },
+  /*
   {
     key: "deliveryTimeline",
     label: labels.deliveryTimelineLabel,
@@ -440,6 +441,7 @@ const createDefaultMetricDefinitions = (labels) => [
     getValue: ({ detail, fieldPaths, helpers }) =>
       helpers.resolveTimelineLabel(getFirstValue(detail, fieldPaths.deliveryTimeline)),
   },
+  */
   {
     key: "startingPrice",
     label: labels.startingPriceLabel,
@@ -602,7 +604,10 @@ const ServiceDetailArticle = ({
       ) : null}
 
       {metadataItems.length > 0 ? (
-        <div className="mt-3.5 grid grid-cols-3 gap-1.5 sm:gap-2.5">
+        <div className={cn(
+          "mt-3.5 grid gap-1.5 sm:gap-2.5",
+          metadataItems.length === 2 ? "grid-cols-2" : "grid-cols-3"
+        )}>
           {metadataItems.map((item) => (
             <MetricCard
               key={`${serviceKey}-${item.key || item.label}`}
@@ -1333,6 +1338,8 @@ const ServicesFromOnboardingCard = ({
       align: "start",
       loop: false,
       duration: 12,
+      watchDrag: (emblaApi, event) =>
+        event.pointerType !== "mouse" && event.type !== "mousedown",
     }),
     []
   );
@@ -1370,7 +1377,7 @@ const ServicesFromOnboardingCard = ({
           </div>
 
           {processedServices.length > 0 ? (
-            <div className="flex items-center gap-2.5 self-start sm:self-auto">
+            <div className="flex items-center gap-2.5 self-end sm:self-auto">
               {typeof openAddServiceModal === "function" && (
                 <button
                   type="button"

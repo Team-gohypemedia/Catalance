@@ -55,12 +55,12 @@ const DELIVERY_TIMELINE_LABELS = {
   ongoing: "Ongoing / Retainer",
 };
 
-const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} text-foreground`;
+const SECTION_TITLE_CLASS = `${ONBOARDING_SECTION_TITLE_CLASS} dark:text-white`;
 const SECTION_SUBTITLE_CLASS =
   `${ONBOARDING_SECTION_DESCRIPTION_CLASS} text-muted-foreground`;
 const CARD_LABEL_CLASS = "text-sm font-semibold text-foreground";
 const CARD_SUBLABEL_CLASS = "text-xs text-muted-foreground";
-const CARD_VALUE_CLASS = "mt-2 text-[22px] font-medium tracking-[-0.03em] text-foreground";
+const CARD_VALUE_CLASS = "mt-1.5 text-[12px] font-semibold text-foreground";
 const BADGE_CLASS =
   "inline-flex items-center rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground";
 const CASE_STUDY_PREVIEW_CACHE = new Map();
@@ -962,19 +962,19 @@ const AgencyServiceReviewSlide = ({
                   <div className="p-5">
                     <div className="grid gap-3 grid-cols-2">
                       <div className="rounded-xl border border-border bg-muted/40 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                        <p className="text-[14px] font-bold uppercase tracking-normal sm:tracking-[0.16em] text-foreground">
                           Agency Name
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">
+                        <p className="mt-2 text-[12px] font-semibold text-muted-foreground">
                           {agencyProfileForm?.companyName || "Not set yet"}
                         </p>
                       </div>
 
                       <div className="rounded-xl border border-border bg-muted/40 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                        <p className="text-[14px] font-bold uppercase tracking-normal sm:tracking-[0.16em] text-foreground">
                           Agency Type
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">
+                        <p className="mt-2 text-[12px] font-semibold text-muted-foreground">
                           {resolveAgencyOptionLabel(
                             AGENCY_TYPE_OPTIONS,
                             agencyProfileForm?.agencyType,
@@ -983,10 +983,10 @@ const AgencyServiceReviewSlide = ({
                       </div>
 
                       <div className="rounded-xl border border-border bg-muted/40 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                        <p className="text-[14px] font-bold uppercase tracking-normal sm:tracking-[0.16em] text-foreground">
                           Team Size
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">
+                        <p className="mt-2 text-[12px] font-semibold text-muted-foreground">
                           {resolveAgencyOptionLabel(
                             AGENCY_TEAM_SIZE_OPTIONS,
                             agencyProfileForm?.teamSize,
@@ -995,10 +995,10 @@ const AgencyServiceReviewSlide = ({
                       </div>
 
                       <div className="rounded-xl border border-border bg-muted/40 p-4">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                        <p className="text-[14px] font-bold uppercase tracking-normal sm:tracking-[0.16em] text-foreground">
                           Collaboration
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">
+                        <p className="mt-2 text-[12px] font-semibold text-muted-foreground">
                           {resolveAgencyOptionLabel(
                             AGENCY_COLLABORATION_STYLE_OPTIONS,
                             agencyProfileForm?.collaborationStyle,
@@ -1007,10 +1007,10 @@ const AgencyServiceReviewSlide = ({
                       </div>
 
                       <div className="rounded-xl border border-border bg-muted/40 p-4 col-span-2">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                        <p className="text-[14px] font-bold uppercase tracking-normal sm:tracking-[0.16em] text-foreground">
                           Industries
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">
+                        <p className="mt-2 text-[12px] font-semibold text-muted-foreground">
                           {agencyIndustries.length > 0
                             ? agencyIndustries
                                 .map((value) =>
@@ -1022,10 +1022,10 @@ const AgencyServiceReviewSlide = ({
                       </div>
 
                       <div className="rounded-xl border border-border bg-muted/40 p-4 col-span-2">
-                        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                        <p className="text-[14px] font-bold uppercase tracking-normal sm:tracking-[0.16em] text-foreground">
                           Core Roles
                         </p>
-                        <p className="mt-2 text-sm font-semibold text-foreground">
+                        <p className="mt-2 text-[12px] font-semibold text-muted-foreground">
                           {agencyCoreRoles.length > 0
                             ? agencyCoreRoles
                                 .map((value) =>
@@ -1053,14 +1053,14 @@ const AgencyServiceReviewSlide = ({
                       <div className="absolute inset-y-0 left-[30%] w-px bg-white/10 keep-white" />
                       <div className="absolute inset-y-0 right-[30%] w-px bg-white/10 keep-white" />
                       <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(var(--brand-rgb),0.1)] keep-white" />
-                      <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/12 keep-white" />
+                      <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 keep-white" />
                       <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25 keep-white" />
                       <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))] keep-white" />
                       <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm keep-white">
-                        <p className="text-xs uppercase tracking-[0.2em] text-white/45 keep-white">
+                        <p className="text-xs uppercase tracking-[0.2em] keep-white" style={{ color: "rgba(255, 255, 255, 0.65)" }}>
                           Visual Preview
                         </p>
-                        <p className="mt-2 max-w-sm text-sm text-white/65 keep-white">
+                        <p className="mt-2 max-w-sm text-sm keep-white" style={{ color: "rgba(255, 255, 255, 0.85)" }}>
                           Add service images in the media step to replace this placeholder.
                         </p>
                       </div>
@@ -1101,7 +1101,7 @@ const AgencyServiceReviewSlide = ({
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="p-5">
                   <p className={CARD_LABEL_CLASS}>Description</p>
-                  <p className="mt-3 text-[15px] leading-[1.75] text-muted-foreground">
+                  <p className="mt-3 text-[12px] leading-[1.75] text-muted-foreground">
                     {description}
                   </p>
                 </div>

@@ -1152,7 +1152,7 @@ const FreelancerProjectsContent = () => {
                 </h1>
               </div>
 
-                <div className="flex flex-col sm:flex-row justify-start lg:justify-end gap-3 sm:gap-4 items-start sm:items-center">
+                <div className="flex flex-col items-end gap-3">
                   <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {projectFilterOptions.map((option) => {
                       const count =
