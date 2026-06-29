@@ -206,8 +206,9 @@ model FreelancerProfile {
   startingPrice              String?   @map("serviceStartingPrice")
   serviceKeywords            String[]  @default([]) @map("servicePositiveKeyword")
   serviceMedia               Json?     @default("[]")
-  createdAt                   DateTime @default(now())
-  updatedAt                   DateTime @updatedAt
+  customProjectLimit         Int?
+  createdAt                  DateTime  @default(now())
+  updatedAt                  DateTime  @updatedAt
 }
 
 model ClientProfile {

@@ -2285,3 +2285,86 @@ export const importServiceQuestions = asyncHandler(async (req, res) => {
 
   res.json({ success: true });
 });
+
+export const getFreelancerLimits = asyncHandler(async (req, res) => {
+  const { collectActiveProjectCounts, OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT } = await import("../lib/freelancer-open-to-work.js");
+  const activeProjectCounts = await collectActiveProjectCounts();
+  
+  const freelancers = await prisma.user.findMany({
+    where: {
+      status: { not: "SUSPENDED" },
+      OR: [
+        { role: "FREELANCER" },
+        { roles: { has: "FREELANCER" } },
+      ],
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      freelancerProfile: {
+        select: {
+          openToWork: true,
+          customProjectLimit: true,
+        },
+      },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const formattedFreelancers = freelancers.map(user => {
+    const profile = user.freelancerProfile || {};
+    const activeProjectCount = activeProjectCounts.get(user.id) || 0;
+    const customLimit = profile.customProjectLimit;
+    const systemLimit = OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT;
+    const limit = customLimit !== null && customLimit !== undefined ? customLimit : systemLimit;
+
+    return {
+      id: user.id,
+      name: user.fullName || user.email,
+      email: user.email,
+      activeProjects: activeProjectCount,
+      customLimit: customLimit,
+      systemLimit: systemLimit,
+      effectiveLimit: limit,
+      openToWork: profile.openToWork ?? false,
+      isEligible: activeProjectCount < limit && profile.openToWork !== false
+    };
+  });
+
+  res.json({
+    success: true,
+    data: formattedFreelancers
+  });
+});
+
+export const updateFreelancerLimit = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const { customProjectLimit } = req.body;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { freelancerProfile: true }
+  });
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  const limitValue = customProjectLimit === "" || customProjectLimit === null ? null : parseInt(customProjectLimit, 10);
+  if (limitValue !== null && isNaN(limitValue)) {
+    throw new AppError("Invalid limit value", 400);
+  }
+
+  await prisma.freelancerProfile.upsert({
+    where: { userId },
+    update: { customProjectLimit: limitValue },
+    create: { userId, customProjectLimit: limitValue }
+  });
+
+  // Re-sync their status
+  const { syncFreelancerOpenToWorkStatus } = await import("../lib/freelancer-open-to-work.js");
+  await syncFreelancerOpenToWorkStatus(userId);
+
+  res.json({ success: true, message: "Freelancer limit updated successfully" });
+});

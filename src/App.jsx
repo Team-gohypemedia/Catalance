@@ -146,6 +146,9 @@ const AdminUserRequests = lazy(
 const AdminFreelancerOnboarding = lazy(
   () => import("@/components/features/admin/AdminFreelancerOnboarding"),
 );
+const AdminFreelancerLimits = lazy(
+  () => import("@/components/features/admin/AdminFreelancerLimits"),
+);
 const AdminUserDetails = lazy(
   () => import("@/components/features/admin/AdminUserDetails"),
 );
@@ -744,6 +747,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminUsers roleFilter="FREELANCER" />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/freelancer-limits"
+              element={
+                <AdminRoute>
+                  <AdminFreelancerLimits />
                 </AdminRoute>
               }
             />

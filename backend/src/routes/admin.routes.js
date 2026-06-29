@@ -30,6 +30,8 @@ import {
   getProjectManagerProjectDetails,
   getProjectManagerProjectMessages,
   sendProjectManagerProjectMessage,
+  getFreelancerLimits,
+  updateFreelancerLimit,
 } from "../controllers/admin.controller.js";
 
 import {
@@ -131,6 +133,8 @@ router.get("/projects/:projectId", getProjectDetails);
 router.patch("/users/:userId/role", updateUserRole);
 router.patch("/users/:userId/status", updateUserStatus);
 router.patch("/users/:userId/verification", updateUserVerification);
+router.get("/freelancer-limits", getFreelancerLimits);
+router.put("/freelancer-limits/:userId", updateFreelancerLimit);
 
 // Service Management Routes
 router.get("/services", getServices);

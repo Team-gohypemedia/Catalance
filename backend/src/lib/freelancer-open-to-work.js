@@ -61,13 +61,14 @@ export const syncFreelancerOpenToWorkStatus = async (freelancerId) => {
     },
   });
 
-  const shouldBeOpenToWork =
-    activeProjectCount < OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT;
-
   const existingProfile = await prisma.freelancerProfile.findUnique({
     where: { userId: targetFreelancerId },
-    select: { userId: true, openToWork: true },
+    select: { userId: true, openToWork: true, customProjectLimit: true },
   });
+
+  const limit = existingProfile?.customProjectLimit ?? OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT;
+  const shouldBeOpenToWork =
+    activeProjectCount < limit;
 
   if (existingProfile?.openToWork === shouldBeOpenToWork) {
     return {
@@ -106,7 +107,7 @@ export const reconcileFreelancerOpenToWorkStatuses = async () => {
     select: {
       id: true,
       freelancerProfile: {
-        select: { userId: true, openToWork: true },
+        select: { userId: true, openToWork: true, customProjectLimit: true },
       },
     },
   });
@@ -118,9 +119,10 @@ export const reconcileFreelancerOpenToWorkStatuses = async () => {
     checkedCount += 1;
 
     const activeProjectCount = activeProjectCounts.get(user.id) || 0;
-    const shouldBeOpenToWork =
-      activeProjectCount < OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT;
     const profile = user.freelancerProfile;
+    const limit = profile?.customProjectLimit ?? OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT;
+    const shouldBeOpenToWork =
+      activeProjectCount < limit;
 
     if (profile) {
       if (profile.openToWork === shouldBeOpenToWork) {

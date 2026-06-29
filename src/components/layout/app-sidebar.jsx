@@ -205,6 +205,12 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "Freelancer Limits",
+      url: "/admin/freelancer-limits",
+      icon: UserCheck,
+      isActive: true,
+    },
+    {
       title: "Onboarding",
       url: "/admin/freelancer-onboarding",
       icon: UserCheck,

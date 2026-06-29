@@ -1240,7 +1240,7 @@ const scoreTextRelevance = ({
   };
 };
 
-const scoreAvailability = ({ activeProjectCount = 0, openToWork = true } = {}) => {
+const scoreAvailability = ({ activeProjectCount = 0, openToWork = true, customProjectLimit = null } = {}) => {
   if (!openToWork) {
     return {
       score: 0,
@@ -1249,7 +1249,8 @@ const scoreAvailability = ({ activeProjectCount = 0, openToWork = true } = {}) =
     };
   }
 
-  if (activeProjectCount >= OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT) {
+  const limit = customProjectLimit ?? OPEN_TO_WORK_MIN_ACTIVE_PROJECT_COUNT;
+  if (activeProjectCount >= limit) {
     return {
       score: 0,
       eligible: false,
@@ -1402,6 +1403,7 @@ const evaluateCandidateMatch = ({
   const availability = scoreAvailability({
     activeProjectCount,
     openToWork: freelancer?.openToWork !== false,
+    customProjectLimit: freelancer?.customProjectLimit,
   });
 
   if (!availability.eligible) {

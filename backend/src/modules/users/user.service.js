@@ -278,6 +278,8 @@ const resolveFreelancerProfileRecord = (user = null) => {
       typeof read("openToWork") === "boolean"
         ? read("openToWork")
         : true,
+    customProjectLimit: read("customProjectLimit") ?? null,
+    isVerified: read("isVerified") ?? false,
     rating: read("rating") ?? 0,
     reviewCount: Number.isFinite(Number(reviewCountRaw)) ? Number(reviewCountRaw) : 0,
     experienceYears: Number.isFinite(Number(experienceYearsRaw))
@@ -3864,6 +3866,7 @@ export const sanitizeUser = (user) => {
     jobTitle: identityJobTitle || null,
     companyName: resolvedFreelancerProfile.companyName || null,
     openToWork: resolvedFreelancerProfile.openToWork,
+    customProjectLimit: resolvedFreelancerProfile.customProjectLimit ?? null,
     rating: resolvedFreelancerProfile.rating ?? 0,
     reviewCount: resolvedFreelancerProfile.reviewCount ?? 0,
     experienceYears: resolvedFreelancerProfile.experienceYears ?? 0,
