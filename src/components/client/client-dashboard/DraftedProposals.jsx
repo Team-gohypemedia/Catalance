@@ -48,6 +48,7 @@ import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 import { extractLabeledLineValue, extractStructuredFieldValue } from "@/shared/lib/labeled-fields";
 import {
+  getProposalSignature,
   getProposalStorageKeys,
   persistSavedProposalsToStorage,
   resolveActiveProposalId,
@@ -628,7 +629,18 @@ const Proposals = memo(function Proposals({
       .filter((project) => project?.status === "DRAFT")
       .map(mapApiDraftProject);
 
-    const sortedProposals = backendDrafts.sort((left, right) => {
+    const deduplicatedDrafts = [];
+    const seenSignatures = new Set();
+    
+    for (const draft of backendDrafts) {
+      const sig = getProposalSignature(draft);
+      if (!seenSignatures.has(sig)) {
+        seenSignatures.add(sig);
+        deduplicatedDrafts.push(draft);
+      }
+    }
+
+    const sortedProposals = deduplicatedDrafts.sort((left, right) => {
       const leftTime = new Date(left.updatedAt || left.createdAt || 0).getTime();
       const rightTime = new Date(right.updatedAt || right.createdAt || 0).getTime();
       return rightTime - leftTime;
