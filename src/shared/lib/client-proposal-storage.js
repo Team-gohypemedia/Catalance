@@ -353,6 +353,19 @@ const loadSavedProposalsFromStorage = (userId) => {
 const migrateSavedProposalsToUser = (userId) =>
   loadSavedProposalsFromStorage(userId);
 
+const deleteLocalDraftProposal = (draftId, userId) => {
+  const storageKeys = getProposalStorageKeys(userId);
+  const { proposals, activeId } = loadSavedProposalsFromStorage(userId);
+
+  const remaining = proposals.filter((p) => p.id !== draftId);
+  if (remaining.length === proposals.length) return;
+
+  const preferredActiveId = activeId === draftId ? null : activeId;
+  const nextActiveId = resolveActiveProposalId(remaining, preferredActiveId, null);
+
+  persistSavedProposalsToStorage(remaining, nextActiveId, storageKeys);
+};
+
 export {
   getProposalSignature,
   getProposalStorageKeys,
@@ -360,4 +373,5 @@ export {
   migrateSavedProposalsToUser,
   persistSavedProposalsToStorage,
   resolveActiveProposalId,
+  deleteLocalDraftProposal,
 };

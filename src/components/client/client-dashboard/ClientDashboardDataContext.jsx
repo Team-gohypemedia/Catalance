@@ -14,6 +14,11 @@ import { useNotifications } from "@/shared/context/NotificationContext";
 import { getSession } from "@/shared/lib/auth-storage";
 import { fetchChatConversations } from "@/shared/lib/api-client";
 import {
+  loadSavedProposalsFromStorage,
+  deleteLocalDraftProposal,
+} from "@/shared/lib/client-proposal-storage";
+import { buildProjectDraftPayload } from "@/components/client/client-proposal/proposal-utils";
+import {
   createMarketplaceFavoriteSnapshot,
   loadMarketplaceFavorites,
   saveMarketplaceFavorites,
@@ -683,6 +688,36 @@ export const ClientDashboardDataProvider = ({ children }) => {
       }
 
       try {
+        if (isAuthenticated) {
+          const { proposals: localDrafts } = loadSavedProposalsFromStorage(sessionUser?.id);
+          const unsyncedDrafts = localDrafts.filter(
+            (p) => !String(p.projectId || p.syncedProjectId || "").trim()
+          );
+
+          if (unsyncedDrafts.length > 0 && !window.__isSyncingGuestDrafts) {
+            window.__isSyncingGuestDrafts = true;
+            await Promise.all(
+              unsyncedDrafts.map(async (proposal) => {
+                try {
+                  await authFetch("/projects", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(buildProjectDraftPayload(proposal)),
+                    suppressToast: true,
+                  });
+                } catch (error) {
+                  console.error("Failed to sync guest draft:", error);
+                }
+              })
+            );
+          }
+          
+          // Clean up all local drafts for authenticated users to avoid conflicts
+          if (localDrafts.length > 0) {
+            localDrafts.forEach((p) => deleteLocalDraftProposal(p.id, sessionUser?.id));
+          }
+        }
+
         const nextData = await fetchClientDashboardData(authFetch);
         setProjects(nextData.projects);
         setProposals(nextData.proposals);

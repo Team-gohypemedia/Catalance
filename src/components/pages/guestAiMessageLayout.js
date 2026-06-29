@@ -44,7 +44,7 @@ export const normalizeMarkdownContent = (content = "") =>
 const OPTION_LINE_REGEX = /^\s*(\d+)\.\s+(.+)$/;
 const QUESTION_LINE_REGEX = /\?\s*$/;
 const REQUEST_PROMPT_LINE_REGEX =
-  /^(?:[A-Za-z0-9\s'’-]+,\s*)?(?:please\s+)?(?:tell\s+me|share|describe|explain|outline|list|provide|let\s+me\s+know|walk\s+me\s+through|help\s+me\s+understand|I(?:'d|'ve|\s+would)?\s+(?:love|like)\s+to\s+(?:know|hear|understand)|Let's\s+(?:start|begin)\s+(?:with|by)|Could\s+you|Can\s+you|Would\s+you)\b/i;
+  /^(?:[A-Za-z0-9\s'’-]+,\s*)?(?:(?:please|just|simply|now|then)\s+)*(?:tell\s+me|share|describe|explain|outline|list|provide|let\s+me\s+know|walk\s+me\s+through|help\s+me\s+understand|I(?:'d|'ve|\s+would)?\s+(?:love|like)\s+to\s+(?:know|hear|understand)|Let's\s+(?:start|begin)\s+(?:with|by)|Could\s+you|Can\s+you|Would\s+you|Do\s+you\s+(?:have|want|need)|Are\s+you)\b/i;
 const OPTION_PROMPT_CUE_REGEX =
   /\b(choose|select|pick|prefer|options?|choice|choices|kindly|please|type|tap|reply|which one|which of these|here are)\b/i;
 

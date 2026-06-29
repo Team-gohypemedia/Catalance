@@ -1409,6 +1409,29 @@ export const extractProposalDetails = (proposal) => {
   };
 };
 
+export const buildProjectDraftPayload = (proposal = {}) => {
+  const normalizedBudget = parseProposalBudgetValue(
+    proposal?.budget ?? proposal?.amount ?? "",
+  );
+  const proposalContent =
+    proposal?.proposalContent || proposal?.content || proposal?.summary || "";
+
+  return {
+    title: resolveProposalTitle(proposal),
+    description: proposalContent || "Proposal draft",
+    proposalContent: proposalContent || "Proposal draft",
+    budget: normalizedBudget,
+    timeline: proposal?.timeline || "1 month",
+    serviceKey: proposal?.serviceKey || resolveProposalServiceLabel(proposal),
+    status: "DRAFT",
+    ...(proposal?.proposalContext &&
+    typeof proposal.proposalContext === "object" &&
+    !Array.isArray(proposal.proposalContext)
+      ? { proposalContext: proposal.proposalContext }
+      : {}),
+  };
+};
+
 export const mapApiProposal = (proposal) => {
   const normalizedProposal = normalizeProposalRecord(proposal);
   const projectTitle = resolveProposalProjectName(normalizedProposal);
@@ -1717,20 +1740,17 @@ const getProposalMergeKey = (proposal) => {
 };
 
 export const mergeProposalCollections = (remote = [], localDrafts = []) => {
-  const merged = [];
-  const seen = new Set();
+  const mergedMap = new Map();
 
-  const pushUnique = (proposal) => {
+  const pushToMap = (proposal) => {
     const key = getProposalMergeKey(proposal);
-    if (seen.has(key)) return;
-    seen.add(key);
-    merged.push(proposal);
+    mergedMap.set(key, proposal);
   };
 
-  remote.forEach(pushUnique);
-  localDrafts.forEach(pushUnique);
+  remote.forEach(pushToMap);
+  localDrafts.forEach(pushToMap);
 
-  return merged;
+  return Array.from(mergedMap.values());
 };
 
 export const deleteLocalDraftProposal = (proposalId, userId) => {

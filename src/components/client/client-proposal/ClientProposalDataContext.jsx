@@ -22,6 +22,7 @@ import {
   PROPOSAL_BLOCKED_STATUSES,
   buildEditableProposalDraft,
   buildProposalContentFromDraft,
+  buildProjectDraftPayload,
   buildUpdatedProposalContext,
   canUnsendProposalInvitee,
   deleteLocalDraftProposal,
@@ -136,28 +137,7 @@ export const ClientProposalDataProvider = ({ children }) => {
     return [proposalId, serviceKey, budget, stackSignature, title, contentHash].join("::");
   }, []);
 
-  const buildProjectDraftPayload = useCallback((proposal = {}) => {
-    const normalizedBudget = parseProposalBudgetValue(
-      proposal?.budget ?? proposal?.amount ?? "",
-    );
-    const proposalContent =
-      proposal?.proposalContent || proposal?.content || proposal?.summary || "";
 
-    return {
-      title: resolveProposalTitle(proposal),
-      description: proposalContent || "Proposal draft",
-      proposalContent: proposalContent || "Proposal draft",
-      budget: normalizedBudget,
-      timeline: proposal?.timeline || "1 month",
-      serviceKey: proposal?.serviceKey || resolveProposalServiceLabel(proposal),
-      status: "DRAFT",
-      ...(proposal?.proposalContext &&
-      typeof proposal.proposalContext === "object" &&
-      !Array.isArray(proposal.proposalContext)
-        ? { proposalContext: proposal.proposalContext }
-        : {}),
-    };
-  }, []);
 
   const buildDraftProjectMatchKey = useCallback((proposal = {}) => {
     const title = String(resolveProposalTitle(proposal) || "")
@@ -207,9 +187,9 @@ export const ClientProposalDataProvider = ({ children }) => {
           )
         : [];
       const existingDraftProjectMap = new Map();
-      if (existingDraftProjects.length > 0) {
-        existingDraftProjectMap.set(buildDraftProjectMatchKey(savedProposals[0]), existingDraftProjects[0]);
-      }
+      existingDraftProjects.forEach((project) => {
+        existingDraftProjectMap.set(buildDraftProjectMatchKey(project), project);
+      });
 
       const now = new Date().toISOString();
       draftSyncStateRef.current = {
@@ -220,7 +200,8 @@ export const ClientProposalDataProvider = ({ children }) => {
       try {
         const results = await Promise.all(
           unsyncedDrafts.map(async (proposal) => {
-            const existingDraftProject = existingDraftProjects.length > 0 ? existingDraftProjects[0] : null;
+            const matchKey = buildDraftProjectMatchKey(proposal);
+            const existingDraftProject = existingDraftProjectMap.get(matchKey) || null;
             if (existingDraftProject?.id) {
               return {
                 localId: proposal.id,
@@ -292,7 +273,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         draftSyncStateRef.current.inFlight = false;
       }
     },
-    [authFetch, buildDraftProjectMatchKey, buildProjectDraftPayload, user?.id],
+    [authFetch, buildDraftProjectMatchKey, user?.id],
   );
 
   const fetchProposals = useCallback(async () => {

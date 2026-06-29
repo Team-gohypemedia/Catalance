@@ -59,6 +59,7 @@ import { useTheme } from '@/components/providers/theme-provider';
 import { API_BASE_URL, request } from '@/shared/lib/api-client';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/shared/context/AuthContext';
+import { buildProjectDraftPayload } from '@/components/client/client-proposal/proposal-utils';
 import { getSession } from '@/shared/lib/auth-storage';
 import {
     mergeProposalStructureDefinitions,
@@ -3021,7 +3022,7 @@ const GuestAIDemo = () => {
     const { theme, isDark } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+    const { user, isAuthenticated, isLoading: isAuthLoading, authFetch } = useAuth();
 
     useEffect(() => {
         document.documentElement.classList.add("marketplace-page");
@@ -5375,18 +5376,46 @@ const GuestAIDemo = () => {
         sessionId,
     ]);
 
-    const handleProceed = (proposalContent, sourceProposal = null) => {
-        const nextProposals = upsertStoredGeneratedProposal(
-            proposalContent,
-            user?.id,
-            buildProposalSaveMetadata(proposalContent, sourceProposal),
-        );
-        setGeneratedProposals(nextProposals);
-
+    const handleProceed = async (proposalContent, sourceProposal = null) => {
         if (user) {
-            toast.success("Proposal saved! Redirecting to dashboard...");
-            navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
+            try {
+                // User is logged in: bypass local storage entirely and save directly to backend
+                const payload = buildProjectDraftPayload({
+                    content: proposalContent,
+                    summary: proposalContent,
+                    ...sourceProposal,
+                });
+                
+                const response = await authFetch("/projects", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                    suppressToast: true,
+                });
+                
+                const responseData = await response.json().catch(() => null);
+                const projectId = responseData?.data?.project?.id || responseData?.data?.id || null;
+                
+                toast.success("Proposal saved! Redirecting to dashboard...");
+                
+                if (projectId) {
+                    navigate(`${CLIENT_DASHBOARD_SEND_PROPOSAL_PATH}&draftId=draft-project:${projectId}`);
+                } else {
+                    navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
+                }
+            } catch (error) {
+                console.error("Failed to save draft to backend:", error);
+                toast.error("Failed to save proposal. Please try again.");
+            }
         } else {
+            // Guest user: save to local storage temporarily so it syncs when they log in
+            const nextProposals = upsertStoredGeneratedProposal(
+                proposalContent,
+                user?.id,
+                buildProposalSaveMetadata(proposalContent, sourceProposal),
+            );
+            setGeneratedProposals(nextProposals);
+
             toast.success("Proposal saved! Please create an account to continue.");
             navigate(
                 `/signin/phone?role=client&redirect=${encodeURIComponent(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH)}`,

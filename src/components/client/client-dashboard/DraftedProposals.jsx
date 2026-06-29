@@ -49,7 +49,6 @@ import { cn } from "@/shared/lib/utils";
 import { extractLabeledLineValue, extractStructuredFieldValue } from "@/shared/lib/labeled-fields";
 import {
   getProposalStorageKeys,
-  loadSavedProposalsFromStorage,
   persistSavedProposalsToStorage,
   resolveActiveProposalId,
 } from "@/shared/lib/client-proposal-storage";
@@ -60,6 +59,7 @@ import {
   extractAgencyProposalServiceEntries,
   resolveBestMatchFreelancerIds,
   resolveProposalAgencyFlag,
+  mapApiDraftProject,
 } from "@/components/client/client-proposal/proposal-utils.js";
 import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
 import { toast } from "sonner";
@@ -624,32 +624,30 @@ const Proposals = memo(function Proposals({
   const loadDrafts = useCallback(() => {
     if (isControlled) return;
 
-    const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage(
-      sessionUser?.id,
-    );
-    const sortedProposals = [...storedProposals].sort((left, right) => {
+    const backendDrafts = (dashboardData?.projects || [])
+      .filter((project) => project?.status === "DRAFT")
+      .map(mapApiDraftProject);
+
+    const sortedProposals = backendDrafts.sort((left, right) => {
       const leftTime = new Date(left.updatedAt || left.createdAt || 0).getTime();
       const rightTime = new Date(right.updatedAt || right.createdAt || 0).getTime();
       return rightTime - leftTime;
     });
 
     setSavedDrafts(sortedProposals);
-    setActiveDraftId(activeId);
-  }, [isControlled, sessionUser?.id]);
+    
+    const draftIdFromUrl = searchParams.get("draftId");
+    if (draftIdFromUrl) {
+      setActiveDraftId(draftIdFromUrl);
+    } else if (sortedProposals.length > 0 && !activeDraftId) {
+      setActiveDraftId(sortedProposals[0].id);
+    }
+  }, [isControlled, dashboardData?.projects, searchParams, activeDraftId]);
 
   useEffect(() => {
     if (isControlled) return undefined;
-
     loadDrafts();
-
-    const handleStorageChange = (event) => {
-      if (event?.key && !event.key.includes("savedProposal")) return;
-      loadDrafts();
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [isControlled, loadDrafts]);
+  }, [loadDrafts]);
 
   const visibleSavedDrafts = useMemo(
     () =>
@@ -713,6 +711,7 @@ const Proposals = memo(function Proposals({
 
     const nextSearchParams = new URLSearchParams(searchParams);
     nextSearchParams.delete(CLIENT_DASHBOARD_PROPOSAL_ACTION_PARAM);
+    nextSearchParams.delete("draftId");
     setSearchParams(nextSearchParams, { replace: true });
   }, [activeSavedDraft, isControlled, searchParams, setSearchParams]);
 
@@ -799,7 +798,7 @@ const Proposals = memo(function Proposals({
   }, [showFreelancerSelect]);
 
   const handleDeleteDraft = useCallback(
-    (draftId, silent = false) => {
+    async (draftId, silent = false) => {
       if (isControlled || !draftId) return;
       
       if (!silent) {
@@ -807,27 +806,29 @@ const Proposals = memo(function Proposals({
         if (!confirmed) return;
       }
 
-      const storageKeys = getProposalStorageKeys(sessionUser?.id);
-      const { proposals: storedProposals, activeId } = loadSavedProposalsFromStorage(
-        sessionUser?.id,
-      );
-      const remaining = storedProposals.filter((proposal) => proposal.id !== draftId);
-      const preferredActiveId = activeId === draftId ? null : activeId;
-      const nextActiveId = resolveActiveProposalId(
-        remaining,
-        preferredActiveId,
-        null,
-      );
+      if (dashboardData?.authFetch) {
+        try {
+          // Extract the real project ID from "draft-project:ID"
+          const realProjectId = String(draftId || "").replace(/^draft-project:/, "");
+          
+          await dashboardData.authFetch(`/projects/${realProjectId}`, { method: "DELETE" });
+          if (dashboardData.refreshDashboardData) {
+            dashboardData.refreshDashboardData();
+          }
+        } catch (error) {
+          console.error("Failed to delete draft", error);
+        }
+      }
 
-      persistSavedProposalsToStorage(remaining, nextActiveId, storageKeys);
-      setSavedDrafts(remaining);
-      setActiveDraftId(nextActiveId);
+      if (activeDraftId === draftId) {
+        setActiveDraftId(null);
+      }
 
       if (selectedDraftForSend?.id === draftId) {
         setSelectedDraftForSend(null);
       }
     },
-    [isControlled, selectedDraftForSend?.id, sessionUser?.id],
+    [isControlled, selectedDraftForSend?.id, activeDraftId, dashboardData],
   );
 
   const internalDraftProposalRows = useMemo(
