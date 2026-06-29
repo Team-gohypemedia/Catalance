@@ -18,6 +18,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { ClientTopBar } from "@/components/features/client/ClientTopBar";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -213,6 +223,19 @@ const ProposalDraftsContent = () => {
   const [activeDraft, setActiveDraft] = useState(null);
   const [draftText, setDraftText] = useState("");
   const [loading, setLoading] = useState(true);
+  const [confirmState, setConfirmState] = useState(null);
+
+  const showConfirm = (message) => {
+    return new Promise((resolve) => {
+      setConfirmState({
+        message,
+        resolve: (value) => {
+          setConfirmState(null);
+          resolve(value);
+        },
+      });
+    });
+  };
 
   const totalDrafts = useMemo(() => drafts.length, [drafts]);
 
@@ -268,8 +291,8 @@ const ProposalDraftsContent = () => {
     setDraftText(draft.content || "");
   };
 
-  const handleDelete = (draft) => {
-    const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
+  const handleDelete = async (draft) => {
+    const confirmed = await showConfirm("Are you sure you want to delete this proposal draft?");
     if (!confirmed) return;
 
     // Delete from the specific storage key
@@ -399,6 +422,30 @@ const ProposalDraftsContent = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={Boolean(confirmState)} onOpenChange={(open) => !open && confirmState?.resolve(false)}>
+        <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md rounded-[24px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold text-foreground">
+              Delete Proposal Draft
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
+              {confirmState?.message || "Are you sure you want to delete this proposal draft? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-4">
+            <AlertDialogCancel className="border border-border bg-background text-foreground hover:bg-muted hover:text-foreground dark:border-white/12 dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white rounded-full">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmState?.resolve(true)}
+              className="bg-rose-500 text-white hover:bg-rose-600 rounded-full dark:bg-rose-600 dark:text-white dark:hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

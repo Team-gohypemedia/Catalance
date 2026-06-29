@@ -96,7 +96,8 @@ const ProposalCardsCarousel = ({
 
   if (!proposals.length) return null;
 
-  const shouldUseProposalCarousel = isMobile || proposals.length > 3;
+  const totalCards = proposals.length + (showCreateCard ? 1 : 0);
+  const shouldUseProposalCarousel = isMobile || totalCards > 3;
 
   if (!shouldUseProposalCarousel) {
     return (
@@ -133,15 +134,15 @@ const ProposalCardsCarousel = ({
   }
 
   const shouldShowProposalCarouselControls = isMobile
-    ? proposals.length > 1
-    : proposals.length > 3;
+    ? totalCards > 1
+    : totalCards > 3;
   const proposalCarouselDesktopControlClassName =
     "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed";
   const proposalCarouselMobileControlClassName =
     "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-[1120px] mx-auto">
       <Carousel
         className="w-full"
         setApi={setProposalCarouselApi}

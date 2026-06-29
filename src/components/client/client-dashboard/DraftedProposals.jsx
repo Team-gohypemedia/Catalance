@@ -583,6 +583,19 @@ const Proposals = memo(function Proposals({
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [confirmState, setConfirmState] = useState(null);
+
+  const showConfirm = useCallback((message) => {
+    return new Promise((resolve) => {
+      setConfirmState({
+        message,
+        resolve: (value) => {
+          setConfirmState(null);
+          resolve(value);
+        },
+      });
+    });
+  }, []);
   const dashboardData = useOptionalClientDashboardData();
   const isControlled = Array.isArray(draftProposalRows);
   const sessionUser = dashboardData?.sessionUser ?? null;
@@ -814,7 +827,7 @@ const Proposals = memo(function Proposals({
       if (isControlled || !draftId) return;
       
       if (!silent) {
-        const confirmed = window.confirm("Are you sure you want to delete this proposal draft?");
+        const confirmed = await showConfirm("Are you sure you want to delete this proposal draft?");
         if (!confirmed) return;
       }
 
@@ -840,7 +853,7 @@ const Proposals = memo(function Proposals({
         setSelectedDraftForSend(null);
       }
     },
-    [isControlled, selectedDraftForSend?.id, activeDraftId, dashboardData],
+    [isControlled, selectedDraftForSend?.id, activeDraftId, dashboardData, showConfirm],
   );
 
   const internalDraftProposalRows = useMemo(
@@ -1373,6 +1386,29 @@ const Proposals = memo(function Proposals({
               <AlertDialogFooter>
                 <AlertDialogAction className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-[12px] h-9 text-xs sm:text-sm shadow-none">
                   Got It
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <AlertDialog open={Boolean(confirmState)} onOpenChange={(open) => !open && confirmState?.resolve(false)}>
+            <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md rounded-[24px]">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-lg font-semibold text-foreground">
+                  Delete Proposal Draft
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
+                  {confirmState?.message || "Are you sure you want to delete this proposal draft? This action cannot be undone."}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter className="gap-2 sm:gap-0 mt-4">
+                <AlertDialogCancel className="border border-border bg-background text-foreground hover:bg-muted hover:text-foreground dark:border-white/12 dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white rounded-full">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => confirmState?.resolve(true)}
+                  className="bg-rose-500 text-white hover:bg-rose-600 rounded-full dark:bg-rose-600 dark:text-white dark:hover:bg-rose-700"
+                >
+                  Delete
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

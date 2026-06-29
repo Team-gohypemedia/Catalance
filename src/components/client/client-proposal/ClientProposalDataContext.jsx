@@ -47,11 +47,34 @@ import {
   shouldHideRejectedProposal,
 } from "./proposal-utils.js";
 import { useProposalBudgetIncrease } from "./useProposalBudgetIncrease.js";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const ClientProposalDataProvider = ({ children }) => {
   const { isAuthenticated, authFetch, user } = useAuth();
   const { unreadCount, notifications, markAsRead } = useNotifications();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [confirmState, setConfirmState] = useState(null);
+
+  const showConfirm = useCallback((message) => {
+    return new Promise((resolve) => {
+      setConfirmState({
+        message,
+        resolve: (value) => {
+          setConfirmState(null);
+          resolve(value);
+        },
+      });
+    });
+  }, []);
   const [proposals, setProposals] = useState([]);
   const [activeProposal, setActiveProposal] = useState(null);
   const [isViewing, setIsViewing] = useState(false);
@@ -837,7 +860,7 @@ export const ClientProposalDataProvider = ({ children }) => {
 
   const handleDelete = useCallback(
     async (proposal) => {
-      const confirmed = window.confirm("Are you sure you want to delete this proposal?");
+      const confirmed = await showConfirm("Are you sure you want to delete this proposal?");
       if (!confirmed) return;
 
       if (proposal?.isLocalDraft) {
@@ -969,7 +992,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         toast.error(error?.message || "Unable to delete proposal right now.");
       }
     },
-    [activeProposal?.id, authFetch, fetchProposals, user?.id],
+    [activeProposal?.id, authFetch, fetchProposals, user?.id, showConfirm],
   );
 
   const handleOpenFreelancerDetails = useCallback((proposal) => {
@@ -2212,6 +2235,29 @@ export const ClientProposalDataProvider = ({ children }) => {
   return (
     <ClientProposalDataContext.Provider value={value}>
       {children}
+      <AlertDialog open={Boolean(confirmState)} onOpenChange={(open) => !open && confirmState?.resolve(false)}>
+        <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md rounded-[24px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-semibold text-foreground">
+              Delete Proposal
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
+              {confirmState?.message || "Are you sure you want to delete this proposal? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-4">
+            <AlertDialogCancel className="border border-border bg-background text-foreground hover:bg-muted hover:text-foreground dark:border-white/12 dark:bg-white/[0.03] dark:text-white dark:hover:bg-white/[0.06] dark:hover:text-white rounded-full">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => confirmState?.resolve(true)}
+              className="bg-rose-500 text-white hover:bg-rose-600 rounded-full dark:bg-rose-600 dark:text-white dark:hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </ClientProposalDataContext.Provider>
   );
 };
