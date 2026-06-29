@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import Users from "lucide-react/dist/esm/icons/users";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
@@ -72,7 +72,7 @@ const EmptyProjectsState = ({
       <p className="mt-3 text-sm leading-6 text-muted-foreground">{description}</p>
       {showAction ? (
         <Link
-          to="/client/proposal"
+          to="/service"
           className="mt-6 inline-flex items-center justify-center rounded-[14px] bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary/80 dark:text-[#141414]"
         >
           Create New Proposal
@@ -161,7 +161,7 @@ const ClientProjectsPage = () => {
     [projectCards],
   );
   const handleStartProject = useCallback(() => {
-    navigate("/client/proposal");
+    navigate("/service");
   }, [navigate]);
 
   const handleBrowseMarketplace = useCallback(() => {
@@ -172,7 +172,7 @@ const ClientProjectsPage = () => {
     () => [
       {
         id: "start-project",
-        Icon: Sparkles,
+        Icon: Plus,
         title: "Create New Proposal",
         actionLabel: "Start New Project",
         onClick: handleStartProject,

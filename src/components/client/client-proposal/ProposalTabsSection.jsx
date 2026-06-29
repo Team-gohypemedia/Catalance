@@ -201,7 +201,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
         className="lg:items-start"
         titleClassName="text-[clamp(1.35rem,2.1vw,2.55rem)] leading-[0.98] tracking-[-0.05em] whitespace-nowrap"
         actions={
-          <div className="flex flex-col sm:flex-row gap-3.5 items-start sm:items-center w-full sm:w-auto">
+          <div className="flex flex-col items-start lg:items-end gap-3 w-full sm:w-auto">
             <div className="flex items-center gap-2 sm:gap-3">
               {proposalTypeConfig.map((item) => {
                 const isActive = item.value === activeType;

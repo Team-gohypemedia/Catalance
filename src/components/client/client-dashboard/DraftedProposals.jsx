@@ -33,6 +33,7 @@ import FreelancerSelectionDialog from "@/components/features/client/dashboard/Fr
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
