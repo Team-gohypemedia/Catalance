@@ -10,13 +10,18 @@ import { Input } from "@/components/ui/input";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import GripVertical from "lucide-react/dist/esm/icons/grip-vertical";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { toast } from "sonner";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
 import { useAuth } from "@/shared/context/AuthContext";
+import { Textarea } from "@/components/ui/textarea";
 
 export function SopEditorDialog({ open, onOpenChange, project, currentSop, onSaved }) {
   const { authFetch } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [aiInstructions, setAiInstructions] = useState("");
   
   // Clone the SOP so we can edit it freely
   const [phases, setPhases] = useState([]);
@@ -40,6 +45,33 @@ export function SopEditorDialog({ open, onOpenChange, project, currentSop, onSav
       toast.error(err.message || "Failed to save SOP");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGenerateAi = async () => {
+    if (!aiInstructions.trim()) {
+      toast.error("Please enter some instructions for the AI.");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const response = await pmApi.generateProjectSop(authFetch, {
+        projectContext: project || {},
+        currentSop: { phases, tasks },
+        instructions: aiInstructions,
+      });
+      if (response?.sop) {
+        setPhases(response.sop.phases || []);
+        setTasks(response.sop.tasks || []);
+        toast.success("AI updated the SOP successfully!");
+        setAiInstructions("");
+      } else {
+        toast.error("Failed to generate SOP with AI.");
+      }
+    } catch (err) {
+      toast.error(err.message || "Error generating SOP with AI");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -77,6 +109,30 @@ export function SopEditorDialog({ open, onOpenChange, project, currentSop, onSav
           <DialogTitle>Edit Project SOP & Timelines</DialogTitle>
         </DialogHeader>
         
+        <div className="mt-4 p-4 bg-orange-50/50 border border-orange-100 rounded-xl space-y-3">
+          <div className="flex items-center gap-2 text-sm font-bold text-orange-800">
+            <Sparkles className="h-4 w-4 text-orange-600" />
+            <span>Edit SOP with AI</span>
+          </div>
+          <Textarea 
+            placeholder="Tell AI how to adjust the SOP based on project requirements (e.g. 'Add a specific QA phase' or 'Make it 5 phases for e-commerce')"
+            value={aiInstructions}
+            onChange={(e) => setAiInstructions(e.target.value)}
+            className="text-sm border-orange-200 bg-white placeholder:text-slate-400 min-h-[80px]"
+          />
+          <div className="flex justify-end">
+            <Button 
+              size="sm" 
+              onClick={handleGenerateAi} 
+              disabled={generating || !aiInstructions.trim()}
+              className="bg-orange-600 hover:bg-orange-700 text-white transition-all shadow-sm"
+            >
+              {generating ? <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-2" />}
+              {generating ? "Generating..." : "Apply AI Edit"}
+            </Button>
+          </div>
+        </div>
+
         <div className="space-y-6 mt-4">
           {phases.map((phase) => (
             <div key={phase.id} className="border border-slate-200 rounded-xl p-4 bg-slate-50 relative">
