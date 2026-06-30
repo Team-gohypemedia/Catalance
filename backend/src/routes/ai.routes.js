@@ -3,7 +3,8 @@ import {
   chatWithAI,
   getServiceInfo,
   getAllServices,
-  generateProposalMarkdown
+  generateProposalMarkdown,
+  generateProjectSopJson
 } from "../services/ai.service.js";
 
 export const aiRouter = Router();
@@ -78,6 +79,24 @@ aiRouter.post("/proposal", async (req, res) => {
       payload.details = error.details;
     }
     res.status(statusCode).json(payload);
+  }
+});
+
+aiRouter.post("/sop", async (req, res) => {
+  try {
+    const { projectContext = {}, currentSop = null, instructions = "" } = req.body || {};
+    const sop = await generateProjectSopJson(projectContext, currentSop, instructions);
+    res.json({ success: true, sop });
+  } catch (error) {
+    console.error("AI SOP Error:", error);
+    const statusCode = Number.isInteger(error?.statusCode)
+      ? error.statusCode
+      : 500;
+    res.status(statusCode).json({
+      success: false,
+      error: "Failed to generate/edit SOP",
+      message: error.message
+    });
   }
 });
 

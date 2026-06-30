@@ -140,6 +140,7 @@ model User {
   engagementReport     EngagementProcessReport?
   engagementBadges     EngagementUserBadge[]      @relation("EngagementBadgeUser")
   engagementPersonalizedQuestions EngagementPersonalizedQuestion[]
+  engagementUserDailyQuestionSets EngagementUserDailyQuestionSet[]
 
   ownedProjects           Project[]          @relation("ProjectOwner")
   managedProjects         Project[]          @relation("ProjectManager")
@@ -1063,6 +1064,23 @@ model EngagementPersonalizedQuestion {
   @@unique([userId, dayKey])
   @@index([dayKey])
   @@map("EngagementPersonalizedQuestion")
+}
+
+model EngagementUserDailyQuestionSet {
+  id                String   @id
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayKey            String
+  questionIds       String[] @default([])
+  questionSnapshots Json     @default("[]")
+  generationSource  String   @default("fallback")
+  profileSnapshot   Json     @default("{}")
+  aiMetadata        Json     @default("{}")
+  createdAt         DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([userId, dayKey])
+  @@index([dayKey])
 }
 
 model EngagementAdminAuditLog {

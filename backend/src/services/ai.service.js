@@ -4470,6 +4470,8 @@ ${serviceHint ? `Service guidance:\n${serviceHint}\n` : ""}Use plain English and
 const buildProjectSopUserPrompt = ({
   promptContext = {},
   fallbackTemplate = {},
+  currentSop = null,
+  instructions = "",
 } = {}) => {
   const fallbackPhaseReference = Array.isArray(fallbackTemplate?.phases)
     ? fallbackTemplate.phases
@@ -4482,6 +4484,8 @@ const buildProjectSopUserPrompt = ({
 
 Project context:
 ${JSON.stringify(promptContext, null, 2)}
+${currentSop ? `\nCurrent SOP (Edit this based on instructions):\n${JSON.stringify(currentSop, null, 2)}` : ""}
+${instructions ? `\nInstructions for editing/generating SOP:\n${instructions}` : ""}
 
 Reference phase pattern for this service:
 ${fallbackPhaseReference || "Use a standard 4-phase delivery flow."}
@@ -4848,7 +4852,7 @@ export const generateProposalMarkdown = async (
   });
 };
 
-export const generateProjectSopJson = async (projectContext = {}) => {
+export const generateProjectSopJson = async (projectContext = {}, currentSop = null, instructions = "") => {
   await ensureServicesCatalogLoaded();
 
   const contextPayload =
@@ -4898,6 +4902,8 @@ export const generateProjectSopJson = async (projectContext = {}) => {
           content: buildProjectSopUserPrompt({
             promptContext,
             fallbackTemplate,
+            currentSop,
+            instructions,
           }),
         },
       ],

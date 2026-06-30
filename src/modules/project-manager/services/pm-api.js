@@ -65,6 +65,14 @@ export const pmApi = {
     });
   },
 
+  generateProjectSop(authFetch, payload) {
+    return request(authFetch, "/ai/sop", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
+
   approveMilestone(authFetch, projectId, phase, pmNote) {
     return request(authFetch, `/pm/projects/${projectId}/milestone-approval`, {
       method: "POST",

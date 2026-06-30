@@ -12,6 +12,7 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Users from "lucide-react/dist/esm/icons/users";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Plus from "lucide-react/dist/esm/icons/plus";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
@@ -750,6 +751,15 @@ const ProjectDetailsPage = () => {
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-[10px] font-bold uppercase tracking-wider text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100 hover:text-orange-700"
+                        onClick={() => setSopEditorOpen(true)}
+                      >
+                        <Sparkles className="mr-1 h-3 w-3" />
+                        Edit SOP with AI
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
