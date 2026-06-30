@@ -30,6 +30,7 @@ import {
   resetPasswordSchema
 } from "../modules/users/password-reset.schema.js";
 import { requireAuth } from "../middlewares/require-auth.js";
+import { optionalAuth } from "../middlewares/optional-auth.js";
 
 export const authRouter = Router();
 
@@ -48,11 +49,13 @@ authRouter.post(
 );
 authRouter.post(
   "/whatsapp/request-otp",
+  optionalAuth,
   validateResource(whatsappOtpRequestSchema),
   requestWhatsappOtpHandler
 );
 authRouter.post(
   "/whatsapp/verify-otp",
+  optionalAuth,
   validateResource(whatsappOtpVerifySchema),
   verifyWhatsappOtpHandler
 );

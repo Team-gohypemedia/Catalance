@@ -13,9 +13,28 @@ import Code2 from "lucide-react/dist/esm/icons/code-2";
 import Terminal from "lucide-react/dist/esm/icons/terminal";
 import Database from "lucide-react/dist/esm/icons/database";
 import HelpCircle from "lucide-react/dist/esm/icons/help-circle";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Layers from "lucide-react/dist/esm/icons/layers";
+import PenTool from "lucide-react/dist/esm/icons/pen-tool";
+import Image from "lucide-react/dist/esm/icons/image";
 
 const getMetadataIcon = (label) => {
   const normalized = String(label || "").toLowerCase();
+  if (normalized.includes("timeline") || normalized.includes("time") || normalized.includes("duration")) {
+    return Clock;
+  }
+  if (normalized.includes("reference") || normalized.includes("asset") || normalized.includes("image")) {
+    return Image;
+  }
+  if (normalized.includes("engagement") || normalized.includes("model") || normalized.includes("business")) {
+    return Briefcase;
+  }
+  if (normalized.includes("volume") || normalized.includes("quantity") || normalized.includes("size") || normalized.includes("count")) {
+    return Layers;
+  }
+  if (normalized.includes("creative") || normalized.includes("art")) {
+    return PenTool;
+  }
   if (normalized.includes("website type") || normalized.includes("type")) {
     return Globe;
   }
@@ -329,13 +348,11 @@ const FreelancerProjectDetailMainColumn = ({
                       </div>
                     )}
                   </div>
-                  <div className={`mb-3 text-[13px] font-semibold leading-tight ${
-                    isPending ? "text-muted-foreground/50 dark:text-white/40" : "text-foreground dark:text-white"
-                  }`}>
+                  <div className="mb-3 text-[13px] font-semibold leading-tight text-foreground dark:text-white">
                     {phase?.name || "Phase"}
                   </div>
                   <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${
-                    isCompleted ? "text-emerald-500" : isActive ? "text-primary" : "text-muted-foreground/40"
+                    isCompleted ? "text-emerald-500" : isActive ? "text-primary" : "text-muted-foreground"
                   }`}>
                     {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : null}
                     {isActive ? <Clock className="h-3.5 w-3.5" /> : null}

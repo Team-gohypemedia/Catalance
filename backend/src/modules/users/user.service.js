@@ -344,6 +344,9 @@ const normalizeRoleValue = (value) =>
 const normalizeLoginPhoneDigits = (value) =>
   String(value || "").replace(/\D/g, "");
 
+const normalizePhoneForAccountUniqueness = (value) =>
+  normalizeLoginPhoneDigits(value).replace(/^0+/, "");
+
 const buildPhoneOnlyEmail = (normalizedPhone) =>
   `phone-${normalizeLoginPhoneDigits(normalizedPhone)}@${PHONE_ONLY_EMAIL_DOMAIN}`;
 
@@ -1353,6 +1356,52 @@ const normalizeOptionalText = (value) => {
   return normalized || null;
 };
 
+const phoneAccountKeysMatch = (left, right) => {
+  const leftDigits = normalizePhoneForAccountUniqueness(left);
+  const rightDigits = normalizePhoneForAccountUniqueness(right);
+  if (!leftDigits || !rightDigits) return false;
+  if (leftDigits === rightDigits) return true;
+
+  const leftLocal = leftDigits.length >= 10 ? leftDigits.slice(-10) : leftDigits;
+  const rightLocal = rightDigits.length >= 10 ? rightDigits.slice(-10) : rightDigits;
+  return leftLocal.length >= 10 && leftLocal === rightLocal;
+};
+
+const assertPhoneNumberAvailableForUser = async ({
+  tx = prisma,
+  userId,
+  phoneNumber,
+  message = "This mobile number is already registered."
+}) => {
+  const phoneDigits = normalizePhoneForAccountUniqueness(phoneNumber);
+  if (!phoneDigits) return;
+
+  const localDigits = phoneDigits.length >= 10 ? phoneDigits.slice(-10) : phoneDigits;
+  const lookupDigits = Array.from(new Set([phoneDigits, localDigits].filter(Boolean)));
+  const candidates = await tx.user.findMany({
+    where: {
+      id: { not: userId },
+      OR: lookupDigits.flatMap((digits) => [
+        { phoneNumber: { contains: digits } },
+        { phone: { contains: digits } }
+      ])
+    },
+    select: {
+      id: true,
+      phoneNumber: true,
+      phone: true
+    }
+  });
+
+  const duplicate = candidates.some((candidate) =>
+    phoneAccountKeysMatch(candidate.phoneNumber, phoneDigits) ||
+    phoneAccountKeysMatch(candidate.phone, phoneDigits)
+  );
+
+  if (duplicate) {
+    throw new AppError(message, 409);
+  }
+};
 const normalizeOptionalEmail = (value) => {
   const normalized = String(value ?? "").trim().toLowerCase();
   if (!normalized) return null;
@@ -2680,6 +2729,15 @@ export const updateUserProfile = async (userId, updates) => {
       throw new AppError("User not found", 404);
     }
 
+
+    if (Object.prototype.hasOwnProperty.call(userUpdates, "phoneNumber")) {
+      await assertPhoneNumberAvailableForUser({
+        tx,
+        userId: user.id,
+        phoneNumber: userUpdates.phoneNumber
+      });
+    }
+
     const roleUpdates = {};
     if (selectedOnboardingRole) {
       const currentPrimaryRole = normalizeRoleValue(user.role);
@@ -3279,7 +3337,8 @@ export const requestWhatsappOtp = async ({
   countryCode,
   phoneNumber,
   role,
-  requestIp
+  requestIp,
+  currentUserId
 }) => {
   const normalizedPhone = normalizeWhatsappPhone({ countryCode, phoneNumber });
   const ttlMinutes = getWhatsappOtpTtlMinutes();
@@ -3300,8 +3359,31 @@ export const requestWhatsappOtp = async ({
   const otpCode = crypto.randomInt(100000, 999999).toString();
   const otpExpires = new Date(Date.now() + ttlMinutes * 60 * 1000);
 
-  if (!user) {
-    // New phone number — create a phone-only user with the requested role
+  if (currentUserId) {
+    const currentUser = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: currentUserId }
+      })
+    );
+
+    if (!currentUser) {
+      throw new AppError("User not found", 404);
+    }
+
+    if (user && user.id !== currentUser.id) {
+      throw new AppError("This login number is already registered.", 409);
+    }
+
+    user = currentUser;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        otpCode,
+        otpExpires
+      }
+    });
+  } else if (!user) {
+    // New phone number - create a phone-only user with the requested role
     user = await createOrUpdatePhoneOnlyUser({
       normalizedPhone,
       role,
@@ -3313,7 +3395,7 @@ export const requestWhatsappOtp = async ({
       `[WhatsApp OTP] Created phone-only login user for ${maskLoginPhone(normalizedPhone)}.`
     );
   } else {
-    // Existing user — save OTP and send (role resolution will happen during verification)
+    // Existing user - save OTP and send (role resolution will happen during verification)
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -3322,7 +3404,6 @@ export const requestWhatsappOtp = async ({
       }
     });
   }
-
   const whatsappResult = await sendWhatsappOtp({
     to: normalizedPhone,
     otpCode,
@@ -3342,7 +3423,8 @@ export const verifyWhatsappOtp = async ({
   phoneNumber,
   otp,
   role,
-  requestIp
+  requestIp,
+  currentUserId
 }) => {
   const normalizedPhone = normalizeWhatsappPhone({ countryCode, phoneNumber });
   const rateLimitKey = buildWhatsappOtpRateLimitKey({
@@ -3358,8 +3440,22 @@ export const verifyWhatsappOtp = async ({
     enforceCooldown: false
   });
 
-  // Resolve user from phone — do NOT trust the frontend role for lookup
-  const user = await findUserByLoginPhone(normalizedPhone);
+  // Resolve user from phone for login, or from the active session during account onboarding.
+  let user = null;
+  if (currentUserId) {
+    const existingPhoneUser = await findUserByLoginPhone(normalizedPhone);
+    if (existingPhoneUser && existingPhoneUser.id !== currentUserId) {
+      throw new AppError("This login number is already registered.", 409);
+    }
+
+    user = await prisma.user.findUnique(
+      withFreelancerProfileInclude({
+        where: { id: currentUserId }
+      })
+    );
+  } else {
+    user = await findUserByLoginPhone(normalizedPhone);
+  }
   const invalidCodeError = new AppError("Invalid or expired verification code", 400);
 
   if (!user) {

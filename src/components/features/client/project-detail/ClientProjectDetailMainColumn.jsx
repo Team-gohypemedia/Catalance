@@ -13,6 +13,10 @@ import Code2 from "lucide-react/dist/esm/icons/code-2";
 import Terminal from "lucide-react/dist/esm/icons/terminal";
 import Database from "lucide-react/dist/esm/icons/database";
 import HelpCircle from "lucide-react/dist/esm/icons/help-circle";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Layers from "lucide-react/dist/esm/icons/layers";
+import PenTool from "lucide-react/dist/esm/icons/pen-tool";
+import Image from "lucide-react/dist/esm/icons/image";
 
 const getMetadataIcon = (label) => {
   const normalized = String(label || "").toLowerCase();
@@ -39,6 +43,21 @@ const getMetadataIcon = (label) => {
   }
   if (normalized.includes("database")) {
     return Database;
+  }
+  if (normalized.includes("timeline") || normalized.includes("time") || normalized.includes("duration")) {
+    return Clock;
+  }
+  if (normalized.includes("reference") || normalized.includes("asset") || normalized.includes("image")) {
+    return Image;
+  }
+  if (normalized.includes("engagement") || normalized.includes("model") || normalized.includes("business")) {
+    return Briefcase;
+  }
+  if (normalized.includes("volume") || normalized.includes("quantity") || normalized.includes("size") || normalized.includes("count")) {
+    return Layers;
+  }
+  if (normalized.includes("creative") || normalized.includes("art")) {
+    return PenTool;
   }
   return HelpCircle;
 };
@@ -151,32 +170,6 @@ const ClientProjectDetailMainColumn = ({
       </CardContent>
     </Card>
 
-    <Card className={panelClassName}>
-      <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-        <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        {projectDetailSnapshot.deliverablesItems.length > 0 ? (
-          <ul className="space-y-2 px-2 pb-2">
-            {projectDetailSnapshot.deliverablesItems.map((item, index) => (
-              <li
-                key={index}
-                className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
-              >
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="px-2 pb-1 text-sm leading-7 text-muted-foreground dark:text-[#d4d4d8]">
-              Feature and deliverable details will appear once the brief is
-              structured.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
     {(() => {
       const filteredSpecs = projectDetailSnapshot.websiteDetails.filter((item) => {
         if (!projectDetailSnapshot.deliverablesItems.length) return true;
@@ -211,7 +204,7 @@ const ClientProjectDetailMainColumn = ({
                       <p className="text-[0.66rem] font-bold uppercase tracking-[0.15em] text-muted-foreground/80 dark:text-white/45">
                         {item.label}
                       </p>
-                      <p className="whitespace-pre-line break-words text-[0.95rem] font-semibold leading-relaxed text-foreground dark:text-white/90">
+                      <p className="whitespace-pre-line break-words text-[13px] font-medium leading-snug text-foreground/90 dark:text-white/90">
                         {item.value || "Not specified"}
                       </p>
                     </div>
@@ -223,6 +216,32 @@ const ClientProjectDetailMainColumn = ({
         </Card>
       );
     })()}
+
+    <Card className={panelClassName}>
+      <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
+        <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {projectDetailSnapshot.deliverablesItems.length > 0 ? (
+          <ul className="space-y-2 px-2 pb-2">
+            {projectDetailSnapshot.deliverablesItems.map((item, index) => (
+              <li
+                key={index}
+                className="flex items-start gap-2 text-sm leading-6 text-foreground/85 dark:text-[#e4e4e7]"
+              >
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="px-2 pb-1 text-sm leading-7 text-muted-foreground dark:text-[#d4d4d8]">
+              Feature and deliverable details will appear once the brief is
+              structured.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
     <Card className={panelClassName}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-6 pt-5 px-6">
@@ -275,18 +294,12 @@ const ClientProjectDetailMainColumn = ({
               >
                 <div>
                   <div
-                    className={`mb-2 text-[0.68rem] font-bold uppercase tracking-[0.15em] ${
-                      isPending
-                        ? "text-muted-foreground/50"
-                        : "text-muted-foreground"
-                    }`}
+                    className="mb-2 text-[0.68rem] font-bold uppercase tracking-[0.15em] text-muted-foreground"
                   >
                     Phase {index + 1}
                   </div>
                   <div
-                    className={`mb-2 sm:mb-4 text-[13px] sm:text-[15px] font-semibold leading-[1.3] sm:leading-[1.4] ${
-                      isPending ? "text-foreground/45 dark:text-white/40" : "text-foreground/95 dark:text-white/95"
-                    }`}
+                    className="mb-2 sm:mb-4 text-[13px] sm:text-[15px] font-semibold leading-[1.3] sm:leading-[1.4] text-foreground dark:text-white"
                   >
                     {phase?.name || "Phase"}
                   </div>
@@ -297,7 +310,7 @@ const ClientProjectDetailMainColumn = ({
                       ? "text-emerald-500"
                       : isActive
                         ? "text-[var(--primary)]"
-                        : "text-muted-foreground/40"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : null}

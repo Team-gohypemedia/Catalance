@@ -48,7 +48,8 @@ export const verifyEmailSigninOtpHandler = asyncHandler(async (req, res) => {
 export const requestWhatsappOtpHandler = asyncHandler(async (req, res) => {
   const result = await requestWhatsappOtp({
     ...req.body,
-    requestIp: req.ip
+    requestIp: req.ip,
+    currentUserId: req.user?.sub || req.user?.id || null
   });
   res.json({ data: result });
 });
@@ -56,7 +57,8 @@ export const requestWhatsappOtpHandler = asyncHandler(async (req, res) => {
 export const verifyWhatsappOtpHandler = asyncHandler(async (req, res) => {
   const authPayload = await verifyWhatsappOtp({
     ...req.body,
-    requestIp: req.ip
+    requestIp: req.ip,
+    currentUserId: req.user?.sub || req.user?.id || null
   });
   res.json({ data: authPayload });
 });
