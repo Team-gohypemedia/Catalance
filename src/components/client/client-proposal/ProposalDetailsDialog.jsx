@@ -332,7 +332,7 @@ const ProposalDetailsDialog = ({
               )}
             </section>
 
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]">
+            <div className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]">
               <section className="space-y-3">
                 <div className="space-y-0.5">
                   <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
@@ -367,11 +367,11 @@ const ProposalDetailsDialog = ({
                   )}
                 </ProposalSectionCard>
 
-                <div className="grid gap-3 lg:grid-cols-2">
+                <div className="grid gap-3 items-start lg:grid-cols-2">
                   <ProposalSectionCard
                     title="Primary Objectives"
                     description="Key goals this proposal is meant to deliver."
-                    className="h-full"
+                    className="lg:sticky lg:top-0"
                   >
                     {isEditingProposal ? (
                       <Textarea
@@ -393,7 +393,7 @@ const ProposalDetailsDialog = ({
                   <ProposalSectionCard
                     title="Deliverables"
                     description="The concrete scope and outputs expected from this proposal."
-                    className="h-full"
+                    className="lg:sticky lg:top-0"
                   >
                     {isEditingProposal ? (
                       <Textarea
