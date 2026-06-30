@@ -284,7 +284,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                           {isStatusActive ? (
                             <Check className="h-[18px] w-[18px] text-primary" />
                           ) : (
-                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold text-muted-foreground">
+                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold text-foreground">
                               {statusCounts[item.value] || 0}
                             </span>
                           )}

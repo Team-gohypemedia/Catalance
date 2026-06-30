@@ -119,7 +119,7 @@ const ProposalCardsCarousel = ({
         {showCreateCard && (
           <div 
             onClick={() => navigate("/service")}
-            className="group flex h-full w-full max-w-[340px] mx-auto overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center min-h-[360px] p-6 text-center shadow-none"
+            className="group flex h-full w-full overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center min-h-[28rem] p-6 text-center shadow-none"
           >
             <div className="rounded-full bg-primary/10 p-4 text-primary group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
               <Plus className="h-6 w-6" strokeWidth={2.5} />
@@ -142,7 +142,7 @@ const ProposalCardsCarousel = ({
     "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
-    <div className="w-full max-w-[1120px] mx-auto">
+    <div className="w-full">
       <Carousel
         className="w-full"
         setApi={setProposalCarouselApi}
@@ -228,7 +228,7 @@ const ProposalCardsCarousel = ({
             <CarouselItem className="pl-0 basis-full md:basis-[calc((100%-1rem)/2)] lg:basis-[calc((100%-2rem)/3)]">
               <div 
                 onClick={() => navigate("/service")}
-                className="group flex h-full w-full max-w-[340px] mx-auto overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center min-h-[360px] p-6 text-center shadow-none"
+                className="group flex h-full w-full overflow-hidden rounded-[28px] border-2 border-dashed border-primary/30 hover:border-primary/60 bg-card/40 hover:bg-primary/5 dark:border-primary/20 dark:hover:border-primary/40 dark:hover:bg-primary/10 transition-all duration-300 cursor-pointer flex-col items-center justify-center min-h-[28rem] p-6 text-center shadow-none"
               >
                 <div className="rounded-full bg-primary/10 p-4 text-primary group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
                   <Plus className="h-6 w-6" strokeWidth={2.5} />

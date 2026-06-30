@@ -82,9 +82,9 @@ const ProposalRowCard = ({
   const showRecipientSection = isDraft || recipientCount > 0;
 
   return (
-    <Card className={cn("h-full w-full max-w-[340px] mx-auto overflow-hidden shadow-none", proposalPanelClassName)}>
-      <CardContent className="p-0">
-        <div className="flex h-full w-full flex-col gap-4 p-3 xs:p-3.5 sm:gap-5 sm:p-4 xl:p-5">
+    <Card className={cn("h-full w-full min-h-[28rem] overflow-hidden shadow-none flex flex-col", proposalPanelClassName)}>
+      <CardContent className="p-0 flex-1 flex flex-col">
+        <div className="flex flex-1 w-full flex-col gap-4 p-3 xs:p-3.5 sm:gap-5 sm:p-4 xl:p-5">
           <div className="flex w-full items-center justify-between gap-3">
             <Badge
               variant="outline"
