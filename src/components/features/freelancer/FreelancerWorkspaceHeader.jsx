@@ -172,12 +172,12 @@ const NotificationPopoverButton = ({
           side="right"
           className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-foreground shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
         >
-          <div className="flex h-full min-h-0 flex-col">
+          <div className="flex flex-1 flex-col overflow-hidden min-h-0">
             <SheetHeader className="border-b border-border px-4 py-3 pr-12">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <SheetTitle className="text-sm font-semibold text-foreground">Notifications</SheetTitle>
-                  <SheetDescription className="mt-1 text-xs text-[#8f96a3]">
+                  <SheetDescription className="mt-1 text-xs text-[#8f96a3] truncate block w-full">
                     Stay updated with project, proposal, and message activity.
                   </SheetDescription>
                 </div>
@@ -185,7 +185,7 @@ const NotificationPopoverButton = ({
                 {unreadCount > 0 ? (
                   <button
                     type="button"
-                    className="h-auto shrink-0 p-0 text-xs font-medium text-primary transition hover:text-primary/80"
+                    className="h-auto shrink-0 p-0 text-xs font-medium text-primary transition hover:text-primary/80 whitespace-nowrap"
                     onClick={() => {
                       void markAllAsRead?.();
                     }}

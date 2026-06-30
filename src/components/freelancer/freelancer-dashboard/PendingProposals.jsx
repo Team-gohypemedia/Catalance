@@ -90,11 +90,11 @@ const FreelancerPendingProposalCard = ({ item }) => (
     </div>
 
     {/* Project Title Section */}
-    <div className="mt-6">
-      <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground block">
+    <div className="mt-3">
+      <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80 block">
         Project Name
       </span>
-      <h3 className="text-[18px] font-semibold tracking-[-0.03em] text-foreground leading-tight mt-1 line-clamp-1">
+      <h3 className="mt-1 text-[18px] font-semibold tracking-[-0.03em] text-foreground truncate">
         {item.title}
       </h3>
     </div>
