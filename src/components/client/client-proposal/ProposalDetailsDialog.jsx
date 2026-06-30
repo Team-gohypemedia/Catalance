@@ -100,14 +100,14 @@ const ProposalDetailsDialog = ({
       onOpenChange={handleProposalDialogOpenChange}
     >
       <DialogContent className={cn(
-        "fixed top-0 left-0 translate-x-0 translate-y-0 flex h-dvh w-full max-h-none max-w-none flex-col overflow-hidden border-none bg-background p-0 rounded-none transition-all duration-300 ease-in-out [&>button]:right-3.5 [&>button]:top-3.5 sm:[&>button]:right-5 sm:[&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4 sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:h-auto sm:max-h-[92vh] sm:rounded-[28px] sm:border sm:border-border/60",
+        "fixed top-0 left-0 translate-x-0 translate-y-0 flex h-dvh w-full max-h-none max-w-none flex-col overflow-hidden border-none bg-background p-0 rounded-none transition-all duration-300 ease-in-out [&>button]:right-3.5 [&>button]:top-3.5 sm:[&>button]:right-5 sm:[&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4 sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:h-[92vh] sm:max-h-[92vh] sm:rounded-[28px] sm:border sm:border-border/60",
         isAIChatOpen 
-          ? "lg:w-[min(95vw,1220px)] lg:max-w-[1220px] sm:w-[min(96vw,820px)] sm:max-w-[820px]" 
+          ? "lg:w-[min(95vw,1220px)] lg:max-w-[1220px] sm:w-[min(98vw,1000px)] sm:max-w-[1000px]" 
           : "sm:w-[min(96vw,820px)] sm:max-w-[820px]"
       )}>
         <div className={cn(
-          "shrink-0 border-b border-border/60 dark:border-white/10 px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300",
-          isAIChatOpen && "lg:pr-[424px]"
+          "shrink-0 border-b border-border/60 dark:border-white/10 px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 w-full",
+          isAIChatOpen && "sm:max-w-[calc(100%-350px)] lg:max-w-[calc(100%-400px)]"
         )}>
           <div className="flex flex-col gap-3 sm:gap-5">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
@@ -208,8 +208,8 @@ const ProposalDetailsDialog = ({
         </div>
 
         <div className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2",
-          isAIChatOpen && "lg:pr-[424px]"
+          "min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2 w-full",
+          isAIChatOpen && "sm:max-w-[calc(100%-350px)] lg:max-w-[calc(100%-400px)]"
         )}>
           <div className="space-y-6 pb-2">
             <section className="space-y-2">
@@ -543,8 +543,8 @@ const ProposalDetailsDialog = ({
         </div>
 
         <DialogFooter className={cn(
-          "shrink-0 flex flex-row items-center justify-between gap-3 border-t border-border/60 bg-muted/40 p-3 dark:border-white/10 dark:bg-accent/60 transition-all duration-300",
-          isAIChatOpen && "lg:pr-[424px]"
+          "shrink-0 flex flex-row items-center justify-between gap-3 border-t border-border/60 bg-muted/40 p-3 dark:border-white/10 dark:bg-accent/60 transition-all duration-300 w-full",
+          isAIChatOpen && "sm:max-w-[calc(100%-350px)] lg:max-w-[calc(100%-400px)]"
         )}>
           <div>
             {activeProposal && !activeProposal.requiresPayment ? (

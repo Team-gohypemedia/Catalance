@@ -104,6 +104,7 @@ import {
   EMPLOYMENT_TYPE_OPTIONS,
   LOCATION_TYPE_OPTIONS,
   YEAR_OPTIONS,
+  GRADUATION_YEAR_OPTIONS,
   parseMonthYearParts,
   buildMonthYearLabel,
   createEmptyEducationEntry,
@@ -4746,6 +4747,7 @@ const FreelancerProfile = () => {
             setModalType={setModalType}
             MONTH_OPTIONS={MONTH_OPTIONS}
             YEAR_OPTIONS={YEAR_OPTIONS}
+            GRADUATION_YEAR_OPTIONS={GRADUATION_YEAR_OPTIONS}
           />
         ) : modalType === "personal" ? (
           <PersonalDetailsModalContent

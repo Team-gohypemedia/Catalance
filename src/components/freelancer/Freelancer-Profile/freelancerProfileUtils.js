@@ -636,7 +636,11 @@ export const EMPLOYMENT_TYPE_OPTIONS = [
 export const LOCATION_TYPE_OPTIONS = ["On-site", "Remote", "Hybrid"];
 
 export const YEAR_OPTIONS = Array.from({ length: 71 }, (_, index) =>
-  String(new Date().getFullYear() + 2 - index)
+  String(new Date().getFullYear() - index)
+).filter((year) => Number(year) >= 1960);
+
+export const GRADUATION_YEAR_OPTIONS = Array.from({ length: 81 }, (_, index) =>
+  String(new Date().getFullYear() + 10 - index)
 ).filter((year) => Number(year) >= 1960);
 
 export const parseMonthYearParts = (value = "") => {

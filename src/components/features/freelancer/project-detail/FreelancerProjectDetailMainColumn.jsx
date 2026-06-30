@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
@@ -77,6 +77,7 @@ const FreelancerProjectDetailMainColumn = ({
   const [expandedPhaseId, setExpandedPhaseId] = useState(() =>
     activePhase?.id != null ? String(activePhase.id) : "",
   );
+  const lastActivePhaseIdRef = useRef(activePhase?.id != null ? String(activePhase.id) : "");
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const [isFeaturesExpanded, setIsFeaturesExpanded] = useState(false);
 
@@ -84,18 +85,11 @@ const FreelancerProjectDetailMainColumn = ({
     const activePhaseId =
       activePhase?.id != null ? String(activePhase.id) : "";
 
-    setExpandedPhaseId((currentValue) => {
-      const hasCurrentPhase = tasksByPhase.some(
-        (phaseGroup) => String(phaseGroup.phaseId) === currentValue,
-      );
-
-      if (hasCurrentPhase) {
-        return currentValue;
-      }
-
-      return activePhaseId;
-    });
-  }, [activePhase?.id, tasksByPhase]);
+    if (activePhaseId !== lastActivePhaseIdRef.current) {
+      setExpandedPhaseId(activePhaseId);
+      lastActivePhaseIdRef.current = activePhaseId;
+    }
+  }, [activePhase?.id]);
 
   const payoutMilestonesByPhase = useMemo(() => {
     const grouped = {};

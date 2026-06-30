@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import Clock from "lucide-react/dist/esm/icons/clock";
@@ -94,23 +94,17 @@ const ClientProjectDetailMainColumn = ({
   const [expandedPhaseId, setExpandedPhaseId] = useState(() =>
     currentActivePhase?.id != null ? String(currentActivePhase.id) : "",
   );
+  const lastActivePhaseIdRef = useRef(currentActivePhase?.id != null ? String(currentActivePhase.id) : "");
 
   useEffect(() => {
     const activePhaseId =
       currentActivePhase?.id != null ? String(currentActivePhase.id) : "";
 
-    setExpandedPhaseId((currentValue) => {
-      const hasCurrentPhase = tasksByPhase.some(
-        (phaseGroup) => String(phaseGroup.phaseId) === currentValue,
-      );
-
-      if (hasCurrentPhase) {
-        return currentValue;
-      }
-
-      return activePhaseId;
-    });
-  }, [currentActivePhase?.id, tasksByPhase]);
+    if (activePhaseId !== lastActivePhaseIdRef.current) {
+      setExpandedPhaseId(activePhaseId);
+      lastActivePhaseIdRef.current = activePhaseId;
+    }
+  }, [currentActivePhase?.id]);
 
   return (
     <div className="space-y-4">

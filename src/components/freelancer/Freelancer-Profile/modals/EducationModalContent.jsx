@@ -15,6 +15,7 @@ const EducationModalContent = ({
   setModalType,
   MONTH_OPTIONS,
   YEAR_OPTIONS,
+  GRADUATION_YEAR_OPTIONS,
 }) => {
   const educationEntries =
     Array.isArray(fullProfileForm.education) && fullProfileForm.education.length > 0
@@ -190,7 +191,7 @@ const EducationModalContent = ({
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
                     <option value="">Year</option>
-                    {YEAR_OPTIONS.map((option) => (
+                    {GRADUATION_YEAR_OPTIONS.map((option) => (
                       <option key={option} value={option}>
                         {option}
                       </option>
