@@ -143,7 +143,7 @@ const ProfileSidebarCards = ({
           <button
             type="button"
             onClick={openCreateExperienceModal}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-primary/5 hover:shadow-md active:scale-[0.98]"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 text-xs font-semibold text-primary shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-primary/20 hover:shadow-md active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Add Experience
@@ -153,7 +153,7 @@ const ProfileSidebarCards = ({
         {hasExperience ? (
           <div className="relative mt-5 space-y-0">
             <div
-              className="absolute bottom-4 left-[11px] top-4 w-px bg-border/60"
+              className="absolute bottom-4 left-[12px] top-4 w-px bg-border/60"
               aria-hidden="true"
             />
 
@@ -169,9 +169,9 @@ const ProfileSidebarCards = ({
               return (
                 <div
                   key={`work-exp-${index}`}
-                  className="group relative flex w-full gap-4 py-3 text-left"
+                  className="group relative flex w-full gap-2 py-3 text-left"
                 >
-                  <div className="relative z-10 mt-1.5 flex shrink-0">
+                  <div className="relative z-10 mt-1.5 flex w-[25px] shrink-0 justify-center">
                     <span
                       className="h-[9px] w-[9px] rounded-full border-2 border-primary/60 bg-card transition-colors duration-200 group-hover:border-primary group-hover:bg-primary/20"
                       aria-hidden="true"
@@ -301,7 +301,7 @@ const ProfileSidebarCards = ({
           <button
             type="button"
             onClick={() => openFullProfileEditor("education")}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-background px-3 py-1.5 text-sm font-semibold text-primary shadow-sm transition-all duration-200 hover:scale-[1.02] hover:border-primary/30 hover:bg-primary/5 hover:shadow-md active:scale-[0.98]"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 text-xs font-semibold text-primary shadow-sm transition-all duration-200 hover:scale-[1.02] hover:bg-primary/20 hover:shadow-md active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
             Edit Details

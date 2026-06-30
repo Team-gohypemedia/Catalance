@@ -810,16 +810,6 @@ const AddEditServiceWizard = ({
               {headerServiceLabel}
             </h1>
           </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onCancel}
-            className="shrink-0 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Close wizard"
-          >
-            <X className="h-5 w-5 sm:h-6 sm:w-6" />
-          </Button>
         </div>
       </div>
 

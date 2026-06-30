@@ -171,7 +171,7 @@ const FullProfileEditorModalContent = ({
               name="role"
               value={fullProfileForm.role}
               onChange={handleFullProfileFieldChange}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none"
             >
               <option value="">Select role</option>
               <option value="individual">Individual Freelancer</option>
@@ -191,7 +191,7 @@ const FullProfileEditorModalContent = ({
               name="hoursPerWeek"
               value={fullProfileForm.hoursPerWeek}
               onChange={handleFullProfileFieldChange}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none"
             >
               <option value="">Select availability</option>
               <option value="less_than_10">Less than 10 hours/week</option>
@@ -244,7 +244,7 @@ const FullProfileEditorModalContent = ({
               name="acceptInProgressProjects"
               value={fullProfileForm.acceptInProgressProjects}
               onChange={handleFullProfileFieldChange}
-              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none"
             >
               <option value="">Select option</option>
               <option value="yes">Yes</option>

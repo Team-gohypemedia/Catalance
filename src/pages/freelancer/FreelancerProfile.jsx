@@ -3970,6 +3970,13 @@ const FreelancerProfile = () => {
     }
   };
 
+  const handleModalClose = () => {
+    if (modalType === "addProject") {
+      resetProjectDraft();
+    }
+    setModalType(null);
+  };
+
   if (profileLoading) {
     return (
       <FreelancerProfileLoadingState

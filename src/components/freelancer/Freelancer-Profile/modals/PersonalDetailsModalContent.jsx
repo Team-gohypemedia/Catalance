@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/shared/lib/utils";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import X from "lucide-react/dist/esm/icons/x";
 import Camera from "lucide-react/dist/esm/icons/camera";
@@ -28,6 +29,7 @@ const PersonalDetailsModalContent = ({
 }) => {
   const [newPlatform, setNewPlatform] = useState("");
   const [newUrl, setNewUrl] = useState("");
+  const [platformError, setPlatformError] = useState(false);
 
   const getNextSocialMediaLinks = () => {
     const platform = newPlatform.trim();
@@ -42,6 +44,15 @@ const PersonalDetailsModalContent = ({
   };
 
   const confirmUrl = () => {
+    const platform = newPlatform.trim();
+    const url = newUrl.trim();
+
+    if (url && !platform) {
+      setPlatformError(true);
+      return;
+    }
+
+    setPlatformError(false);
     const nextLinks = getNextSocialMediaLinks();
     if (nextLinks === socialMediaLinks) return;
     setSocialMediaLinks(nextLinks);
@@ -56,6 +67,15 @@ const PersonalDetailsModalContent = ({
   const resolvedCover = String(coverImageUrl || "").trim();
 
   const handleSaveClick = () => {
+    const platform = newPlatform.trim();
+    const url = newUrl.trim();
+
+    if (url && !platform) {
+      setPlatformError(true);
+      return;
+    }
+
+    setPlatformError(false);
     const nextLinks = getNextSocialMediaLinks();
     const hasPendingLink = nextLinks !== socialMediaLinks;
 
@@ -78,13 +98,6 @@ const PersonalDetailsModalContent = ({
             Update your profile info visible on your profile.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setModalType(null)}
-          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="h-4 w-4" />
-        </button>
       </div>
 
       {/* Cover Image */}
@@ -256,9 +269,17 @@ const PersonalDetailsModalContent = ({
         <div className="flex items-center gap-2 pt-1">
           <Input
             value={newPlatform}
-            onChange={(e) => setNewPlatform(e.target.value)}
+            onChange={(e) => {
+              setNewPlatform(e.target.value);
+              if (e.target.value.trim()) {
+                setPlatformError(false);
+              }
+            }}
             placeholder="Platform Name"
-            className="h-9 bg-background/70 text-xs w-[140px] shrink-0"
+            className={cn(
+              "h-9 bg-background/70 text-xs w-[140px] shrink-0",
+              platformError && "border-destructive focus-visible:ring-destructive/30"
+            )}
           />
           <Input
             value={newUrl}
@@ -277,13 +298,18 @@ const PersonalDetailsModalContent = ({
             size="sm"
             variant="outline"
             onClick={confirmUrl}
-            disabled={!newPlatform.trim() || !newUrl.trim()}
+            disabled={!newPlatform.trim() && !newUrl.trim()}
             className="h-9 px-3 text-xs shrink-0 bg-background/70"
           >
             <Plus className="h-3.5 w-3.5 mr-1" />
             Add
           </Button>
         </div>
+        {platformError && (
+          <p className="text-[11px] text-destructive mt-1">
+            Platform name is required.
+          </p>
+        )}
       </div>
 
       {/* Footer */}

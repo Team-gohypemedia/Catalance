@@ -296,15 +296,6 @@ const CaseStudyModalContent = ({
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">Fill in the details below.</p>
             </div>
-
-            <button
-              type="button"
-              onClick={onClose}
-              className="mt-1 mr-1 inline-flex h-9 w-9 flex-none items-center justify-center rounded-full bg-transparent text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-              aria-label="Close case study popup"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
           </div>
 
           <div className="space-y-6">

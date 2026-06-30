@@ -24,7 +24,7 @@ const EducationModalContent = ({
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 pr-10">
         <div>
           <h1 className="text-xl font-semibold text-foreground">Add education</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -126,7 +126,7 @@ const EducationModalContent = ({
                     onChange={(event) =>
                       handleEducationFieldChange(index, "startMonth", event.target.value)
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
                     <option value="">Month</option>
                     {MONTH_OPTIONS.map((option) => (
@@ -145,7 +145,7 @@ const EducationModalContent = ({
                     onChange={(event) =>
                       handleEducationFieldChange(index, "startYear", event.target.value)
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
                     <option value="">Year</option>
                     {YEAR_OPTIONS.map((option) => (
@@ -167,7 +167,7 @@ const EducationModalContent = ({
                     onChange={(event) =>
                       handleEducationFieldChange(index, "endMonth", event.target.value)
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
                     <option value="">Month</option>
                     {MONTH_OPTIONS.map((option) => (
@@ -188,7 +188,7 @@ const EducationModalContent = ({
                       handleEducationFieldChange(index, "endYear", value);
                       handleEducationFieldChange(index, "graduationYear", value);
                     }}
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
+                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
                     <option value="">Year</option>
                     {GRADUATION_YEAR_OPTIONS.map((option) => (
@@ -237,7 +237,7 @@ const EducationModalContent = ({
                     handleEducationFieldChange(index, "activities", event.target.value)
                   }
                   placeholder="Ex: Alpha Phi Omega, Marching Band, Volleyball"
-                  className="min-h-[110px] resize-y bg-background/70"
+                  className="min-h-[110px] resize-y bg-background/70 dark:bg-input/30"
                 />
                 <p className="text-right text-[11px] text-muted-foreground">
                   {String(entry.activities || "").length}/500

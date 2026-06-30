@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { getFallbackStateOptions } from "@/components/features/freelancer/onboarding/constants";
 
 const WorkExperienceModalContent = ({
   editingIndex,
@@ -25,6 +27,44 @@ const WorkExperienceModalContent = ({
   setEditingIndex,
 }) => {
   const EMPTY_VALUE = "__empty__";
+
+  const [selectedCountry, setSelectedCountry] = useState(() => {
+    const parts = String(workForm.location || "").split(",").map(p => p.trim());
+    return parts.length >= 2 ? parts[1] : (workForm.location || "");
+  });
+
+  const [selectedState, setSelectedState] = useState(() => {
+    const parts = String(workForm.location || "").split(",").map(p => p.trim());
+    return parts.length >= 2 ? parts[0] : "";
+  });
+
+  const countryOptions = ["India", "United States", "United Kingdom"];
+  const displayCountries = countryOptions.includes(selectedCountry) || !selectedCountry
+    ? countryOptions
+    : [...countryOptions, selectedCountry];
+
+  const stateOptions = getFallbackStateOptions(selectedCountry);
+  const displayStates = stateOptions.includes(selectedState) || !selectedState
+    ? stateOptions
+    : [...stateOptions, selectedState];
+
+  const handleCountryChange = (country) => {
+    setSelectedCountry(country);
+    setSelectedState("");
+    setWorkForm((prev) => ({
+      ...prev,
+      location: country,
+    }));
+  };
+
+  const handleStateChange = (state) => {
+    setSelectedState(state);
+    const newLocation = [state, selectedCountry].filter(Boolean).join(", ");
+    setWorkForm((prev) => ({
+      ...prev,
+      location: newLocation,
+    }));
+  };
 
   return (
     <>
@@ -246,20 +286,46 @@ const WorkExperienceModalContent = ({
           </div>
         ) : null}
 
-        <label className="block space-y-1.5">
-          <span className="text-sm font-medium text-foreground">Location</span>
-          <input
-            value={workForm.location}
-            onChange={(event) =>
-              setWorkForm((prev) => ({
-                ...prev,
-                location: event.target.value,
-              }))
-            }
-            placeholder="South Delhi, Delhi, India"
-            className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:text-[13px] focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
-          />
-        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-foreground">Country</span>
+            <Select
+              value={selectedCountry}
+              onValueChange={handleCountryChange}
+            >
+              <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent>
+                {displayCountries.map((country) => (
+                  <SelectItem key={country} value={country}>
+                    {country}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="text-sm font-medium text-foreground">State</span>
+            <Select
+              value={selectedState}
+              onValueChange={handleStateChange}
+              disabled={!selectedCountry || displayStates.length === 0}
+            >
+              <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
+                <SelectValue placeholder={selectedCountry ? "Select state" : "Select country first"} />
+              </SelectTrigger>
+              <SelectContent>
+                {displayStates.map((state) => (
+                  <SelectItem key={state} value={state}>
+                    {state}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </label>
+        </div>
 
         <label className="block space-y-1.5">
           <span className="text-sm font-medium text-foreground">
