@@ -43,11 +43,11 @@ const MarketPlaceCTA = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
 
           {/* LEFT — description + CTA */}
-          <div className="flex flex-col items-start justify-center gap-4 z-10 lg:pr-10 lg:self-center">
-            <h2 className="text-[32px] sm:text-4xl lg:text-[3.2rem] font-medium leading-[1.15] tracking-tight text-foreground text-balance">
+          <div className="flex flex-col items-center lg:items-start justify-center gap-4 z-10 lg:pr-10 lg:self-center">
+            <h2 className="text-[32px] sm:text-4xl lg:text-[3.2rem] font-medium leading-[1.15] tracking-tight text-foreground text-balance text-center lg:text-left">
               Work Done On Your Terms, Every Single Time.
             </h2>
-            <p className="text-base sm:text-lg leading-relaxed text-muted-foreground max-w-md">
+            <p className="text-base sm:text-lg leading-relaxed text-muted-foreground max-w-md text-center lg:text-left">
               Hire verified freelancers and expert agencies for fast, high-quality project delivery.
             </p>
 

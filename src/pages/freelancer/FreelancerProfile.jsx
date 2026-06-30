@@ -4137,6 +4137,7 @@ const FreelancerProfile = () => {
       <FreelancerProfileModalHost
         modalType={modalType}
         fullProfileEditorSection={fullProfileEditorSection}
+        onClose={() => setModalType(null)}
       >
         {modalType === "skill" ? (
           <>

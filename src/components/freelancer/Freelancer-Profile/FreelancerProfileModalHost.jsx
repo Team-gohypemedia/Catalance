@@ -1,3 +1,4 @@
+import X from "lucide-react/dist/esm/icons/x";
 import { FULL_PROFILE_EDITOR_SECTIONS } from "./freelancerProfileUtils";
 
 const getModalPanelClassName = (modalType, fullProfileEditorSection) =>
@@ -34,12 +35,23 @@ const FreelancerProfileModalHost = ({
   children,
   modalType,
   fullProfileEditorSection,
+  onClose,
 }) => {
   if (!modalType) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/65 px-4 transition-all backdrop-blur-[2px] dark:bg-black/60">
-      <div className={getModalPanelClassName(modalType, fullProfileEditorSection)}>
+      <div className={`relative ${getModalPanelClassName(modalType, fullProfileEditorSection)}`}>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors z-50"
+            aria-label="Close modal"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
         {children}
       </div>
     </div>

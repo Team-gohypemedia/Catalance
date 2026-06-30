@@ -1091,7 +1091,7 @@ const FreelancerProjectsContent = () => {
       }),
     [activeFilter, activeServiceFilter, projectCards],
   );
-  const shouldUseProjectCarousel = isMobile && visibleProjectCards.length > 1;
+  const shouldUseProjectCarousel = visibleProjectCards.length > 1;
 
   useEffect(() => {
     if (!projectCarouselApi || !shouldUseProjectCarousel) {
@@ -1230,28 +1230,32 @@ const FreelancerProjectsContent = () => {
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
+                      className={cn(
+                        "absolute left-2 md:-left-6 top-1/2 z-10 -translate-y-1/2 size-8 md:size-10 rounded-full border border-border bg-card text-foreground shadow-md hover:bg-accent transition-all duration-200",
+                        !canGoToPreviousProject && "pointer-events-none opacity-0"
+                      )}
                       onClick={() => projectCarouselApi?.scrollPrev()}
-                      disabled={!canGoToPreviousProject}
                       aria-label="Show previous project"
                     >
-                      <ChevronLeft className="size-4" />
+                      <ChevronLeft className="size-4 md:size-5" />
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
-                      className="absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground md:hidden"
+                      className={cn(
+                        "absolute right-2 md:-right-6 top-1/2 z-10 -translate-y-1/2 size-8 md:size-10 rounded-full border border-border bg-card text-foreground shadow-md hover:bg-accent transition-all duration-200",
+                        !canGoToNextProject && "pointer-events-none opacity-0"
+                      )}
                       onClick={() => projectCarouselApi?.scrollNext()}
-                      disabled={!canGoToNextProject}
                       aria-label="Show next project"
                     >
-                      <ChevronRight className="size-4" />
+                      <ChevronRight className="size-4 md:size-5" />
                     </Button>
 
-                    <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+                    <CarouselContent className="-ml-6 items-start [backface-visibility:hidden] [will-change:transform]">
                       {visibleProjectCards.map((project) => (
-                        <CarouselItem key={project.id} className="basis-full pl-[2px] pr-[2px] pt-1">
+                        <CarouselItem key={project.id} className="basis-full md:basis-1/2 xl:basis-1/3 pl-6 pt-1">
                           <FreelancerProjectCard project={project} />
                         </CarouselItem>
                       ))}

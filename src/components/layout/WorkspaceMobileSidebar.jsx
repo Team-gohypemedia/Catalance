@@ -307,6 +307,17 @@ const WorkspaceMobileSidebar = ({
   flushContainerPadding = false,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const filteredWorkspaceNavItems = React.useMemo(() => {
+    if (!workspaceNavItems) return [];
+    if (!marketingNavItems || marketingNavItems.length === 0) return workspaceNavItems;
+    return workspaceNavItems.filter(
+      (wItem) =>
+        !marketingNavItems.some(
+          (mItem) => mItem.key === wItem.key || mItem.to === wItem.to,
+        ),
+    );
+  }, [marketingNavItems, workspaceNavItems]);
+
   const topNotificationButton = renderNotificationSlot(
     renderNotificationButton,
     "top-notifications",
@@ -409,7 +420,7 @@ const WorkspaceMobileSidebar = ({
                       Main
                     </p>
                     <div className="mt-1 space-y-0 px-2">
-                      {workspaceNavItems.map((item) => (
+                      {filteredWorkspaceNavItems.map((item) => (
                         <MobileMenuLink
                           key={item.key}
                           item={item}
