@@ -13,14 +13,17 @@ import {
   FreelancerProjectCarouselControls,
 } from "./shared.jsx";
 
-export const FreelancerPendingProposalsSkeleton = () => (
+export const FreelancerPendingProposalsSkeleton = ({ gridCols = 3 }) => (
   <section className="w-full min-w-0">
     <div className="mb-4 flex items-center gap-4 sm:mb-5">
       <FreelancerDashboardSkeletonBlock className="h-8 w-52 rounded-full" />
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      {Array.from({ length: 2 }).map((_, idx) => (
+    <div className={cn(
+      "grid grid-cols-1 md:grid-cols-2 gap-5",
+      gridCols === 3 ? "lg:grid-cols-3" : ""
+    )}>
+      {Array.from({ length: gridCols }).map((_, idx) => (
         <div key={idx} className="flex h-auto w-full flex-col rounded-[28px] border border-border/50 bg-card p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <FreelancerDashboardSkeletonBlock className="h-6 w-20 rounded-full" />
@@ -190,15 +193,18 @@ const FreelancerPendingProposalCard = ({ item }) => (
   </article>
 );
 
-const FreelancerPendingProposalListPanel = ({ pendingProposalRows }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+const FreelancerPendingProposalListPanel = ({ pendingProposalRows, gridCols = 3 }) => (
+  <div className={cn(
+    "grid grid-cols-1 md:grid-cols-2 gap-5",
+    gridCols === 3 ? "lg:grid-cols-3" : ""
+  )}>
     {pendingProposalRows.map((item) => (
       <FreelancerPendingProposalCard key={item.id} item={item} />
     ))}
   </div>
 );
 
-const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) => {
+const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "", gridCols = 3 }) => {
   const isMobile = useIsMobile();
   const shouldUsePendingProposalCarousel = isMobile && pendingProposalRows.length > 1;
   const [pendingProposalCarouselApi, setPendingProposalCarouselApi] = useState(null);
@@ -297,7 +303,7 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) =>
       ) : isMobile ? (
         <FreelancerPendingProposalCard item={pendingProposalRows[0]} />
       ) : (
-        <FreelancerPendingProposalListPanel pendingProposalRows={pendingProposalRows} />
+        <FreelancerPendingProposalListPanel pendingProposalRows={pendingProposalRows} gridCols={gridCols} />
       )}
     </section>
   );

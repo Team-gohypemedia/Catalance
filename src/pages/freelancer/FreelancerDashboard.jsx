@@ -143,11 +143,12 @@ const FreelancerDashboard = () => {
                 <section className="grid items-stretch grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
                   <div className="flex h-full min-w-0 flex-col gap-5">
                     {model.metricsLoading ? (
-                      <FreelancerPendingProposalsSkeleton />
+                      <FreelancerPendingProposalsSkeleton gridCols={2} />
                     ) : hasRunningProjects ? (
                       <PendingProposals
                         pendingProposalRows={model.pendingProposalRows}
                         onOpenAll={model.onOpenProposals}
+                        gridCols={2}
                       />
                     ) : (
                       <ActiveProjects
