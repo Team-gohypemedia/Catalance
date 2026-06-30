@@ -5869,43 +5869,49 @@ const GuestAIDemo = () => {
                             ) : null}
 
                             <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                                {orderedServices.map((feature, index) => (
-                                    <div
-                                        key={feature.id || index}
-                                        onClick={() => (
-                                            isAgencySelectionMode
-                                                ? toggleAgencyServiceSelection(feature)
-                                                : handleServiceSelect(feature)
-                                        )}
-                                        onMouseMove={handleCardGlowMouseMove}
-                                        style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
-                                        className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${agencySelectedServiceIds.includes(getServiceIdentifier(feature))
-                                            ? 'border-primary'
-                                            : isDark
-                                                ? 'border-white/10 bg-card/85 hover:border-primary/50'
-                                                : 'border-[#e8dfcf] bg-white hover:border-primary/60 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.08)]'
-                                            }`}
-                                    >
-                                        <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                                {orderedServices.map((feature, index) => {
+                                    const featureId = getServiceIdentifier(feature);
+                                    const isCardSelected = isAgencySelectionMode
+                                        ? agencySelectedServiceIds.includes(featureId)
+                                        : Boolean(selectedService && getServiceIdentifier(selectedService) === featureId);
+
+                                    return (
                                         <div
-                                            className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-                                            style={{
-                                                background:
-                                                    'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.08) 30%, transparent 65%)',
-                                            }}
-                                        />
-                                        {isAgencySelectionMode ? (
-                                            <div className="absolute right-4 top-4 z-20">
-                                                <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${agencySelectedServiceIds.includes(getServiceIdentifier(feature))
-                                                    ? (isDark ? 'bg-primary text-[#1C1B1F]' : 'bg-primary !text-white')
-                                                    : isDark
-                                                        ? 'border border-white/10 bg-black/40 text-zinc-400'
-                                                        : 'border border-[#e8dfcf] bg-white/90 text-[#7c6f5d]'
-                                                    }`}>
-                                                    {agencySelectedServiceIds.includes(getServiceIdentifier(feature)) ? 'Selected' : 'Select'}
-                                                </span>
-                                            </div>
-                                        ) : null}
+                                            key={feature.id || index}
+                                            onClick={() => (
+                                                isAgencySelectionMode
+                                                    ? toggleAgencyServiceSelection(feature)
+                                                    : handleServiceSelect(feature)
+                                            )}
+                                            onMouseMove={handleCardGlowMouseMove}
+                                            style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
+                                            className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${isCardSelected
+                                                ? 'border-primary'
+                                                : isDark
+                                                    ? 'border-white/10 bg-card/85 hover:border-primary/50'
+                                                    : 'border-[#e8dfcf] bg-white hover:border-primary/60 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.08)]'
+                                                }`}
+                                        >
+                                            <div className="absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                                            <div
+                                                className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+                                                style={{
+                                                    background:
+                                                        'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.08) 30%, transparent 65%)',
+                                                }}
+                                            />
+                                            {isAgencySelectionMode ? (
+                                                <div className="absolute right-4 top-4 z-20">
+                                                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isCardSelected
+                                                        ? (isDark ? 'bg-primary text-[#1C1B1F]' : 'bg-primary !text-white')
+                                                        : isDark
+                                                            ? 'border border-white/10 bg-black/40 text-zinc-400'
+                                                            : 'border border-[#e8dfcf] bg-white/90 text-[#7c6f5d]'
+                                                        }`}>
+                                                        {isCardSelected ? 'Selected' : 'Select'}
+                                                    </span>
+                                                </div>
+                                            ) : null}
                                         <div className="relative z-10 flex h-full flex-col p-5">
                                             <div className="relative mb-3 flex h-32 w-full items-center justify-center">
                                                 <img
@@ -5940,8 +5946,9 @@ const GuestAIDemo = () => {
                                             </div>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
+                                );
+                            })}
+                        </div>
 
                             {/* ===== Why Businesses Choose Catalance ===== */}
                             <section id="why-choose-catalance" className="relative py-2 mt-20 sm:mt-28 z-10 max-w-3xl mx-auto w-full">
@@ -6263,7 +6270,9 @@ const GuestAIDemo = () => {
                             ) : (
                                 orderedServices.map((feature, index) => {
                                     const featureId = getServiceIdentifier(feature);
-                                    const isAgencyCardSelected = agencySelectedServiceIds.includes(featureId);
+                                    const isCardSelected = isAgencySelectionMode
+                                        ? agencySelectedServiceIds.includes(featureId)
+                                        : Boolean(selectedService && getServiceIdentifier(selectedService) === featureId);
 
                                     return (
                                         <div
@@ -6275,14 +6284,14 @@ const GuestAIDemo = () => {
                                             )}
                                             onMouseMove={handleCardGlowMouseMove}
                                             style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
-                                            className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-card hover:-translate-y-2 ${isAgencyCardSelected
+                                            className={`group relative overflow-hidden rounded-3xl border transition-all duration-500 cursor-pointer h-full bg-card hover:-translate-y-2 ${isCardSelected
                                                     ? 'border-primary'
                                                     : 'border-white/20 hover:border-primary/50'
                                                 }`}
                                         >
-                                            <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                                            <div className={`absolute inset-0 bg-linear-to-br from-white/5 via-transparent to-transparent transition-opacity duration-500 ${isCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
                                             <div
-                                                className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isAgencyCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                                                className={`pointer-events-none absolute inset-0 transition-opacity duration-500 ${isCardSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                                                 style={{
                                                     background: isDark
                                                         ? 'radial-gradient(260px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%), rgba(249, 217, 73, 0.18) 0%, rgba(249, 217, 73, 0.08) 30%, transparent 65%)'
@@ -6291,11 +6300,11 @@ const GuestAIDemo = () => {
                                             />
                                             {isAgencySelectionMode ? (
                                                 <div className="absolute right-4 top-4 z-20">
-                                                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isAgencyCardSelected
+                                                    <span className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${isCardSelected
                                                             ? (isDark ? 'bg-primary text-[#1C1B1F]' : 'bg-primary !text-white')
                                                             : 'border border-white/10 bg-black/40 text-zinc-400'
                                                         }`}>
-                                                        {isAgencyCardSelected ? 'Selected' : 'Select'}
+                                                        {isCardSelected ? 'Selected' : 'Select'}
                                                     </span>
                                                 </div>
                                             ) : null}
