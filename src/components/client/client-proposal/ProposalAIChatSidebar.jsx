@@ -171,7 +171,7 @@ ${JSON.stringify({
   if (!open) return null;
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-50 flex w-full flex-col border-l border-border dark:border-white/10 bg-background/95 backdrop-blur-xl sm:w-[350px] lg:w-[400px]">
+    <div className="absolute right-0 top-0 bottom-0 z-50 flex w-full flex-col border-l border-border dark:border-white/10 bg-background/95 backdrop-blur-xl lg:w-[400px]">
       <div className="flex h-[60px] items-center justify-between border-b border-border dark:border-white/10 px-5 shrink-0">
         <div className="flex items-center gap-2 text-foreground">
           <Sparkles className="h-5 w-5 text-primary" />

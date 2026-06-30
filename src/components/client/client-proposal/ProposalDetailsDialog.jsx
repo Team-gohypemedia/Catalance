@@ -107,7 +107,7 @@ const ProposalDetailsDialog = ({
       )}>
         <div className={cn(
           "shrink-0 border-b border-border/60 dark:border-white/10 px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 w-full",
-          isAIChatOpen && "sm:max-w-[calc(100%-350px)] lg:max-w-[calc(100%-400px)]"
+          isAIChatOpen && "lg:max-w-[calc(100%-400px)]"
         )}>
           <div className="flex flex-col gap-3 sm:gap-5">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
@@ -180,12 +180,14 @@ const ProposalDetailsDialog = ({
                   )
                 ) : null}
 
-                {canEditActiveProposal && !isEditingProposal && (
+                {canEditActiveProposal && !isAIChatOpen && (
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      startEditingProposal();
+                      if (!isEditingProposal) {
+                        startEditingProposal();
+                      }
                       setIsAIChatOpen(true);
                     }}
                     className="h-8 rounded-full border-primary/25 bg-background/30 px-3.5 text-xs text-foreground hover:bg-primary/20 hover:text-primary transition-colors sm:h-9 sm:px-4 sm:text-sm"
@@ -209,7 +211,7 @@ const ProposalDetailsDialog = ({
 
         <div className={cn(
           "min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2 w-full",
-          isAIChatOpen && "sm:max-w-[calc(100%-350px)] lg:max-w-[calc(100%-400px)]"
+          isAIChatOpen && "lg:max-w-[calc(100%-400px)]"
         )}>
           <div className="space-y-6 pb-2">
             <section className="space-y-2">
