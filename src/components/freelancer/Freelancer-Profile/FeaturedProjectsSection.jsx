@@ -95,6 +95,8 @@ const FeaturedProjectsSection = ({
       opts={{
         align: "start",
         loop: projectCount > 1,
+        watchDrag: (emblaApi, event) =>
+          event.pointerType !== "mouse" && event.type !== "mousedown",
       }}
       className="w-full"
     >
@@ -108,7 +110,7 @@ const FeaturedProjectsSection = ({
           aria-hidden="true"
         />
 
-        <div className="mb-4 flex flex-col gap-3 sm:mb-5 md:flex-row md:items-center md:justify-between">
+        <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
               <Rocket className="h-4 w-4 text-primary" aria-hidden="true" />
@@ -130,23 +132,15 @@ const FeaturedProjectsSection = ({
             </div>
           </div>
 
-          <div className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-            <Button
-              variant="outline"
-              size="sm"
-              className="case-study-add-btn w-full text-sm font-semibold sm:w-auto border-primary text-primary hover:bg-primary/10 hover:text-primary transition-all duration-200"
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 self-end sm:self-auto">
+            <button
+              type="button"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg border border-primary/35 bg-primary/10 px-3 text-xs font-semibold text-primary transition-all duration-200 hover:bg-primary/20 hover:scale-[1.02]"
               onClick={onAddProject}
             >
-              <Plus className="mr-1.5 h-3.5 w-3.5 text-primary" aria-hidden="true" />
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
               Add Case Study
-            </Button>
-
-            {projectCount > 1 ? (
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <CarouselPrevious className="relative inset-auto size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-                <CarouselNext className="relative inset-auto size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-              </div>
-            ) : null}
+            </button>
           </div>
         </div>
 
@@ -184,7 +178,7 @@ const FeaturedProjectsSection = ({
                   ].filter(Boolean);
 
                   return (
-                    <CarouselItem key={idx} className="basis-full pl-3 sm:pl-4 md:basis-1/2 xl:basis-1/3">
+                    <CarouselItem key={idx} className="select-none basis-full pl-3 sm:pl-4 md:basis-1/2 xl:basis-1/3">
                       <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-border/60 bg-card sm:rounded-2xl">
                         <div className="px-3 pt-3">
                           <div className="relative h-44 overflow-hidden rounded-xl sm:h-52 md:h-56">
@@ -353,6 +347,13 @@ const FeaturedProjectsSection = ({
                 })}
               </CarouselContent>
             </div>
+
+            {projectCount > 1 ? (
+              <>
+                <CarouselPrevious className="absolute -left-2 sm:-left-4 top-1/2 -translate-y-1/2 z-10 size-9 border-primary/40 bg-card text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-30" />
+                <CarouselNext className="absolute -right-2 sm:-right-4 top-1/2 -translate-y-1/2 z-10 size-9 border-primary/40 bg-card text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-30" />
+              </>
+            ) : null}
           </div>
         ) : (
           <div className="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/50 bg-card p-6 text-center">

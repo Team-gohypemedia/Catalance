@@ -1388,14 +1388,6 @@ const ServicesFromOnboardingCard = ({
                   Add Service
                 </button>
               )}
-
-              {processedServices.length > 1 ? (
-                <div className="flex items-center gap-2">
-                  <CarouselPrevious className="relative inset-auto flex size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-
-                  <CarouselNext className="relative inset-auto flex size-8 translate-x-0 translate-y-0 border-primary/40 bg-card text-primary hover:scale-105 hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-                </div>
-              ) : null}
             </div>
           ) : null}
         </div>
@@ -1407,7 +1399,7 @@ const ServicesFromOnboardingCard = ({
                 {processedServices.map((cardData) => (
                   <CarouselItem
                     key={`service-card-${cardData.serviceKey}`}
-                    className="basis-full px-3 lg:basis-1/2"
+                    className="select-none basis-full px-3 lg:basis-1/2"
                   >
                     <ServiceDetailArticle
                       cardData={cardData}
@@ -1418,6 +1410,13 @@ const ServicesFromOnboardingCard = ({
                 ))}
               </CarouselContent>
             </div>
+
+            {processedServices.length > 1 ? (
+              <>
+                <CarouselPrevious className="absolute -left-2 sm:-left-4 top-1/2 -translate-y-1/2 z-10 size-9 border-primary/40 bg-card text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-30" />
+                <CarouselNext className="absolute -right-2 sm:-right-4 top-1/2 -translate-y-1/2 z-10 size-9 border-primary/40 bg-card text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-30" />
+              </>
+            ) : null}
           </div>
         ) : (
           <div className="mt-6 rounded-xl border border-dashed border-border bg-card p-5">
