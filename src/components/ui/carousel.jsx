@@ -1,5 +1,6 @@
 import * as React from "react"
 import useEmblaCarousel from "embla-carousel-react";
+import { WheelGesturesPlugin } from 'embla-carousel-wheel-gestures';
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 
@@ -30,7 +31,7 @@ function Carousel({
   const [carouselRef, api] = useEmblaCarousel({
     ...opts,
     axis: orientation === "horizontal" ? "x" : "y",
-  }, plugins)
+  }, [WheelGesturesPlugin({ forceWheelAxis: orientation === "horizontal" ? 'x' : 'y' }), ...(plugins || [])])
   const [canScrollPrev, setCanScrollPrev] = React.useState(false)
   const [canScrollNext, setCanScrollNext] = React.useState(false)
 

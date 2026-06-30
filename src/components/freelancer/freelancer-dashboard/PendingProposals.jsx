@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from "react";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   FreelancerCarouselDots,
   FreelancerDashboardPanel,
@@ -10,139 +13,189 @@ import {
   FreelancerProjectCarouselControls,
 } from "./shared.jsx";
 
-const freelancerPendingProposalSurfaceToneClassName =
-  "border border-white/[0.06] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]";
-
-const freelancerPendingProposalDetailBlockClassName = `flex min-w-0 flex-col rounded-[14px] ${freelancerPendingProposalSurfaceToneClassName} px-4 py-3 sm:px-5 sm:py-3.5 lg:min-h-[84px]`;
-
-const freelancerPendingProposalActionButtonClassName =
-  "inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-[10px] px-4 text-sm font-semibold transition-colors";
-
 export const FreelancerPendingProposalsSkeleton = () => (
   <section className="w-full min-w-0">
     <div className="mb-4 flex items-center gap-4 sm:mb-5">
       <FreelancerDashboardSkeletonBlock className="h-8 w-52 rounded-full" />
     </div>
 
-    <FreelancerDashboardPanel className="overflow-hidden bg-card">
-      <div className="divide-y divide-white/[0.06]">
-        {[0, 1, 2].map((item) => (
-          <div
-            key={`freelancer-pending-proposal-skeleton-${item}`}
-            className="px-4 py-5 sm:px-6 sm:py-6"
-          >
-            <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
-              <div className="min-w-0">
-                <FreelancerDashboardSkeletonBlock className="h-8 w-44 rounded-full" />
-
-                <div className="mt-4 grid grid-cols-2 gap-2.5 sm:gap-3">
-                  <div className={freelancerPendingProposalDetailBlockClassName}>
-                    <FreelancerDashboardSkeletonBlock className="h-3 w-20 rounded-full" />
-                    <FreelancerDashboardSkeletonBlock className="mt-3 h-6 w-24 rounded-full" />
-                  </div>
-
-                  <div className={freelancerPendingProposalDetailBlockClassName}>
-                    <FreelancerDashboardSkeletonBlock className="h-3 w-16 rounded-full" />
-                    <FreelancerDashboardSkeletonBlock className="mt-3 h-6 w-28 rounded-full" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex w-full flex-col gap-2.5 lg:h-[76px] lg:items-end lg:justify-end lg:gap-2">
-                <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-[10px] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1" />
-                <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-[10px] lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1" />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      {Array.from({ length: 2 }).map((_, idx) => (
+        <div key={idx} className="flex h-auto w-full flex-col rounded-[28px] border border-border/50 bg-card p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <FreelancerDashboardSkeletonBlock className="h-6 w-20 rounded-full" />
+            <FreelancerDashboardSkeletonBlock className="h-8 w-8 rounded-full" />
+          </div>
+          <div className="mt-5 space-y-2">
+            <FreelancerDashboardSkeletonBlock className="h-4 w-24 rounded-full" />
+            <FreelancerDashboardSkeletonBlock className="h-7 w-48 rounded-full" />
+          </div>
+          <div className="flex items-center justify-between mt-5">
+            <div className="flex items-center gap-3">
+              <FreelancerDashboardSkeletonBlock className="h-10 w-10 rounded-full" />
+              <div className="space-y-1.5">
+                <FreelancerDashboardSkeletonBlock className="h-4 w-28 rounded-full" />
+                <FreelancerDashboardSkeletonBlock className="h-3.5 w-16 rounded-full" />
               </div>
             </div>
+            <div className="space-y-1.5 text-right">
+              <FreelancerDashboardSkeletonBlock className="h-3 w-16 rounded-full ml-auto" />
+              <FreelancerDashboardSkeletonBlock className="h-4 w-32 rounded-full" />
+            </div>
           </div>
-        ))}
-      </div>
-    </FreelancerDashboardPanel>
+          <div className="grid grid-cols-2 gap-4 mt-5 py-4 border-t border-b border-border/50">
+            <div className="space-y-1.5">
+              <FreelancerDashboardSkeletonBlock className="h-3 w-20 rounded-full" />
+              <FreelancerDashboardSkeletonBlock className="h-6 w-24 rounded-full" />
+            </div>
+            <div className="space-y-1.5 pl-4">
+              <FreelancerDashboardSkeletonBlock className="h-3 w-16 rounded-full" />
+              <FreelancerDashboardSkeletonBlock className="h-5 w-20 rounded-full" />
+            </div>
+          </div>
+          <div className="mt-5 space-y-2.5">
+            <FreelancerDashboardSkeletonBlock className="h-11 w-full rounded-full" />
+            <div className="flex gap-2.5">
+              <FreelancerDashboardSkeletonBlock className="h-10 flex-1 rounded-full" />
+              <FreelancerDashboardSkeletonBlock className="h-10 flex-1 rounded-full" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   </section>
 );
 
-const FreelancerPendingProposalRow = ({ item }) => (
-  <div className="grid w-full min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_184px] lg:items-end">
-    <div className="min-w-0 w-full">
-      <p className="min-w-0 truncate text-[22px] sm:text-[clamp(1.5rem,5vw,2.15rem)] font-semibold tracking-[-0.04em] dark:text-white text-[#1C1B1F]">
+const FreelancerPendingProposalCard = ({ item }) => (
+  <article className="flex h-auto w-full max-w-full min-w-0 flex-col rounded-[28px] border border-border/55 dark:border-white/[0.06] bg-card p-6 shadow-sm transition-transform duration-200 hover:-translate-y-1">
+    {/* Header row: Status badge, Date, and Delete icon */}
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-[#FAF1EB] text-[#D9692A] border-transparent dark:bg-[#F9D949]/5 dark:text-[#F9D949] dark:border dark:border-[#F9D949]/30">
+          Pending
+        </span>
+        <span className="text-sm font-medium text-muted-foreground">
+          {item.formattedDate}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={item.onReject}
+        disabled={item.isAccepting}
+        className="text-muted-foreground hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+        title="Reject Proposal"
+      >
+        <Trash2 className="size-5 text-[#D9692A] dark:text-[#F9D949]" />
+      </button>
+    </div>
+
+    {/* Project Title Section */}
+    <div className="mt-6">
+      <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground block">
+        Project Name
+      </span>
+      <h3 className="text-[18px] font-semibold tracking-[-0.03em] text-foreground leading-tight mt-1 line-clamp-1">
         {item.title}
-      </p>
+      </h3>
+    </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 sm:gap-3">
-        <div className={freelancerPendingProposalDetailBlockClassName}>
-          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-            Service
+    {/* Client & Service Row */}
+    <div className="mt-4 flex items-center justify-between gap-3">
+      {/* Left side: Client Info */}
+      <div className="flex items-center gap-2.5 flex-1 min-w-0">
+        <Avatar className="size-9 shrink-0 border border-border">
+          <AvatarImage src={item.clientAvatar} alt={item.clientName} />
+          <AvatarFallback className="bg-[#FAF1EB] text-[#D9692A] dark:bg-white/[0.06] dark:text-[#F9D949] text-xs font-bold">
+            {item.clientInitial}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-foreground leading-tight">
+            {item.clientName}
           </p>
-          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
-            {item.service}
+          <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">
+            Client
           </p>
         </div>
+      </div>
 
-        <div className={freelancerPendingProposalDetailBlockClassName}>
-          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-            Budget
-          </p>
-          <p className="mt-2.5 text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
+      {/* Right side: Service Info */}
+      <div className="flex flex-col items-end min-w-0 max-w-[45%]">
+        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80 leading-none mb-1.5">
+          Service
+        </span>
+        <span 
+          className="text-right text-xs font-semibold text-[#D9692A] dark:text-[#F9D949] truncate w-full"
+          title={item.service || "General"}
+        >
+          {item.service || "General"}
+        </span>
+      </div>
+    </div>
+
+    {/* Details Grid: Agreed Amount and Delivery */}
+    <div className="grid grid-cols-2 gap-4 mt-5 py-4 border-t border-b border-border/55 dark:border-white/[0.06]">
+      <div>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground block">
+          Agreed Amount
+        </span>
+        <div className="h-7 flex items-center mt-1.5">
+          <span className="text-[18px] font-extrabold tracking-tight text-[#D9692A] dark:text-[#F9D949] leading-none">
             {item.budget}
-          </p>
+          </span>
         </div>
-
-        <div className={freelancerPendingProposalDetailBlockClassName}>
-          <p className="text-[0.76rem] uppercase tracking-[0.16em] text-muted-foreground">
-            Received
-          </p>
-          <p className="mt-2.5 break-words text-[1.1rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
-            {item.updatedAt || "Just now"}
-          </p>
+      </div>
+      <div className="border-l border-border/55 dark:border-white/[0.06] pl-4">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground block">
+          Delivery
+        </span>
+        <div className="h-7 flex items-center gap-1.5 mt-1.5">
+          <Clock className="size-4 text-[#D9692A] dark:text-[#F9D949] shrink-0" />
+          <span className="text-sm sm:text-base font-bold text-foreground leading-none truncate">
+            {item.delivery}
+          </span>
         </div>
       </div>
     </div>
 
-    <div className="flex w-full flex-col gap-2.5 lg:h-[76px] lg:items-end lg:justify-end lg:gap-2">
+    {/* Actions Section */}
+    <div className="mt-5 space-y-2.5">
       <button
         type="button"
         onClick={item.onView}
         disabled={item.isAccepting}
-        className={cn(
-          freelancerPendingProposalActionButtonClassName,
-          "bg-[var(--primary)] text-white dark:text-[#1C1B1F] hover:bg-primary/80 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
-          item.isAccepting && "cursor-not-allowed opacity-60",
-        )}
+        className="w-full h-11 rounded-full font-bold text-xs bg-[#D9692A] text-white hover:bg-[#C25820] dark:bg-[#F9D949] dark:text-[#1C1B1F] dark:hover:bg-[#E2C23B] transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
       >
         View Details
       </button>
-
-      <button
-        type="button"
-        onClick={item.onAccept}
-        disabled={item.isAccepting}
-        className={cn(
-          freelancerPendingProposalActionButtonClassName,
-          "border border-emerald-600 bg-transparent text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 lg:h-auto lg:min-h-0 lg:max-w-[184px] lg:flex-1",
-          item.isAccepting && "cursor-not-allowed opacity-60",
-        )}
-      >
-        {item.isAccepting ? "Accepting..." : "Accept Proposal"}
-      </button>
+      <div className="flex gap-2.5">
+        <button
+          type="button"
+          onClick={item.onAccept}
+          disabled={item.isAccepting}
+          className="flex-1 h-10 rounded-full font-semibold text-xs transition-colors flex items-center justify-center border border-[#A3E2C9] bg-[#E8F8F2] text-[#0F8A5F] hover:bg-[#D4F2E5] dark:border-[#20684C] dark:bg-[#102A20] dark:text-[#52D49C] dark:hover:bg-[#163B2D] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {item.isAccepting ? "Accepting..." : "Accept"}
+        </button>
+        <button
+          type="button"
+          onClick={item.onReject}
+          disabled={item.isAccepting}
+          className="flex-1 h-10 rounded-full font-semibold text-xs transition-colors flex items-center justify-center border border-[#F5C7BC] bg-[#FCECE8] text-[#D9381E] hover:bg-[#F9DCD5] dark:border-[#682424] dark:bg-[#2C1616] dark:text-[#E26666] dark:hover:bg-[#3D1F1F] disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Reject
+        </button>
+      </div>
     </div>
-  </div>
-);
-
-const FreelancerPendingProposalCard = ({ item }) => (
-  <article className="flex h-auto w-full max-w-full min-w-0 flex-col overflow-x-clip overflow-y-hidden rounded-[28px] border border-white/[0.06] bg-card p-4 transition-transform duration-200 hover:-translate-y-1 sm:p-5 xl:p-6">
-    <FreelancerPendingProposalRow item={item} />
   </article>
 );
 
 const FreelancerPendingProposalListPanel = ({ pendingProposalRows }) => (
-  <FreelancerDashboardPanel className="overflow-hidden bg-card">
-    <div className="divide-y divide-white/[0.06]">
-      {pendingProposalRows.map((item) => (
-        <div key={item.id} className="px-4 py-5 sm:px-6 sm:py-6">
-          <FreelancerPendingProposalRow item={item} />
-        </div>
-      ))}
-    </div>
-  </FreelancerDashboardPanel>
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+    {pendingProposalRows.map((item) => (
+      <FreelancerPendingProposalCard key={item.id} item={item} />
+    ))}
+  </div>
 );
 
 const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "" }) => {

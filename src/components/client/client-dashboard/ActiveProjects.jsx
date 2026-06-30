@@ -198,6 +198,8 @@ const ActiveProjects = memo(function ActiveProjects({
     };
   }, [projectCarouselApi, shouldUseProjectCarousel]);
 
+
+
   const measureProjectCardHeights = useCallback(() => {
     const heights = Object.values(projectCardRefs.current)
       .map((card) => card?.getBoundingClientRect().height || 0)

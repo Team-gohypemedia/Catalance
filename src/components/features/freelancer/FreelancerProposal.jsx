@@ -7,6 +7,7 @@ import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -314,6 +315,7 @@ const ProposalRowCard = ({
   const isProcessing = processingId === proposal.id;
   const rejectionReasonText = String(proposal.rejectionReason || "").trim();
   const showRejectionReason = proposal.status === "rejected" && Boolean(rejectionReasonText);
+  
   const proposalServiceType = useMemo(() => {
     const normalizedServiceType = String(
       proposal.serviceType || proposal.category || "",
@@ -324,12 +326,14 @@ const ProposalRowCard = ({
 
     return toDisplayTitleCase(normalizedServiceType);
   }, [proposal.serviceType, proposal.category]);
+
   const displayTitle = String(
     (proposal.businessName ? toDisplayTitleCase(proposal.businessName) : "") ||
       proposal.title ||
       proposalServiceType ||
       "Proposal",
   ).trim();
+
   const clientInitials = String(proposal.clientName || "Client")
     .trim()
     .charAt(0)
@@ -338,127 +342,152 @@ const ProposalRowCard = ({
   return (
     <Card
       className={cn(
-        "h-full w-full shadow-none",
-        freelancerProposalPanelClassName,
+        "h-full w-full max-w-[360px] mx-auto shadow-none border border-border/55 dark:border-white/[0.06] rounded-[28px] bg-card p-6 transition-all duration-200 hover:-translate-y-1",
       )}
     >
-      <CardContent className="p-0">
-        <div className="flex h-full flex-col gap-6 p-4 sm:p-5 xl:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <Badge
-              variant="outline"
-              className={cn(
-                "rounded-full border bg-transparent px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]",
-                freelancerProposalStatusClasses[proposal.status] ||
-                  freelancerProposalStatusClasses.pending,
-              )}
-            >
+      <CardContent className="p-0 flex flex-col h-full">
+        {/* Header row: Status badge, Date, and Delete/Reject icon */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className={cn(
+              "inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border",
+              proposal.status === "pending" || proposal.status === "received"
+                ? "bg-[#FAF1EB] text-[#D9692A] border-transparent dark:bg-[#F9D949]/5 dark:text-[#F9D949] dark:border-[#F9D949]/30"
+                : proposal.status === "accepted"
+                ? "bg-emerald-500/10 text-emerald-600 border-transparent dark:bg-emerald-500/5 dark:text-emerald-400 dark:border-emerald-500/20"
+                : "bg-red-500/10 text-red-600 border-transparent dark:bg-red-500/5 dark:text-red-400 dark:border-red-500/20"
+            )}>
               {config.label}
-            </Badge>
-
-            {proposal.submittedDate ? (
-              <span className="ml-auto whitespace-nowrap text-[11px] font-medium normal-case tracking-[0.08em] text-muted-foreground">
+            </span>
+            {proposal.submittedDate && (
+              <span className="text-sm font-medium text-muted-foreground">
                 {proposal.submittedDate}
               </span>
-            ) : null}
+            )}
           </div>
-
-          <div className="space-y-5">
-            <div className="space-y-2">
-              <h3 className="max-w-[15ch] text-[clamp(1.55rem,2vw,2.1rem)] font-semibold leading-[1.08] tracking-[-0.045em] text-foreground">
-                {displayTitle}
-              </h3>
-              {proposalServiceType ? (
-                <p className="mt-1 text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {proposalServiceType}
-                </p>
-              ) : null}
-              {showRejectionReason ? (
-                <div className="max-w-[24rem] space-y-1.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-destructive/80">
-                    Reason
-                  </p>
-                  <p
-                    className="text-sm font-medium leading-6 text-destructive/90"
-                    title={rejectionReasonText}
-                  >
-                    {rejectionReasonText}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Avatar className="h-12 w-12 border border-border bg-background">
-                <AvatarImage src={proposal.clientAvatar} alt={proposal.clientName} />
-                <AvatarFallback className="bg-background text-sm font-bold text-primary">
-                  {clientInitials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Client
-                </p>
-                <p className="mt-1 truncate text-[1.05rem] font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-[1.125rem]">
-                  {proposal.clientName}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div
-                className={freelancerProposalMetricBlockClassName}
-                style={{ containerType: "inline-size" }}
-              >
-                <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
-                  Budget
-                </p>
-                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-foreground">
-                  {budget}
-                </div>
-              </div>
-
-              <div
-                className={freelancerProposalMetricBlockClassName}
-                style={{ containerType: "inline-size" }}
-              >
-                <p className="whitespace-nowrap text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:text-[0.76rem]">
-                  Timeline
-                </p>
-                <div className="mt-2 whitespace-nowrap text-[clamp(0.68rem,5cqi,1.2rem)] font-semibold leading-none tracking-[-0.03em] text-foreground">
-                  <span className="capitalize">{timeline}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-auto flex flex-col gap-3">
-            <Button
-              className="h-14 rounded-[20px] bg-primary px-6 text-base font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
-              onClick={() => onOpen(proposal)}
+          {isPendingProposal && (
+            <button
+              type="button"
+              onClick={() => onReject(proposal)}
+              disabled={isProcessing}
+              className="text-muted-foreground hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+              title="Reject Proposal"
             >
-              View Details
-            </Button>
+              <Trash2 className="size-5 text-[#D9692A] dark:text-[#F9D949]" />
+            </button>
+          )}
+        </div>
 
-            {isPendingProposal ? (
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  className="h-11 rounded-[18px] border border-emerald-600 bg-transparent px-6 text-sm font-semibold text-emerald-400 shadow-none hover:bg-emerald-500/10 hover:text-emerald-300"
-                  onClick={() => onAccept(proposal.id)}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? "Accepting..." : "Accept"}
-                </Button>
-                <Button
-                  className="h-11 rounded-[18px] border border-red-700 bg-transparent px-6 text-sm font-semibold text-red-400 shadow-none hover:bg-red-500/10 hover:text-red-300"
-                  onClick={() => onReject(proposal)}
-                  disabled={isProcessing}
-                >
-                  Reject
-                </Button>
-              </div>
-            ) : null}
+        {/* Project Title Section */}
+        <div className="mt-6">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground block">
+            Project Name
+          </span>
+          <h3 className="text-[18px] font-semibold tracking-[-0.03em] text-foreground leading-tight mt-1 line-clamp-1">
+            {displayTitle}
+          </h3>
+        </div>
+
+        {/* Client & Service Row */}
+        <div className="mt-4 flex items-center justify-between gap-3">
+          {/* Left side: Client Info */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            <Avatar className="size-9 shrink-0 border border-border">
+              <AvatarImage src={proposal.clientAvatar} alt={proposal.clientName} />
+              <AvatarFallback className="bg-[#FAF1EB] text-[#D9692A] dark:bg-white/[0.06] dark:text-[#F9D949] text-xs font-bold">
+                {clientInitials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-foreground leading-tight">
+                {proposal.clientName}
+              </p>
+              <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">
+                Client
+              </p>
+            </div>
           </div>
+
+          {/* Right side: Service Info */}
+          <div className="flex flex-col items-end min-w-0 max-w-[45%]">
+            <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80 leading-none mb-1.5">
+              Service
+            </span>
+            <span 
+              className="text-right text-xs font-semibold text-[#D9692A] dark:text-[#F9D949] truncate w-full"
+              title={proposalServiceType || "General"}
+            >
+              {proposalServiceType || "General"}
+            </span>
+          </div>
+        </div>
+
+        {/* Details Grid: Agreed Amount and Delivery */}
+        <div className="grid grid-cols-2 gap-4 mt-6 py-5 border-t border-b border-border/55 dark:border-white/[0.06]">
+          <div>
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground block">
+              Agreed Amount
+            </span>
+            <div className="h-7 flex items-center mt-2">
+              <span className="text-[18px] font-extrabold tracking-tight text-[#D9692A] dark:text-[#F9D949] leading-none">
+                {budget}
+              </span>
+            </div>
+          </div>
+          <div className="border-l border-border/55 dark:border-white/[0.06] pl-4">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground block">
+              Delivery
+            </span>
+            <div className="h-7 flex items-center gap-2 mt-2">
+              <Clock className="size-4.5 text-[#D9692A] dark:text-[#F9D949] shrink-0" />
+              <span className="text-base font-bold text-foreground leading-none truncate">
+                {timeline || "N/A"}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {showRejectionReason && (
+          <div className="mt-4 p-3 bg-red-500/5 border border-red-500/10 rounded-xl">
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-red-500/80 block">
+              Reason for Rejection
+            </span>
+            <p className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400 mt-1 line-clamp-2" title={rejectionReasonText}>
+              {rejectionReasonText}
+            </p>
+          </div>
+        )}
+
+        {/* Actions Section */}
+        <div className="mt-6 space-y-3">
+          <button
+            type="button"
+            onClick={() => onOpen(proposal)}
+            disabled={isProcessing}
+            className="w-full h-12 rounded-full font-bold text-sm bg-[#D9692A] text-white hover:bg-[#C25820] dark:bg-[#F9D949] dark:text-[#1C1B1F] dark:hover:bg-[#E2C23B] transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            View Details
+          </button>
+          {isPendingProposal && (
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => onAccept(proposal.id)}
+                disabled={isProcessing}
+                className="flex-1 h-11 rounded-full font-semibold text-sm transition-colors flex items-center justify-center border border-[#A3E2C9] bg-[#E8F8F2] text-[#0F8A5F] hover:bg-[#D4F2E5] dark:border-[#20684C] dark:bg-[#102A20] dark:text-[#52D49C] dark:hover:bg-[#163B2D] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? "Accepting..." : "Accept"}
+              </button>
+              <button
+                type="button"
+                onClick={() => onReject(proposal)}
+                disabled={isProcessing}
+                className="flex-1 h-11 rounded-full font-semibold text-sm transition-colors flex items-center justify-center border border-[#F5C7BC] bg-[#FCECE8] text-[#D9381E] hover:bg-[#F9DCD5] dark:border-[#682424] dark:bg-[#2C1616] dark:text-[#E26666] dark:hover:bg-[#3D1F1F] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Reject
+              </button>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
@@ -913,7 +942,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                         processingId={processingId}
                       />
                     ) : (
-                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                         {tabItems.map((proposal) => (
                           <ProposalRowCard
                             key={proposal.id}

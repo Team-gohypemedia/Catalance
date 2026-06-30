@@ -2693,6 +2693,52 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     },
     [authFetch],
   );
+
+  const handleRejectPendingProposal = useCallback(
+    async (proposal) => {
+      const proposalId = String(proposal?.id || "").trim();
+      if (!proposalId) {
+        toast.error("Proposal id is missing.");
+        return;
+      }
+
+      setPendingProposalActionId(proposalId);
+
+      try {
+        const response = await authFetch(`/proposals/${proposalId}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "REJECTED" }),
+        });
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(errorPayload?.message || `Status update failed (${response.status})`);
+        }
+
+        setMetrics((previous) => {
+          const pendingProposals = previous.pendingProposals.filter(
+            (item) => String(item?.id || "") !== proposalId,
+          );
+
+          return {
+            ...previous,
+            proposalsReceived: pendingProposals.length,
+            pendingProposals,
+          };
+        });
+
+        toast.success("Proposal rejected");
+      } catch (error) {
+        console.error("Pending proposal reject error:", error);
+        toast.error(error?.message || "Could not reject proposal");
+      } finally {
+        setPendingProposalActionId(null);
+      }
+    },
+    [authFetch],
+  );
+
   const pendingProposalRows = useMemo(
     () =>
       metrics.pendingProposals.slice(0, 4).map((proposal, index) => {
@@ -2703,14 +2749,39 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           proposal?.project?.title ||
           "Untitled proposal";
         const requestTime = formatDashboardActivityTime(proposal?.updatedAt || proposal?.createdAt);
+        const clientName =
+          proposal?.project?.owner?.fullName ||
+          proposal?.project?.owner?.name ||
+          "Client";
+        const clientAvatar = proposal?.project?.owner?.avatar || "";
+        const clientInitial = String(clientName).charAt(0).toUpperCase();
+        const rawDate = proposal?.createdAt || proposal?.updatedAt;
+        const formattedDate = rawDate
+          ? new Date(rawDate).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })
+          : "Recent";
+        const delivery =
+          proposal?.project?.timeline ||
+          proposal?.project?.duration ||
+          proposal?.timeline ||
+          proposal?.duration ||
+          "N/A";
 
         return {
           id: proposal?.id || `pending-proposal-${index}`,
           title: toDisplayTitleCase(title),
           updatedAt: requestTime,
+          formattedDate,
           budget: formatFreelancerDashboardCurrency(toFreelancerShareAmount(proposal?.amount)),
           service: serviceType ? toDisplayTitleCase(serviceType) : "General Service",
           projectId: proposal?.project?.id,
+          clientName,
+          clientAvatar,
+          clientInitial,
+          delivery,
           onView: () => {
             const query = proposal?.project?.id
               ? `?projectId=${encodeURIComponent(proposal.project.id)}`
@@ -2718,10 +2789,11 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             navigate(`/freelancer/proposals${query}`);
           },
           onAccept: () => handleAcceptPendingProposal(proposal),
+          onReject: () => handleRejectPendingProposal(proposal),
           isAccepting: pendingProposalActionId === String(proposal?.id || ""),
         };
       }),
-    [handleAcceptPendingProposal, metrics.pendingProposals, navigate, pendingProposalActionId]
+    [handleAcceptPendingProposal, handleRejectPendingProposal, metrics.pendingProposals, navigate, pendingProposalActionId]
   );
 
   const recentChatUpdates = useMemo(
@@ -3596,6 +3668,49 @@ export const DashboardContent = ({ _roleOverride, children }) => {
       runningProjectsCarouselApi.off("reInit", syncRunningProjectsCarouselState);
     };
   }, [runningProjectsCarouselApi, runningProjectsFilter]);
+
+  // Enable mouse wheel and trackpad scroll for running projects carousel
+  useEffect(() => {
+    if (!runningProjectsCarouselApi) return;
+    const viewport = runningProjectsCarouselApi.rootNode();
+    if (!viewport) return;
+
+    let lastScrollTime = 0;
+    const handleWheel = (e) => {
+      const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      const delta = isHorizontal ? e.deltaX : e.deltaY;
+      
+      if (Math.abs(delta) > 5) {
+        const canScrollNext = runningProjectsCarouselApi.canScrollNext();
+        const canScrollPrev = runningProjectsCarouselApi.canScrollPrev();
+        
+        // Always prevent default on horizontal trackpad swipes to block browser back/forward gestures
+        if (isHorizontal) {
+          e.preventDefault();
+        } else if ((delta > 0 && canScrollNext) || (delta < 0 && canScrollPrev)) {
+          // For vertical mouse wheel, only block page scroll if the carousel can slide
+          e.preventDefault();
+        }
+        
+        if ((delta > 0 && canScrollNext) || (delta < 0 && canScrollPrev)) {
+          const now = Date.now();
+          if (now - lastScrollTime > 250) {
+            if (delta > 0) {
+              runningProjectsCarouselApi.scrollNext();
+            } else {
+              runningProjectsCarouselApi.scrollPrev();
+            }
+            lastScrollTime = now;
+          }
+        }
+      }
+    };
+
+    viewport.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      viewport.removeEventListener("wheel", handleWheel);
+    };
+  }, [runningProjectsCarouselApi]);
 
   const activeRunningProjectsFilterLabel =
     runningProjectFilterOptions.find((option) => option.value === runningProjectsFilter)?.label ||
