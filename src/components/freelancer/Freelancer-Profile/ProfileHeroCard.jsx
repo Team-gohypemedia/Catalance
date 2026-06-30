@@ -330,7 +330,7 @@ const ProfileHeroCard = ({
           </div>
         </div>
 
-        <div className="mt-6 flex flex-row flex-nowrap items-start gap-2 justify-center lg:absolute lg:right-5 lg:top-4 lg:mt-0 lg:flex-wrap lg:justify-end xl:right-6 w-full lg:w-auto">
+        <div className="mt-6 flex flex-col sm:flex-row sm:flex-nowrap items-stretch sm:items-start gap-2 justify-center lg:absolute lg:right-5 lg:top-4 lg:mt-0 lg:flex-wrap lg:justify-end xl:right-6 w-full lg:w-auto">
           <div className="flex flex-col gap-1.5 flex-1 lg:flex-none lg:min-w-[16rem]">
             <div className="flex h-10 w-full items-center justify-between gap-4 rounded-md border bg-card px-3 text-sm text-foreground transition-all duration-200 hover:bg-accent/90">
               <div className="min-w-0">
@@ -356,9 +356,8 @@ const ProfileHeroCard = ({
           {uploadingResume ? (
             <Button
               type="button"
-              size="sm"
               disabled
-              className="h-10 flex-1 lg:flex-none justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 lg:w-auto"
+              className="h-10 w-full lg:w-auto flex-1 lg:flex-none justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90"
             >
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Uploading...
@@ -372,8 +371,7 @@ const ProfileHeroCard = ({
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
-                  size="sm"
-                  className="h-10 flex-1 lg:flex-none justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-semibold text-primary hover:bg-primary/10 lg:w-auto gap-2.5 shadow-none"
+                  className="h-10 w-full lg:w-auto flex-1 lg:flex-none justify-between rounded-md border border-primary/30 bg-primary/5 px-3 text-sm font-semibold text-primary hover:bg-primary/10 gap-2.5 shadow-none"
                   title="Resume uploaded. Click for options."
                 >
                   <div className="flex items-center gap-2">
@@ -435,9 +433,8 @@ const ProfileHeroCard = ({
           ) : (
             <Button
               type="button"
-              size="sm"
               onClick={() => resumeInputRef.current?.click()}
-              className="h-10 flex-1 lg:flex-none justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90 lg:w-auto"
+              className="h-10 w-full lg:w-auto flex-1 lg:flex-none justify-center rounded-md border border-primary bg-card px-3 text-sm text-primary hover:bg-accent/90"
               title="Upload resume"
             >
               <Upload className="h-4 w-4" aria-hidden="true" />
