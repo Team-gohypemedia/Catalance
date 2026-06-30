@@ -206,7 +206,7 @@ const FreelancerPendingProposalListPanel = ({ pendingProposalRows, gridCols = 3 
 
 const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "", gridCols = 3 }) => {
   const isMobile = useIsMobile();
-  const shouldUsePendingProposalCarousel = isMobile && pendingProposalRows.length > 1;
+  const shouldUsePendingProposalCarousel = pendingProposalRows.length > 1;
   const [pendingProposalCarouselApi, setPendingProposalCarouselApi] = useState(null);
   const [canGoToPreviousPendingProposal, setCanGoToPreviousPendingProposal] = useState(false);
   const [canGoToNextPendingProposal, setCanGoToNextPendingProposal] = useState(false);
@@ -284,21 +284,31 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "", grid
             }}
             className="w-full"
           >
-            <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
+            <CarouselContent className="-ml-5 items-start [backface-visibility:hidden] [will-change:transform]">
               {pendingProposalRows.map((item) => (
-                <CarouselItem key={item.id} className="basis-full pl-[2px] pr-[2px] pt-1">
+                <CarouselItem
+                  key={item.id}
+                  className={cn(
+                    gridCols === 2
+                      ? "basis-full md:basis-1/2 2xl:basis-1/3"
+                      : "basis-full md:basis-1/2 lg:basis-1/3",
+                    "pl-5 pt-1"
+                  )}
+                >
                   <FreelancerPendingProposalCard item={item} />
                 </CarouselItem>
               ))}
             </CarouselContent>
           </Carousel>
-          <FreelancerCarouselDots
-            count={pendingProposalSnapCount}
-            activeIndex={activePendingProposalSnap}
-            onSelect={(index) => pendingProposalCarouselApi?.scrollTo(index)}
-            ariaLabel="Pending proposals carousel pagination"
-            getDotLabel={(index) => `Go to pending proposal ${index + 1}`}
-          />
+          {pendingProposalSnapCount > 1 ? (
+            <FreelancerCarouselDots
+              count={pendingProposalSnapCount}
+              activeIndex={activePendingProposalSnap}
+              onSelect={(index) => pendingProposalCarouselApi?.scrollTo(index)}
+              ariaLabel="Pending proposals carousel pagination"
+              getDotLabel={(index) => `Go to pending proposal ${index + 1}`}
+            />
+          ) : null}
         </div>
       ) : isMobile ? (
         <FreelancerPendingProposalCard item={pendingProposalRows[0]} />
