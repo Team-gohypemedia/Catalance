@@ -2205,7 +2205,7 @@ const FreelancerChatContent = () => {
 
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="max-w-[1600px] mx-auto min-h-full">
-          <section className="mt-7 flex flex-col gap-6">
+          <section className="mt-2 md:mt-5 lg:mt-7 flex flex-col gap-6">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
                 <h1 className="text-[22px] font-semibold tracking-[-0.04em] text-foreground sm:text-4xl md:text-[3.4rem]">

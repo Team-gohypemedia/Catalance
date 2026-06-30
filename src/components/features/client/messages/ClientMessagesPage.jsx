@@ -292,7 +292,7 @@ const ClientMessagesPage = () => {
 
           {!isMobileDetailOpen ? (
             <ClientPageHeader
-              className="mb-2 mt-8 shrink-0 lg:items-center"
+              className="mb-2 mt-2 md:mt-5 lg:mt-8 shrink-0 lg:items-center"
               title="Messages"
               dateLabel={false}
               actions={
