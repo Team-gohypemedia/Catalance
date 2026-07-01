@@ -284,7 +284,7 @@ const FreelancerWorkspaceHeader = ({
   unreadCount = 0,
   markAllAsRead,
   onNotificationClick,
-  flushContainerPadding = true,
+  flushContainerPadding = false,
   className,
 }) => {
   const { logout } = useAuth();

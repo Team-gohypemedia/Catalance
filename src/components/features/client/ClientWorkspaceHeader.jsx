@@ -398,7 +398,7 @@ const ClientWorkspaceHeader = ({
   onOpenNotifications: _onOpenNotifications,
   notificationTo = "/client/messages",
   unreadCount = 0,
-  flushContainerPadding = true,
+  flushContainerPadding = false,
   className,
 }) => {
   const { logout } = useAuth();
