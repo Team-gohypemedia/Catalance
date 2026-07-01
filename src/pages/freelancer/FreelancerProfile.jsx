@@ -4418,7 +4418,7 @@ const FreelancerProfile = () => {
 
             <div className="mt-4 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {displayPortfolioProjects.length > 0 ? (
-                <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-3.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                   {displayPortfolioProjects.map((project, idx) => {
                     const projectLink = normalizeProjectLinkValue(project?.link);
                     const projectTitle = String(
