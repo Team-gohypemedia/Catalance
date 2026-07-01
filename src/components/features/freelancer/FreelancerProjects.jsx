@@ -1180,7 +1180,7 @@ const FreelancerProjectsContent = () => {
                     })}
                   </div>
                   {availableServices.length > 1 && (
-                    <Select value={activeServiceFilter} onValueChange={setActiveServiceFilter}>
+                    <Select value={activeServiceFilter} onValueChange={setActiveServiceFilter} modal={false}>
                       <SelectTrigger className="w-full sm:w-[200px] h-10 sm:h-11 rounded-[24px] border-border bg-card font-medium">
                         <SelectValue placeholder="Filter by Service" />
                       </SelectTrigger>

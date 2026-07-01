@@ -29,6 +29,16 @@ import {
   CarouselPrevious,
   CarouselNext,
 } from "@/components/ui/carousel";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -306,7 +316,9 @@ const ProposalRowCard = ({
   onOpen,
   onAccept,
   onReject,
+  onDelete,
   processingId,
+  processingAction,
 }) => {
   const config = statusConfig[proposal.status] || statusConfig.pending;
   const { budget, timeline } = extractProposalDetails(
@@ -315,6 +327,8 @@ const ProposalRowCard = ({
   );
   const isPendingProposal = proposal.status === "pending";
   const isProcessing = processingId === proposal.id;
+  const isAccepting = isProcessing && processingAction === "accept";
+  const isRejecting = isProcessing && processingAction === "reject";
   const rejectionReasonText = String(proposal.rejectionReason || "").trim();
   const showRejectionReason = proposal.status === "rejected" && Boolean(rejectionReasonText);
   
@@ -367,7 +381,7 @@ const ProposalRowCard = ({
               </span>
             )}
           </div>
-          {isPendingProposal && (
+          {isPendingProposal ? (
             <button
               type="button"
               onClick={() => onReject(proposal)}
@@ -377,7 +391,17 @@ const ProposalRowCard = ({
             >
               <Trash2 className="size-5 text-[#D9692A] dark:text-[#F9D949]" />
             </button>
-          )}
+          ) : proposal.status === "rejected" ? (
+            <button
+              type="button"
+              onClick={() => onDelete(proposal.id)}
+              disabled={isProcessing}
+              className="group p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+              title="Delete Proposal"
+            >
+              <Trash2 className="size-5 text-red-500/60 dark:text-red-400/50 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
+            </button>
+          ) : null}
         </div>
 
         {/* Project Title Section */}
@@ -451,10 +475,10 @@ const ProposalRowCard = ({
 
         {showRejectionReason && (
           <div className="mt-4 p-3 bg-red-500/5 border border-red-500/10 rounded-xl">
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-red-500/80 block">
+            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-red-500/80 dark:text-red-400/80 block">
               Reason for Rejection
             </span>
-            <p className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400 mt-1 line-clamp-2" title={rejectionReasonText}>
+            <p className="text-xs sm:text-sm font-medium text-foreground/90 dark:text-slate-200 mt-1 line-clamp-2" title={rejectionReasonText}>
               {rejectionReasonText}
             </p>
           </div>
@@ -478,7 +502,7 @@ const ProposalRowCard = ({
                 disabled={isProcessing}
                 className="flex-1 h-11 rounded-full font-semibold text-sm transition-colors flex items-center justify-center border border-[#A3E2C9] bg-[#E8F8F2] text-[#0F8A5F] hover:bg-[#D4F2E5] dark:border-[#20684C] dark:bg-[#102A20] dark:text-[#52D49C] dark:hover:bg-[#163B2D] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isProcessing ? "Accepting..." : "Accept"}
+                {isAccepting ? "Accepting..." : "Accept"}
               </button>
               <button
                 type="button"
@@ -486,7 +510,7 @@ const ProposalRowCard = ({
                 disabled={isProcessing}
                 className="flex-1 h-11 rounded-full font-semibold text-sm transition-colors flex items-center justify-center border border-[#F5C7BC] bg-[#FCECE8] text-[#D9381E] hover:bg-[#F9DCD5] dark:border-[#682424] dark:bg-[#2C1616] dark:text-[#E26666] dark:hover:bg-[#3D1F1F] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Reject
+                {isRejecting ? "Rejecting..." : "Reject"}
               </button>
             </div>
           )}
@@ -501,7 +525,9 @@ const ProposalCardsCarousel = ({
   onOpen,
   onAccept,
   onReject,
+  onDelete,
   processingId,
+  processingAction,
 }) => {
   const [proposalCarouselApi, setProposalCarouselApi] = useState(null);
   const [canGoToPreviousProposal, setCanGoToPreviousProposal] = useState(false);
@@ -560,7 +586,9 @@ const ProposalCardsCarousel = ({
                 onOpen={onOpen}
                 onAccept={onAccept}
                 onReject={onReject}
+                onDelete={onDelete}
                 processingId={processingId}
+                processingAction={processingAction}
               />
             </CarouselItem>
           ))}
@@ -623,6 +651,8 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   const [selectedProposal, setSelectedProposal] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState(null);
+  const [processingAction, setProcessingAction] = useState(null);
+  const [proposalToDeleteId, setProposalToDeleteId] = useState(null);
   const [isRejectReasonStep, setIsRejectReasonStep] = useState(false);
   const [rejectReasonKey, setRejectReasonKey] = useState("");
   const [rejectCustomReason, setRejectCustomReason] = useState("");
@@ -686,6 +716,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   const handleStatusChange = useCallback(
     async (id, nextStatus, rejectionReason = "", rejectionReasonKeyValue = "") => {
       setProcessingId(id);
+      setProcessingAction(nextStatus === "accepted" ? "accept" : "reject");
       const apiStatus = nextStatus.toUpperCase();
 
       try {
@@ -747,6 +778,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
         toast.error(error?.message || "Could not update status");
       } finally {
         setProcessingId(null);
+        setProcessingAction(null);
       }
     },
     [authFetch]
@@ -787,6 +819,48 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
     resetRejectReasonState,
     selectedProposal,
   ]);
+
+  const handleDeleteProposal = useCallback(
+    (id) => {
+      setProposalToDeleteId(id);
+    },
+    []
+  );
+
+  const confirmDeleteProposal = useCallback(
+    async () => {
+      if (!proposalToDeleteId) return;
+      const id = proposalToDeleteId;
+      setProcessingId(id);
+      setProcessingAction("delete");
+      try {
+        const response = await authFetch(`/proposals/${id}`, {
+          method: "DELETE",
+        });
+
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(
+            errorPayload?.message ||
+              `Deletion failed (${response.status})`
+          );
+        }
+
+        // Remove from local state
+        setProposals((prev) => prev.filter((p) => p.id !== id));
+        setSelectedProposal(null);
+        setProposalToDeleteId(null);
+        toast.success("Proposal deleted successfully");
+      } catch (error) {
+        console.error("Failed to delete proposal:", error);
+        toast.error(error?.message || "Could not delete proposal");
+      } finally {
+        setProcessingId(null);
+        setProcessingAction(null);
+      }
+    },
+    [authFetch, proposalToDeleteId]
+  );
 
   // Grouping
   const grouped = useMemo(() => {
@@ -891,7 +965,9 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                       onOpen={setSelectedProposal}
                       onAccept={(id) => handleStatusChange(id, "accepted")}
                       onReject={handleOpenRejectFlow}
+                      onDelete={handleDeleteProposal}
                       processingId={processingId}
+                      processingAction={processingAction}
                     />
                   ) : (
                     <div className="rounded-3xl border border-dashed border-border/70 bg-card/40 px-6 py-14 text-center">
@@ -1102,6 +1178,30 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!proposalToDeleteId} onOpenChange={(open) => !open && setProposalToDeleteId(null)}>
+        <AlertDialogContent className="max-w-md rounded-2xl p-6 bg-white dark:bg-[#0d0d0f] border-slate-200 dark:border-white/15 text-slate-900 dark:text-white border shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+              Delete Proposal
+            </AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              Are you sure you want to permanently delete this proposal? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <AlertDialogCancel className="rounded-xl border px-5 py-2.5 font-semibold transition-colors bg-white border-slate-200 text-slate-700 hover:bg-slate-50 dark:bg-transparent dark:border-white/10 dark:text-white dark:hover:bg-white/5">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteProposal}
+              className="rounded-xl px-5 py-2.5 font-semibold transition-colors !bg-red-600 !text-white hover:!bg-red-700 hover:!text-white border-transparent shadow-none"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

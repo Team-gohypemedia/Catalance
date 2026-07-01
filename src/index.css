@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 html[data-scroll-locked],
+html[data-scroll-locked] body,
 body[data-scroll-locked] {
   margin-right: 0 !important;
   padding-right: 0 !important;
@@ -1223,6 +1224,13 @@ input[data-input-otp-input] {
 /* Prevent Radix UI (Select/Dialog) scroll lock from causing page layout shifts */
 html {
   scrollbar-gutter: stable;
+}
+
+html[data-scroll-locked] body,
+body[data-scroll-locked],
+body[style*="pointer-events: none"] {
+  padding-right: 0px !important;
+  margin-right: 0px !important;
 }
 
 
