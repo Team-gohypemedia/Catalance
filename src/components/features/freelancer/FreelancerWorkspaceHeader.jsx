@@ -318,8 +318,28 @@ const FreelancerWorkspaceHeader = ({
     />
   );
 
+  const [headerHeight, setHeaderHeight] = React.useState(0);
+  const headerRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!headerRef.current) return;
+    const observer = new ResizeObserver(() => {
+      if (headerRef.current) {
+        setHeaderHeight(headerRef.current.offsetHeight);
+      }
+    });
+    observer.observe(headerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <header className={cn("sticky top-0 z-50 flex-none bg-background", className)}>
+    <>
+      {/* Placeholder to prevent layout shift when header is fixed */}
+      <div style={{ height: headerHeight }} className="w-full flex-none transition-[height] duration-200" aria-hidden="true" />
+      <header
+        ref={headerRef}
+        className={cn("fixed pl-20 pr-20 top-0 left-0 w-full z-50 flex-none bg-background", className)}
+      >
       <WorkspaceMobileSidebar
         currentDashboard="freelancer"
         displayName={displayName}
@@ -438,6 +458,7 @@ const FreelancerWorkspaceHeader = ({
         </div>
       </div>
     </header>
+    </>
   );
 };
 

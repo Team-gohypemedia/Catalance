@@ -517,7 +517,7 @@ const FullProfileEditorModalContent = ({
       </div>
       ) : null}
 
-      <div className="flex items-center justify-end gap-2 border-t border-border/70 pt-4">
+      <div className="sticky -bottom-6 -mx-6 mt-6 flex items-center justify-end gap-2 border-t border-border/70 bg-card px-6 py-4 z-10 rounded-b-2xl">
         <Button type="button" variant="outline" onClick={() => setModalType(null)}>
           Cancel
         </Button>

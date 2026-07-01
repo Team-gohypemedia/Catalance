@@ -307,21 +307,30 @@ const ProfileHeroCard = ({
               )}
             </span>
             <span className="inline-flex min-w-0 items-center">
-              <Link className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
               {profileLinkItems.length > 0 ? (
-                <span className="ml-1.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                  {profileLinkItems.map(({ key, href, label }) => (
-                    <a
-                      key={key}
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="max-w-[8rem] truncate font-medium text-muted-foreground underline-offset-4 hover:underline sm:max-w-[10rem]"
-                      title={href}
-                    >
-                      {label}
-                    </a>
-                  ))}
+                <span className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1">
+                  {profileLinkItems.map(({ key, href, label }) => {
+                    const domain = href ? new URL(href.startsWith("http") ? href : `https://${href}`).hostname : "";
+                    return (
+                      <a
+                        key={key}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 max-w-[8rem] truncate font-medium text-muted-foreground underline-offset-4 hover:underline sm:max-w-[10rem]"
+                        title={href}
+                      >
+                        {domain && (
+                          <img 
+                            src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} 
+                            alt="" 
+                            className="w-3.5 h-3.5 rounded-sm shrink-0"
+                          />
+                        )}
+                        <span className="truncate">{label}</span>
+                      </a>
+                    );
+                  })}
                 </span>
               ) : (
                 <span className="ml-1.5 text-muted-foreground">Links not set</span>
@@ -363,7 +372,7 @@ const ProfileHeroCard = ({
               Uploading...
             </Button>
           ) : resolvedLinks.resume ? (
-            <DropdownMenu
+            <DropdownMenu modal={false}
               modal={false}
               open={dropdownOpen}
               onOpenChange={setDropdownOpen}

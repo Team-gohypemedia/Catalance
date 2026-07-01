@@ -24,6 +24,8 @@ const MODELED_AVAILABILITY_KEYS = new Set([]);
 
 const MODELED_RELIABILITY_KEYS = new Set([]);
 
+const PROFILE_DETAILS_RESIDUAL_KEY = "__profileDetails";
+
 const isPlainObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value);
 
@@ -238,6 +240,15 @@ export const buildFreelancerProfileDetailsRecord = ({
   const acceptInProgressProjects =
     toOptionalBoolean(normalizedProfileDetails.acceptInProgressProjects) ??
     toOptionalBoolean(normalizedProfileDetails.acceptInProgressProjectsBoolean);
+  const residualProfileDetails = buildFreelancerProfileDetailsResidual(
+    normalizedProfileDetails
+  );
+  const serviceDetails = { ...asObject(normalizedProfileDetails.serviceDetails) };
+  if (hasMeaningfulValue(residualProfileDetails)) {
+    serviceDetails[PROFILE_DETAILS_RESIDUAL_KEY] = residualProfileDetails;
+  } else {
+    delete serviceDetails[PROFILE_DETAILS_RESIDUAL_KEY];
+  }
 
   return {
     profileRole: toOptionalString(
@@ -259,13 +270,18 @@ export const buildFreelancerProfileDetailsRecord = ({
     services: toStringArray(normalizedProfileDetails.services).length
       ? toStringArray(normalizedProfileDetails.services)
       : toStringArray(fallbackServices),
-    serviceDetails: asObject(normalizedProfileDetails.serviceDetails),
+    serviceDetails,
   };
 };
 
 export const buildFreelancerProfileDetailsObject = (record = null) => {
   const normalizedRecord = asObject(record);
-  const legacyProfileDetails = asObject(normalizedRecord.profileDetails);
+  const rawServiceDetails = asObject(normalizedRecord.serviceDetails);
+  const residualProfileDetails = asObject(rawServiceDetails[PROFILE_DETAILS_RESIDUAL_KEY]);
+  const legacyProfileDetails = mergeWithFallback(
+    asObject(normalizedRecord.profileDetails),
+    residualProfileDetails
+  );
   const legacyIdentity = asObject(legacyProfileDetails.identity);
   const legacyAvailability = asObject(legacyProfileDetails.availability);
   const legacyReliability = asObject(legacyProfileDetails.reliability);
@@ -326,8 +342,10 @@ export const buildFreelancerProfileDetailsObject = (record = null) => {
     toStringArray(normalizedRecord.services),
     legacyProfileDetails.services
   );
+  const publicServiceDetails = { ...rawServiceDetails };
+  delete publicServiceDetails[PROFILE_DETAILS_RESIDUAL_KEY];
   nextProfileDetails.serviceDetails = mergeWithFallback(
-    asObject(normalizedRecord.serviceDetails),
+    publicServiceDetails,
     legacyProfileDetails.serviceDetails
   );
   nextProfileDetails.portfolioProjects = mergeWithFallback(

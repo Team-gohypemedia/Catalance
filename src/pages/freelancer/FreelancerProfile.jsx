@@ -1170,7 +1170,13 @@ const FreelancerProfile = () => {
         )
         : [...workExperience, newItem];
 
+    const nextProfileDetails = {
+      ...(profileDetails && typeof profileDetails === "object" ? profileDetails : {}),
+      workExperience: nextWorkExperience,
+    };
+
     setWorkExperience(nextWorkExperience);
+    setProfileDetails(nextProfileDetails);
     const saved = await handleSave({
       personal,
       portfolio,
@@ -1178,7 +1184,7 @@ const FreelancerProfile = () => {
       workExperience: nextWorkExperience,
       services,
       portfolioProjects,
-      profileDetails,
+      profileDetails: nextProfileDetails,
     });
 
     if (saved) {
@@ -1196,7 +1202,14 @@ const FreelancerProfile = () => {
       (_, rowIndex) => rowIndex !== index
     );
 
+    const previousProfileDetails = profileDetails;
+    const nextProfileDetails = {
+      ...(profileDetails && typeof profileDetails === "object" ? profileDetails : {}),
+      workExperience: nextWorkExperience,
+    };
+
     setWorkExperience(nextWorkExperience);
+    setProfileDetails(nextProfileDetails);
 
     const saved = await handleSave({
       personal,
@@ -1205,11 +1218,12 @@ const FreelancerProfile = () => {
       workExperience: nextWorkExperience,
       services,
       portfolioProjects,
-      profileDetails,
+      profileDetails: nextProfileDetails,
     });
 
     if (!saved) {
       setWorkExperience(previousWorkExperience);
+      setProfileDetails(previousProfileDetails);
     }
   };
 
@@ -1406,6 +1420,7 @@ const FreelancerProfile = () => {
       professionalBio: bioText,
       coverImage: currentCoverUrl,
       socialMediaLinks: currentSocialMediaLinks,
+      portfolio: currentPortfolio,
       profileDetailsPatch: {
         professionalBio: bioText,
         identity: {
@@ -1417,6 +1432,9 @@ const FreelancerProfile = () => {
             : [],
           profilePhoto: currentAvatarUrl || "",
           coverImage: currentCoverUrl || "",
+          portfolioUrl: String(currentPortfolio?.portfolioUrl || "").trim(),
+          githubUrl: String(currentPortfolio?.githubUrl || "").trim(),
+          linkedinUrl: String(currentPortfolio?.linkedinUrl || "").trim(),
         },
       },
     };
@@ -3055,6 +3073,8 @@ const FreelancerProfile = () => {
       city: String(fullProfileForm.city || "").trim(),
       languages: normalizedLanguages,
       otherLanguage: String(fullProfileForm.otherLanguage || "").trim(),
+      education: [],
+      educationHistory: [],
     };
 
     const nextProfileDetails = {
@@ -3097,6 +3117,7 @@ const FreelancerProfile = () => {
       termsAccepted: Boolean(fullProfileForm.termsAccepted),
       professionalBio: String(fullProfileForm.professionalBio || "").trim(),
       education: normalizedEducation,
+      educationHistory: [],
     };
 
     const nextLocation = [nextIdentity.city, nextIdentity.country]
@@ -3131,9 +3152,19 @@ const FreelancerProfile = () => {
 
     const currentDetails =
       profileDetails && typeof profileDetails === "object" ? profileDetails : {};
+    const currentIdentity =
+      currentDetails.identity && typeof currentDetails.identity === "object"
+        ? currentDetails.identity
+        : {};
     const nextProfileDetails = {
       ...currentDetails,
       education: normalizedEducation,
+      educationHistory: [],
+      identity: {
+        ...currentIdentity,
+        education: [],
+        educationHistory: [],
+      },
     };
 
     const saved = await handleSave({
@@ -3148,6 +3179,48 @@ const FreelancerProfile = () => {
 
     if (saved) {
       setModalType(null);
+    }
+  };
+
+  const removeEducationEntryFromProfile = async (index) => {
+    const currentDetails =
+      profileDetails && typeof profileDetails === "object" ? profileDetails : {};
+    const previousProfileDetails = profileDetails;
+    const currentEducation = normalizeEducationEntriesForSave(
+      collectEducationEntriesFromProfileDetails(currentDetails)
+    );
+    const nextEducation = currentEducation.filter(
+      (_, rowIndex) => rowIndex !== index
+    );
+    const currentIdentity =
+      currentDetails.identity && typeof currentDetails.identity === "object"
+        ? currentDetails.identity
+        : {};
+    const nextProfileDetails = {
+      ...currentDetails,
+      education: nextEducation,
+      educationHistory: [],
+      identity: {
+        ...currentIdentity,
+        education: [],
+        educationHistory: [],
+      },
+    };
+
+    setProfileDetails(nextProfileDetails);
+
+    const saved = await handleSave({
+      personal,
+      portfolio,
+      skills,
+      workExperience,
+      services,
+      portfolioProjects,
+      profileDetails: nextProfileDetails,
+    });
+
+    if (!saved) {
+      setProfileDetails(previousProfileDetails);
     }
   };
 
@@ -3884,7 +3957,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Education history",
       detail: "Add your education details (school, degree, or year).",
-      onClick: () => openFullProfileEditor(),
+      onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.EDUCATION),
     });
   }
 
@@ -3892,7 +3965,7 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Industry focus",
       detail: "Select your global industry focus.",
-      onClick: () => openFullProfileEditor(),
+      onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.INDUSTRY_FOCUS),
     });
   }
 
@@ -4063,6 +4136,7 @@ const FreelancerProfile = () => {
                 splitExperienceTitle={splitExperienceTitle}
                 profileDetails={profileDetails}
                 openFullProfileEditor={openFullProfileEditor}
+                removeEducationEntryFromProfile={removeEducationEntryFromProfile}
               />
             </div>
 

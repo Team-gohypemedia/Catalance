@@ -788,6 +788,7 @@ const ProfileSkillsCard = ({
 
           {activeService ? (
             <div className="space-y-4">
+              {activeService.subcategoryItems.length > 0 ? (
                 <section>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -815,7 +816,6 @@ const ProfileSkillsCard = ({
                     </div>
                   </div>
                   <div className="mt-3">
-                    {activeService.subcategoryItems.length > 0 ? (
                       <Carousel
                         setApi={setSubcategoryCarouselApi}
                         opts={{
@@ -847,11 +847,11 @@ const ProfileSkillsCard = ({
                           })}
                         </CarouselContent>
                       </Carousel>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set yet</span>
-                    )}
+                    {/* Conditional render removed inside, handled by wrapper */}
                   </div>
                 </section>
+              ) : null}
+              {activeTechnologyTags.length > 0 ? (
                 <section>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -879,7 +879,6 @@ const ProfileSkillsCard = ({
                     </div>
                   </div>
                   <div className="mt-3">
-                    {activeTechnologyTags.length > 0 ? (
                       <Carousel
                         setApi={setTechnologyCarouselApi}
                         opts={{
@@ -898,11 +897,10 @@ const ProfileSkillsCard = ({
                           ))}
                         </CarouselContent>
                       </Carousel>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not set yet</span>
-                    )}
+                    {/* Conditional render removed inside, handled by wrapper */}
                   </div>
                 </section>
+              ) : null}
             </div>
           ) : null}
         </div>

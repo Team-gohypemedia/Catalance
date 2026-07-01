@@ -4,6 +4,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const EMPTY_VALUE = "__EMPTY__";
 
 const EducationModalContent = ({
   fullProfileForm,
@@ -121,39 +130,47 @@ const EducationModalContent = ({
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-foreground">Start date</Label>
-                  <select
+                  <Select
                     value={entry.startMonth || ""}
-                    onChange={(event) =>
-                      handleEducationFieldChange(index, "startMonth", event.target.value)
+                    onValueChange={(value) =>
+                      handleEducationFieldChange(index, "startMonth", value === EMPTY_VALUE ? "" : value)
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
-                    <option value="">Month</option>
-                    {MONTH_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-10 w-full rounded-md border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 dark:data-[placeholder]:text-muted-foreground/50">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value={EMPTY_VALUE}>Month</SelectItem>
+                      {MONTH_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-foreground opacity-0">
                     Start year
                   </Label>
-                  <select
+                  <Select
                     value={entry.startYear || ""}
-                    onChange={(event) =>
-                      handleEducationFieldChange(index, "startYear", event.target.value)
+                    onValueChange={(value) =>
+                      handleEducationFieldChange(index, "startYear", value === EMPTY_VALUE ? "" : value)
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
-                    <option value="">Year</option>
-                    {YEAR_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-10 w-full rounded-md border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 dark:data-[placeholder]:text-muted-foreground/50">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value={EMPTY_VALUE}>Year</SelectItem>
+                      {YEAR_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -162,41 +179,49 @@ const EducationModalContent = ({
                   <Label className="text-sm font-medium text-foreground">
                     End date (or expected)
                   </Label>
-                  <select
+                  <Select
                     value={entry.endMonth || ""}
-                    onChange={(event) =>
-                      handleEducationFieldChange(index, "endMonth", event.target.value)
+                    onValueChange={(value) =>
+                      handleEducationFieldChange(index, "endMonth", value === EMPTY_VALUE ? "" : value)
                     }
-                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
-                    <option value="">Month</option>
-                    {MONTH_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-10 w-full rounded-md border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 dark:data-[placeholder]:text-muted-foreground/50">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value={EMPTY_VALUE}>Month</SelectItem>
+                      {MONTH_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-foreground opacity-0">
                     End year
                   </Label>
-                  <select
+                  <Select
                     value={entry.endYear || entry.graduationYear || ""}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      handleEducationFieldChange(index, "endYear", value);
-                      handleEducationFieldChange(index, "graduationYear", value);
+                    onValueChange={(value) => {
+                      const finalValue = value === EMPTY_VALUE ? "" : value;
+                      handleEducationFieldChange(index, "endYear", finalValue);
+                      handleEducationFieldChange(index, "graduationYear", finalValue);
                     }}
-                    className="h-10 w-full rounded-md border border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground outline-none focus:border-primary/70 focus:ring-2 focus:ring-primary/60"
                   >
-                    <option value="">Year</option>
-                    {GRADUATION_YEAR_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="h-10 w-full rounded-md border-input bg-background/70 dark:bg-input/30 px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 dark:data-[placeholder]:text-muted-foreground/50">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      <SelectItem value={EMPTY_VALUE}>Year</SelectItem>
+                      {GRADUATION_YEAR_OPTIONS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -248,7 +273,7 @@ const EducationModalContent = ({
         ))}
       </div>
 
-      <div className="flex items-center justify-end gap-2 border-t border-border/70 pt-4">
+      <div className="sticky -bottom-6 -mx-6 mt-6 flex items-center justify-end gap-2 border-t border-border/70 bg-card px-6 py-4 z-10 rounded-b-2xl">
         <Button type="button" variant="outline" onClick={() => setModalType(null)}>
           Cancel
         </Button>

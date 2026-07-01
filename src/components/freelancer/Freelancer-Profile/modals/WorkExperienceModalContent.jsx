@@ -107,7 +107,7 @@ const WorkExperienceModalContent = ({
             <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
               <SelectValue placeholder="Select employment type" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper">
               <SelectItem value={EMPTY_VALUE}>Select employment type</SelectItem>
               {workForm.employmentType &&
               !EMPLOYMENT_TYPE_OPTIONS.includes(workForm.employmentType) ? (
@@ -136,7 +136,7 @@ const WorkExperienceModalContent = ({
                 company: event.target.value,
               }))
             }
-            placeholder="e.g. Go Hype Media"
+            placeholder="e.g. Enter company name"
             className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 placeholder:text-[13px] focus:border-primary/70 focus:ring-2 focus:ring-primary/50 dark:bg-background"
           />
         </label>
@@ -181,7 +181,7 @@ const WorkExperienceModalContent = ({
                 <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                   <SelectValue placeholder="Month*" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   <SelectItem value={EMPTY_VALUE}>Month*</SelectItem>
                   {MONTH_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option}>
@@ -209,7 +209,7 @@ const WorkExperienceModalContent = ({
                 <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                   <SelectValue placeholder="Year*" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent position="popper">
                   <SelectItem value={EMPTY_VALUE}>Year*</SelectItem>
                   {YEAR_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option}>
@@ -244,7 +244,7 @@ const WorkExperienceModalContent = ({
                   <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                     <SelectValue placeholder="Month*" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     <SelectItem value={EMPTY_VALUE}>Month*</SelectItem>
                     {MONTH_OPTIONS.map((option) => (
                       <SelectItem key={option} value={option}>
@@ -272,7 +272,7 @@ const WorkExperienceModalContent = ({
                   <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                     <SelectValue placeholder="Year*" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     <SelectItem value={EMPTY_VALUE}>Year*</SelectItem>
                     {YEAR_OPTIONS.map((option) => (
                       <SelectItem key={option} value={option}>
@@ -296,7 +296,7 @@ const WorkExperienceModalContent = ({
               <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                 <SelectValue placeholder="Select country" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 {displayCountries.map((country) => (
                   <SelectItem key={country} value={country}>
                     {country}
@@ -316,7 +316,7 @@ const WorkExperienceModalContent = ({
               <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
                 <SelectValue placeholder={selectedCountry ? "Select state" : "Select country first"} />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper">
                 {displayStates.map((state) => (
                   <SelectItem key={state} value={state}>
                     {state}
@@ -343,7 +343,7 @@ const WorkExperienceModalContent = ({
             <SelectTrigger className="h-11 w-full rounded-lg border-input bg-background px-3 text-sm text-foreground shadow-none data-[placeholder]:text-muted-foreground/50 data-[placeholder]:text-[13px] dark:bg-background">
               <SelectValue placeholder="Select location type" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent position="popper">
               <SelectItem value={EMPTY_VALUE}>Select location type</SelectItem>
               {workForm.locationType &&
               !LOCATION_TYPE_OPTIONS.includes(workForm.locationType) ? (
@@ -358,13 +358,10 @@ const WorkExperienceModalContent = ({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Pick a location type (ex: remote)
-          </p>
         </label>
       </div>
 
-      <div className="mt-6 flex items-center justify-end gap-3 border-t border-border/70 pt-4">
+      <div className="sticky -bottom-6 -mx-6 mt-6 flex items-center justify-end gap-3 border-t border-border/70 bg-card px-6 py-4 z-10 rounded-b-2xl">
         <Button
           type="button"
           variant="outline"

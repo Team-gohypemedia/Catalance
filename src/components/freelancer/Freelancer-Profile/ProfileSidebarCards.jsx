@@ -7,6 +7,17 @@ import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import { Card } from "@/components/ui/card";
+import { useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -126,7 +137,11 @@ const ProfileSidebarCards = ({
   splitExperienceTitle,
   profileDetails,
   openFullProfileEditor,
+  removeEducationEntryFromProfile,
 }) => {
+  const [experienceToDelete, setExperienceToDelete] = useState(null);
+  const [educationToDelete, setEducationToDelete] = useState(null);
+
   const educationEntries = normalizeEducationEntries(profileDetails);
   const experienceEntries = Array.isArray(effectiveWorkExperience)
     ? effectiveWorkExperience
@@ -199,7 +214,7 @@ const ProfileSidebarCards = ({
 
                       <div className="inline-flex items-center gap-1">
                         <Briefcase className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-colors duration-200 group-hover:text-primary/60" aria-hidden="true" />
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
@@ -217,7 +232,7 @@ const ProfileSidebarCards = ({
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onSelect={() => removeExperience(index)}
+                              onSelect={() => setExperienceToDelete(index)}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -310,16 +325,20 @@ const ProfileSidebarCards = ({
 
         <div className="mt-4 space-y-2.5">
           {educationEntries.length > 0 ? (
-            educationEntries.map((entry) => (
+            educationEntries.map((entry, index) => (
               <div
                 key={entry.id}
-                className="group w-full"
+                className="group w-full rounded-xl border border-transparent p-2 transition-all duration-200 hover:border-border/60 hover:bg-muted/30"
               >
                 <div className="flex w-full items-start gap-3">
                   <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                     <GraduationCap className="h-4 w-4 text-primary" aria-hidden="true" />
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() => openFullProfileEditor("education")}
+                    className="min-w-0 flex-1 text-left"
+                  >
                     <h4 className="text-sm font-semibold text-foreground">
                       {entry.school}
                     </h4>
@@ -333,7 +352,31 @@ const ProfileSidebarCards = ({
                         {entry.metaLine}
                       </p>
                     ) : null}
-                  </div>
+                  </button>
+                  <DropdownMenu modal={false}>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border/60 bg-background/80 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        aria-label="Education actions"
+                      >
+                        <MoreHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem onSelect={() => openFullProfileEditor("education")}>
+                        <Pencil className="h-4 w-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onSelect={() => setEducationToDelete(index)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Remove
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
             ))
@@ -346,6 +389,46 @@ const ProfileSidebarCards = ({
           )}
         </div>
       </Card>
+
+      <AlertDialog open={experienceToDelete !== null} onOpenChange={(open) => !open && setExperienceToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Experience</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this work experience? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              removeExperience(experienceToDelete);
+              setExperienceToDelete(null);
+            }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={educationToDelete !== null} onOpenChange={(open) => !open && setEducationToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Education</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this education entry? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              removeEducationEntryFromProfile?.(educationToDelete);
+              setEducationToDelete(null);
+            }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

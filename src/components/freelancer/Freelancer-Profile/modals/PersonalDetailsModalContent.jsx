@@ -10,8 +10,34 @@ import Camera from "lucide-react/dist/esm/icons/camera";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 
+const inferPlatformName = (url) => {
+  try {
+    const urlObj = new URL(url.startsWith("http") ? url : `https://${url}`);
+    const hostname = urlObj.hostname;
+    if (hostname.includes("github.com")) return "GitHub";
+    if (hostname.includes("linkedin.com")) return "LinkedIn";
+    if (hostname.includes("twitter.com") || hostname.includes("x.com")) return "X (Twitter)";
+    if (hostname.includes("instagram.com")) return "Instagram";
+    if (hostname.includes("facebook.com")) return "Facebook";
+    if (hostname.includes("dribbble.com")) return "Dribbble";
+    if (hostname.includes("behance.net")) return "Behance";
+    if (hostname.includes("youtube.com")) return "YouTube";
+    if (hostname.includes("medium.com")) return "Medium";
+    if (hostname.includes("tiktok.com")) return "TikTok";
+    
+    const parts = hostname.replace("www.", "").split(".");
+    if (parts.length >= 2) {
+      const domain = parts[parts.length - 2];
+      return domain.charAt(0).toUpperCase() + domain.slice(1);
+    }
+  } catch (e) {}
+  return "";
+};
+
 const PersonalDetailsModalContent = ({
   personal,
+  portfolio,
+  setPortfolio,
   onboardingIdentity,
   handlePersonalChange,
   handlePersonalUsernameChange,
@@ -86,6 +112,43 @@ const PersonalDetailsModalContent = ({
     }
 
     savePersonalSection(nextLinks);
+  };
+
+  const removePortfolioLink = (key) => {
+    if (setPortfolio) {
+      setPortfolio((prev) => ({ ...prev, [key]: "" }));
+    }
+  };
+
+  const renderPortfolioChip = (key, label, url) => {
+    if (!url) return null;
+    let domain = "";
+    try {
+      domain = new URL(url.startsWith("http") ? url : `https://${url}`).hostname;
+    } catch (e) {}
+    return (
+      <span
+        key={key}
+        className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs"
+        title={url}
+      >
+        {domain && (
+          <img 
+            src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} 
+            alt="" 
+            className="w-3.5 h-3.5 rounded-sm"
+          />
+        )}
+        <span className="font-medium text-foreground">{label}</span>
+        <button
+          type="button"
+          onClick={() => removePortfolioLink(key)}
+          className="ml-0.5 rounded-full p-0.5 text-muted-foreground transition-colors hover:text-destructive"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      </span>
+    );
   };
 
   return (
@@ -244,24 +307,42 @@ const PersonalDetailsModalContent = ({
         </div>
 
         {/* Existing links as chips */}
-        {socialMediaLinks.length > 0 && (
+        {(socialMediaLinks.length > 0 || (portfolio && (portfolio.portfolioUrl || portfolio.githubUrl || portfolio.linkedinUrl))) && (
           <div className="flex flex-wrap gap-1.5 pt-1">
-            {socialMediaLinks.map((link, index) => (
-              <span
-                key={index}
-                className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs"
-                title={link.url}
-              >
-                <span className="font-medium text-foreground">{link.platform}</span>
-                <button
-                  type="button"
-                  onClick={() => removeSocialMediaLink(index)}
-                  className="ml-0.5 rounded-full p-0.5 text-muted-foreground transition-colors hover:text-destructive"
+            {portfolio && renderPortfolioChip("portfolioUrl", "Portfolio", portfolio.portfolioUrl)}
+            {portfolio && renderPortfolioChip("githubUrl", "GitHub", portfolio.githubUrl)}
+            {portfolio && renderPortfolioChip("linkedinUrl", "LinkedIn", portfolio.linkedinUrl)}
+            {socialMediaLinks.map((link, index) => {
+              let domain = "";
+              try {
+                domain = link.url ? new URL(link.url.startsWith("http") ? link.url : `https://${link.url}`).hostname : "";
+              } catch (e) {}
+              return (
+                <span
+                  key={index}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-xs"
+                  title={link.url}
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
+                  {domain && (
+                    <img 
+                      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=32`} 
+                      alt="" 
+                      className="w-3.5 h-3.5 rounded-sm"
+                    />
+                  )}
+                  <span className="font-medium text-foreground truncate max-w-[120px]">
+                    {link.platform || link.url}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeSocialMediaLink(index)}
+                    className="ml-0.5 rounded-full p-0.5 text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              );
+            })}
           </div>
         )}
 
@@ -283,7 +364,17 @@ const PersonalDetailsModalContent = ({
           />
           <Input
             value={newUrl}
-            onChange={(e) => setNewUrl(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setNewUrl(val);
+              if (!newPlatform.trim() && val) {
+                const inferred = inferPlatformName(val);
+                if (inferred) {
+                  setNewPlatform(inferred);
+                  setPlatformError(false);
+                }
+              }
+            }}
             placeholder="https://..."
             className="h-9 bg-background/70 text-xs flex-1 min-w-0"
             onKeyDown={(e) => {
@@ -313,7 +404,7 @@ const PersonalDetailsModalContent = ({
       </div>
 
       {/* Footer */}
-      <div className="flex items-center justify-end gap-2 border-t border-border/50 pt-3">
+      <div className="sticky -bottom-6 -mx-6 mt-6 flex items-center justify-end gap-2 border-t border-border/70 bg-card px-6 py-4 z-10 rounded-b-2xl">
         <Button
           type="button"
           variant="outline"
