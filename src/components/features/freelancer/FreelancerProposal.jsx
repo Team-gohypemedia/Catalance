@@ -26,6 +26,8 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
 } from "@/components/ui/carousel";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -459,7 +461,7 @@ const ProposalRowCard = ({
         )}
 
         {/* Actions Section */}
-        <div className="mt-6 space-y-3">
+        <div className="mt-auto pt-6 space-y-3">
           <button
             type="button"
             onClick={() => onOpen(proposal)}
@@ -535,14 +537,10 @@ const ProposalCardsCarousel = ({
 
   if (!proposals.length) return null;
 
-  const shouldShowProposalCarouselControls = proposals.length > 4;
-  const proposalCarouselDesktopControlClassName =
-    "size-11 rounded-full border border-border bg-background text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
-  const proposalCarouselMobileControlClassName =
-    "size-8 rounded-full border border-border bg-background/95 text-foreground shadow-none hover:bg-background hover:text-foreground disabled:opacity-100 disabled:text-muted-foreground";
+  const shouldShowProposalCarouselControls = proposals.length > 1;
 
   return (
-    <div className="w-full">
+    <div className="w-full relative">
       <Carousel
         className="w-full"
         setApi={setProposalCarouselApi}
@@ -551,63 +549,11 @@ const ProposalCardsCarousel = ({
           containScroll: "trimSnaps",
         }}
       >
-        {shouldShowProposalCarouselControls ? (
-          <>
-            <div className="mb-5 hidden justify-end gap-2 md:flex">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className={proposalCarouselDesktopControlClassName}
-                onClick={() => proposalCarouselApi?.scrollPrev()}
-                disabled={!canGoToPreviousProposal}
-                aria-label="Show previous proposal"
-              >
-                <ChevronLeft className="size-5" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className={proposalCarouselDesktopControlClassName}
-                onClick={() => proposalCarouselApi?.scrollNext()}
-                disabled={!canGoToNextProposal}
-                aria-label="Show next proposal"
-              >
-                <ChevronRight className="size-5" />
-              </Button>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className={`absolute left-0 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
-              onClick={() => proposalCarouselApi?.scrollPrev()}
-              disabled={!canGoToPreviousProposal}
-              aria-label="Show previous proposal"
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className={`absolute right-0 top-1/2 z-10 translate-x-1/2 -translate-y-1/2 md:hidden ${proposalCarouselMobileControlClassName}`}
-              onClick={() => proposalCarouselApi?.scrollNext()}
-              disabled={!canGoToNextProposal}
-              aria-label="Show next proposal"
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-          </>
-        ) : null}
-
         <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
           {proposals.map((proposal) => (
             <CarouselItem
               key={proposal.id}
-              className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-3.75rem)/4)]"
+              className="pl-0 basis-full md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)]"
             >
               <ProposalRowCard
                 proposal={proposal}
@@ -619,6 +565,13 @@ const ProposalCardsCarousel = ({
             </CarouselItem>
           ))}
         </CarouselContent>
+
+        {shouldShowProposalCarouselControls && (
+          <>
+            <CarouselPrevious className="size-8 md:size-10 lg:size-11 -left-3 md:-left-6 lg:-left-10 border-border bg-background text-foreground hover:bg-accent disabled:opacity-50" />
+            <CarouselNext className="size-8 md:size-10 lg:size-11 -right-3 md:-right-6 lg:-right-10 border-border bg-background text-foreground hover:bg-accent disabled:opacity-50" />
+          </>
+        )}
       </Carousel>
 
       <FreelancerProposalCarouselDots
@@ -933,28 +886,13 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
                       ))}
                     </div>
                   ) : tabItems.length > 0 ? (
-                    tabItems.length > 4 ? (
-                      <ProposalCardsCarousel
-                        proposals={tabItems}
-                        onOpen={setSelectedProposal}
-                        onAccept={(id) => handleStatusChange(id, "accepted")}
-                        onReject={handleOpenRejectFlow}
-                        processingId={processingId}
-                      />
-                    ) : (
-                      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                        {tabItems.map((proposal) => (
-                          <ProposalRowCard
-                            key={proposal.id}
-                            proposal={proposal}
-                            onOpen={setSelectedProposal}
-                            onAccept={(id) => handleStatusChange(id, "accepted")}
-                            onReject={handleOpenRejectFlow}
-                            processingId={processingId}
-                          />
-                        ))}
-                      </div>
-                    )
+                    <ProposalCardsCarousel
+                      proposals={tabItems}
+                      onOpen={setSelectedProposal}
+                      onAccept={(id) => handleStatusChange(id, "accepted")}
+                      onReject={handleOpenRejectFlow}
+                      processingId={processingId}
+                    />
                   ) : (
                     <div className="rounded-3xl border border-dashed border-border/70 bg-card/40 px-6 py-14 text-center">
                       <h3 className="text-lg font-semibold text-foreground">

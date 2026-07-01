@@ -75,8 +75,8 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
     [startTextColor, endTextColor]
   );
 
-  const startBgColor = isDark ? "#0A0A0A" : "#FFFFFF";
-  const endBgColor = isDark ? "#0A0A0A" : "#FFFFFF";
+  const startBgColor = isDark ? "rgba(10, 10, 10, 0.55)" : "#FFFFFF";
+  const endBgColor = isDark ? "rgba(10, 10, 10, 0.85)" : "#FFFFFF";
 
   const backgroundColor = useTransform(
     smoothScrollY,
@@ -88,8 +88,8 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
     smoothScrollY,
     [0, DESKTOP_NAV_SCROLL_RANGE],
     isDark
-      ? ["rgba(255, 255, 255, 0)", "rgba(255, 255, 255, 0.1)"]
-      : ["rgba(15, 23, 42, 0)", "rgba(15, 23, 42, 0.12)"]
+      ? ["rgba(255, 255, 255, 0.08)", "rgba(255, 255, 255, 0.18)"]
+      : ["rgba(15, 23, 42, 0.05)", "rgba(15, 23, 42, 0.12)"]
   );
 
   const shadow = useTransform(
@@ -102,7 +102,7 @@ export const Navbar = ({ children, className, isHome, isDark }) => {
   );
 
   const backdropFilter = useTransform(
-    scrollY,
+    smoothScrollY,
     [0, DESKTOP_NAV_SCROLL_RANGE],
     ["blur(8px)", "blur(14px)"]
   );

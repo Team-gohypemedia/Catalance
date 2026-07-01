@@ -50,6 +50,16 @@ import {
     Lightbulb
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+    AlertDialogAction,
+} from '@/components/ui/alert-dialog';
 import LightRays from '@/components/ui/LightRays';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Navbar from '@/components/layout/Navbar';
@@ -3079,6 +3089,7 @@ const GuestAIDemo = () => {
     const [thinkingState, setThinkingState] = useState(null);
     const [isProposalsModalOpen, setIsProposalsModalOpen] = useState(false);
     const [activeResourceLibrary, setActiveResourceLibrary] = useState(null);
+    const [chatToDelete, setChatToDelete] = useState(null);
     const [sidebarDropdowns, setSidebarDropdowns] = useState({
         proposals: false,
         links: false,
@@ -5478,12 +5489,13 @@ const GuestAIDemo = () => {
     const handleDeletePreviousChat = (event, chatMeta) => {
         event.preventDefault();
         event.stopPropagation();
+        setChatToDelete(chatMeta);
+    };
 
-        if (!window.confirm('Are you sure you want to delete this chat?')) {
-            return;
-        }
+    const confirmDeleteChat = () => {
+        if (!chatToDelete) return;
 
-        const targetSessionId = chatMeta?.sessionId;
+        const targetSessionId = chatToDelete?.sessionId;
         if (!targetSessionId) return;
 
         const nextSessions = removeStoredGuestSession(targetSessionId);
@@ -5498,6 +5510,7 @@ const GuestAIDemo = () => {
         }
 
         toast.success('Chat removed');
+        setChatToDelete(null);
     };
 
     const currentBriefingStep = BRIEFING_STEP_DEFINITIONS[briefingStepIndex] || BRIEFING_STEP_DEFINITIONS[0];
@@ -7712,6 +7725,35 @@ const GuestAIDemo = () => {
                     </div>
                 </div>
             )}
+
+            {/* Custom delete chat confirmation dialog */}
+            <AlertDialog open={!!chatToDelete} onOpenChange={(open) => !open && setChatToDelete(null)}>
+                <AlertDialogContent className={`max-w-md rounded-2xl p-6 ${isDark ? 'bg-[#0d0d0f] border-white/15 text-white' : 'bg-white border-slate-300/80 text-slate-900'}`}>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                            Delete Chat
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className={`mt-2 text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Are you sure you want to delete this chat? This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <AlertDialogCancel className={`rounded-xl border px-5 py-2.5 font-semibold transition-colors ${
+                            isDark
+                                ? 'bg-transparent border-white/10 text-white hover:bg-white/5'
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                        }`}>
+                            Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDeleteChat}
+                            className="rounded-xl px-5 py-2.5 font-semibold transition-colors !bg-red-600 !text-white hover:!bg-red-700 hover:!text-white border-transparent shadow-none"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
