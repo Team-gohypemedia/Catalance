@@ -16,6 +16,14 @@ const normalizeAmount = (value) => {
   return parsed < 0 ? 0 : parsed;
 };
 
+const parseOptionalBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+  return ["true", "1", "yes"].includes(normalized);
+};
+
 const FREELANCER_REJECTION_REASON_PRESETS = Object.freeze({
   budget_not_fit: "Budget does not fit the project scope",
   timeline_unrealistic: "Timeline is not realistic",
@@ -148,6 +156,8 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
   }
 
   const proposal = normalizeProposalMatchPayload(proposalPayload);
+  const includeAiInsights = parseOptionalBoolean(req.body?.includeAiInsights);
+  const useAiShortlist = parseOptionalBoolean(req.body?.useAiShortlist);
   let matchingResult;
 
   if (proposalId) {
@@ -155,6 +165,8 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
       matchingResult = await matchFreelancersForProposal(proposalId, {
         limit: req.body?.limit,
         overrides: hasProposalPayload ? proposal : {},
+        includeAiInsights,
+        useAiShortlist,
       });
     } catch (error) {
       const shouldFallbackToPayload =
@@ -175,11 +187,15 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
 
       matchingResult = await matchFreelancersForProposalPayload(proposal, {
         limit: req.body?.limit,
+        includeAiInsights,
+        useAiShortlist,
       });
     }
   } else {
     matchingResult = await matchFreelancersForProposalPayload(proposal, {
       limit: req.body?.limit,
+      includeAiInsights,
+      useAiShortlist,
     });
   }
   const matchedFreelancers = Array.isArray(matchingResult?.results)
@@ -195,6 +211,8 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
         role: "FREELANCER",
         statuses: ["ACTIVE", "PENDING_APPROVAL"],
         onboardingComplete: true,
+        includeAiInsights,
+        useAiShortlist,
         serviceKey: proposal.serviceKey || proposal.project?.serviceKey || null,
         serviceType: proposal.serviceType || proposal.service || null,
         budget: proposal.budget ?? proposal.proposalBudget ?? null,
@@ -219,6 +237,9 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
         minResults: matchingResult?.meta?.minResults ?? null,
         totalMatchedBeforeClientFilters: matchedFreelancers.length,
         levelCounts: matchingResult?.levelCounts || null,
+        aiInsightsStatus: matchingResult?.meta?.aiInsightsStatus ?? null,
+        aiModel: matchingResult?.meta?.aiModel ?? null,
+        aiShortlistApplied: matchingResult?.meta?.aiShortlistApplied ?? false,
       },
     });
     console.info("[Proposal Match][Results]", {

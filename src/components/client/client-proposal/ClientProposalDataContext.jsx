@@ -490,7 +490,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   const fetchFreelancerPool = useCallback(async (proposal = null) => {
     if (!user?.id) return [];
 
-    const queryKey = buildProposalMatchCacheKey(proposal);
+    const queryKey = `${buildProposalMatchCacheKey(proposal)}::ai-shortlist-v1`;
 
     const currentCache = freelancerPoolCacheRef.current;
     if (
@@ -513,7 +513,13 @@ export const ClientProposalDataProvider = ({ children }) => {
         return [];
       }
 
-      const matchedFreelancerPayload = await fetchMatchedFreelancersForProposal(proposal);
+      const matchedFreelancerPayload = await fetchMatchedFreelancersForProposal(
+        proposal,
+        {
+          includeAiInsights: true,
+          useAiShortlist: true,
+        },
+      );
       const matchedFreelancers = Array.isArray(matchedFreelancerPayload)
         ? matchedFreelancerPayload
         : Array.isArray(matchedFreelancerPayload?.freelancers)

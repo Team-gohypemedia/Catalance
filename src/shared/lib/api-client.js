@@ -348,7 +348,13 @@ const isLikelyPersistedProposalIdentifier = (value = "") => {
   return normalized.length >= 10;
 };
 
-export const fetchMatchedFreelancersForProposal = (proposal = {}) => {
+export const fetchMatchedFreelancersForProposal = (
+  proposal = {},
+  {
+    includeAiInsights = false,
+    useAiShortlist = false,
+  } = {},
+) => {
   const proposalIdCandidates = [
     !proposal?.isLocalDraft ? proposal?.id : "",
     proposal?.syncedProjectId,
@@ -365,6 +371,8 @@ export const fetchMatchedFreelancersForProposal = (proposal = {}) => {
     body: JSON.stringify({
       proposal,
       ...(proposalId ? { proposalId } : {}),
+      ...(includeAiInsights ? { includeAiInsights: true } : {}),
+      ...(useAiShortlist ? { useAiShortlist: true } : {}),
     })
   });
 };

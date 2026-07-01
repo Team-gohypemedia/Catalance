@@ -9,9 +9,11 @@ import {
   buildProjectMatchingSeed,
   listCompletedProjectsForMatching,
 } from "./completed-projects.service.js";
+import { generateProposalMatchInsights } from "./ai.service.js";
 
 const DEFAULT_MATCH_LIMIT = 20;
 const DEFAULT_MIN_RESULTS = 5;
+const DEFAULT_AI_INSIGHT_LIMIT = 5;
 const SKILLS_MATCH_MAX_SCORE = 42;
 
 const SOURCE_PRIORITY_SCORES = Object.freeze({
@@ -1967,6 +1969,272 @@ const mergeFreelancerCollections = (collections = []) =>
     { seen: new Set(), items: [] },
   ).items;
 
+const buildAiProposalSnapshot = (targetProfile = {}) => ({
+  title: cleanText(targetProfile?.title) || "Proposal",
+  serviceKey: cleanText(targetProfile?.serviceKey) || null,
+  serviceType: cleanText(targetProfile?.serviceType) || null,
+  summary: cleanText(targetProfile?.summary) || null,
+  timeline: cleanText(targetProfile?.timeline) || null,
+  budgetRange: isPlainObject(targetProfile?.budgetRange)
+    ? {
+        min:
+          Number.isFinite(Number(targetProfile.budgetRange.min))
+            ? Number(targetProfile.budgetRange.min)
+            : null,
+        max:
+          Number.isFinite(Number(targetProfile.budgetRange.max))
+            ? Number(targetProfile.budgetRange.max)
+            : null,
+      }
+    : { min: null, max: null },
+  skills: uniqueItems(targetProfile?.skills || []),
+  niches: uniqueItems(targetProfile?.niches || []),
+  projectTypes: uniqueItems(targetProfile?.projectTypes || []),
+  tags: uniqueItems(targetProfile?.tags || []),
+});
+
+const buildAiCandidateSnapshot = (candidate = {}) => ({
+  freelancerId: candidate?.id || candidate?.freelancerId || null,
+  freelancerName: cleanText(candidate?.fullName || candidate?.name) || "Freelancer",
+  profileRole: cleanText(candidate?.profileRole) || null,
+  title: cleanText(candidate?.title) || null,
+  sourceLevel: Number.isFinite(Number(candidate?.sourceLevel))
+    ? Number(candidate.sourceLevel)
+    : null,
+  matchPercent: Number.isFinite(Number(candidate?.matchPercent))
+    ? Math.round(Number(candidate.matchPercent))
+    : null,
+  rawMatchScore: Number.isFinite(Number(candidate?.rawMatchScore))
+    ? Math.round(Number(candidate.rawMatchScore))
+    : null,
+  serviceMatch: Boolean(candidate?.serviceMatch),
+  matchedService:
+    candidate?.matchedService && typeof candidate.matchedService === "object"
+      ? {
+          serviceKey: cleanText(candidate.matchedService.serviceKey) || null,
+          serviceName: cleanText(candidate.matchedService.serviceName) || null,
+        }
+      : null,
+  matchedSkills: uniqueItems(candidate?.matchedSkills || []),
+  matchedNiches: uniqueItems(candidate?.matchedNiches || []),
+  matchedProjectTypes: uniqueItems(candidate?.matchedProjectTypes || []),
+  matchedCaseStudyTitles: uniqueItems(candidate?.matchedCaseStudyTitles || []),
+  matchReasons: uniqueItems(candidate?.matchReasons || []),
+  budgetFitPercent: Number.isFinite(Number(candidate?.budgetFitPercent))
+    ? Math.round(Number(candidate.budgetFitPercent))
+    : Number.isFinite(Number(candidate?.budgetCompatibility?.budgetMatchPercentage))
+      ? Math.round(Number(candidate.budgetCompatibility.budgetMatchPercentage))
+      : null,
+  skillsMatchPercent: Number.isFinite(Number(candidate?.skillsMatchPercent))
+    ? Math.round(Number(candidate.skillsMatchPercent))
+    : null,
+  activeProjectCount: Number.isFinite(Number(candidate?.activeProjectCount))
+    ? Number(candidate.activeProjectCount)
+    : null,
+  bio: cleanText(candidate?.bio) || null,
+});
+
+const clampAiInsightLimit = (value = DEFAULT_AI_INSIGHT_LIMIT) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+    return DEFAULT_AI_INSIGHT_LIMIT;
+  }
+  return Math.max(1, Math.min(10, Math.round(numericValue)));
+};
+
+const applyAiInsightsToResults = (results = [], insights = []) => {
+  const insightByFreelancerId = new Map(
+    (Array.isArray(insights) ? insights : [])
+      .filter((entry) => cleanText(entry?.freelancerId))
+      .map((entry) => [cleanText(entry.freelancerId), entry]),
+  );
+
+  return (Array.isArray(results) ? results : []).map((result) => {
+    const freelancerId = cleanText(result?.id || result?.freelancerId);
+    if (!freelancerId || !insightByFreelancerId.has(freelancerId)) {
+      return result;
+    }
+
+    return {
+      ...result,
+      aiMatch: insightByFreelancerId.get(freelancerId),
+    };
+  });
+};
+
+const getAiSemanticFitScore = (aiMatch = null) => {
+  const numericValue = Number(aiMatch?.semanticFitScore);
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(numericValue)));
+};
+
+const rerankResultsWithAiShortlist = (
+  results = [],
+  {
+    aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
+  } = {},
+) => {
+  const normalizedResults = Array.isArray(results) ? results : [];
+  const shortlistWindowSize = Math.max(
+    0,
+    Math.min(normalizedResults.length, clampAiInsightLimit(aiInsightLimit)),
+  );
+
+  if (shortlistWindowSize <= 0) {
+    return normalizedResults;
+  }
+
+  const shortlistWindow = normalizedResults.slice(0, shortlistWindowSize);
+  const trailingResults = normalizedResults.slice(shortlistWindowSize);
+  const sortedWindow = shortlistWindow
+    .map((result, index) => ({
+      result,
+      index,
+      semanticFitScore: getAiSemanticFitScore(result?.aiMatch),
+    }))
+    .sort((left, right) => {
+      const leftHasScore = Number.isFinite(left.semanticFitScore);
+      const rightHasScore = Number.isFinite(right.semanticFitScore);
+
+      if (leftHasScore && rightHasScore && right.semanticFitScore !== left.semanticFitScore) {
+        return right.semanticFitScore - left.semanticFitScore;
+      }
+
+      if (leftHasScore !== rightHasScore) {
+        return leftHasScore ? -1 : 1;
+      }
+
+      return left.index - right.index;
+    });
+
+  let shortlistRank = 0;
+  const rankedWindow = sortedWindow.map(({ result, semanticFitScore }) => {
+    if (!result?.aiMatch || !Number.isFinite(semanticFitScore)) {
+      return result;
+    }
+
+    shortlistRank += 1;
+    return {
+      ...result,
+      aiMatch: {
+        ...result.aiMatch,
+        semanticFitScore,
+        shortlistRank,
+      },
+    };
+  });
+
+  return rankedWindow.concat(trailingResults);
+};
+
+const enrichRankingWithAiInsights = async ({
+  ranking = {},
+  targetProfile = {},
+  includeAiInsights = false,
+  useAiShortlist = false,
+  aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
+  logAiInTerminal = false,
+} = {}) => {
+  const shouldRunAi = includeAiInsights || useAiShortlist;
+  if (!shouldRunAi) {
+    return ranking;
+  }
+
+  const results = Array.isArray(ranking?.results) ? ranking.results : [];
+  const normalizedAiInsightLimit = clampAiInsightLimit(aiInsightLimit);
+  if (results.length === 0) {
+    return {
+      ...ranking,
+      meta: {
+        ...(ranking.meta || {}),
+        aiInsightsEnabled: true,
+        aiInsightsStatus: "skipped_no_candidates",
+        aiInsightsEvaluatedCount: 0,
+        aiInsightLimit: normalizedAiInsightLimit,
+        aiShortlistEnabled: useAiShortlist,
+        aiShortlistApplied: false,
+        aiShortlistWindowSize: 0,
+        aiShortlistRankedCount: 0,
+        aiShortlistTopFreelancerId: null,
+      },
+    };
+  }
+
+  try {
+    const aiInsightResult = await generateProposalMatchInsights({
+      proposal: buildAiProposalSnapshot(targetProfile),
+      candidates: results.slice(0, normalizedAiInsightLimit).map((result) =>
+        buildAiCandidateSnapshot(result),
+      ),
+      logTerminal: logAiInTerminal,
+    });
+    const resultsWithAiInsights = applyAiInsightsToResults(
+      results,
+      aiInsightResult.insights,
+    );
+    const finalResults = useAiShortlist
+      ? rerankResultsWithAiShortlist(resultsWithAiInsights, {
+          aiInsightLimit: normalizedAiInsightLimit,
+        })
+      : resultsWithAiInsights;
+    const aiShortlistRankedCount = finalResults.filter((result) =>
+      Number.isFinite(Number(result?.aiMatch?.shortlistRank)),
+    ).length;
+    const aiShortlistTopFreelancerId =
+      aiShortlistRankedCount > 0
+        ? cleanText(finalResults[0]?.id || finalResults[0]?.freelancerId) || null
+        : null;
+
+    return {
+      ...ranking,
+      results: finalResults,
+      meta: {
+        ...(ranking.meta || {}),
+        aiInsightsEnabled: true,
+        aiInsightsStatus: aiInsightResult.status,
+        aiInsightsEvaluatedCount: aiInsightResult.evaluatedCount,
+        aiInsightsCount: Array.isArray(aiInsightResult.insights)
+          ? aiInsightResult.insights.length
+          : 0,
+        aiInsightLimit: normalizedAiInsightLimit,
+        aiInsightSummary: aiInsightResult.overallSummary || null,
+        aiProvider: aiInsightResult?.meta?.provider || null,
+        aiModel: aiInsightResult?.meta?.model || null,
+        aiDurationMs: aiInsightResult?.meta?.durationMs ?? null,
+        aiAttemptCount: aiInsightResult?.meta?.attemptCount ?? null,
+        aiShortlistEnabled: useAiShortlist,
+        aiShortlistApplied: useAiShortlist && aiShortlistRankedCount > 0,
+        aiShortlistWindowSize: Math.min(results.length, normalizedAiInsightLimit),
+        aiShortlistRankedCount,
+        aiShortlistTopFreelancerId,
+      },
+    };
+  } catch (error) {
+    console.warn("[Proposal Match][Cata AI] Insight enrichment failed:", error?.message || error);
+
+    return {
+      ...ranking,
+      meta: {
+        ...(ranking.meta || {}),
+        aiInsightsEnabled: true,
+        aiInsightsStatus: "failed",
+        aiInsightsEvaluatedCount: Math.min(results.length, normalizedAiInsightLimit),
+        aiInsightsCount: 0,
+        aiInsightLimit: normalizedAiInsightLimit,
+        aiInsightsError: error?.message || "Cata AI insight enrichment failed",
+        aiShortlistEnabled: useAiShortlist,
+        aiShortlistApplied: false,
+        aiShortlistWindowSize: Math.min(results.length, normalizedAiInsightLimit),
+        aiShortlistRankedCount: 0,
+        aiShortlistTopFreelancerId: null,
+      },
+    };
+  }
+};
+
 const loadCompletedProjectPool = async ({
   serviceKey = "",
   projectTypes = [],
@@ -1992,17 +2260,24 @@ const loadCompletedProjectPool = async ({
   }
 };
 
-const loadFreelancerPool = async () => {
+const loadFreelancerPoolForServiceKeys = async ({ serviceKeys = [] } = {}) => {
+  const normalizedServiceKeys = uniqueItems(
+    (Array.isArray(serviceKeys) ? serviceKeys : [])
+      .map((serviceKey) => normalizeServiceSignal(serviceKey))
+      .filter(Boolean),
+  );
   const [activeFreelancers, pendingFreelancers] = await Promise.all([
     listUsers({
       role: "FREELANCER",
       status: "ACTIVE",
       onboardingComplete: "true",
+      serviceKeys: normalizedServiceKeys,
     }),
     listUsers({
       role: "FREELANCER",
       status: "PENDING_APPROVAL",
       onboardingComplete: "true",
+      serviceKeys: normalizedServiceKeys,
     }),
   ]);
 
@@ -2010,6 +2285,91 @@ const loadFreelancerPool = async () => {
     Array.isArray(activeFreelancers) ? activeFreelancers : [],
     Array.isArray(pendingFreelancers) ? pendingFreelancers : [],
   ]);
+};
+
+const buildFreelancerPoolLoadStages = ({ serviceKeys = [] } = {}) => {
+  const normalizedServiceKeys = uniqueItems(
+    (Array.isArray(serviceKeys) ? serviceKeys : [])
+      .map((serviceKey) => normalizeServiceSignal(serviceKey))
+      .filter(Boolean),
+  );
+
+  if (normalizedServiceKeys.length === 0) {
+    return [
+      {
+        label: "global_fallback",
+        serviceKeys: [],
+      },
+    ];
+  }
+
+  const expandedServiceKeys = uniqueItems(
+    normalizedServiceKeys
+      .flatMap((serviceKey) => expandServiceSignal(serviceKey))
+      .map((serviceKey) => normalizeServiceSignal(serviceKey))
+      .filter(Boolean),
+  );
+  const stages = [
+    {
+      label: "exact_service",
+      serviceKeys: normalizedServiceKeys,
+    },
+  ];
+
+  if (
+    expandedServiceKeys.some((serviceKey) => !normalizedServiceKeys.includes(serviceKey))
+  ) {
+    stages.push({
+      label: "service_family_fallback",
+      serviceKeys: expandedServiceKeys,
+    });
+  }
+
+  stages.push({
+    label: "global_fallback",
+    serviceKeys: [],
+  });
+
+  return stages;
+};
+
+const loadFreelancerPool = async ({
+  serviceKeys = [],
+  minResults = DEFAULT_MIN_RESULTS,
+} = {}) => {
+  const stages = buildFreelancerPoolLoadStages({ serviceKeys });
+  const normalizedMinResults =
+    Number.isFinite(Number(minResults)) && Number(minResults) > 0
+      ? Math.max(1, Math.round(Number(minResults)))
+      : DEFAULT_MIN_RESULTS;
+  let freelancers = [];
+  let selectedStage = stages[stages.length - 1] || {
+    label: "global_fallback",
+    serviceKeys: [],
+  };
+
+  for (const stage of stages) {
+    freelancers = await loadFreelancerPoolForServiceKeys({
+      serviceKeys: stage.serviceKeys,
+    });
+    selectedStage = stage;
+
+    if (stage.label === "global_fallback" || freelancers.length >= normalizedMinResults) {
+      break;
+    }
+  }
+
+  return {
+    items: freelancers,
+    meta: {
+      retrievalStrategy: selectedStage.label,
+      requestedServiceKeys: stages[0]?.serviceKeys || [],
+      retrievalServiceKeys: selectedStage.serviceKeys,
+      usedServiceFallback:
+        selectedStage.label !== "global_fallback" && selectedStage.label !== "exact_service",
+      fellBackToGlobalPool: selectedStage.label === "global_fallback",
+    },
+  };
 };
 
 const buildLevel1Candidates = ({
@@ -2565,7 +2925,13 @@ const buildTargetProfileFromPayload = (proposal = {}) => {
 
 export const matchFreelancersForProposalPayload = async (
   proposal = {},
-  { limit = DEFAULT_MATCH_LIMIT, minResults = DEFAULT_MIN_RESULTS } = {},
+  {
+    limit = DEFAULT_MATCH_LIMIT,
+    minResults = DEFAULT_MIN_RESULTS,
+    includeAiInsights = false,
+    useAiShortlist = false,
+    aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
+  } = {},
 ) => {
   const targetProfile = buildTargetProfileFromPayload(proposal);
   const agencyServiceKeys = uniqueItems(
@@ -2575,8 +2941,14 @@ export const matchFreelancersForProposalPayload = async (
   );
   const shouldUseAgencyMatching =
     Boolean(targetProfile?.isAgencyProposal) && agencyServiceKeys.length > 1;
-  const [freelancers, activeProjectCounts, completedProjectEntries] = await Promise.all([
-    loadFreelancerPool(),
+  const requestedServiceKeys = shouldUseAgencyMatching
+    ? agencyServiceKeys
+    : [targetProfile.serviceKey];
+  const [freelancerPool, activeProjectCounts, completedProjectEntries] = await Promise.all([
+    loadFreelancerPool({
+      serviceKeys: requestedServiceKeys,
+      minResults,
+    }),
     collectActiveProjectCounts(),
     shouldUseAgencyMatching
       ? Promise.all(
@@ -2597,12 +2969,13 @@ export const matchFreelancersForProposalPayload = async (
           limit: 150,
         }),
   ]);
+  const freelancers = Array.isArray(freelancerPool?.items) ? freelancerPool.items : [];
 
   const completedProjectsByService = shouldUseAgencyMatching
     ? new Map(Array.isArray(completedProjectEntries) ? completedProjectEntries : [])
     : new Map([[targetProfile.serviceKey, Array.isArray(completedProjectEntries) ? completedProjectEntries : []]]);
 
-  const ranking = shouldUseAgencyMatching
+  const baseRanking = shouldUseAgencyMatching
     ? rankAgencyFreelancersFromData({
         targetProfile,
         freelancers,
@@ -2619,6 +2992,14 @@ export const matchFreelancersForProposalPayload = async (
         limit,
         minResults,
       });
+  const ranking = await enrichRankingWithAiInsights({
+    ranking: baseRanking,
+    targetProfile,
+    includeAiInsights,
+    useAiShortlist,
+    aiInsightLimit,
+    logAiInTerminal: includeAiInsights || useAiShortlist,
+  });
   const completedProjectPoolCount = shouldUseAgencyMatching
     ? Array.from(completedProjectsByService.values()).reduce(
         (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
@@ -2642,13 +3023,29 @@ export const matchFreelancersForProposalPayload = async (
         ? freelancers.filter((freelancer) => freelancer?.openToWork === false).length
         : 0,
       matchingMode: shouldUseAgencyMatching ? "agency_multi_service" : "single_service",
+      freelancerPoolStrategy: freelancerPool?.meta?.retrievalStrategy || "global_fallback",
+      freelancerPoolRequestedServiceKeys:
+        freelancerPool?.meta?.requestedServiceKeys || [],
+      freelancerPoolRetrievedServiceKeys:
+        freelancerPool?.meta?.retrievalServiceKeys || [],
+      freelancerPoolUsedServiceFallback:
+        freelancerPool?.meta?.usedServiceFallback || false,
+      freelancerPoolUsedGlobalFallback:
+        freelancerPool?.meta?.fellBackToGlobalPool || false,
     },
   };
 };
 
 export const matchFreelancersForProposal = async (
   proposalId,
-  { limit = DEFAULT_MATCH_LIMIT, minResults = DEFAULT_MIN_RESULTS, overrides = {} } = {},
+  {
+    limit = DEFAULT_MATCH_LIMIT,
+    minResults = DEFAULT_MIN_RESULTS,
+    overrides = {},
+    includeAiInsights = false,
+    useAiShortlist = false,
+    aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
+  } = {},
 ) => {
   const resolvedSource = await resolveProposalMatchingSource(proposalId);
   const targetProfile = buildMatchingProfile({
@@ -2662,8 +3059,14 @@ export const matchFreelancersForProposal = async (
   );
   const shouldUseAgencyMatching =
     Boolean(targetProfile?.isAgencyProposal) && agencyServiceKeys.length > 1;
-  const [freelancers, activeProjectCounts, completedProjectEntries] = await Promise.all([
-    loadFreelancerPool(),
+  const requestedServiceKeys = shouldUseAgencyMatching
+    ? agencyServiceKeys
+    : [targetProfile.serviceKey];
+  const [freelancerPool, activeProjectCounts, completedProjectEntries] = await Promise.all([
+    loadFreelancerPool({
+      serviceKeys: requestedServiceKeys,
+      minResults,
+    }),
     collectActiveProjectCounts(),
     shouldUseAgencyMatching
       ? Promise.all(
@@ -2684,12 +3087,13 @@ export const matchFreelancersForProposal = async (
           limit: 150,
         }),
   ]);
+  const freelancers = Array.isArray(freelancerPool?.items) ? freelancerPool.items : [];
 
   const completedProjectsByService = shouldUseAgencyMatching
     ? new Map(Array.isArray(completedProjectEntries) ? completedProjectEntries : [])
     : new Map([[targetProfile.serviceKey, Array.isArray(completedProjectEntries) ? completedProjectEntries : []]]);
 
-  const ranking = shouldUseAgencyMatching
+  const baseRanking = shouldUseAgencyMatching
     ? rankAgencyFreelancersFromData({
         targetProfile,
         freelancers,
@@ -2706,6 +3110,14 @@ export const matchFreelancersForProposal = async (
         limit,
         minResults,
       });
+  const ranking = await enrichRankingWithAiInsights({
+    ranking: baseRanking,
+    targetProfile,
+    includeAiInsights,
+    useAiShortlist,
+    aiInsightLimit,
+    logAiInTerminal: includeAiInsights || useAiShortlist,
+  });
   const completedProjectPoolCount = shouldUseAgencyMatching
     ? Array.from(completedProjectsByService.values()).reduce(
         (sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0),
@@ -2730,11 +3142,22 @@ export const matchFreelancersForProposal = async (
         ? freelancers.filter((freelancer) => freelancer?.openToWork === false).length
         : 0,
       matchingMode: shouldUseAgencyMatching ? "agency_multi_service" : "single_service",
+      freelancerPoolStrategy: freelancerPool?.meta?.retrievalStrategy || "global_fallback",
+      freelancerPoolRequestedServiceKeys:
+        freelancerPool?.meta?.requestedServiceKeys || [],
+      freelancerPoolRetrievedServiceKeys:
+        freelancerPool?.meta?.retrievalServiceKeys || [],
+      freelancerPoolUsedServiceFallback:
+        freelancerPool?.meta?.usedServiceFallback || false,
+      freelancerPoolUsedGlobalFallback:
+        freelancerPool?.meta?.fellBackToGlobalPool || false,
     },
   };
 };
 
 export const __testables = {
+  applyAiInsightsToResults,
+  buildFreelancerPoolLoadStages,
   buildCaseStudyProfile,
   clampPercentage,
   buildCompletedProjectProfile,
@@ -2750,6 +3173,7 @@ export const __testables = {
   preferCandidate,
   rankAgencyFreelancersFromData,
   rankFreelancersFromData,
+  rerankResultsWithAiShortlist,
   rangesOverlap,
   scoreAvailability,
   scoreBudgetCompatibility,

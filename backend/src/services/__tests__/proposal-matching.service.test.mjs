@@ -11,10 +11,13 @@ process.env.PASSWORD_PEPPER =
 
 const { __testables } = await import("../proposal-matching.service.js");
 const {
+  applyAiInsightsToResults,
+  buildFreelancerPoolLoadStages,
   buildTargetProfileFromPayload,
   normalizeMatchPercentage,
   rankAgencyFreelancersFromData,
   rankFreelancersFromData,
+  rerankResultsWithAiShortlist,
 } = __testables;
 
 const createTargetProfile = () =>
@@ -275,6 +278,90 @@ test("Level 3 fallback does not treat unrelated service profiles as a direct ser
   });
 
   assert.equal(ranked.results.length, 0);
+});
+
+test("service-first retrieval stages keep exact service first before widening", () => {
+  const stages = buildFreelancerPoolLoadStages({
+    serviceKeys: ["Website Development"],
+  });
+
+  assert.deepEqual(stages[0], {
+    label: "exact_service",
+    serviceKeys: ["web_development"],
+  });
+  assert.equal(stages[1].label, "service_family_fallback");
+  assert.ok(stages[1].serviceKeys.includes("web_development"));
+  assert.ok(stages[1].serviceKeys.includes("frontend_development"));
+  assert.equal(stages[stages.length - 1].label, "global_fallback");
+});
+
+test("AI insights merge onto results without changing ranking order", () => {
+  const merged = applyAiInsightsToResults(
+    [
+      { id: "freelancer-1", matchPercent: 91 },
+      { id: "freelancer-2", matchPercent: 84 },
+    ],
+    [
+      {
+        freelancerId: "freelancer-2",
+        summary: "Strong ecommerce fit.",
+        highlights: ["Next.js overlap", "Relevant case study"],
+        concerns: ["Less evidence for SEO"],
+        confidence: "high",
+        semanticFitScore: 88,
+      },
+    ],
+  );
+
+  assert.deepEqual(
+    merged.map((entry) => entry.id),
+    ["freelancer-1", "freelancer-2"],
+  );
+  assert.equal(merged[0].aiMatch, undefined);
+  assert.equal(merged[1].matchPercent, 84);
+  assert.equal(merged[1].aiMatch.summary, "Strong ecommerce fit.");
+  assert.equal(merged[1].aiMatch.confidence, "high");
+});
+
+test("AI shortlist reranks only the evaluated window using semantic fit score", () => {
+  const reranked = rerankResultsWithAiShortlist(
+    applyAiInsightsToResults(
+      [
+        { id: "freelancer-1", matchPercent: 96 },
+        { id: "freelancer-2", matchPercent: 92 },
+        { id: "freelancer-3", matchPercent: 88 },
+      ],
+      [
+        {
+          freelancerId: "freelancer-1",
+          summary: "Strong fit.",
+          highlights: ["Commerce overlap"],
+          concerns: [],
+          confidence: "medium",
+          semanticFitScore: 81,
+        },
+        {
+          freelancerId: "freelancer-2",
+          summary: "Best semantic fit.",
+          highlights: ["Stronger platform overlap"],
+          concerns: [],
+          confidence: "high",
+          semanticFitScore: 95,
+        },
+      ],
+    ),
+    {
+      aiInsightLimit: 2,
+    },
+  );
+
+  assert.deepEqual(
+    reranked.map((entry) => entry.id),
+    ["freelancer-2", "freelancer-1", "freelancer-3"],
+  );
+  assert.equal(reranked[0].aiMatch.shortlistRank, 1);
+  assert.equal(reranked[1].aiMatch.shortlistRank, 2);
+  assert.equal(reranked[2].aiMatch, undefined);
 });
 
 test("agency multi-service matching intersects freelancers across all requested services", () => {
