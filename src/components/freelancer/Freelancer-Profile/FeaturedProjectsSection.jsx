@@ -112,8 +112,8 @@ const FeaturedProjectsSection = ({
 
         <div className="mb-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
-              <Rocket className="h-4 w-4 text-primary" aria-hidden="true" />
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+              <Rocket className="h-4 w-4" aria-hidden="true" />
             </span>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 leading-tight">

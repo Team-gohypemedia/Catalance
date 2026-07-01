@@ -449,7 +449,7 @@ const ClientWorkspaceHeader = ({
       <div style={{ height: headerHeight }} className="w-full flex-none transition-[height] duration-200" aria-hidden="true" />
       <header
         ref={headerRef}
-        className={cn("fixed top-0 pl-20 pr-20 left-0 w-full z-50 flex-none bg-background", className)}
+        className={cn("fixed top-0 px-4 md:px-6 lg:px-20 left-0 w-full z-50 flex-none bg-background", className)}
       >
       <NotificationSheetController notificationTo={notificationTo} />
       <WorkspaceMobileSidebar

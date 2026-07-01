@@ -331,8 +331,8 @@ const ProfileSidebarCards = ({
                 className="group w-full rounded-xl border border-transparent p-2 transition-all duration-200 hover:border-border/60 hover:bg-muted/30"
               >
                 <div className="flex w-full items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <GraduationCap className="h-4 w-4 text-primary" aria-hidden="true" />
+                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <GraduationCap className="h-4 w-4" aria-hidden="true" />
                   </div>
                   <button
                     type="button"

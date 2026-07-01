@@ -338,7 +338,7 @@ const FreelancerWorkspaceHeader = ({
       <div style={{ height: headerHeight }} className="w-full flex-none transition-[height] duration-200" aria-hidden="true" />
       <header
         ref={headerRef}
-        className={cn("fixed pl-20 pr-20 top-0 left-0 w-full z-50 flex-none bg-background", className)}
+        className={cn("fixed px-4 md:px-6 lg:px-20 top-0 left-0 w-full z-50 flex-none bg-background", className)}
       >
       <WorkspaceMobileSidebar
         currentDashboard="freelancer"

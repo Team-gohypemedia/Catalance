@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import CalendarClock from "lucide-react/dist/esm/icons/calendar-clock";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Layers3 from "lucide-react/dist/esm/icons/layers-3";
 import Plus from "lucide-react/dist/esm/icons/plus";
-import Wrench from "lucide-react/dist/esm/icons/wrench";
+
 import { Card } from "@/components/ui/card";
 import {
   Carousel,
@@ -18,6 +19,8 @@ import {
 } from "@/components/ui/carousel";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { cn } from "@/shared/lib/utils";
+
+import { ServiceDetailsViewModal } from "./modals/ServiceDetailsViewModal";
 
 const DEFAULT_UI_LABELS = {
   sectionTitle: "Services From Onboarding",
@@ -317,7 +320,7 @@ const normalizeCaseStudiesFromDetail = (detail = {}, fieldPaths, labels) => {
       ? [singleCaseStudy]
       : [];
 
-  return rawCaseStudies
+  const results = rawCaseStudies
     .map((caseStudy, index) => {
       const projectFile = getFirstValue(caseStudy, fieldPaths.caseStudyProjectFile);
 
@@ -343,6 +346,15 @@ const normalizeCaseStudiesFromDetail = (detail = {}, fieldPaths, labels) => {
       };
     })
     .filter(hasMeaningfulCaseStudyContent);
+
+  // Deduplicate by title (primary) since auto-generated ids are always unique
+  const seen = new Set();
+  return results.filter((cs) => {
+    const dedupKey = cs.title || cs.id;
+    if (seen.has(dedupKey)) return false;
+    seen.add(dedupKey);
+    return true;
+  });
 };
 
 const resolveSubcategoryId = (entry = {}, fieldPaths) => {
@@ -451,43 +463,11 @@ const createDefaultMetricDefinitions = (labels) => [
   },
 ];
 
-const MetricCard = ({ icon: Icon = Briefcase, label, value }) => (
-  <div className="h-[65px] rounded-xl border border-border bg-gradient-to-br from-card to-muted/20 px-2.5 py-2 transition-all duration-200 hover:border-primary/25 hover:shadow-[0_4px_12px_rgba(0,0,0,0.02)]">
-    <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground/90">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
-        <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
-      </span>
-      <p className="truncate whitespace-nowrap text-[9px] font-bold uppercase tracking-wider">
-        {label}
-      </p>
-    </div>
-
-    <p className="mt-1.5 truncate whitespace-nowrap text-[13px] font-bold leading-tight text-foreground sm:text-[14px]">
-      {value}
-    </p>
-  </div>
-);
-
-const SectionHeading = ({ icon: Icon, title, action }) => (
-  <div className="flex items-center justify-between gap-3">
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-primary/10 bg-primary/5">
-        <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
-      </span>
-
-      <h5 className="truncate whitespace-nowrap text-[11px] font-bold uppercase tracking-widest text-foreground">
-        {title}
-      </h5>
-    </div>
-
-    {action}
-  </div>
-);
-
 const ServiceDetailArticle = ({
   cardData,
   labels,
   openEditServiceProfileModal,
+  onViewDetails,
 }) => {
   const {
     serviceKey,
@@ -497,73 +477,21 @@ const ServiceDetailArticle = ({
     serviceDescription,
     metadataItems,
     selectedSubcategories,
-    subcategorySkillGroups,
-    fallbackSkillTags,
-    caseStudies,
     hasServiceProfileContent,
   } = cardData;
 
-  const [activeSubcategoryKey, setActiveSubcategoryKey] = useState(
-    subcategorySkillGroups[0]?.key || ""
+  const experienceItem = metadataItems.find(
+    (item) => item.label === labels.serviceExperienceLabel || item.key === "experience"
+  );
+  const priceItem = metadataItems.find(
+    (item) => item.label === labels.startingPriceLabel || item.key === "startingPrice"
   );
 
-  const subcategorySignature = useMemo(
-    () => subcategorySkillGroups.map((entry) => entry.key).join("|"),
-    [subcategorySkillGroups]
-  );
-
-  useEffect(() => {
-    if (!subcategorySkillGroups.length) {
-      setActiveSubcategoryKey("");
-      return;
-    }
-
-    const activeStillExists = subcategorySkillGroups.some(
-      (entry) => entry.key === activeSubcategoryKey
-    );
-
-    if (!activeStillExists) {
-      setActiveSubcategoryKey(subcategorySkillGroups[0].key);
-    }
-  }, [activeSubcategoryKey, subcategorySignature, subcategorySkillGroups]);
-
-  const activeSubcategory =
-    subcategorySkillGroups.find((entry) => entry.key === activeSubcategoryKey) ||
-    subcategorySkillGroups[0] ||
-    null;
-
-  const activeSkillTags = activeSubcategory?.skillTags?.length
-    ? activeSubcategory.skillTags
-    : fallbackSkillTags;
-
-  const subcategoryCarouselOptions = useMemo(
-    () => ({ align: "start", loop: false, duration: 12 }),
-    []
-  );
-
-  const skillCarouselOptions = useMemo(
-    () => ({ align: "start", loop: false, duration: 12 }),
-    []
-  );
+  const categoriesCount = selectedSubcategories?.length || 0;
 
   return (
-    <article className="group relative flex min-h-full flex-col overflow-hidden rounded-2xl border border-border bg-gradient-to-b from-card to-card/65 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:z-10 hover:border-primary/20 hover:shadow-[0_8px_30px_rgba(0,0,0,0.03)] dark:hover:shadow-[0_8px_30px_rgba(249,115,22,0.01)] sm:p-5">
-      <div className="relative mb-4 h-44 overflow-hidden rounded-xl border border-border bg-card sm:h-52 lg:h-56">
-        <button
-          type="button"
-          onClick={() => openEditServiceProfileModal?.(serviceKey)}
-          aria-label={hasServiceProfileContent ? labels.editDetails : labels.addDetails}
-          title={hasServiceProfileContent ? labels.editDetails : labels.addDetails}
-          className={cn(
-            "absolute right-3 top-3 z-20 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border backdrop-blur-md transition-all duration-200 hover:scale-105",
-            hasServiceProfileContent
-              ? "border-border bg-card/85 text-foreground hover:bg-card hover:border-primary/30"
-              : "border-primary/30 bg-primary/15 text-primary hover:bg-primary/25"
-          )}
-        >
-          <Edit2 className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-
+    <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-[15px] border border-border/50 p-4 transition-all duration-300 hover:shadow-md sm:p-5">
+      <div className="relative mb-5 h-48 w-full shrink-0 overflow-hidden rounded-xl bg-muted/20 sm:h-56">
         {serviceImage ? (
           <img
             src={serviceImage}
@@ -573,211 +501,95 @@ const ServiceDetailArticle = ({
             decoding="async"
           />
         ) : (
-          <div className="flex h-full w-full items-end bg-card p-4">
-            <span className="max-w-[80%] text-sm font-semibold text-muted-foreground">
+          <div className="flex h-full w-full items-center justify-center bg-muted/10 p-4">
+            <span className="text-sm font-weight-400 text-muted-foreground">
               {serviceName}
             </span>
           </div>
         )}
-
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.01),rgba(0,0,0,0.12))]" />
+        <button
+          type="button"
+          onClick={() => openEditServiceProfileModal?.(serviceKey)}
+          aria-label={hasServiceProfileContent ? labels.editDetails : labels.addDetails}
+          title={hasServiceProfileContent ? labels.editDetails : labels.addDetails}
+          className="absolute right-3 top-3 z-20 flex size-10 items-center justify-center rounded-xl bg-card shadow-sm transition-transform hover:scale-105 active:scale-95"
+        >
+          <Edit2 className="size-4 text-foreground" aria-hidden="true" />
+        </button>
       </div>
 
       {serviceName ? (
-        <div className="mb-3 inline-flex max-w-max items-center rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest text-primary">
-          <span className="max-w-[220px] truncate whitespace-nowrap">
+        <div className="mb-3">
+          <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
             {serviceName}
           </span>
         </div>
       ) : null}
 
-      <div className="min-w-0">
-        <h4 className="line-clamp-2 text-lg font-bold tracking-tight text-foreground sm:text-xl md:text-2xl">
-          {serviceTitle}
+      <div className="mb-2 min-w-0">
+        <h4 className="line-clamp-2 text-lg font-semibold leading-tight tracking-tight text-foreground sm:text-2xl">
+          {serviceTitle || serviceName}
         </h4>
       </div>
 
       {serviceDescription ? (
-        <p className="mt-2.5 line-clamp-3 max-w-4xl text-sm leading-6 text-muted-foreground/90">
+        <p className="mb-6 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
           {serviceDescription}
         </p>
-      ) : null}
+      ) : (
+        <div className="mb-6 h-10" />
+      )}
 
-      {metadataItems.length > 0 ? (
-        <div className={cn(
-          "mt-3.5 grid gap-1.5 sm:gap-2.5",
-          metadataItems.length === 2 ? "grid-cols-2" : "grid-cols-3"
-        )}>
-          {metadataItems.map((item) => (
-            <MetricCard
-              key={`${serviceKey}-${item.key || item.label}`}
-              icon={item.icon}
-              label={item.label}
-              value={item.value}
-            />
-          ))}
-        </div>
-      ) : null}
-
-      <div className="mt-3.5 border-t border-border pt-3.5">
-        {selectedSubcategories.length > 0 ? (
-          <Carousel
-            opts={subcategoryCarouselOptions}
-            className="w-full"
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            <SectionHeading
-              icon={Layers3}
-              title={labels.categoriesTitle}
-              action={
-                selectedSubcategories.length > 1 ? (
-                  <div className="flex items-center gap-2">
-                    <CarouselPrevious className="relative inset-auto size-8 translate-x-0 translate-y-0 border-primary/35 bg-card text-primary hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-                    <CarouselNext className="relative inset-auto size-8 translate-x-0 translate-y-0 border-primary/35 bg-card text-primary hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-                  </div>
-                ) : null
-              }
-            />
-
-            <CarouselContent className="mt-2.5 -mx-2.5">
-              {selectedSubcategories.map((subcategory) => {
-                const isActive = activeSubcategoryKey === subcategory.key;
-
-                return (
-                  <CarouselItem
-                    key={subcategory.key}
-                    className="basis-[56%] px-2.5 sm:basis-[42%] lg:basis-[36%]"
-                  >
-                    <button
-                      type="button"
-                      aria-pressed={isActive}
-                      onClick={() => setActiveSubcategoryKey(subcategory.key)}
-                      className={cn(
-                        "flex h-[60px] w-full flex-col justify-between rounded-xl border px-3 py-2 text-left transition-all duration-200",
-                        isActive
-                          ? "border-primary bg-primary/5 text-foreground shadow-[0_0_12px_rgba(249,115,22,0.06)]"
-                          : "border-border bg-card text-foreground hover:border-primary/25 hover:bg-muted/10"
-                      )}
-                    >
-                      <span className="line-clamp-2 block text-xs font-bold leading-tight">
-                        {subcategory.label}
-                      </span>
-
-                      <span className="mt-1.5 truncate whitespace-nowrap text-[9px] font-semibold tracking-wider uppercase text-muted-foreground/80">
-                        {subcategory.skillCount} {labels.skillsCountLabel}
-                      </span>
-                    </button>
-                  </CarouselItem>
-                );
-              })}
-            </CarouselContent>
-          </Carousel>
-        ) : (
-          <>
-            <SectionHeading icon={Layers3} title={labels.categoriesTitle} />
-
-            <div className="mt-2.5 rounded-xl border border-dashed border-border bg-card px-3 py-3 text-sm text-muted-foreground">
-              {labels.noCategories}
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="mt-3.5 border-t border-border pt-3.5">
-        {activeSkillTags.length > 0 ? (
-          <Carousel
-            opts={skillCarouselOptions}
-            className="w-full"
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-          >
-            <SectionHeading
-              icon={Wrench}
-              title={
-                activeSubcategory
-                  ? `${activeSubcategory.label} ${labels.skillsTitle}`
-                  : labels.skillsTitle
-              }
-              action={
-                activeSkillTags.length > 3 ? (
-                  <div className="flex items-center gap-2">
-                    <CarouselPrevious className="relative inset-auto size-8 translate-x-0 translate-y-0 border-primary/35 bg-card text-primary hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-                    <CarouselNext className="relative inset-auto size-8 translate-x-0 translate-y-0 border-primary/35 bg-card text-primary hover:bg-card hover:text-primary disabled:border-border disabled:bg-card disabled:text-muted-foreground" />
-                  </div>
-                ) : null
-              }
-            />
-
-            <CarouselContent className="mt-2.5 -mx-2.5">
-              {activeSkillTags.map((tag) => (
-                <CarouselItem
-                  key={`${serviceKey}-skill-${tag}`}
-                  className="basis-auto px-2.5"
-                >
-                  <span className="inline-flex h-7 max-w-[180px] items-center rounded-lg border border-border bg-gradient-to-br from-card to-muted/20 px-2.5 text-[11px] font-semibold text-foreground hover:bg-primary/5 hover:border-primary/20 hover:scale-[1.02] transition-all duration-150 cursor-default">
-                    <span className="truncate whitespace-nowrap">{tag}</span>
-                  </span>
-                </CarouselItem>
-              ))}
-            </CarouselContent>
-          </Carousel>
-        ) : (
-          <>
-            <SectionHeading
-              icon={Wrench}
-              title={
-                activeSubcategory
-                  ? `${activeSubcategory.label} ${labels.skillsTitle}`
-                  : labels.skillsTitle
-              }
-            />
-
-            <div className="mt-2.5 rounded-xl border border-dashed border-border bg-card px-3 py-3 text-sm text-muted-foreground">
-              {labels.noSkills}
-            </div>
-          </>
-        )}
-      </div>
-
-      <div className="mt-3.5 border-t border-border pt-3.5">
-        <SectionHeading
-          icon={Briefcase}
-          title={`${labels.caseStudiesTitle} (${caseStudies.length})`}
-        />
-
-        {caseStudies.length > 0 ? (
-          <div className="mt-3.5 flex max-h-32 flex-wrap gap-2.5 overflow-y-auto subtle-scrollbar pr-1 pb-2.5">
-            {caseStudies.map((caseStudy) =>
-              caseStudy.projectLink ? (
-                <a
-                  key={`${serviceKey}-case-study-${caseStudy.id}`}
-                  href={caseStudy.projectLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="group/item inline-flex max-w-full items-center gap-1.5 rounded-lg border border-border/80 bg-gradient-to-br from-card to-muted/20 px-3 py-1.5 text-xs font-bold text-foreground hover:bg-primary/5 hover:border-primary/25 hover:text-primary transition-all duration-200"
-                  aria-label={caseStudy.title}
-                >
-                  <span className="truncate">{caseStudy.title}</span>
-                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover/item:text-primary group-hover/item:translate-x-0.5 group-hover/item:-translate-y-0.5 transition-all duration-200" aria-hidden="true" />
-                </a>
-              ) : (
-                <span
-                  key={`${serviceKey}-case-study-${caseStudy.id}`}
-                  className="inline-flex max-w-full items-center rounded-lg border border-border/40 bg-muted/10 px-3 py-1.5 text-xs font-bold text-muted-foreground"
-                >
-                  <span className="truncate">{caseStudy.title}</span>
-                </span>
-              )
-            )}
+      <div className="mt-auto mb-6 flex items-center gap-4 sm:gap-6">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Briefcase className="size-4" />
           </div>
-        ) : (
-          <p className="mt-2.5 text-sm text-muted-foreground">
-            {labels.noCaseStudies}
-          </p>
-        )}
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              {labels.serviceExperienceLabel || "Experience Level"}
+            </span>
+            <span className="text-sm font-semibold text-foreground">
+              {experienceItem?.value || labels.emptyValue}
+            </span>
+          </div>
+        </div>
+
+        <div className="h-10 w-px shrink-0 bg-border/60" />
+
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <IndianRupee className="size-4" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              {labels.startingPriceLabel || "Starting Price"}
+            </span>
+            <span className="text-sm font-semibold text-foreground">
+              {priceItem?.value || labels.emptyValue}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between border-t border-border/50 pt-5">
+        <div className="flex items-center gap-2">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Layers3 className="size-4" />
+          </div>
+          <span className="text-[14px] font-semibold text-foreground">
+            {categoriesCount} {categoriesCount === 1 ? "CATEGORY" : "CATEGORIES"}{" "}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onViewDetails?.(cardData)}
+          className="inline-flex items-center gap-1 rounded-lg border border-primary bg-transparent px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/5"
+        >
+          View Details
+          <ArrowUpRight className="size-3.5" />
+        </button>
       </div>
     </article>
   );
@@ -836,6 +648,7 @@ const ServicesFromOnboardingCard = ({
   const [subcategoryOptionsByServiceKey, setSubcategoryOptionsByServiceKey] =
     useState({});
   const [toolOptionsBySubcategoryId, setToolOptionsBySubcategoryId] = useState({});
+  const [detailsModalServiceKey, setDetailsModalServiceKey] = useState(null);
 
   const helpers = useMemo(
     () => ({
@@ -1333,6 +1146,11 @@ const ServicesFromOnboardingCard = ({
     toolOptionsBySubcategoryId,
   ]);
 
+  const detailsModalService = useMemo(() => {
+    if (!detailsModalServiceKey) return null;
+    return processedServices.find((s) => s.serviceKey === detailsModalServiceKey) || null;
+  }, [processedServices, detailsModalServiceKey]);
+
   const carouselOptions = useMemo(
     () => ({
       align: "start",
@@ -1358,8 +1176,8 @@ const ServicesFromOnboardingCard = ({
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
-              <Cpu className="h-4 w-4 text-primary" aria-hidden="true" />
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+              <Cpu className="h-4 w-4" aria-hidden="true" />
             </span>
 
             <div>
@@ -1399,12 +1217,13 @@ const ServicesFromOnboardingCard = ({
                 {processedServices.map((cardData) => (
                   <CarouselItem
                     key={`service-card-${cardData.serviceKey}`}
-                    className="select-none basis-full px-3 lg:basis-1/2"
+                    className="flex select-none basis-full px-3 md:basis-1/2 lg:basis-1/3"
                   >
                     <ServiceDetailArticle
                       cardData={cardData}
                       labels={labels}
                       openEditServiceProfileModal={openEditServiceProfileModal}
+                      onViewDetails={(service) => setDetailsModalServiceKey(service.serviceKey)}
                     />
                   </CarouselItem>
                 ))}
@@ -1433,6 +1252,14 @@ const ServicesFromOnboardingCard = ({
           </div>
         )}
       </Card>
+
+      <ServiceDetailsViewModal
+        isOpen={!!detailsModalServiceKey}
+        onClose={() => setDetailsModalServiceKey(null)}
+        service={detailsModalService}
+        labels={labels}
+        onEdit={openEditServiceProfileModal}
+      />
     </Carousel>
   );
 };
