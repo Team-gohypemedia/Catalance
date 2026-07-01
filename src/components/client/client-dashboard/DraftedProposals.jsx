@@ -757,6 +757,10 @@ const Proposals = memo(function Proposals({
 
         const matchedFreelancerPayload = await fetchMatchedFreelancersForProposal(
           proposalForFreelancerSelection,
+          {
+            includeAiInsights: true,
+            useAiShortlist: true,
+          },
         );
 
         if (cancelled) return;

@@ -13,6 +13,14 @@ const parseOptionalLimit = (value) => {
   return Math.min(parsed, 50);
 };
 
+const parseOptionalBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return false;
+
+  const normalized = value.trim().toLowerCase();
+  return ["true", "1", "yes"].includes(normalized);
+};
+
 const buildMatchingResponse = (result = {}) => ({
   proposalId: result?.proposalId || null,
   sourceProjectId: result?.sourceProjectId || null,
@@ -35,8 +43,16 @@ export const runProposalMatching = asyncHandler(async (req, res) => {
   }
 
   const limit = parseOptionalLimit(req.body?.limit ?? req.query?.limit);
+  const includeAiInsights = parseOptionalBoolean(
+    req.body?.includeAiInsights ?? req.query?.includeAiInsights,
+  );
+  const useAiShortlist = parseOptionalBoolean(
+    req.body?.useAiShortlist ?? req.query?.useAiShortlist,
+  );
   const result = await matchFreelancersForProposal(req.params.proposalId, {
     ...(limit ? { limit } : {}),
+    includeAiInsights,
+    useAiShortlist,
   });
 
   res.json({
@@ -51,8 +67,12 @@ export const getProposalMatchingResults = asyncHandler(async (req, res) => {
   }
 
   const limit = parseOptionalLimit(req.query?.limit);
+  const includeAiInsights = parseOptionalBoolean(req.query?.includeAiInsights);
+  const useAiShortlist = parseOptionalBoolean(req.query?.useAiShortlist);
   const result = await matchFreelancersForProposal(req.params.proposalId, {
     ...(limit ? { limit } : {}),
+    includeAiInsights,
+    useAiShortlist,
   });
 
   res.json({

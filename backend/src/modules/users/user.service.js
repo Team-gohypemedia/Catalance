@@ -2465,6 +2465,14 @@ export const listUsers = async (filters = {}) => {
   const onboardingComplete = parseBooleanFilter(filters.onboardingComplete);
   const normalizedRoleFilter = normalizeRoleValue(filters.role);
   const requiredSkillTokens = parseRequiredSkillFilter(filters.requiredSkills);
+  const normalizedServiceKeys = normalizeMarketplaceServiceKeys(
+    Array.isArray(filters.serviceKeys)
+      ? filters.serviceKeys
+      : filters.serviceKeys
+        ? [filters.serviceKeys]
+        : [],
+    { max: 64 },
+  );
   const where = {
     status: filters.status || "ACTIVE"
   };
@@ -2476,11 +2484,35 @@ export const listUsers = async (filters = {}) => {
     ];
   }
 
+  const andConditions = Array.isArray(where.AND) ? [...where.AND] : [];
+
   if (normalizedRoleFilter === "FREELANCER") {
-    where.AND = [
-      ...(Array.isArray(where.AND) ? where.AND : []),
-      { freelancerProfile: { isNot: null } }
-    ];
+    andConditions.push({ freelancerProfile: { isNot: null } });
+  }
+
+  if (normalizedServiceKeys.length > 0) {
+    andConditions.push({
+      OR: [
+        {
+          marketplace: {
+            some: {
+              serviceKey: { in: normalizedServiceKeys }
+            }
+          }
+        },
+        {
+          freelancerProfile: {
+            is: {
+              services: { hasSome: normalizedServiceKeys }
+            }
+          }
+        }
+      ]
+    });
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions;
   }
 
   if (onboardingComplete !== undefined) {

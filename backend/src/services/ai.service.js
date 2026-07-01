@@ -4665,6 +4665,102 @@ const normalizeFreelancerMatchingJson = (rawValue = null, fallbackValue = null) 
   };
 };
 
+const normalizeProposalMatchInsightText = (value = "") =>
+  typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
+
+const normalizeProposalMatchInsightList = (value, { max = 4 } = {}) =>
+  toUniqueTextList(Array.isArray(value) ? value : [])
+    .map((entry) => normalizeProposalMatchInsightText(entry))
+    .filter(Boolean)
+    .slice(0, max);
+
+const normalizeProposalMatchInsightConfidence = (value = "") => {
+  const normalized = String(value || "").trim().toLowerCase();
+  return ["high", "medium", "low"].includes(normalized) ? normalized : "medium";
+};
+
+const clampProposalMatchInsightScore = (value) => {
+  const numericValue = Number(value);
+  if (!Number.isFinite(numericValue)) return null;
+  return Math.max(0, Math.min(100, Math.round(numericValue)));
+};
+
+const normalizeProposalMatchInsightCandidate = (value = {}) => {
+  const source = asPlainObject(value);
+  const freelancerId = normalizeProposalMatchInsightText(
+    source.freelancerId || source.id || source.candidateId,
+  );
+
+  if (!freelancerId) {
+    return null;
+  }
+
+  return {
+    freelancerId,
+    summary: normalizeProposalMatchInsightText(source.summary),
+    highlights: normalizeProposalMatchInsightList(source.highlights, { max: 4 }),
+    concerns: normalizeProposalMatchInsightList(source.concerns, { max: 3 }),
+    confidence: normalizeProposalMatchInsightConfidence(source.confidence),
+    semanticFitScore: clampProposalMatchInsightScore(
+      source.semanticFitScore ?? source.fitScore ?? source.score,
+    ),
+  };
+};
+
+const normalizeProposalMatchInsightsPayload = (rawValue = null) => {
+  const source = asPlainObject(rawValue);
+  const candidateEntries = Array.isArray(source.candidates) ? source.candidates : [];
+
+  return {
+    overallSummary: normalizeProposalMatchInsightText(source.overallSummary),
+    insights: candidateEntries
+      .map((entry) => normalizeProposalMatchInsightCandidate(entry))
+      .filter(Boolean),
+  };
+};
+
+const buildProposalMatchInsightsSystemPrompt = () => `You analyze proposal-to-freelancer matches.
+
+Rules:
+- Do not change filtering or eligibility decisions.
+- semanticFitScore may be used only to compare already-eligible shortlisted candidates.
+- Use only the proposal and candidate evidence provided.
+- Return strict JSON only.
+- Keep summaries concise and specific.
+- Highlights must explain why the freelancer fits the proposal.
+- Concerns must mention only real evidence gaps or risks.
+- semanticFitScore must be 0 to 100.
+- confidence must be one of: high, medium, low.
+
+Return JSON in this shape:
+{
+  "overallSummary": "string",
+  "candidates": [
+    {
+      "freelancerId": "string",
+      "summary": "string",
+      "highlights": ["string"],
+      "concerns": ["string"],
+      "confidence": "high",
+      "semanticFitScore": 0
+    }
+  ]
+}`;
+
+const buildProposalMatchInsightsUserPrompt = ({
+  proposal = {},
+  candidates = [],
+} = {}) =>
+  JSON.stringify(
+    {
+      task: "Explain and semantically score each shortlisted freelancer against the proposal without changing the existing eligibility logic.",
+      proposal,
+      candidates,
+    },
+    null,
+    2,
+  );
+
 const buildFreelancerMatchingSystemPrompt = (servicePrompt = "") => `You create internal freelancer-matching JSON for a digital services agency.
 
 Service-specific context:
@@ -4972,6 +5068,110 @@ export const generateFreelancerMatchingJson = async (
     console.warn("[Proposal] Freelancer matching JSON fallback used:", error?.message || error);
     return normalizeFreelancerMatchingJson(null, fallback);
   }
+};
+
+export const generateProposalMatchInsights = async ({
+  proposal = {},
+  candidates = [],
+  logTerminal = false,
+} = {}) => {
+  const normalizedCandidates = Array.isArray(candidates)
+    ? candidates
+      .filter((candidate) => normalizeProposalMatchInsightText(candidate?.freelancerId))
+      .slice(0, 10)
+    : [];
+
+  if (normalizedCandidates.length === 0) {
+    return {
+      status: "skipped_no_candidates",
+      overallSummary: "",
+      insights: [],
+      evaluatedCount: 0,
+      usage: null,
+      meta: {
+        provider: "openrouter",
+        model: null,
+        durationMs: 0,
+        attemptCount: 0,
+        attempts: [],
+      },
+    };
+  }
+
+  const apiKey = env.OPENROUTER_API_KEY?.trim();
+  if (!apiKey) {
+    return {
+      status: "skipped_missing_api_key",
+      overallSummary: "",
+      insights: [],
+      evaluatedCount: normalizedCandidates.length,
+      usage: null,
+      meta: {
+        provider: "openrouter",
+        model: null,
+        durationMs: 0,
+        attemptCount: 0,
+        attempts: [],
+      },
+    };
+  }
+
+  const normalizedProposal = asPlainObject(proposal);
+  const userPrompt = buildProposalMatchInsightsUserPrompt({
+    proposal: normalizedProposal,
+    candidates: normalizedCandidates,
+  });
+
+  if (logTerminal) {
+    console.info("[Proposal Match][Cata AI][Request]", {
+      proposal: normalizedProposal,
+      candidates: normalizedCandidates,
+      prompt: userPrompt,
+    });
+  }
+
+  const {
+    data,
+    model,
+    durationMs,
+    attemptCount,
+    attempts,
+  } = await requestOpenRouterCompletion({
+    apiKey,
+    title: "Catalance Cata AI Proposal Match Insights",
+    messages: [
+      { role: "system", content: buildProposalMatchInsightsSystemPrompt() },
+      { role: "user", content: userPrompt },
+    ],
+    temperature: 0.1,
+    maxTokens: 1800,
+  });
+
+  const rawContent = data?.choices?.[0]?.message?.content || "";
+  if (logTerminal) {
+    console.info("[Proposal Match][Cata AI][Response][Raw]", rawContent);
+  }
+
+  const parsed = parseJsonObjectFromRaw(rawContent);
+  const normalizedPayload = normalizeProposalMatchInsightsPayload(parsed);
+  if (logTerminal) {
+    console.info("[Proposal Match][Cata AI][Response][Parsed]", normalizedPayload);
+  }
+
+  return {
+    status: normalizedPayload.insights.length > 0 ? "completed" : "invalid_response",
+    overallSummary: normalizedPayload.overallSummary,
+    insights: normalizedPayload.insights,
+    evaluatedCount: normalizedCandidates.length,
+    usage: data?.usage || null,
+    meta: {
+      provider: "openrouter",
+      model,
+      durationMs: roundDurationMs(durationMs),
+      attemptCount,
+      attempts,
+    },
+  };
 };
 
 export const chatWithAI = async (
