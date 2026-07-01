@@ -5,15 +5,6 @@ import ProposalBudgetDialog from "./ProposalBudgetDialog.jsx";
 import ProposalDetailsDialog from "./ProposalDetailsDialog.jsx";
 import ProposalFreelancerDetailsDialog from "./ProposalFreelancerDetailsDialog.jsx";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   collectFreelancerSkillTokens,
   formatRating,
   freelancerMatchesRequiredSkill,
@@ -62,7 +53,6 @@ const ClientProposalDialogs = ({
     bestMatchFreelancerIds,
     projectRequiredSkills,
   } = freelancerState || {};
-  const [showSentInfo, setShowSentInfo] = React.useState(false);
 
   const {
     setShowFreelancerSelect,
@@ -147,13 +137,7 @@ const ClientProposalDialogs = ({
         bestMatchFreelancerIds={bestMatchFreelancerIds}
         projectRequiredSkills={projectRequiredSkills}
         onViewFreelancer={handleViewFreelancerProfile}
-        onSendProposal={async (freelancer) => {
-          const success = await sendProposalToFreelancer(freelancer);
-          if (success) {
-            setShowFreelancerSelect(false);
-            setShowSentInfo(true);
-          }
-        }}
+        onSendProposal={sendProposalToFreelancer}
         collectFreelancerSkillTokens={collectFreelancerSkillTokens}
         freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
         generateGradient={generateFreelancerGradient}
@@ -167,22 +151,6 @@ const ClientProposalDialogs = ({
           viewingFreelancer={viewingFreelancer}
         />
       ) : null}
-
-      <AlertDialog open={showSentInfo} onOpenChange={setShowSentInfo}>
-        <AlertDialogContent className="border border-border dark:border-white/[0.08] rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Proposal Sent</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground text-sm leading-relaxed">
-              This proposal draft has been moved from your drafts to the active pending proposals section.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-[12px] h-9 text-xs sm:text-sm shadow-none">
-              Got It
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

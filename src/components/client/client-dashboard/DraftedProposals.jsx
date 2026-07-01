@@ -617,7 +617,6 @@ const Proposals = memo(function Proposals({
   const [freelancerSearch, setFreelancerSearch] = useState("");
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
-  const [showSentInfo, setShowSentInfo] = useState(false);
   const [draftProposalCarouselApi, setDraftProposalCarouselApi] = useState(null);
   const [canGoToPreviousDraftProposal, setCanGoToPreviousDraftProposal] = useState(false);
   const [canGoToNextDraftProposal, setCanGoToNextDraftProposal] = useState(false);
@@ -1074,6 +1073,11 @@ const Proposals = memo(function Proposals({
           throw new Error("Could not resolve project for this proposal.");
         }
 
+        const normalizedProjectStatus = String(
+          project.status || "OPEN",
+        ).toUpperCase();
+        const syncedAt = new Date().toISOString();
+
         const proposalRes = await authFetch("/proposals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1089,12 +1093,31 @@ const Proposals = memo(function Proposals({
           throw new Error(proposalPayload?.message || "Failed to send proposal.");
         }
 
-        handleDeleteDraft(proposal.id, true);
+        setSelectedDraftForSend((current) =>
+          current?.id === proposal.id
+            ? {
+                ...current,
+                projectId: project.id,
+                syncedProjectId: project.id,
+                projectStatus: normalizedProjectStatus,
+                syncedAt,
+                project: {
+                  ...(current.project && typeof current.project === "object"
+                    ? current.project
+                    : {}),
+                  id: project.id,
+                  status: normalizedProjectStatus,
+                },
+              }
+            : current,
+        );
+        setSavedDrafts((current) =>
+          current.filter((entry) => entry?.id !== proposal.id),
+        );
+        setActiveDraftId((current) => (current === proposal.id ? null : current));
         await refreshDashboardData?.({ silent: true });
 
         toast.success(`Proposal sent to ${freelancer.fullName || "freelancer"}!`);
-        setShowFreelancerSelect(false);
-        setShowSentInfo(true);
         return true;
       } catch (error) {
         console.error("Failed to send proposal:", error);
@@ -1375,22 +1398,6 @@ const Proposals = memo(function Proposals({
             }}
             viewingFreelancer={viewingFreelancer}
           />
-
-          <AlertDialog open={showSentInfo} onOpenChange={setShowSentInfo}>
-            <AlertDialogContent className="border border-border dark:border-white/[0.08] rounded-2xl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>Proposal Sent</AlertDialogTitle>
-                <AlertDialogDescription className="text-muted-foreground text-sm leading-relaxed">
-                  This proposal draft has been moved from your drafts to the active pending proposals section.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogAction className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold rounded-[12px] h-9 text-xs sm:text-sm shadow-none">
-                  Got It
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
           <AlertDialog open={Boolean(confirmState)} onOpenChange={(open) => !open && confirmState?.resolve(false)}>
             <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md rounded-[24px]">
               <AlertDialogHeader>

@@ -36,6 +36,7 @@ import {
     Mic,
     MicOff,
     Sparkles,
+    Loader2,
     Paperclip,
     X,
     Check,
@@ -3071,6 +3072,7 @@ const GuestAIDemo = () => {
     const [previousChats, setPreviousChats] = useState(() => readStoredGuestSessions());
     const [generatedProposals, setGeneratedProposals] = useState(() => readStoredGeneratedProposals(user?.id));
     const [selectedProposalPreview, setSelectedProposalPreview] = useState(null);
+    const [isProceedingWithProposal, setIsProceedingWithProposal] = useState(false);
     const [loadingHistoryId, setLoadingHistoryId] = useState(null);
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
@@ -5377,6 +5379,12 @@ const GuestAIDemo = () => {
     ]);
 
     const handleProceed = async (proposalContent, sourceProposal = null) => {
+        if (isProceedingWithProposal) {
+            return;
+        }
+
+        setIsProceedingWithProposal(true);
+
         if (user) {
             try {
                 // User is logged in: bypass local storage entirely and save directly to backend
@@ -5406,25 +5414,31 @@ const GuestAIDemo = () => {
             } catch (error) {
                 console.error("Failed to save draft to backend:", error);
                 toast.error("Failed to save proposal. Please try again.");
+            } finally {
+                setIsProceedingWithProposal(false);
             }
         } else {
-            // Guest user: save to local storage temporarily so it syncs when they log in
-            const nextProposals = upsertStoredGeneratedProposal(
-                proposalContent,
-                user?.id,
-                buildProposalSaveMetadata(proposalContent, sourceProposal),
-            );
-            setGeneratedProposals(nextProposals);
+            try {
+                // Guest user: save to local storage temporarily so it syncs when they log in
+                const nextProposals = upsertStoredGeneratedProposal(
+                    proposalContent,
+                    user?.id,
+                    buildProposalSaveMetadata(proposalContent, sourceProposal),
+                );
+                setGeneratedProposals(nextProposals);
 
-            toast.success("Proposal saved! Please create an account to continue.");
-            navigate(
-                `/signin/phone?role=client&redirect=${encodeURIComponent(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH)}`,
-                {
-                    state: {
-                        fromProposal: true,
+                toast.success("Proposal saved! Please create an account to continue.");
+                navigate(
+                    `/signin/phone?role=client&redirect=${encodeURIComponent(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH)}`,
+                    {
+                        state: {
+                            fromProposal: true,
+                        },
                     },
-                },
-            );
+                );
+            } finally {
+                setIsProceedingWithProposal(false);
+            }
         }
     };
 
@@ -7304,11 +7318,17 @@ const GuestAIDemo = () => {
                                                 <div className={`pt-3 border-t ${isDark ? 'border-white/15' : 'border-slate-100'}`}>
                                                     <Button
                                                         onClick={() => handleProceed(proposalCardContent)}
+                                                        disabled={isProceedingWithProposal}
+                                                        aria-busy={isProceedingWithProposal}
                                                         variant="outline"
-                                                        className={`rounded-xl px-5 py-2 h-9 text-sm font-medium transition-all ${isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
+                                                        className={`rounded-xl px-5 py-2 h-9 text-sm font-medium transition-all disabled:cursor-not-allowed disabled:opacity-75 ${isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-slate-200 text-slate-700 hover:bg-slate-50'}`}
                                                     >
-                                                        <Sparkles className="mr-2 h-3.5 w-3.5 text-primary" />
-                                                        {proposalCtaLabel}
+                                                        {isProceedingWithProposal ? (
+                                                            <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin text-primary" />
+                                                        ) : (
+                                                            <Sparkles className="mr-2 h-3.5 w-3.5 text-primary" />
+                                                        )}
+                                                        {isProceedingWithProposal ? 'Saving proposal...' : proposalCtaLabel}
                                                     </Button>
                                                 </div>
                                             </div>
@@ -7674,9 +7694,18 @@ const GuestAIDemo = () => {
                             <div className={`mt-6 flex justify-end border-t pt-4 ${isDark ? 'border-white/10' : 'border-slate-200'}`}>
                                 <Button
                                     onClick={() => handleProceed(selectedProposalPreview.content, selectedProposalPreview)}
-                                    className="w-full sm:w-auto rounded-xl bg-primary px-8 py-2.5 font-semibold text-primary-foreground hover:bg-primary/90"
+                                    disabled={isProceedingWithProposal}
+                                    aria-busy={isProceedingWithProposal}
+                                    className="w-full sm:w-auto rounded-xl bg-primary px-8 py-2.5 font-semibold text-primary-foreground hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-75"
                                 >
-                                    {selectedProposalPreviewCtaLabel}
+                                    {isProceedingWithProposal ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Saving proposal...
+                                        </>
+                                    ) : (
+                                        selectedProposalPreviewCtaLabel
+                                    )}
                                 </Button>
                             </div>
                         </div>

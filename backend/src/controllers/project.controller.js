@@ -927,10 +927,15 @@ export const createProject = asyncHandler(async (req, res) => {
   }
 
   const { title, description, budget, status, proposal } = req.body;
+  const normalizedProjectStatus = String(status || "DRAFT").toUpperCase();
+  const shouldGenerateProjectArtifactsInline =
+    normalizedProjectStatus !== "DRAFT";
   const { proposalStructure: resolvedInternalProposalStructure } =
-    await resolveProjectProposalStructure({
-    input: req.body,
-  });
+    shouldGenerateProjectArtifactsInline
+      ? await resolveProjectProposalStructure({
+        input: req.body,
+      })
+      : { proposalStructure: "" };
   const proposalPayload = resolvedInternalProposalStructure
     ? {
       ...req.body,
@@ -941,22 +946,27 @@ export const createProject = asyncHandler(async (req, res) => {
   const isAgencyProposal = resolveProjectAgencyProposalFlag({
     payload: req.body,
   });
-  const freelancerMatchingData = await buildProjectFreelancerMatchingData(req.body, {
-    proposalData: structuredProposalData,
-  });
-  const generatedProjectSop = await generateProjectSopJson(
-    buildProjectSopGenerationContext({
-      input: proposalPayload,
-      proposalData: structuredProposalData,
-      proposalStructure: resolvedInternalProposalStructure,
-    }),
-  );
-
-  console.log("Looking for an available Project Manager...");
-  const projectManager = await findLeastLoadedActiveProjectManager({
-    project: structuredProposalData,
-  });
-  console.log(`Assigning Project Manager: ${projectManager ? projectManager.id : "None found"}`);
+  const [
+    freelancerMatchingData,
+    generatedProjectSop,
+    projectManager,
+  ] = shouldGenerateProjectArtifactsInline
+    ? await Promise.all([
+      buildProjectFreelancerMatchingData(req.body, {
+        proposalData: structuredProposalData,
+      }),
+      generateProjectSopJson(
+        buildProjectSopGenerationContext({
+          input: proposalPayload,
+          proposalData: structuredProposalData,
+          proposalStructure: resolvedInternalProposalStructure,
+        }),
+      ),
+      findLeastLoadedActiveProjectManager({
+        project: structuredProposalData,
+      }),
+    ])
+    : [{}, null, null];
 
   const project = await prisma.project.create({
     data: {
@@ -967,10 +977,10 @@ export const createProject = asyncHandler(async (req, res) => {
       ...freelancerMatchingData,
       isAgencyProposal,
       customSop: generatedProjectSop,
-      status: status || "DRAFT",
+      status: normalizedProjectStatus,
       progress: 0,
       ownerId: userId,
-      managerId: projectManager?.id,
+      managerId: projectManager?.id || null,
     },
   });
 
@@ -1225,7 +1235,8 @@ export const updateProject = asyncHandler(async (req, res) => {
     where: { id },
     include: {
       proposals: true,
-      owner: { select: { id: true, fullName: true } }
+      owner: { select: { id: true, fullName: true } },
+      manager: { select: PROJECT_MANAGER_SELECT },
     }
   });
 
@@ -1328,6 +1339,11 @@ export const updateProject = asyncHandler(async (req, res) => {
       shouldRefreshProposalFields
       || hasOwnField(updates, "title")
       || hasOwnField(updates, "budget");
+    const shouldRefreshProjectSop = shouldRegenerateProjectSop({
+      existing,
+      updates,
+      shouldRefreshProposalFields,
+    });
 
     const resolvedProposalStructure = shouldRefreshProposalFields
       ? await resolveProjectProposalStructure({
@@ -1358,41 +1374,65 @@ export const updateProject = asyncHandler(async (req, res) => {
       });
     }
 
-    if (shouldRefreshFreelancerMatching) {
-      Object.assign(
-        sanitizedUpdates,
-        await buildProjectFreelancerMatchingData(
-          {
-            ...updates,
-            ...sanitizedUpdates,
-          },
-          {
-            fallback: existing,
-            proposalData: shouldRefreshProposalFields ? sanitizedUpdates : null,
-            preserveFallback: true,
-          },
-        ),
-      );
+    const nextProjectStatus = String(
+      sanitizedUpdates.status || existing.status || "DRAFT"
+    ).toUpperCase();
+    const hasActiveAssignedManager =
+      existing.manager?.role === "PROJECT_MANAGER" &&
+      existing.manager?.status === "ACTIVE";
+    const shouldAssignProjectManager =
+      !sanitizedUpdates.managerId &&
+      nextProjectStatus !== "DRAFT" &&
+      !hasActiveAssignedManager;
+    const updateContext = {
+      ...updates,
+      ...sanitizedUpdates,
+    };
+    const [refreshedFreelancerMatchingData, regeneratedProjectSop, assignedProjectManager] =
+      await Promise.all([
+        shouldRefreshFreelancerMatching
+          ? buildProjectFreelancerMatchingData(
+            updateContext,
+            {
+              fallback: existing,
+              proposalData: shouldRefreshProposalFields ? sanitizedUpdates : null,
+              preserveFallback: true,
+            },
+          )
+          : Promise.resolve(null),
+        shouldRefreshProjectSop
+          ? generateProjectSopJson(
+            buildProjectSopGenerationContext({
+              input: updateContext,
+              proposalData: shouldRefreshProposalFields ? sanitizedUpdates : null,
+              fallback: existing,
+              proposalStructure: resolvedInternalProposalStructure,
+            }),
+          )
+          : Promise.resolve(undefined),
+        shouldAssignProjectManager
+          ? findLeastLoadedActiveProjectManager({
+            project: {
+              ...existing,
+              ...sanitizedUpdates,
+            },
+            excludeManagerId: existing.managerId,
+          })
+          : Promise.resolve(null),
+      ]);
+    let autoAssignedManagerId = null;
+
+    if (refreshedFreelancerMatchingData) {
+      Object.assign(sanitizedUpdates, refreshedFreelancerMatchingData);
     }
 
-    if (
-      shouldRegenerateProjectSop({
-        existing,
-        updates,
-        shouldRefreshProposalFields,
-      })
-    ) {
-      sanitizedUpdates.customSop = await generateProjectSopJson(
-        buildProjectSopGenerationContext({
-          input: {
-            ...updates,
-            ...sanitizedUpdates,
-          },
-          proposalData: shouldRefreshProposalFields ? sanitizedUpdates : null,
-          fallback: existing,
-          proposalStructure: resolvedInternalProposalStructure,
-        }),
-      );
+    if (regeneratedProjectSop !== undefined) {
+      sanitizedUpdates.customSop = regeneratedProjectSop;
+    }
+
+    if (assignedProjectManager?.id) {
+      autoAssignedManagerId = assignedProjectManager.id;
+      sanitizedUpdates.managerId = assignedProjectManager.id;
     }
 
     if (Object.prototype.hasOwnProperty.call(sanitizedUpdates, "verifiedTasks")) {
@@ -1461,7 +1501,7 @@ export const updateProject = asyncHandler(async (req, res) => {
       }
     }
 
-    if (sanitizedUpdates.managerId) {
+    if (sanitizedUpdates.managerId && sanitizedUpdates.managerId !== autoAssignedManagerId) {
       // Admin manual assignment - enforce 10 cap
       const targetManager = await prisma.user.findUnique({
         where: { id: sanitizedUpdates.managerId },

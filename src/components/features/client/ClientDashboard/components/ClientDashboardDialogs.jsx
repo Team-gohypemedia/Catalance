@@ -94,10 +94,7 @@ const ClientDashboardDialogs = ({
           setViewingFreelancer(freelancer);
           setShowFreelancerProfile(true);
         }}
-        onSendProposal={(freelancer) => {
-          setShowFreelancerSelect(false);
-          sendProposalToFreelancer(freelancer);
-        }}
+        onSendProposal={sendProposalToFreelancer}
         collectFreelancerSkillTokens={collectFreelancerSkillTokens}
         freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
         generateGradient={generateGradient}
