@@ -468,7 +468,7 @@ const isPhaseMarkedComplete = (phaseLike, fallbackLabel = "Upcoming") => {
     return true;
   }
 
-  const explicitProgress = Number(phaseLike?.phaseProgress ?? phaseLike?.progress ?? phaseLike?.value);
+  const explicitProgress = Number(phaseLike?.phaseProgress ?? phaseLike?.progress);
   if (Number.isFinite(explicitProgress) && clampProgress(explicitProgress) >= 100) {
     return true;
   }
@@ -660,6 +660,26 @@ const determineCurrentPhaseIndex = (project, phases) => {
     return Math.min(project.currentPhaseIndex, Math.max(phases.length - 1, 0));
   }
 
+  if (Array.isArray(phases) && phases.length > 0) {
+    const firstIncompleteIndex = phases.findIndex((phase) => {
+      if (Array.isArray(phase.steps) && phase.steps.length > 0) {
+        return phase.steps.some(
+          (step) => String(step?.state || "").toLowerCase() !== "complete",
+        );
+      }
+      return clampProgress(phase.progress) < 100;
+    });
+
+    if (firstIncompleteIndex !== -1) {
+      return firstIncompleteIndex;
+    }
+    
+    // If all phases are complete, return the last phase index
+    if (phases.every(phase => phase.progress >= 100 || (Array.isArray(phase.steps) && phase.steps.length > 0 && phase.steps.every(s => String(s?.state || "").toLowerCase() === "complete")))) {
+       return phases.length - 1;
+    }
+  }
+
   const paymentPlanPhases = Array.isArray(project?.paymentPlan?.phases)
     ? project.paymentPlan.phases
     : [];
@@ -670,7 +690,7 @@ const determineCurrentPhaseIndex = (project, phases) => {
 
   if (Array.isArray(project?.phases) && project.phases.length > 0) {
     const firstIncompleteIndex = project.phases.findIndex(
-      (phase) => clampProgress(phase?.progress ?? phase?.value) < 100,
+      (phase) => clampProgress(phase?.progress) < 100,
     );
     return firstIncompleteIndex === -1 ? project.phases.length - 1 : firstIncompleteIndex;
   }
