@@ -445,6 +445,7 @@ const FreelancerProfile = () => {
   );
   const [serviceSkillInput, setServiceSkillInput] = useState("");
   const [savingServiceProfile, setSavingServiceProfile] = useState(false);
+  const isSavingServiceProfileRef = useRef(false);
   const [uploadingServiceCover, setUploadingServiceCover] = useState(false);
   const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
     useState(null);
@@ -2127,9 +2128,14 @@ const FreelancerProfile = () => {
   };
 
   const saveOnboardingServiceProfile = async (wizardServiceProfileForm) => {
+    if (isSavingServiceProfileRef.current) return;
+    isSavingServiceProfileRef.current = true;
     const activeForm = wizardServiceProfileForm || serviceProfileForm;
     const serviceKey = resolveServiceStorageKey(activeForm.serviceKey);
-    if (!serviceKey) return;
+    if (!serviceKey) {
+      isSavingServiceProfileRef.current = false;
+      return;
+    }
     const existingServiceDetails =
       profileDetails?.serviceDetails &&
         typeof profileDetails.serviceDetails === "object"
@@ -2228,6 +2234,7 @@ const FreelancerProfile = () => {
       console.error("Failed to upload media files:", error);
       toast.error(error?.message || "Failed to upload media files.");
       setSavingServiceProfile(false);
+      isSavingServiceProfileRef.current = false;
       return;
     }
     const rawCaseStudies =
@@ -2366,6 +2373,7 @@ const FreelancerProfile = () => {
       toast.error(error?.message || "Failed to save service details");
     } finally {
       setSavingServiceProfile(false);
+      isSavingServiceProfileRef.current = false;
     }
   };
 
