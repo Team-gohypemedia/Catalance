@@ -177,7 +177,7 @@ export const ServiceDetailsViewModal = ({
                   <IndianRupee className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                  <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60 whitespace-nowrap">
                     Starting Price
                   </span>
                   <span className="text-xs md:text-sm font-bold text-foreground">
@@ -234,17 +234,15 @@ export const ServiceDetailsViewModal = ({
                 </span>
               </div>
               
-              {caseStudiesOpen && (
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {caseStudiesCount > 0 ? (
-                    caseStudies.map((cs, i) => (
-                      <OutlinePill key={i}>{cs.title || "Case Study"}</OutlinePill>
-                    ))
-                  ) : (
-                    <OutlinePill>UI/UX</OutlinePill>
-                  )}
-                </div>
-              )}
+              <div className={`flex-wrap gap-2 mt-1 ${caseStudiesOpen ? "flex" : "hidden md:flex"}`}>
+                {caseStudiesCount > 0 ? (
+                  caseStudies.map((cs, i) => (
+                    <OutlinePill key={i}>{cs.title || "Case Study"}</OutlinePill>
+                  ))
+                ) : (
+                  <OutlinePill>UI/UX</OutlinePill>
+                )}
+              </div>
             </section>
 
             <div className="hidden md:block h-px w-full bg-border/30" />
@@ -261,15 +259,13 @@ export const ServiceDetailsViewModal = ({
                 </span>
               </div>
 
-              {skillsOpen && (
-                <div className="mt-1">
-                  <CollapsiblePillList
-                    items={allSkillTags}
-                    emptyMessage="No skills added yet."
-                    renderPill={(skill, i) => <OutlinePill key={i}>{skill}</OutlinePill>}
-                  />
-                </div>
-              )}
+              <div className={`mt-1 ${skillsOpen ? "block" : "hidden md:block"}`}>
+                <CollapsiblePillList
+                  items={allSkillTags}
+                  emptyMessage="No skills added yet."
+                  renderPill={(skill, i) => <OutlinePill key={i}>{skill}</OutlinePill>}
+                />
+              </div>
             </section>
 
             <div className="hidden md:block h-px w-full bg-border/30" />
@@ -286,15 +282,13 @@ export const ServiceDetailsViewModal = ({
                 </span>
               </div>
 
-              {categoriesOpen && (
-                <div className="mt-1">
-                  <CollapsiblePillList
-                    items={selectedSubcategories}
-                    emptyMessage="No categories added yet."
-                    renderPill={(cat, i) => <OutlinePill key={i}>{cat.label || cat}</OutlinePill>}
-                  />
-                </div>
-              )}
+              <div className={`mt-1 ${categoriesOpen ? "block" : "hidden md:block"}`}>
+                <CollapsiblePillList
+                  items={selectedSubcategories}
+                  emptyMessage="No categories added yet."
+                  renderPill={(cat, i) => <OutlinePill key={i}>{cat.label || cat}</OutlinePill>}
+                />
+              </div>
             </section>
 
           </div>
