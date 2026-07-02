@@ -862,11 +862,7 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
       score: hasEducationEntries ? 1 : 0,
       weight: 6,
     },
-    {
-      label: "Industry focus",
-      score: hasIndustryFocus ? 1 : 0,
-      weight: 5,
-    },
+
     { label: "Policies accepted", score: policiesCoverage, weight: 5 },
   ];
 
@@ -963,9 +959,6 @@ const buildFreelancerProfileCompletion = (payload = {}) => {
     missingDetails.push("Add your education details (school, degree, or year).");
   }
 
-  if (!hasIndustryFocus) {
-    missingDetails.push("Select your global industry focus.");
-  }
 
   if (policyMissingDetails.length > 0) {
     missingDetails.push(`Review and complete: ${policyMissingDetails.join(", ")}.`);

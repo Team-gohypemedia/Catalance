@@ -3878,11 +3878,7 @@ const FreelancerProfile = () => {
       score: hasEducationEntries ? 1 : 0,
       weight: 6,
     },
-    {
-      label: "Industry focus",
-      score: hasIndustryFocus ? 1 : 0,
-      weight: 5,
-    },
+
     { label: "Policies accepted", score: policiesCoverage, weight: 5 },
   ];
 
@@ -4004,14 +4000,6 @@ const FreelancerProfile = () => {
       label: "Education history",
       detail: "Add your education details (school, degree, or year).",
       onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.EDUCATION),
-    });
-  }
-
-  if (!hasIndustryFocus) {
-    profileCompletionMissingDetails.push({
-      label: "Industry focus",
-      detail: "Select your global industry focus.",
-      onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.INDUSTRY_FOCUS),
     });
   }
 
