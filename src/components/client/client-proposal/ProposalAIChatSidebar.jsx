@@ -12,39 +12,46 @@ const SYSTEM_PROMPT = `You are an expert AI proposal strategist tasked with refi
 Your primary role is to act as a thoughtful consultant. You must read the FULL proposal context and understand its holistic goals.
 
 Here are your strict guidelines:
-1. **Holistic Updates**: If a user asks for a sweeping change (e.g., "change budget to 50k" or "switch from WordPress to Shopify"), you must organically cascade that change throughout all relevant fields. For example, if they switch to Shopify, you must update the tech stack, adjust deliverables, and tweak the project overview to match Shopify constraints.
-2. **Incompatible Requests**: If the user requests a change that makes absolutely no sense, is completely irrelevant, or breaks the core logical fabric of the project (e.g., "add pizza delivery" to an enterprise SaaS platform), politely explain that the change is incompatible with the proposal's scope and DO NOT output a JSON block.
+1. **Holistic Updates**: If a user asks for a sweeping change (e.g., "change budget to 50k" or "switch from WordPress to Shopify"), you must organically cascade that change throughout all relevant fields.
+2. **Incompatible Requests**: If the user requests a change that makes absolutely no sense, is completely irrelevant, or breaks the core logical fabric of the project, politely explain that the change is incompatible with the proposal's scope and DO NOT output a JSON block.
 3. **Conversational Reasoning**: Always respond naturally. Explain your thought process, what you are changing, and why. 
 
-When you make changes to the proposal, you MUST include a JSON block containing the new values for the editable fields.
+When you make changes to the proposal, you MUST include a JSON block containing the new values for the editable fields and sections.
+The proposal state uses a dynamic structure with \`fields\` (key-value pairs) and \`sections\` (array of objects with title, lines, list).
 
 Enclose the JSON inside a markdown code block like so:
 \`\`\`json
 {
-  "budget": "50000",
-  "techStackText": "Shopify\nLiquid\nReact"
+  "fields": {
+    "budget": "50000",
+    "launchTimeline": "4 weeks"
+  },
+  "sections": [
+    {
+      "key": "project-overview",
+      "title": "Project Overview",
+      "lines": ["This is the updated overview text."],
+      "list": []
+    },
+    {
+      "key": "deliverables",
+      "title": "Deliverables",
+      "lines": [],
+      "list": ["Design system", "Frontend development"]
+    }
+  ]
 }
 \`\`\`
 
-The proposal has these editable fields:
-- title (string)
-- clientName (string)
-- service (string)
-- budget (string)
-- timeline (string)
-- projectOverview (string)
-- objectivesText (string, newline separated)
-- deliverablesText (string, newline separated)
-- techStackText (string, newline separated)
-- notes (string)
-
-Return a partial JSON containing ONLY the fields you strategically updated. Provide your conversational response explaining what you did, followed by the JSON code block.`;
+Return a partial JSON containing ONLY the \`fields\` or \`sections\` you strategically updated. Provide your conversational response explaining what you did, followed by the JSON code block.`;
 
 const ProposalAIChatSidebar = ({
   open,
   onClose,
   editableProposalDraft,
   onDraftChange,
+  onDynamicFieldChange,
+  onDynamicSectionChange,
 }) => {
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState("");
@@ -61,12 +68,35 @@ const ProposalAIChatSidebar = ({
     try {
       const parsed = JSON.parse(jsonText.trim());
       let changesMade = false;
-      Object.keys(parsed).forEach((key) => {
-        if (editableProposalDraft[key] !== undefined && parsed[key] !== undefined) {
-          onDraftChange(key, String(parsed[key]));
+      
+      if (parsed.fields && onDynamicFieldChange) {
+        Object.keys(parsed.fields).forEach((key) => {
+          onDynamicFieldChange(key, String(parsed.fields[key]));
           changesMade = true;
-        }
-      });
+        });
+      }
+      
+      if (parsed.sections && onDynamicSectionChange) {
+        parsed.sections.forEach((section) => {
+          const textValue = (section.lines || []).join('\n') + (section.list && section.list.length > 0 ? (section.lines && section.lines.length > 0 ? '\n' : '') + section.list.map(i => '- ' + i).join('\n') : '');
+          onDynamicSectionChange(section.title, textValue);
+          changesMade = true;
+        });
+      }
+
+      // Fallback for older flat field format if AI ignores structure
+      if (!parsed.fields && !parsed.sections) {
+         Object.keys(parsed).forEach((key) => {
+           if (onDynamicFieldChange && (key === 'budget' || key === 'timeline' || key === 'launchTimeline' || key === 'clientName' || key === 'serviceType' || key === 'projectTitle')) {
+              onDynamicFieldChange(key === 'timeline' ? 'launchTimeline' : key === 'title' ? 'projectTitle' : key, String(parsed[key]));
+              changesMade = true;
+           } else if (editableProposalDraft[key] !== undefined) {
+              onDraftChange(key, String(parsed[key]));
+              changesMade = true;
+           }
+         });
+      }
+
       if (changesMade) {
         toast.success("Proposal updated based on your request.");
       }
@@ -88,16 +118,8 @@ const ProposalAIChatSidebar = ({
       // Create context block
       const contextBlock = `CURRENT PROPOSAL STATE:
 ${JSON.stringify({
-  title: editableProposalDraft.title,
-  clientName: editableProposalDraft.clientName,
-  service: editableProposalDraft.service,
-  budget: editableProposalDraft.budget,
-  timeline: editableProposalDraft.timeline,
-  projectOverview: editableProposalDraft.projectOverview,
-  objectivesText: editableProposalDraft.objectivesText,
-  deliverablesText: editableProposalDraft.deliverablesText,
-  techStackText: editableProposalDraft.techStackText,
-  notes: editableProposalDraft.notes,
+  fields: editableProposalDraft.fields || {},
+  sections: editableProposalDraft.sections || [],
 }, null, 2)}`;
 
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -171,7 +193,7 @@ ${JSON.stringify({
   if (!open) return null;
 
   return (
-    <div className="absolute right-0 top-0 bottom-0 z-50 flex w-full flex-col border-l border-border dark:border-white/10 bg-background/95 backdrop-blur-xl lg:w-[400px]">
+    <div className="absolute inset-y-0 right-0 z-50 flex w-full h-full max-h-full overflow-hidden flex-col border-l border-border dark:border-white/10 bg-background/95 backdrop-blur-xl lg:relative lg:w-[400px] shrink-0">
       <div className="flex h-[60px] items-center justify-between border-b border-border dark:border-white/10 px-5 shrink-0">
         <div className="flex items-center gap-2 text-foreground">
           <Sparkles className="h-5 w-5 text-primary" />
@@ -187,7 +209,7 @@ ${JSON.stringify({
         </Button>
       </div>
 
-      <ScrollArea className="flex-1 px-4 py-6" ref={scrollRef}>
+      <ScrollArea className="flex-1 min-h-0 px-4 py-6" ref={scrollRef}>
             <div className="space-y-6">
               {messages.length === 0 ? (
                 <div className="text-center mt-10">

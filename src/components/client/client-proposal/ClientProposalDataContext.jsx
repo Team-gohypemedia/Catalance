@@ -44,11 +44,13 @@ import {
   mergeProposalCollections,
   normalizeFreelancerCardData,
   parseProposalBudgetValue,
+  parseProposalContent,
   parseProposalEditableList,
   resolveBestMatchFreelancerIds,
   resolveProposalServiceLabel,
   resolveProposalTitle,
   shouldHideRejectedProposal,
+  buildMarkdownFromParsedContent,
 } from "./proposal-utils.js";
 import { useProposalBudgetIncrease } from "./useProposalBudgetIncrease.js";
 import {
@@ -1264,36 +1266,67 @@ export const ClientProposalDataProvider = ({ children }) => {
     }));
   }, []);
 
+  const handleDynamicFieldChange = useCallback((fieldKey, value) => {
+    setEditableProposalDraft((current) => {
+      const currentFields = current.fields || {};
+      return {
+        ...current,
+        fields: {
+          ...currentFields,
+          [fieldKey]: value,
+        },
+      };
+    });
+  }, []);
+
+  const handleDynamicSectionChange = useCallback((sectionTitle, value) => {
+    setEditableProposalDraft((current) => {
+      const currentSections = current.sections || [];
+      const sectionIndex = currentSections.findIndex((s) => s.title === sectionTitle);
+
+      let nextSections = [...currentSections];
+      if (sectionIndex >= 0) {
+        nextSections[sectionIndex] = {
+          ...nextSections[sectionIndex],
+          lines: [value],
+          list: [],
+        };
+      } else {
+        nextSections.push({
+          key: sectionTitle.toLowerCase().replace(/\s+/g, "-"),
+          title: sectionTitle,
+          lines: [value],
+          list: [],
+        });
+      }
+
+      return {
+        ...current,
+        sections: nextSections,
+      };
+    });
+  }, []);
+
   const handleSaveProposalChanges = useCallback(async () => {
     if (!activeProposal || isSavingProposal) return;
 
+    // First generate the markdown from the dynamic fields and sections
+    const nextContent = buildMarkdownFromParsedContent({
+      fields: editableProposalDraft.fields || {},
+      sections: editableProposalDraft.sections || [],
+    });
+
+    // We can extract basic fields for the object payload if needed for searching/filtering
     const clientNameFallback = getDisplayName(user);
-    const nextTitle = String(editableProposalDraft.title || "").trim();
-    const nextBusinessName = String(editableProposalDraft.businessName || "").trim();
-    const nextClientName =
-      String(editableProposalDraft.clientName || "").trim() || clientNameFallback;
-    const nextService = String(editableProposalDraft.service || "").trim();
-    const nextBudget = String(editableProposalDraft.budget || "").trim();
-    const nextTimeline = String(editableProposalDraft.timeline || "").trim();
-    const nextProjectOverview = String(editableProposalDraft.projectOverview || "").trim();
-    const nextObjectives = parseProposalEditableList(editableProposalDraft.objectivesText);
-    const nextDeliverables = parseProposalEditableList(editableProposalDraft.deliverablesText);
-    const nextTechStack = parseProposalEditableList(editableProposalDraft.techStackText, {
-      splitCommas: true,
-    });
-    const nextNotes = String(editableProposalDraft.notes || "").trim();
-    const nextContent = buildProposalContentFromDraft({
-      ...editableProposalDraft,
-      clientName: nextClientName,
-    });
+    const nextTitle = String(editableProposalDraft?.fields?.projectTitle || editableProposalDraft?.title || "").trim();
+    const nextBusinessName = String(editableProposalDraft?.fields?.businessName || editableProposalDraft?.businessName || "").trim();
+    const nextClientName = String(editableProposalDraft?.fields?.clientName || editableProposalDraft?.clientName || "").trim() || clientNameFallback;
+    const nextService = String(editableProposalDraft?.fields?.serviceType || editableProposalDraft?.service || "").trim();
+    const nextBudget = String(editableProposalDraft?.fields?.budget || editableProposalDraft?.budget || "").trim();
+    const nextTimeline = String(editableProposalDraft?.fields?.launchTimeline || editableProposalDraft?.timeline || "").trim();
 
     if (!nextTitle) {
       toast.error("Proposal title cannot be empty.");
-      return;
-    }
-
-    if (!nextProjectOverview && !nextObjectives.length && !nextDeliverables.length) {
-      toast.error("Add an overview, objectives, or deliverables before saving.");
       return;
     }
 
@@ -1328,11 +1361,6 @@ export const ClientProposalDataProvider = ({ children }) => {
         summary: nextContent,
         content: nextContent,
         proposalContent: nextContent,
-        projectOverview: nextProjectOverview,
-        objectives: nextObjectives,
-        deliverables: nextDeliverables,
-        techStack: nextTechStack,
-        notes: nextNotes,
         budget: nextBudget,
         timeline: nextTimeline,
         recipientName: activeProposal.recipientName || "Not assigned",
@@ -2312,6 +2340,8 @@ export const ClientProposalDataProvider = ({ children }) => {
       handleApproveAndPay,
       handleOpenProposal,
       handleEditableProposalDraftChange,
+      handleDynamicFieldChange,
+      handleDynamicSectionChange,
       handleSaveProposalChanges,
       handleCancelProposalEditing,
       sendProposalToFreelancer,

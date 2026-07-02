@@ -63,6 +63,8 @@ const ClientProposalDialogs = ({
     handleBudgetDialogOpenChange,
     handleProposalDialogOpenChange,
     handleEditableProposalDraftChange,
+    handleDynamicFieldChange,
+    handleDynamicSectionChange,
     handleSaveProposalChanges,
     handleCancelProposalEditing,
     handleDelete,
@@ -101,6 +103,8 @@ const ClientProposalDialogs = ({
         sendingProposalId={sendingProposalId}
         handleProposalDialogOpenChange={handleProposalDialogOpenChange}
         handleEditableProposalDraftChange={handleEditableProposalDraftChange}
+        handleDynamicFieldChange={handleDynamicFieldChange}
+        handleDynamicSectionChange={handleDynamicSectionChange}
         handleSaveProposalChanges={handleSaveProposalChanges}
         handleCancelProposalEditing={handleCancelProposalEditing}
         handleDelete={handleDelete}

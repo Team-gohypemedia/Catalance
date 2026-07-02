@@ -797,7 +797,7 @@ const FreelancerSelectionDialog = ({
                                 align="end"
                                 side="top"
                                 container={dialogContentRef.current || undefined}
-                                className="w-[min(22rem,calc(100vw-2rem))] rounded-[20px] border border-border/70 bg-background/98 p-0 shadow-[0_28px_60px_-32px_rgba(15,23,42,0.45)]"
+                                className="z-[100] w-[min(22rem,calc(100vw-2rem))] max-h-[22rem] overflow-y-auto rounded-[20px] border border-border/70 bg-background/98 p-0 shadow-[0_28px_60px_-32px_rgba(15,23,42,0.45)]"
                                 onClick={(event) => {
                                   event.stopPropagation();
                                 }}
