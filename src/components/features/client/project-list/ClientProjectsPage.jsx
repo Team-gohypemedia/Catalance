@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Check from "lucide-react/dist/esm/icons/check";
+import Filter from "lucide-react/dist/esm/icons/filter";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { ProjectCarouselControls } from "@/components/client/client-dashboard/shared.jsx";
@@ -397,11 +398,14 @@ const ClientProjectsPage = () => {
                     {availableServices.length > 1 && (
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
-                          <button className="flex items-center justify-between w-full sm:w-[200px] h-10 sm:h-11 rounded-[24px] border border-border bg-background px-3 font-medium text-sm">
-                            <span className="truncate pr-2">
-                              {activeServiceFilter === "all" ? "All Services" : activeServiceFilter.split(/[_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                            </span>
-                            <ChevronDown className="size-4 opacity-50 shrink-0" />
+                          <button className="flex items-center justify-between w-full sm:w-auto sm:min-w-[180px] h-10 sm:h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shadow-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Filter className="size-4 shrink-0" />
+                              <span className="truncate pr-2">
+                                {activeServiceFilter === "all" ? "All Services" : activeServiceFilter.split(/[_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                              </span>
+                            </div>
+                            <ChevronDown className="size-4 opacity-80 shrink-0" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[280px] sm:w-auto sm:min-w-[200px] sm:max-w-[400px] max-h-[300px] overflow-y-auto rounded-2xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -436,11 +440,14 @@ const ClientProjectsPage = () => {
                     {availableFreelancers.length > 1 && (
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
-                          <button className="flex items-center justify-between w-full sm:w-[200px] h-10 sm:h-11 rounded-[24px] border border-border bg-background px-3 font-medium text-sm">
-                            <span className="truncate pr-2">
-                              {activeFreelancerFilter === "all" ? "All Freelancers" : activeFreelancerFilter}
-                            </span>
-                            <ChevronDown className="size-4 opacity-50 shrink-0" />
+                          <button className="flex items-center justify-between w-full sm:w-auto sm:min-w-[180px] h-10 sm:h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shadow-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Filter className="size-4 shrink-0" />
+                              <span className="truncate pr-2">
+                                {activeFreelancerFilter === "all" ? "All Freelancers" : activeFreelancerFilter}
+                              </span>
+                            </div>
+                            <ChevronDown className="size-4 opacity-80 shrink-0" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-[280px] sm:w-auto sm:min-w-[200px] sm:max-w-[400px] max-h-[300px] overflow-y-auto rounded-2xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -466,28 +473,43 @@ const ClientProjectsPage = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
+                    {!isLoading && shouldUseProjectCarousel ? (
+                      <div className="hidden sm:flex items-center">
+                        <ProjectCarouselControls
+                          onPrevious={() => projectCarouselApi?.scrollPrev()}
+                          onNext={() => projectCarouselApi?.scrollNext()}
+                          canGoPrevious={canGoToPreviousProject}
+                          canGoNext={canGoToNextProject}
+                          previousLabel={`Show previous ${
+                            activeFilter === "completed" ? "completed" : "ongoing"
+                          } projects`}
+                          nextLabel={`Show next ${
+                            activeFilter === "completed" ? "completed" : "ongoing"
+                          } projects`}
+                        />
+                      </div>
+                    ) : null}
                   </div>
+                  {!isLoading && shouldUseProjectCarousel && (
+                    <div className="flex sm:hidden items-center justify-end w-full mt-2">
+                      <ProjectCarouselControls
+                        onPrevious={() => projectCarouselApi?.scrollPrev()}
+                        onNext={() => projectCarouselApi?.scrollNext()}
+                        canGoPrevious={canGoToPreviousProject}
+                        canGoNext={canGoToNextProject}
+                        previousLabel={`Show previous ${
+                          activeFilter === "completed" ? "completed" : "ongoing"
+                        } projects`}
+                        nextLabel={`Show next ${
+                          activeFilter === "completed" ? "completed" : "ongoing"
+                        } projects`}
+                      />
+                    </div>
+                  )}
                 </div>
               </section>
 
-              <section className="mt-12">
-                {!isLoading && shouldUseProjectCarousel ? (
-                  <div className="mb-4 flex items-center justify-end gap-4 sm:mb-5">
-                    <ProjectCarouselControls
-                      onPrevious={() => projectCarouselApi?.scrollPrev()}
-                      onNext={() => projectCarouselApi?.scrollNext()}
-                      canGoPrevious={canGoToPreviousProject}
-                      canGoNext={canGoToNextProject}
-                      previousLabel={`Show previous ${
-                        activeFilter === "completed" ? "completed" : "ongoing"
-                      } projects`}
-                      nextLabel={`Show next ${
-                        activeFilter === "completed" ? "completed" : "ongoing"
-                      } projects`}
-                    />
-                  </div>
-                ) : null}
-
+              <section className="mt-8 sm:mt-10">
                 {isLoading ? (
                   <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                     {[1, 2, 3].map((item) => (
