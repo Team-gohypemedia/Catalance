@@ -1852,8 +1852,7 @@ export const searchPmFreelancers = asyncHandler(async (req, res) => {
 
   const users = await listUsers({
     role: "FREELANCER",
-    status: "ACTIVE",
-    onboardingComplete: true,
+    status: { in: ["ACTIVE", "PENDING_APPROVAL"] },
     requiredSkills: skills.join(","),
   });
   const marketplaceUsers = users.filter(isMarketplaceReadyFreelancer);
