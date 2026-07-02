@@ -395,6 +395,26 @@ export const normalizeFreelancerCardData = (candidate = {}) => {
   return freelancer;
 };
 
+export const extractMatchedFreelancersFromPayload = (payload = {}) => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.freelancers)) {
+    return payload.freelancers;
+  }
+
+  if (Array.isArray(payload?.results)) {
+    return payload.results;
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+
+  return [];
+};
+
 export const formatRating = (value) => {
   const numeric = Number(value);
   if (!Number.isFinite(numeric) || numeric <= 0) return "N/A";

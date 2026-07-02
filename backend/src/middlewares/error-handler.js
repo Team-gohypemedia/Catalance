@@ -22,6 +22,16 @@ export const errorHandler = (error, _req, res, _next) => {
     });
   }
 
+  if (
+    error?.type === "entity.too.large" ||
+    Number(error?.status) === 413 ||
+    Number(error?.statusCode) === 413
+  ) {
+    return res.status(413).json({
+      message: "Request body is too large"
+    });
+  }
+
   if (error instanceof AppError) {
     return res.status(error.statusCode).json({
       message: error.message,

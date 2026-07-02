@@ -271,6 +271,7 @@ const FreelancerSelectionDialog = ({
   onOpenChange,
   savedProposal,
   isLoadingFreelancers,
+  isFreelancerAiLoading = false,
   freelancerFetchStatus = "idle",
   freelancerFetchError = "",
   isSendingProposal = false,
@@ -391,6 +392,12 @@ const FreelancerSelectionDialog = ({
             />
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            {isFreelancerAiLoading && filteredFreelancers.length > 0 && (
+              <Badge variant="outline" className="h-9 px-2.5 text-primary font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap border-primary/20 bg-primary/5">
+                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                Cata AI analyzing
+              </Badge>
+            )}
             <Badge className="h-9 px-2.5 border-primary/20 bg-primary/10 text-primary font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
               {filteredFreelancers.length} available
             </Badge>
