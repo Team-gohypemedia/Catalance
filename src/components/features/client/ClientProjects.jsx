@@ -765,8 +765,8 @@ export const normalizeClientProjects = (remote = []) =>
         budgetLabel: budgetValue > 0 ? formatINR(budgetValue) : "TBD",
         timelineLabel: timelineMeta.value,
         timelineDisplayLabel: timelineMeta.label,
-        paymentPending: Boolean(dueInstallment),
-        initialPaymentPending: Boolean(acceptedProposal) && dueInstallment?.sequence === 1,
+        paymentPending: Boolean(dueInstallment) || rawStatus === "AWAITING_PAYMENT" || rawStatus === "PENDING_PAYMENT",
+        initialPaymentPending: (Boolean(acceptedProposal) && dueInstallment?.sequence === 1) || rawStatus === "AWAITING_PAYMENT" || rawStatus === "PENDING_PAYMENT",
         awaitingFreelancerAcceptance: false,
         dueInstallment,
         progress: Number(project?.progress) || 0,
@@ -851,7 +851,7 @@ export const buildProjectCardModel = (project) => {
       dateValue: project.timelineLabel || "To be finalized",
       actionType: "pay",
       actionHref: `/client/project/${project.id}`,
-      actionLabel: `Pay ${project.dueInstallment?.percentage || ""}%`,
+      actionLabel: `Pay ${project.dueInstallment?.percentage || project.paymentPlan?.installments?.[0]?.percentage || "20"}%`,
       actionTone: "amber",
     };
   }
