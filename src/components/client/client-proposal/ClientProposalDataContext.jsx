@@ -1822,7 +1822,15 @@ export const ClientProposalDataProvider = ({ children }) => {
       }
 
       if (proposal.status === "draft") {
-        if (!hasAcceptedProposal && !hasSentFreelancersForDraft) {
+        const hasActiveProposalForProject =
+          projectKey &&
+          scopedProposals.some(
+            (p) =>
+              String(p.projectId) === projectKey &&
+              PROPOSAL_BLOCKED_STATUSES.has(String(p.status || "").toLowerCase())
+          );
+
+        if (!hasAcceptedProposal && !hasSentFreelancersForDraft && !hasActiveProposalForProject) {
           pushDraftOnce(proposal, { preferSavedDraft: true });
         }
         return;
