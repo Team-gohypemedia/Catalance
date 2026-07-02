@@ -372,7 +372,7 @@ const ProfileHeroCard = ({
               Uploading...
             </Button>
           ) : resolvedLinks.resume ? (
-            <DropdownMenu modal={false}
+            <DropdownMenu
               modal={false}
               open={dropdownOpen}
               onOpenChange={setDropdownOpen}
