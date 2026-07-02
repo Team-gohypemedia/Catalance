@@ -228,7 +228,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                         "ml-1.5 sm:ml-2 inline-flex items-center justify-center rounded-full font-bold leading-none transition-colors duration-300",
                         "h-4 w-4 text-[10px] sm:h-5 sm:w-5 sm:text-[10px]",
                         isActive
-                          ? "bg-white/20 text-primary-foreground"
+                          ? "bg-white text-primary"
                           : "bg-muted text-foreground"
                       )}
                     >
