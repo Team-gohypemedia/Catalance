@@ -366,7 +366,7 @@ const ClientProjectsPage = () => {
               <section className="mt-12 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
-                    Active Projects
+                    {activeFilter === "completed" ? "Completed Projects" : "Active Projects"}
                   </h1>
                 </div>
 
