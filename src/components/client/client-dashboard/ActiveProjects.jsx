@@ -97,39 +97,64 @@ const ActiveProjects = memo(function ActiveProjects({
   }, [navigate, onOpenHireFreelancer, onOpenQuickProject]);
 
   const [selectedCategory, setSelectedCategory] = useState("All projects");
+  const [selectedFreelancer, setSelectedFreelancer] = useState("All freelancers");
 
   // Get categories and their item counts
   const categoriesWithCounts = useMemo(() => {
     const counts = {};
     items.forEach((project) => {
+      if (selectedFreelancer !== "All freelancers" && project.freelancerName !== selectedFreelancer) {
+        return;
+      }
       if (project.serviceType) {
         counts[project.serviceType] = (counts[project.serviceType] || 0) + 1;
       }
     });
     return counts;
-  }, [items]);
+  }, [items, selectedFreelancer]);
 
   const categoryOptions = useMemo(() => {
     return Object.keys(categoriesWithCounts);
   }, [categoriesWithCounts]);
 
+  // Get freelancers and their item counts
+  const freelancersWithCounts = useMemo(() => {
+    const counts = {};
+    items.forEach((project) => {
+      if (selectedCategory !== "All projects" && project.serviceType !== selectedCategory) {
+        return;
+      }
+      const name = project.freelancerName;
+      if (name && name !== "Assigned Freelancer") {
+        counts[name] = (counts[name] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [items, selectedCategory]);
+
+  const freelancerOptions = useMemo(() => {
+    return Object.keys(freelancersWithCounts);
+  }, [freelancersWithCounts]);
+
   // Filter project cards based on selected category
   const filteredItems = useMemo(() => {
-    if (selectedCategory === "All projects") {
-      return items;
+    let result = items;
+    if (selectedCategory !== "All projects") {
+      result = result.filter((project) => project.serviceType === selectedCategory);
     }
-    return items.filter(
-      (project) => project.serviceType === selectedCategory
-    );
-  }, [items, selectedCategory]);
+    if (selectedFreelancer !== "All freelancers") {
+      result = result.filter((project) => project.freelancerName === selectedFreelancer);
+    }
+    return result;
+  }, [items, selectedCategory, selectedFreelancer]);
 
   // Only show redirect cards when viewing "All projects"
   const visibleRedirectCards = useMemo(() => {
-    if (selectedCategory === "All projects") {
+    if (selectedCategory === "All projects" && selectedFreelancer === "All freelancers") {
       return projectRedirectCards;
     }
     return [];
-  }, [projectRedirectCards, selectedCategory]);
+  }, [projectRedirectCards, selectedCategory, selectedFreelancer]);
 
   const handlePayProject = useCallback(
     async (project) => {
@@ -325,6 +350,57 @@ const ActiveProjects = memo(function ActiveProjects({
                     <span className="pr-2">{category}</span>
                     <span className="text-[10px] sm:text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded-full shrink-0">
                       {categoriesWithCounts[category]}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Freelancer Dropdown Filter */}
+          {!resolvedIsLoading && items.length > 0 && freelancerOptions.length > 0 && (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer sm:text-sm"
+                >
+                  <Filter className="size-3.5" />
+                  <span className="max-w-[120px] truncate">
+                    {selectedFreelancer === "All freelancers"
+                      ? "All freelancers"
+                      : selectedFreelancer}
+                  </span>
+                  <ChevronDown className="size-3.5 opacity-80" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={6}
+                className="w-[280px] min-w-[var(--radix-dropdown-menu-trigger-width)] rounded-2xl bg-card p-1.5 border border-border shadow-md"
+              >
+                <DropdownMenuItem
+                  onClick={() => setSelectedFreelancer("All freelancers")}
+                  className={`flex justify-between items-center px-3 py-2.5 text-xs sm:text-sm rounded-xl cursor-pointer hover:bg-muted focus:bg-muted focus:text-foreground ${
+                    selectedFreelancer === "All freelancers" ? "bg-muted font-semibold" : ""
+                  }`}
+                >
+                  <span>All freelancers</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded-full">
+                    {items.filter((p) => selectedCategory === "All projects" || p.serviceType === selectedCategory).length}
+                  </span>
+                </DropdownMenuItem>
+                {freelancerOptions.map((freelancer) => (
+                  <DropdownMenuItem
+                    key={freelancer}
+                    onClick={() => setSelectedFreelancer(freelancer)}
+                    className={`flex justify-between items-center px-3 py-2.5 text-xs sm:text-sm rounded-xl cursor-pointer hover:bg-muted focus:bg-muted focus:text-foreground ${
+                      selectedFreelancer === freelancer ? "bg-muted font-semibold" : ""
+                    }`}
+                  >
+                    <span className="pr-2 truncate">{freelancer}</span>
+                    <span className="text-[10px] sm:text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded-full shrink-0">
+                      {freelancersWithCounts[freelancer]}
                     </span>
                   </DropdownMenuItem>
                 ))}
