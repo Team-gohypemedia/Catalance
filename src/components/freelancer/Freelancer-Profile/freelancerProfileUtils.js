@@ -558,6 +558,8 @@ export const normalizeWorkExperienceEntries = (entries = []) =>
       const period = String(entry.period || "").trim();
       const description = String(entry.description || "").trim();
       const location = String(entry.location || "").trim();
+      const country = String(entry.country || "").trim();
+      const state = String(entry.state || "").trim();
       const locationType = String(entry.locationType || "").trim();
       const employmentType = String(entry.employmentType || "").trim();
       const companyWebsite = normalizePresenceLink(
@@ -571,6 +573,8 @@ export const normalizeWorkExperienceEntries = (entries = []) =>
         !period &&
         !description &&
         !location &&
+        !country &&
+        !state &&
         !locationType &&
         !employmentType &&
         !companyWebsite &&
@@ -583,6 +587,8 @@ export const normalizeWorkExperienceEntries = (entries = []) =>
         period,
         description,
         location,
+        country,
+        state,
         locationType,
         employmentType,
         companyWebsite,
@@ -602,6 +608,8 @@ export const initialWorkForm = {
   endYear: "",
   isCurrentRole: true,
   location: "",
+  country: "",
+  state: "",
   locationType: "",
   employmentType: "",
   companyWebsite: "",

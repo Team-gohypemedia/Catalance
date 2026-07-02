@@ -99,10 +99,10 @@ const mergePortfolioProjectResponses = (...collections) => {
 
     const title = String(project.title || "").trim();
     const link = normalizeProjectLink(project.link || "");
-    const key = link
-      ? `link:${link.toLowerCase()}`
-      : title
-        ? `title:${title.toLowerCase()}`
+    const key = title
+      ? `title:${title.toLowerCase()}`
+      : link
+        ? `link:${link.toLowerCase()}`
         : "";
 
     if (!key) return;
@@ -358,9 +358,9 @@ export const extractPortfolioProjectsFromProfileDetails = (profileDetails = {}) 
 
       if (!title && !link && !description) return;
 
-      const key = link
-        ? `link:${link.toLowerCase()}`
-        : `title:${title.toLowerCase()}`;
+      const key = title
+        ? `title:${title.toLowerCase()}`
+        : `link:${link.toLowerCase()}`;
       const existing = projectMap.get(key);
       if (!existing) {
         projectMap.set(key, normalized);
