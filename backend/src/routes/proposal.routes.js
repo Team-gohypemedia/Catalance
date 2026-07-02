@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createProposal,
+  enrichMatchedProposalFreelancersWithAi,
   getProposal,
   matchProposalFreelancers,
   listProposals,
@@ -46,6 +47,21 @@ proposalRouter.post(
   requireAuth,
   validateResource(matchProposalFreelancersSchema),
   matchProposalFreelancers
+);
+
+const enrichMatchedProposalFreelancersWithAiSchema = z.object({
+  body: z.object({
+    proposal: z.any(),
+    proposalId: z.string().min(1).optional(),
+    candidates: z.array(z.any()).optional(),
+  }).passthrough(),
+});
+
+proposalRouter.post(
+  "/match-freelancers/cata-ai",
+  requireAuth,
+  validateResource(enrichMatchedProposalFreelancersWithAiSchema),
+  enrichMatchedProposalFreelancersWithAi,
 );
 
 proposalRouter.patch(

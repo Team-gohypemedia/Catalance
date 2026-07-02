@@ -2235,6 +2235,59 @@ const enrichRankingWithAiInsights = async ({
   }
 };
 
+export const enrichMatchedFreelancersWithAi = async (
+  proposal = {},
+  candidates = [],
+  {
+    useAiShortlist = true,
+    aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
+  } = {},
+) => {
+  const normalizedCandidates = Array.isArray(candidates)
+    ? candidates.filter((candidate) => Boolean(candidate?.id || candidate?.freelancerId))
+    : [];
+
+  if (normalizedCandidates.length === 0) {
+    return {
+      results: [],
+      meta: {
+        sourceType: "candidate_enrichment",
+        aiInsightsEnabled: true,
+        aiInsightsStatus: "skipped_no_candidates",
+        aiInsightsEvaluatedCount: 0,
+        aiInsightLimit: clampAiInsightLimit(aiInsightLimit),
+        aiShortlistEnabled: useAiShortlist,
+        aiShortlistApplied: false,
+        aiShortlistWindowSize: 0,
+        aiShortlistRankedCount: 0,
+        aiShortlistTopFreelancerId: null,
+      },
+    };
+  }
+
+  const ranking = await enrichRankingWithAiInsights({
+    ranking: {
+      results: normalizedCandidates,
+      meta: {
+        sourceType: "candidate_enrichment",
+      },
+    },
+    targetProfile: buildTargetProfileFromPayload(proposal),
+    includeAiInsights: true,
+    useAiShortlist,
+    aiInsightLimit,
+    logAiInTerminal: true,
+  });
+
+  return {
+    ...ranking,
+    meta: {
+      ...(ranking.meta || {}),
+      sourceType: "candidate_enrichment",
+    },
+  };
+};
+
 const loadCompletedProjectPool = async ({
   serviceKey = "",
   projectTypes = [],

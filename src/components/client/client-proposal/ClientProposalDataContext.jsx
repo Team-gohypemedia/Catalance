@@ -1,8 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
-import { fetchMatchedFreelancersForProposal } from "@/shared/lib/api-client";
+import {
+  fetchMatchedFreelancerCataAi,
+  fetchMatchedFreelancersForProposal,
+} from "@/shared/lib/api-client";
 import {
   getProposalSignature,
   getProposalStorageKeys,
@@ -27,6 +30,7 @@ import {
   buildUpdatedProposalContext,
   canUnsendProposalInvitee,
   deleteLocalDraftProposal,
+  extractMatchedFreelancersFromPayload,
   extractProjectRequiredSkills,
   getDisplayName,
   getProposalDraftGroupKey,
@@ -99,6 +103,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   const [freelancerSearch, setFreelancerSearch] = useState("");
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]);
   const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
+  const [isFreelancerAiLoading, setIsFreelancerAiLoading] = useState(false);
   const [freelancerFetchStatus, setFreelancerFetchStatus] = useState("idle");
   const [freelancerFetchError, setFreelancerFetchError] = useState("");
   const [selectedProposalForSend, setSelectedProposalForSend] = useState(null);
@@ -111,9 +116,11 @@ export const ClientProposalDataProvider = ({ children }) => {
     userId: null,
     queryKey: null,
     loaded: false,
+    aiLoaded: false,
     data: [],
   });
   const freelancerPoolPromiseRef = useRef(null);
+  const freelancerPoolAiPromiseRef = useRef(null);
 
   const deepLinkProjectId = searchParams.get("projectId");
   const deepLinkDraftId = searchParams.get("draftId");
@@ -490,7 +497,7 @@ export const ClientProposalDataProvider = ({ children }) => {
   const fetchFreelancerPool = useCallback(async (proposal = null) => {
     if (!user?.id) return [];
 
-    const queryKey = `${buildProposalMatchCacheKey(proposal)}::ai-shortlist-v1`;
+    const queryKey = `${buildProposalMatchCacheKey(proposal)}::match-pool-v2`;
 
     const currentCache = freelancerPoolCacheRef.current;
     if (
@@ -508,27 +515,15 @@ export const ClientProposalDataProvider = ({ children }) => {
       return freelancerPoolPromiseRef.current.promise;
     }
 
-    const promise = (async () => {
+      const promise = (async () => {
       if (!proposal) {
         return [];
       }
 
-      const matchedFreelancerPayload = await fetchMatchedFreelancersForProposal(
-        proposal,
-        {
-          includeAiInsights: true,
-          useAiShortlist: true,
-        },
+      const matchedFreelancerPayload = await fetchMatchedFreelancersForProposal(proposal);
+      const matchedFreelancers = extractMatchedFreelancersFromPayload(
+        matchedFreelancerPayload,
       );
-      const matchedFreelancers = Array.isArray(matchedFreelancerPayload)
-        ? matchedFreelancerPayload
-        : Array.isArray(matchedFreelancerPayload?.freelancers)
-          ? matchedFreelancerPayload.freelancers
-          : Array.isArray(matchedFreelancerPayload?.results)
-            ? matchedFreelancerPayload.results
-            : Array.isArray(matchedFreelancerPayload?.data)
-              ? matchedFreelancerPayload.data
-              : [];
       const uniqueById = Array.isArray(matchedFreelancers)
         ? matchedFreelancers.filter(
             (freelancer, index, collection) =>
@@ -560,6 +555,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         userId: user.id,
         queryKey,
         loaded: true,
+        aiLoaded: false,
         data: normalized,
       };
 
@@ -577,12 +573,82 @@ export const ClientProposalDataProvider = ({ children }) => {
     }
   }, [buildProposalMatchCacheKey, user?.id]);
 
+  const enrichFreelancerPoolWithCataAi = useCallback(
+    async (proposal = null, candidates = []) => {
+      if (!user?.id || !proposal) return [];
+
+      const normalizedCandidates = Array.isArray(candidates) ? candidates : [];
+      if (normalizedCandidates.length === 0) {
+        return [];
+      }
+
+      const queryKey = `${buildProposalMatchCacheKey(proposal)}::match-pool-v2`;
+      const currentCache = freelancerPoolCacheRef.current;
+      if (
+        currentCache.userId === user.id &&
+        currentCache.queryKey === queryKey &&
+        currentCache.loaded &&
+        currentCache.aiLoaded
+      ) {
+        return currentCache.data;
+      }
+
+      if (
+        freelancerPoolAiPromiseRef.current &&
+        freelancerPoolAiPromiseRef.current.queryKey === queryKey
+      ) {
+        return freelancerPoolAiPromiseRef.current.promise;
+      }
+
+      const promise = (async () => {
+        const cataAiPayload = await fetchMatchedFreelancerCataAi(
+          proposal,
+          normalizedCandidates,
+        );
+        const matchedFreelancers = extractMatchedFreelancersFromPayload(cataAiPayload);
+        const uniqueById = Array.isArray(matchedFreelancers)
+          ? matchedFreelancers.filter(
+              (freelancer, index, collection) =>
+                freelancer?.id &&
+                collection.findIndex((item) => item?.id === freelancer.id) === index,
+            )
+          : [];
+        const enrichedFreelancers = uniqueById.filter(
+          (freelancer) => freelancer?.id !== user.id && hasFreelancerRole(freelancer),
+        );
+        const nextData =
+          enrichedFreelancers.length > 0 ? enrichedFreelancers : normalizedCandidates;
+
+        freelancerPoolCacheRef.current = {
+          userId: user.id,
+          queryKey,
+          loaded: true,
+          aiLoaded: true,
+          data: nextData,
+        };
+
+        return nextData;
+      })();
+
+      freelancerPoolAiPromiseRef.current = { queryKey, promise };
+
+      try {
+        return await promise;
+      } finally {
+        if (freelancerPoolAiPromiseRef.current?.queryKey === queryKey) {
+          freelancerPoolAiPromiseRef.current = null;
+        }
+      }
+    },
+    [buildProposalMatchCacheKey, user?.id],
+  );
+
   const openFreelancerSelection = useCallback(
     (proposal) => {
       if (!proposal) return;
       setSelectedProposalForSend(proposal);
       const cache = freelancerPoolCacheRef.current;
-      const queryKey = buildProposalMatchCacheKey(proposal);
+      const queryKey = `${buildProposalMatchCacheKey(proposal)}::match-pool-v2`;
       const hasCachedPool =
         cache.userId === user?.id && cache.queryKey === queryKey && cache.loaded;
       const cachedFreelancers = hasCachedPool && Array.isArray(cache.data) ? cache.data : [];
@@ -730,28 +796,35 @@ export const ClientProposalDataProvider = ({ children }) => {
 
   useEffect(() => {
     freelancerPoolPromiseRef.current = null;
+    freelancerPoolAiPromiseRef.current = null;
 
     if (!user?.id) {
       freelancerPoolCacheRef.current = {
         userId: null,
+        queryKey: null,
         loaded: false,
+        aiLoaded: false,
         data: [],
       };
       setSuggestedFreelancers([]);
       setFreelancerFetchStatus("idle");
       setFreelancerFetchError("");
+      setIsFreelancerAiLoading(false);
       return;
     }
 
     if (freelancerPoolCacheRef.current.userId !== user.id) {
       freelancerPoolCacheRef.current = {
         userId: user.id,
+        queryKey: null,
         loaded: false,
+        aiLoaded: false,
         data: [],
       };
       setSuggestedFreelancers([]);
       setFreelancerFetchStatus("idle");
       setFreelancerFetchError("");
+      setIsFreelancerAiLoading(false);
     }
   }, [user?.id]);
 
@@ -760,6 +833,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       setFreelancerSearch("");
       setSuggestedFreelancers([]);
       setIsFreelancersLoading(false);
+      setIsFreelancerAiLoading(false);
       setFreelancerFetchStatus("idle");
       setFreelancerFetchError("");
       setSelectedProposalForSend(null);
@@ -772,27 +846,47 @@ export const ClientProposalDataProvider = ({ children }) => {
     if (!selectedProposalForSend) {
       setSuggestedFreelancers([]);
       setIsFreelancersLoading(false);
+      setIsFreelancerAiLoading(false);
       setFreelancerFetchStatus("error");
       setFreelancerFetchError("Proposal details are missing. Close the dialog and try again.");
       return;
     }
 
-    const queryKey = buildProposalMatchCacheKey(selectedProposalForSend);
+    const queryKey = `${buildProposalMatchCacheKey(selectedProposalForSend)}::match-pool-v2`;
     const cache = freelancerPoolCacheRef.current;
     const hasCachedPool =
       cache.userId === user?.id && cache.queryKey === queryKey && cache.loaded;
-
-    console.log("[DEBUG] FetchFreelancerPool Effect", {
-      hasCachedPool,
-      queryKey,
-      cacheQueryKey: cache.queryKey,
-      cacheLoaded: cache.loaded,
-      selectedProposalForSend: {
-        id: selectedProposalForSend?.id,
-        projectId: selectedProposalForSend?.projectId,
-        syncedProjectId: selectedProposalForSend?.syncedProjectId,
+    let isActive = true;
+    const runCataAiInBackground = async (freelancers) => {
+      if (!Array.isArray(freelancers) || freelancers.length === 0) {
+        if (isActive) {
+          setIsFreelancerAiLoading(false);
+        }
+        return;
       }
-    });
+
+      setIsFreelancerAiLoading(true);
+
+      try {
+        const aiEnrichedFreelancers = await enrichFreelancerPoolWithCataAi(
+          selectedProposalForSend,
+          freelancers,
+        );
+        if (!isActive) return;
+
+        if (Array.isArray(aiEnrichedFreelancers) && aiEnrichedFreelancers.length > 0) {
+          startTransition(() => {
+            setSuggestedFreelancers(aiEnrichedFreelancers);
+          });
+        }
+      } catch (error) {
+        console.warn("[Proposal Match][Cata AI] Background enrichment failed:", error);
+      } finally {
+        if (isActive) {
+          setIsFreelancerAiLoading(false);
+        }
+      }
+    };
 
     if (hasCachedPool) {
       const cachedFreelancers = Array.isArray(cache.data) ? cache.data : [];
@@ -800,13 +894,21 @@ export const ClientProposalDataProvider = ({ children }) => {
       setIsFreelancersLoading(false);
       setFreelancerFetchError("");
       setFreelancerFetchStatus(cachedFreelancers.length > 0 ? "success" : "empty");
-      return;
-    }
 
-    let isActive = true;
+      if (!cache.aiLoaded) {
+        void runCataAiInBackground(cachedFreelancers);
+      } else {
+        setIsFreelancerAiLoading(false);
+      }
+
+      return () => {
+        isActive = false;
+      };
+    }
 
     setSuggestedFreelancers([]);
     setIsFreelancersLoading(true);
+    setIsFreelancerAiLoading(false);
     setFreelancerFetchError("");
     setFreelancerFetchStatus("loading");
 
@@ -819,10 +921,11 @@ export const ClientProposalDataProvider = ({ children }) => {
           ? matchedFreelancers
           : [];
 
-      setSuggestedFreelancers(normalizedFreelancers);
-      setFreelancerFetchStatus(
-        normalizedFreelancers.length > 0 ? "success" : "empty",
-      );
+        setSuggestedFreelancers(normalizedFreelancers);
+        setFreelancerFetchStatus(
+          normalizedFreelancers.length > 0 ? "success" : "empty",
+        );
+        setIsFreelancersLoading(false);
 
         if (import.meta.env?.DEV) {
           console.info("[Proposal Match Popup][Fetched]", {
@@ -837,6 +940,8 @@ export const ClientProposalDataProvider = ({ children }) => {
               .filter(Boolean),
           });
         }
+
+        void runCataAiInBackground(normalizedFreelancers);
       } catch (error) {
         console.error("Failed to load matched freelancers:", error);
         if (!isActive) return;
@@ -846,6 +951,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         setFreelancerFetchError(
           error?.message || "Unable to load matched freelancers right now.",
         );
+        setIsFreelancerAiLoading(false);
       } finally {
         if (isActive) {
           setIsFreelancersLoading(false);
@@ -858,6 +964,7 @@ export const ClientProposalDataProvider = ({ children }) => {
     };
   }, [
     buildProposalMatchCacheKey,
+    enrichFreelancerPoolWithCataAi,
     fetchFreelancerPool,
     selectedProposalForSend,
     showFreelancerSelect,
@@ -2159,6 +2266,7 @@ export const ClientProposalDataProvider = ({ children }) => {
     () => ({
       freelancerSearch,
       isFreelancersLoading,
+      isFreelancerAiLoading,
       freelancerFetchStatus,
       freelancerFetchError,
       proposalForFreelancerSelection,
@@ -2176,6 +2284,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       freelancerSearch,
       freelancerSelectionData,
       isFreelancersLoading,
+      isFreelancerAiLoading,
       projectRequiredSkills,
       proposalForFreelancerSelection,
       sendingFreelancerId,
