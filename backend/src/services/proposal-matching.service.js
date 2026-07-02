@@ -1609,32 +1609,6 @@ const evaluateCandidateMatch = ({
     return includeDebug ? { candidate: null, debug } : null;
   }
 
-  if (
-    ["level_2_case_study", "level_3_profile_skills"].includes(levelKey) &&
-    hasTargetServiceSignal &&
-    serviceMatch &&
-    !hasConcreteOverlap
-  ) {
-    const debug = buildLevelDebugSummary({
-      levelKey,
-      passed: false,
-      failReason: "service_only_without_concrete_overlap",
-      freelancer,
-      sourceEvidence,
-      targetProfile,
-      sourceProfile,
-      activeProjectCount,
-      availability,
-      budgetCompatibility,
-      serviceMatch,
-      skills,
-      niches,
-      projectTypes,
-      textRelevance,
-    });
-    return includeDebug ? { candidate: null, debug } : null;
-  }
-
   const sourcePriorityScore =
     SOURCE_PRIORITY_SCORES[levelKey] || SOURCE_PRIORITY_SCORES.level_3_profile_skills;
   const ratingScore = scoreRatingSignal(freelancer?.rating);
