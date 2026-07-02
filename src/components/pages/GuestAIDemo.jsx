@@ -546,6 +546,42 @@ const removeStoredGuestSession = (sessionId = '') => {
     return nextSessions;
 };
 
+const normalizeStoredGuestSessionLookup = (value = '') =>
+    String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ');
+
+const findStoredGuestSessionById = (sessions = [], sessionId = '') => {
+    const targetSessionId = String(sessionId || '').trim();
+    if (!targetSessionId) return null;
+
+    return (Array.isArray(sessions) ? sessions : []).find(
+        (entry) => String(entry?.sessionId || '').trim() === targetSessionId
+    ) || null;
+};
+
+const doesStoredGuestSessionMatchService = (entry = {}, service = {}) => {
+    const serviceKeys = new Set(
+        [service?.slug, service?.id, service?.name]
+            .map((value) => normalizeStoredGuestSessionLookup(value))
+            .filter(Boolean)
+    );
+
+    if (serviceKeys.size === 0) return false;
+
+    const storedKeys = [entry?.serviceId, entry?.serviceName]
+        .map((value) => normalizeStoredGuestSessionLookup(value))
+        .filter(Boolean);
+
+    return storedKeys.some((key) => serviceKeys.has(key));
+};
+
+const findStoredGuestSessionByService = (sessions = [], service = {}) =>
+    (Array.isArray(sessions) ? sessions : []).find((entry) =>
+        doesStoredGuestSessionMatchService(entry, service)
+    ) || null;
+
 const truncateText = (value = '', limit = 120) => {
     const source = String(value || '').trim().replace(/\s+/g, ' ');
     if (!source) return '';
@@ -4423,6 +4459,44 @@ const GuestAIDemo = () => {
         setInputConfig({ type: 'text', options: [] });
     }, []);
 
+    const syncServiceRouteQuery = useCallback(({
+        serviceId = '',
+        chatId = '',
+    } = {}) => {
+        const nextParams = new URLSearchParams(location.search);
+        const normalizedServiceId = String(serviceId || '').trim();
+        const normalizedChatId = String(chatId || '').trim();
+
+        if (normalizedServiceId) {
+            nextParams.set('service', normalizedServiceId);
+        } else {
+            nextParams.delete('service');
+        }
+
+        if (normalizedChatId) {
+            nextParams.set('chat', normalizedChatId);
+        } else {
+            nextParams.delete('chat');
+        }
+
+        nextParams.delete('chatId');
+        nextParams.delete('sessionId');
+
+        const currentSearch = location.search.startsWith('?')
+            ? location.search.slice(1)
+            : location.search;
+        const nextSearch = nextParams.toString();
+
+        if (nextSearch === currentSearch) {
+            return;
+        }
+
+        navigate(
+            `${location.pathname}${nextSearch ? `?${nextSearch}` : ''}`,
+            { replace: true, state: location.state },
+        );
+    }, [location.pathname, location.search, location.state, navigate]);
+
     const resetAgencyFlow = useCallback(() => {
         updateAgencyFlowState(createEmptyAgencyFlowState());
     }, [updateAgencyFlowState]);
@@ -4441,11 +4515,8 @@ const GuestAIDemo = () => {
     const startServiceConversation = useCallback(async (service, options = {}) => {
         if (!service) return null;
 
-        const currentParams = new URLSearchParams(window.location.search);
-        if (currentParams.get('service') !== (service.slug || service.id)) {
-            currentParams.set('service', service.slug || service.id);
-            navigate(`${window.location.pathname}?${currentParams.toString()}`, { replace: true, state: window.location.state });
-        }
+        const routeServiceId = String(service.slug || service.id || '').trim();
+        syncServiceRouteQuery({ serviceId: routeServiceId, chatId: '' });
 
         const preserveExistingMessages = Boolean(options.preserveExistingMessages);
         const baseMessages = Array.isArray(options.baseMessages)
@@ -4504,6 +4575,10 @@ const GuestAIDemo = () => {
             }
 
             setSessionId(data.sessionId);
+            syncServiceRouteQuery({
+                serviceId: routeServiceId,
+                chatId: data.sessionId,
+            });
 
             const nextSessionHistory = Array.isArray(data.history) && data.history.length > 0
                 ? mergeMessagesWithThinkingMeta(
@@ -4560,11 +4635,11 @@ const GuestAIDemo = () => {
         }
     }, [
         expandSidebar,
+        syncServiceRouteQuery,
         replaceMessages,
         resetChatComposerState,
         updateAgencyFlowState,
         userPrefillName,
-        navigate,
     ]);
 
     const startAgencyFlow = useCallback(async (selectedServicesOverride = null) => {
@@ -4622,11 +4697,31 @@ const GuestAIDemo = () => {
 
     // Auto-select service from URL query parameter or location state
     useEffect(() => {
-        const queryParams = new URLSearchParams(window.location.search);
-        const queryService = queryParams.get('service');
+        const queryParams = new URLSearchParams(location.search);
+        const queryService = String(queryParams.get('service') || '').trim();
+        const queryChatId = String(
+            queryParams.get('chat')
+            || queryParams.get('chatId')
+            || queryParams.get('sessionId')
+            || ''
+        ).trim();
         const stateHasChat = location.state?.openChat;
+        const storedSessions = readStoredGuestSessions();
 
-        if (!queryService && !stateHasChat && selectedService) {
+        if (queryChatId) {
+            const storedChat = findStoredGuestSessionById(storedSessions, queryChatId);
+            const isCurrentQueryChat =
+                storedChat
+                && sessionId === queryChatId
+                && (!selectedService || doesStoredGuestSessionMatchService(storedChat, selectedService));
+
+            if (storedChat && !isCurrentQueryChat && loadingHistoryId !== queryChatId) {
+                void handleLoadPreviousChat(storedChat);
+                return;
+            }
+        }
+
+        if (!queryService && !queryChatId && !stateHasChat && selectedService) {
             dismissedAutoHelperKeysRef.current = new Set();
             setSelectedService(null);
             setSessionId(null);
@@ -4637,8 +4732,12 @@ const GuestAIDemo = () => {
             resetBriefingState();
             return;
         }
-        
-        if (services.length > 0 && !selectedService && (queryService || stateHasChat)) {
+
+        if (!services.length || loading || loadingHistoryId) {
+            return;
+        }
+
+        if (queryService || stateHasChat) {
             const requestedId = queryService || location.state?.serviceId;
             const requestedTitle = location.state?.serviceTitle;
             
@@ -4698,6 +4797,29 @@ const GuestAIDemo = () => {
             );
 
             if (matchedService) {
+                const matchedServiceId = getServiceIdentifier(matchedService);
+                const currentServiceId = getServiceIdentifier(selectedService);
+
+                if (queryChatId && sessionId === queryChatId && matchedServiceId === currentServiceId) {
+                    return;
+                }
+
+                if (!queryChatId) {
+                    const storedChatForService = findStoredGuestSessionByService(storedSessions, matchedService);
+                    if (
+                        storedChatForService
+                        && storedChatForService.sessionId
+                        && storedChatForService.sessionId !== sessionId
+                    ) {
+                        void handleLoadPreviousChat(storedChatForService);
+                        return;
+                    }
+                }
+
+                if (selectedService && currentServiceId === matchedServiceId && sessionId) {
+                    return;
+                }
+
                 if (stateHasChat) {
                     const state = { ...location.state };
                     delete state.openChat;
@@ -4719,18 +4841,21 @@ const GuestAIDemo = () => {
             }
         }
     }, [
-        services, 
-        location, 
-        navigate, 
-        selectedService, 
-        startServiceConversation, 
-        replaceMessages, 
-        resetChatComposerState, 
-        resetAgencyFlow, 
-        resetBriefingState
+        loading,
+        loadingHistoryId,
+        location,
+        navigate,
+        replaceMessages,
+        resetAgencyFlow,
+        resetBriefingState,
+        resetChatComposerState,
+        selectedService,
+        services,
+        sessionId,
+        startServiceConversation,
     ]);
 
-    const handleLoadPreviousChat = async (chatMeta) => {
+    const handleLoadPreviousChat = useCallback(async (chatMeta) => {
         if (!chatMeta?.sessionId) return;
         dismissedAutoHelperKeysRef.current = new Set();
         expandSidebar();
@@ -4755,6 +4880,10 @@ const GuestAIDemo = () => {
         setLoadingHistoryId(chatMeta.sessionId);
         resetChatComposerState();
         replaceMessages([]);
+        syncServiceRouteQuery({
+            serviceId: resolvedService.slug || resolvedService.id || chatMeta.serviceId || '',
+            chatId: chatMeta.sessionId,
+        });
 
         try {
             const response = await request(`/guest/history/${chatMeta.sessionId}`, {
@@ -4792,7 +4921,14 @@ const GuestAIDemo = () => {
             setLoadingHistoryId(null);
             setLoading(false);
         }
-    };
+    }, [
+        expandSidebar,
+        replaceMessages,
+        resetAgencyFlow,
+        resetChatComposerState,
+        services,
+        syncServiceRouteQuery,
+    ]);
 
     const handleServiceSelect = async (service) => {
         setServiceSelectionMode(SERVICE_SELECTION_MODES.FREELANCER);
@@ -5454,12 +5590,7 @@ const GuestAIDemo = () => {
     };
 
     const handleBackToServices = () => {
-        const currentParams = new URLSearchParams(window.location.search);
-        if (currentParams.has('service')) {
-            currentParams.delete('service');
-            const search = currentParams.toString();
-            navigate(`${window.location.pathname}${search ? '?' + search : ''}`, { replace: true, state: window.location.state });
-        }
+        syncServiceRouteQuery({ serviceId: '', chatId: '' });
         dismissedAutoHelperKeysRef.current = new Set();
         setSelectedService(null);
         setSessionId(null);
