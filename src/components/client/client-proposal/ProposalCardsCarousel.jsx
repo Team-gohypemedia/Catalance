@@ -49,6 +49,7 @@ const ClientProposalCarouselDots = memo(function ClientProposalCarouselDots({
 });
 
 const ProposalCardsCarousel = ({
+  title,
   proposals,
   showCreateCard = false,
   onDelete,
@@ -101,7 +102,9 @@ const ProposalCardsCarousel = ({
 
   if (!shouldUseProposalCarousel) {
     return (
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+      <div className="w-full">
+        {title && <h2 className="mb-4 text-xl font-bold tracking-tight text-foreground sm:text-2xl">{title}</h2>}
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
         {proposals.map((proposal) => (
           <ProposalRowCard
             key={proposal.id}
@@ -129,6 +132,7 @@ const ProposalCardsCarousel = ({
             </div>
           </div>
         )}
+        </div>
       </div>
     );
   }
@@ -151,30 +155,41 @@ const ProposalCardsCarousel = ({
           containScroll: "trimSnaps",
         }}
       >
-        {shouldShowProposalCarouselControls ? (
-          <div className="mb-5 hidden justify-end gap-2 md:flex">
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className={proposalCarouselDesktopControlClassName}
-              onClick={() => proposalCarouselApi?.scrollPrev()}
-              disabled={!canGoToPreviousProposal}
-              aria-label="Show previous proposal"
-            >
-              <ChevronLeft className="size-5" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className={proposalCarouselDesktopControlClassName}
-              onClick={() => proposalCarouselApi?.scrollNext()}
-              disabled={!canGoToNextProposal}
-              aria-label="Show next proposal"
-            >
-              <ChevronRight className="size-5" />
-            </Button>
+        {(title || shouldShowProposalCarouselControls) ? (
+          <div className="mb-3 flex items-center justify-between gap-4">
+            {title ? (
+              <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                {title}
+              </h2>
+            ) : (
+              <div />
+            )}
+            {shouldShowProposalCarouselControls && (
+              <div className="hidden justify-end gap-2 md:flex">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className={proposalCarouselDesktopControlClassName}
+                  onClick={() => proposalCarouselApi?.scrollPrev()}
+                  disabled={!canGoToPreviousProposal}
+                  aria-label="Show previous proposal"
+                >
+                  <ChevronLeft className="size-5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className={proposalCarouselDesktopControlClassName}
+                  onClick={() => proposalCarouselApi?.scrollNext()}
+                  disabled={!canGoToNextProposal}
+                  aria-label="Show next proposal"
+                >
+                  <ChevronRight className="size-5" />
+                </Button>
+              </div>
+            )}
           </div>
         ) : null}
 
