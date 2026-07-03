@@ -243,14 +243,26 @@ const ClientProjectsPage = () => {
     [activeFilter, activeServiceFilter, activeFreelancerFilter, projectCards],
   );
 
+  const hasDropdownFilterApplied = activeServiceFilter !== "all" || activeFreelancerFilter !== "all";
   const carouselProjectCards = useMemo(
-    () => (visibleProjectCards.length > 0 ? [...visibleProjectCards, ...projectRedirectCards] : []),
-    [projectRedirectCards, visibleProjectCards],
+    () => {
+      if (visibleProjectCards.length === 0) return [];
+      return hasDropdownFilterApplied ? visibleProjectCards : [...visibleProjectCards, ...projectRedirectCards];
+    },
+    [hasDropdownFilterApplied, projectRedirectCards, visibleProjectCards],
   );
 
   const shouldUseProjectCarousel = isMobile
     ? carouselProjectCards.length > 1
     : carouselProjectCards.length > 3;
+
+  useEffect(() => {
+    setActiveProjectSnap(0);
+    if (projectCarouselApi) {
+      projectCarouselApi.scrollTo(0, true);
+      projectCarouselApi.reInit();
+    }
+  }, [activeFilter, activeFreelancerFilter, activeServiceFilter, projectCarouselApi]);
 
   useEffect(() => {
     if (!projectCarouselApi || !shouldUseProjectCarousel) {
@@ -647,3 +659,4 @@ const ClientProjectsPage = () => {
     };
 
     export default ClientProjectsPage;
+
