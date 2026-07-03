@@ -204,30 +204,30 @@ const NotificationSheetController = ({ notificationTo = "/client/project" }) => 
         className="w-[min(92vw,23rem)] border-l border-border bg-background p-0 text-foreground shadow-[0_36px_120px_-48px_rgba(0,0,0,1)] sm:max-w-[23rem]"
       >
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          <SheetHeader className="border-b border-border px-4 py-3 pr-12">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+          <SheetHeader className="border-b border-border p-4 pr-12">
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between">
                 <SheetTitle className="text-sm font-semibold text-foreground">Notifications</SheetTitle>
-                <SheetDescription className="mt-1 text-xs text-muted-foreground truncate block w-full">
-                  Stay updated with project, proposal, and message activity.
-                </SheetDescription>
+                {unreadCount > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto shrink-0 p-0 text-xs font-medium text-primary transition hover:bg-transparent hover:text-primary/80 whitespace-nowrap"
+                    onClick={() => {
+                      void markAllAsRead();
+                    }}
+                  >
+                    Mark all as read
+                  </Button>
+                ) : null}
               </div>
-              {unreadCount > 0 ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto shrink-0 p-0 text-xs font-medium text-primary transition hover:bg-transparent hover:text-primary/80 whitespace-nowrap"
-                  onClick={() => {
-                    void markAllAsRead();
-                  }}
-                >
-                  Mark all as read
-                </Button>
-              ) : null}
+              <SheetDescription className="text-xs text-muted-foreground truncate w-full">
+                Stay updated with project, proposal, and message activity.
+              </SheetDescription>
             </div>
           </SheetHeader>
-          <ScrollArea className="flex-1 min-h-0">
+          <ScrollArea className="flex-1 min-h-0 [&_[data-slot=scroll-area-scrollbar]]:hidden">
             {notifications.length === 0 ? (
               <div className="flex h-full min-h-52 flex-col items-center justify-center gap-2 px-6 text-center text-muted-foreground">
                 <Bell className="h-8 w-8 opacity-40" />
