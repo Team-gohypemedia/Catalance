@@ -546,7 +546,6 @@ const Proposals = memo(function Proposals({
   draftProposalRows,
   onOpenQuickProject,
   className = "",
-  isWide = false,
 }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -909,17 +908,13 @@ const Proposals = memo(function Proposals({
   const totalVisibleDraftCards = items.length + draftRedirectCards.length;
   const shouldUseDraftProposalCarousel = isMobile
     ? totalVisibleDraftCards > 1
-    : isWide
-      ? totalVisibleDraftCards > 3
-      : totalVisibleDraftCards > 2;
+    : totalVisibleDraftCards > 2;
 
-  const carouselItemClassName = isWide
-    ? "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-2.5rem)/3)] 2xl:basis-[calc((100%-2.5rem)/3)]"
-    : "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-2.5rem)/3)]";
+  const carouselItemClassName =
+    "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-1.25rem)/2)]";
 
-  const gridClassName = isWide
-    ? "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 lg:gap-6 xl:gap-7"
-    : "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 lg:gap-6 xl:gap-7";
+  const gridClassName =
+    "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 lg:gap-6 xl:gap-7";
 
   const measureDraftCardHeights = useCallback(() => {
     const heights = Object.values(draftCardRefs.current)
@@ -1439,3 +1434,5 @@ const Proposals = memo(function Proposals({
 });
 
 export default Proposals;
+
+
