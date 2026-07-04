@@ -1227,17 +1227,32 @@ const Proposals = memo(function Proposals({
                 {items.length}
               </span>
             </div>
+
+            {shouldUseDraftProposalCarousel ? (
+              <div className="sm:hidden shrink-0">
+                <ProjectCarouselControls
+                  onPrevious={() => draftProposalCarouselApi?.scrollPrev()}
+                  onNext={() => draftProposalCarouselApi?.scrollNext()}
+                  canGoPrevious={canGoToPreviousDraftProposal}
+                  canGoNext={canGoToNextDraftProposal}
+                  previousLabel="Show previous draft proposal"
+                  nextLabel="Show next draft proposal"
+                />
+              </div>
+            ) : null}
           </div>
 
           {shouldUseDraftProposalCarousel ? (
-            <ProjectCarouselControls
-              onPrevious={() => draftProposalCarouselApi?.scrollPrev()}
-              onNext={() => draftProposalCarouselApi?.scrollNext()}
-              canGoPrevious={canGoToPreviousDraftProposal}
-              canGoNext={canGoToNextDraftProposal}
-              previousLabel="Show previous draft proposal"
-              nextLabel="Show next draft proposal"
-            />
+            <div className="hidden sm:block">
+              <ProjectCarouselControls
+                onPrevious={() => draftProposalCarouselApi?.scrollPrev()}
+                onNext={() => draftProposalCarouselApi?.scrollNext()}
+                canGoPrevious={canGoToPreviousDraftProposal}
+                canGoNext={canGoToNextDraftProposal}
+                previousLabel="Show previous draft proposal"
+                nextLabel="Show next draft proposal"
+              />
+            </div>
           ) : null}
         </div>
 

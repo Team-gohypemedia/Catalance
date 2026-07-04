@@ -303,6 +303,19 @@ const ActiveProjects = memo(function ActiveProjects({
               <span className="relative block size-[6px] rounded-full bg-[#10b981]" />
             </span>
           </div>
+
+          {!resolvedIsLoading && shouldUseProjectCarousel ? (
+            <div className="sm:hidden shrink-0">
+              <ProjectCarouselControls
+                onPrevious={() => projectCarouselApi?.scrollPrev()}
+                onNext={() => projectCarouselApi?.scrollNext()}
+                canGoPrevious={canGoToPreviousProjects}
+                canGoNext={canGoToNextProjects}
+                previousLabel="Show previous active projects"
+                nextLabel="Show next active projects"
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto">
@@ -312,21 +325,21 @@ const ActiveProjects = memo(function ActiveProjects({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer sm:text-sm"
+                  className="flex items-center gap-1 sm:gap-2 rounded-full bg-primary px-2.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs md:text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shrink-0"
                 >
-                  <Filter className="size-3.5" />
-                  <span>
+                  <Filter className="size-3 sm:size-3.5" />
+                  <span className="max-w-[90px] xs:max-w-[110px] sm:max-w-[180px] truncate">
                     {selectedCategory === "All projects"
                       ? "All projects"
                       : selectedCategory}
                   </span>
-                  <ChevronDown className="size-3.5 opacity-80" />
+                  <ChevronDown className="size-3 sm:size-3.5 opacity-80" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 sideOffset={6}
-                className="w-[280px] min-w-[var(--radix-dropdown-menu-trigger-width)] rounded-2xl bg-card p-1.5 border border-border shadow-md"
+                className="w-52 min-w-[var(--radix-dropdown-menu-trigger-width)] rounded-2xl bg-card p-1.5 border border-border shadow-md"
               >
                 <DropdownMenuItem
                   onClick={() => setSelectedCategory("All projects")}
@@ -347,7 +360,7 @@ const ActiveProjects = memo(function ActiveProjects({
                       selectedCategory === category ? "bg-muted font-semibold" : ""
                     }`}
                   >
-                    <span className="pr-2">{category}</span>
+                    <span className="pr-2 truncate">{category}</span>
                     <span className="text-[10px] sm:text-xs text-muted-foreground bg-primary/5 px-2 py-0.5 rounded-full shrink-0">
                       {categoriesWithCounts[category]}
                     </span>
@@ -363,21 +376,21 @@ const ActiveProjects = memo(function ActiveProjects({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer sm:text-sm"
+                  className="flex items-center gap-1 sm:gap-2 rounded-full bg-primary px-2.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs md:text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shrink-0"
                 >
-                  <Filter className="size-3.5" />
-                  <span className="max-w-[120px] truncate">
+                  <Filter className="size-3 sm:size-3.5" />
+                  <span className="max-w-[90px] xs:max-w-[110px] sm:max-w-[180px] truncate">
                     {selectedFreelancer === "All freelancers"
                       ? "All freelancers"
                       : selectedFreelancer}
                   </span>
-                  <ChevronDown className="size-3.5 opacity-80" />
+                  <ChevronDown className="size-3 sm:size-3.5 opacity-80" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 sideOffset={6}
-                className="w-[280px] min-w-[var(--radix-dropdown-menu-trigger-width)] rounded-2xl bg-card p-1.5 border border-border shadow-md"
+                className="w-52 min-w-[var(--radix-dropdown-menu-trigger-width)] rounded-2xl bg-card p-1.5 border border-border shadow-md"
               >
                 <DropdownMenuItem
                   onClick={() => setSelectedFreelancer("All freelancers")}
@@ -409,14 +422,16 @@ const ActiveProjects = memo(function ActiveProjects({
           )}
 
           {!resolvedIsLoading && shouldUseProjectCarousel ? (
-            <ProjectCarouselControls
-              onPrevious={() => projectCarouselApi?.scrollPrev()}
-              onNext={() => projectCarouselApi?.scrollNext()}
-              canGoPrevious={canGoToPreviousProjects}
-              canGoNext={canGoToNextProjects}
-              previousLabel="Show previous active projects"
-              nextLabel="Show next active projects"
-            />
+            <div className="hidden sm:block">
+              <ProjectCarouselControls
+                onPrevious={() => projectCarouselApi?.scrollPrev()}
+                onNext={() => projectCarouselApi?.scrollNext()}
+                canGoPrevious={canGoToPreviousProjects}
+                canGoNext={canGoToNextProjects}
+                previousLabel="Show previous active projects"
+                nextLabel="Show next active projects"
+              />
+            </div>
           ) : null}
         </div>
       </div>
