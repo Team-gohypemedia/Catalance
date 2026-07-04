@@ -1,6 +1,5 @@
 import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
-import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import format from "date-fns/format";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -153,10 +152,6 @@ const ClientProjectDetailDialogs = ({
                 <span className="mb-1 text-sm font-semibold text-foreground">
                   {activeProjectManager.fullName}
                 </span>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Mail className="h-3 w-3" />
-                  <span>{activeProjectManager.email}</span>
-                </div>
                 {activeProjectManager.phone ? (
                   <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                     <Phone className="h-3 w-3" />
@@ -176,7 +171,7 @@ const ClientProjectDetailDialogs = ({
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Request type
             </p>
-            <div className="grid grid-cols-2 gap-2 rounded-xl border border-border/60 bg-background/40 p-1">
+            <div className="grid grid-cols-1 gap-2 rounded-xl border border-border/60 bg-background/40 p-1">
               <button
                 type="button"
                 onClick={() =>
@@ -194,27 +189,6 @@ const ClientProjectDetailDialogs = ({
                 </span>
                 <span className="mt-1 block text-xs">
                   Ask for help, raise an issue, or request PM support.
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  handleCatalystRequestTypeChange(
-                    catalystRequestTypes.FREELANCER_CHANGE,
-                  )
-                }
-                className={cn(
-                  "rounded-lg px-3 py-2 text-left transition-colors",
-                  isFreelancerChangeRequest
-                    ? "bg-accent text-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                )}
-              >
-                <span className="block text-sm font-semibold">
-                  Change freelancer
-                </span>
-                <span className="mt-1 block text-xs">
-                  Request PM review for a freelancer replacement.
                 </span>
               </button>
             </div>

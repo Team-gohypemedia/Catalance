@@ -334,7 +334,7 @@ const ProfileHeroCard = ({
                 </span>
               ) : (
                 <span className="flex items-center ml-1.5 text-muted-foreground">
-                  <Link className="h-3 w-3 mr-1.5 opacity-80" />
+                  <Link className="h-3 w-3 mr-1.5 text-primary" />
                   Links not set
                 </span>
               )}

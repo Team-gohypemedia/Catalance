@@ -20,7 +20,6 @@ import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Info from "lucide-react/dist/esm/icons/info";
 import Headset from "lucide-react/dist/esm/icons/headset";
-import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -752,8 +751,8 @@ const ProjectDashboard = () => {
   );
 
   const openCatalystDialog = useCallback(
-    (nextRequestType = CATALYST_REQUEST_TYPES.GENERAL) => {
-      resetCatalystDialog(nextRequestType);
+    () => {
+      resetCatalystDialog(CATALYST_REQUEST_TYPES.GENERAL);
       setReportOpen(true);
     },
     [resetCatalystDialog]
@@ -2951,12 +2950,4 @@ const ProjectDashboard = () => {
 const ClientProjectDetailPage = () => <ProjectDashboard />;
 
 export default ClientProjectDetailPage;
-
-
-
-
-
-
-
-
 
