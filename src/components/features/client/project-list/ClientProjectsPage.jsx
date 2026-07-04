@@ -7,12 +7,14 @@ import Plus from "lucide-react/dist/esm/icons/plus";
 import Users from "lucide-react/dist/esm/icons/users";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import Check from "lucide-react/dist/esm/icons/check";
+import Filter from "lucide-react/dist/esm/icons/filter";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { ProjectCarouselControls } from "@/components/client/client-dashboard/shared.jsx";
@@ -130,6 +132,7 @@ const ClientProjectsPage = () => {
   const [activeFilter, setActiveFilter] = useState("ongoing");
   const [mobileProjectCardHeight, setMobileProjectCardHeight] = useState(0);
   const [activeServiceFilter, setActiveServiceFilter] = useState("all");
+  const [activeFreelancerFilter, setActiveFreelancerFilter] = useState("all");
 
   const projectCardRefs = useRef({});
   const hasUserSelectedFilterRef = useRef(false);
@@ -188,15 +191,41 @@ const ClientProjectsPage = () => {
     [handleBrowseMarketplace, handleStartProject],
   );
 
-  const availableServices = useMemo(() => {
-    const services = new Set();
+  const servicesWithCounts = useMemo(() => {
+    const counts = {};
     projectCards.forEach((project) => {
+      const name = project.freelancerName;
+      if (activeFreelancerFilter !== "all" && name !== activeFreelancerFilter) {
+        return;
+      }
       if (project.serviceType) {
-        services.add(project.serviceType);
+        counts[project.serviceType] = (counts[project.serviceType] || 0) + 1;
       }
     });
-    return ["all", ...Array.from(services)];
-  }, [projectCards]);
+    return counts;
+  }, [projectCards, activeFreelancerFilter]);
+
+  const availableServices = useMemo(() => {
+    return ["all", ...Object.keys(servicesWithCounts)];
+  }, [servicesWithCounts]);
+
+  const freelancersWithCounts = useMemo(() => {
+    const counts = {};
+    projectCards.forEach((project) => {
+      if (activeServiceFilter !== "all" && project.serviceType !== activeServiceFilter) {
+        return;
+      }
+      const name = project.freelancerName;
+      if (name && name !== "Assigned Freelancer") {
+        counts[name] = (counts[name] || 0) + 1;
+      }
+    });
+    return counts;
+  }, [projectCards, activeServiceFilter]);
+
+  const availableFreelancers = useMemo(() => {
+    return ["all", ...Object.keys(freelancersWithCounts)];
+  }, [freelancersWithCounts]);
 
   const visibleProjectCards = useMemo(
     () =>
@@ -207,19 +236,33 @@ const ClientProjectsPage = () => {
             : project.statusMeta.label !== "Completed";
         const matchesService =
           activeServiceFilter === "all" ? true : project.serviceType === activeServiceFilter;
-        return matchesStatus && matchesService;
+        const matchesFreelancer =
+          activeFreelancerFilter === "all" ? true : project.freelancerName === activeFreelancerFilter;
+        return matchesStatus && matchesService && matchesFreelancer;
       }),
-    [activeFilter, activeServiceFilter, projectCards],
+    [activeFilter, activeServiceFilter, activeFreelancerFilter, projectCards],
   );
 
+  const hasDropdownFilterApplied = activeServiceFilter !== "all" || activeFreelancerFilter !== "all";
   const carouselProjectCards = useMemo(
-    () => (visibleProjectCards.length > 0 ? [...visibleProjectCards, ...projectRedirectCards] : []),
-    [projectRedirectCards, visibleProjectCards],
+    () => {
+      if (visibleProjectCards.length === 0) return [];
+      return hasDropdownFilterApplied ? visibleProjectCards : [...visibleProjectCards, ...projectRedirectCards];
+    },
+    [hasDropdownFilterApplied, projectRedirectCards, visibleProjectCards],
   );
 
   const shouldUseProjectCarousel = isMobile
     ? carouselProjectCards.length > 1
     : carouselProjectCards.length > 3;
+
+  useEffect(() => {
+    setActiveProjectSnap(0);
+    if (projectCarouselApi) {
+      projectCarouselApi.scrollTo(0, true);
+      projectCarouselApi.reInit();
+    }
+  }, [activeFilter, activeFreelancerFilter, activeServiceFilter, projectCarouselApi]);
 
   useEffect(() => {
     if (!projectCarouselApi || !shouldUseProjectCarousel) {
@@ -335,7 +378,7 @@ const ClientProjectsPage = () => {
               <section className="mt-12 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
                   <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
-                    Active Projects
+                    {activeFilter === "completed" ? "Completed Projects" : "Active Projects"}
                   </h1>
                 </div>
 
@@ -363,6 +406,7 @@ const ClientProjectsPage = () => {
                       );
                     })}
                   </div>
+<<<<<<< HEAD
                   {availableServices.length > 1 && (
                     <Select value={activeServiceFilter} onValueChange={setActiveServiceFilter} modal={false}>
                       <SelectTrigger className="w-full sm:w-[160px] h-10 sm:h-11 rounded-[24px] border-border bg-background font-medium">
@@ -385,28 +429,124 @@ const ClientProjectsPage = () => {
                         })}
                       </SelectContent>
                     </Select>
+=======
+                  <div className="flex flex-col sm:flex-row w-full sm:w-auto items-end sm:items-center justify-end gap-3">
+                    {availableServices.length > 1 && (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center justify-between w-full sm:w-auto sm:min-w-[180px] h-10 sm:h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shadow-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Filter className="size-4 shrink-0" />
+                              <span className="truncate pr-2">
+                                {activeServiceFilter === "all" ? "All Services" : activeServiceFilter.split(/[_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                              </span>
+                            </div>
+                            <ChevronDown className="size-4 opacity-80 shrink-0" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[280px] sm:w-auto sm:min-w-[200px] sm:max-w-[400px] max-h-[300px] overflow-y-auto rounded-2xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          {availableServices.map((service) => {
+                            const count = service === "all"
+                              ? Object.values(servicesWithCounts).reduce((a, b) => a + b, 0)
+                              : servicesWithCounts[service];
+
+                            const baseLabel = service === "all" 
+                              ? "All Services" 
+                              : service
+                                  .split(/[_]/)
+                                  .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                  .join(" ");
+                            
+                            const displayLabel = `${baseLabel} (${count})`;
+                                  
+                            return (
+                              <DropdownMenuItem 
+                                key={service} 
+                                onClick={() => setActiveServiceFilter(service)}
+                                className={cn("cursor-pointer rounded-xl flex items-center justify-between px-3 py-2 text-sm", activeServiceFilter === service && "bg-muted font-medium")}
+                              >
+                                <span className="pr-2">{displayLabel}</span>
+                                {activeServiceFilter === service && <Check className="size-4 opacity-50 shrink-0 ml-2" />}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {availableFreelancers.length > 1 && (
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center justify-between w-full sm:w-auto sm:min-w-[180px] h-10 sm:h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shadow-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Filter className="size-4 shrink-0" />
+                              <span className="truncate pr-2">
+                                {activeFreelancerFilter === "all" ? "All Freelancers" : activeFreelancerFilter}
+                              </span>
+                            </div>
+                            <ChevronDown className="size-4 opacity-80 shrink-0" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[280px] sm:w-auto sm:min-w-[200px] sm:max-w-[400px] max-h-[300px] overflow-y-auto rounded-2xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          {availableFreelancers.map((freelancer) => {
+                            const count = freelancer === "all"
+                              ? Object.values(freelancersWithCounts).reduce((a, b) => a + b, 0)
+                              : freelancersWithCounts[freelancer];
+
+                            const baseLabel = freelancer === "all" ? "All Freelancers" : freelancer;
+                            const displayLabel = `${baseLabel} (${count})`;
+
+                            return (
+                              <DropdownMenuItem 
+                                key={freelancer} 
+                                onClick={() => setActiveFreelancerFilter(freelancer)}
+                                className={cn("cursor-pointer rounded-xl flex items-center justify-between px-3 py-2 text-sm", activeFreelancerFilter === freelancer && "bg-muted font-medium")}
+                              >
+                                <span className="pr-2">{displayLabel}</span>
+                                {activeFreelancerFilter === freelancer && <Check className="size-4 opacity-50 shrink-0 ml-2" />}
+                              </DropdownMenuItem>
+                            );
+                          })}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {!isLoading && shouldUseProjectCarousel ? (
+                      <div className="hidden sm:flex items-center">
+                        <ProjectCarouselControls
+                          onPrevious={() => projectCarouselApi?.scrollPrev()}
+                          onNext={() => projectCarouselApi?.scrollNext()}
+                          canGoPrevious={canGoToPreviousProject}
+                          canGoNext={canGoToNextProject}
+                          previousLabel={`Show previous ${
+                            activeFilter === "completed" ? "completed" : "ongoing"
+                          } projects`}
+                          nextLabel={`Show next ${
+                            activeFilter === "completed" ? "completed" : "ongoing"
+                          } projects`}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                  {!isLoading && shouldUseProjectCarousel && (
+                    <div className="flex sm:hidden items-center justify-end w-full mt-2">
+                      <ProjectCarouselControls
+                        onPrevious={() => projectCarouselApi?.scrollPrev()}
+                        onNext={() => projectCarouselApi?.scrollNext()}
+                        canGoPrevious={canGoToPreviousProject}
+                        canGoNext={canGoToNextProject}
+                        previousLabel={`Show previous ${
+                          activeFilter === "completed" ? "completed" : "ongoing"
+                        } projects`}
+                        nextLabel={`Show next ${
+                          activeFilter === "completed" ? "completed" : "ongoing"
+                        } projects`}
+                      />
+                    </div>
+>>>>>>> ddd9943cbdc34fb3e9aac46fcf2195fd6e63ea78
                   )}
                 </div>
               </section>
 
-              <section className="mt-12">
-                {!isLoading && shouldUseProjectCarousel ? (
-                  <div className="mb-4 flex items-center justify-end gap-4 sm:mb-5">
-                    <ProjectCarouselControls
-                      onPrevious={() => projectCarouselApi?.scrollPrev()}
-                      onNext={() => projectCarouselApi?.scrollNext()}
-                      canGoPrevious={canGoToPreviousProject}
-                      canGoNext={canGoToNextProject}
-                      previousLabel={`Show previous ${
-                        activeFilter === "completed" ? "completed" : "ongoing"
-                      } projects`}
-                      nextLabel={`Show next ${
-                        activeFilter === "completed" ? "completed" : "ongoing"
-                      } projects`}
-                    />
-                  </div>
-                ) : null}
-
+              <section className="mt-8 sm:mt-10">
                 {isLoading ? (
                   <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                     {[1, 2, 3].map((item) => (
@@ -544,3 +684,4 @@ const ClientProjectsPage = () => {
     };
 
     export default ClientProjectsPage;
+

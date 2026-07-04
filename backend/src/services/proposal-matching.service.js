@@ -1609,32 +1609,6 @@ const evaluateCandidateMatch = ({
     return includeDebug ? { candidate: null, debug } : null;
   }
 
-  if (
-    ["level_2_case_study", "level_3_profile_skills"].includes(levelKey) &&
-    hasTargetServiceSignal &&
-    serviceMatch &&
-    !hasConcreteOverlap
-  ) {
-    const debug = buildLevelDebugSummary({
-      levelKey,
-      passed: false,
-      failReason: "service_only_without_concrete_overlap",
-      freelancer,
-      sourceEvidence,
-      targetProfile,
-      sourceProfile,
-      activeProjectCount,
-      availability,
-      budgetCompatibility,
-      serviceMatch,
-      skills,
-      niches,
-      projectTypes,
-      textRelevance,
-    });
-    return includeDebug ? { candidate: null, debug } : null;
-  }
-
   const sourcePriorityScore =
     SOURCE_PRIORITY_SCORES[levelKey] || SOURCE_PRIORITY_SCORES.level_3_profile_skills;
   const ratingScore = scoreRatingSignal(freelancer?.rating);
@@ -2233,6 +2207,59 @@ const enrichRankingWithAiInsights = async ({
       },
     };
   }
+};
+
+export const enrichMatchedFreelancersWithAi = async (
+  proposal = {},
+  candidates = [],
+  {
+    useAiShortlist = true,
+    aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
+  } = {},
+) => {
+  const normalizedCandidates = Array.isArray(candidates)
+    ? candidates.filter((candidate) => Boolean(candidate?.id || candidate?.freelancerId))
+    : [];
+
+  if (normalizedCandidates.length === 0) {
+    return {
+      results: [],
+      meta: {
+        sourceType: "candidate_enrichment",
+        aiInsightsEnabled: true,
+        aiInsightsStatus: "skipped_no_candidates",
+        aiInsightsEvaluatedCount: 0,
+        aiInsightLimit: clampAiInsightLimit(aiInsightLimit),
+        aiShortlistEnabled: useAiShortlist,
+        aiShortlistApplied: false,
+        aiShortlistWindowSize: 0,
+        aiShortlistRankedCount: 0,
+        aiShortlistTopFreelancerId: null,
+      },
+    };
+  }
+
+  const ranking = await enrichRankingWithAiInsights({
+    ranking: {
+      results: normalizedCandidates,
+      meta: {
+        sourceType: "candidate_enrichment",
+      },
+    },
+    targetProfile: buildTargetProfileFromPayload(proposal),
+    includeAiInsights: true,
+    useAiShortlist,
+    aiInsightLimit,
+    logAiInTerminal: true,
+  });
+
+  return {
+    ...ranking,
+    meta: {
+      ...(ranking.meta || {}),
+      sourceType: "candidate_enrichment",
+    },
+  };
 };
 
 const loadCompletedProjectPool = async ({

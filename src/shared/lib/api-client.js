@@ -76,6 +76,558 @@ const defaultHeaders = {
   "Content-Type": "application/json"
 };
 
+const MAX_CATA_AI_CANDIDATES = 10;
+const MAX_CATA_AI_PROPOSAL_TEXT_LENGTH = 1600;
+const MAX_CATA_AI_CANDIDATE_TEXT_LENGTH = 480;
+const MAX_CATA_AI_LIST_ITEMS = 6;
+const MAX_CATA_AI_LIST_ITEM_LENGTH = 80;
+
+const isPlainObject = (value) =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+const truncateText = (value, maxLength = 200) => {
+  const normalized = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return null;
+
+  const safeMaxLength = Math.max(16, Math.round(Number(maxLength) || 0));
+  if (normalized.length <= safeMaxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, safeMaxLength - 3).trimEnd()}...`;
+};
+
+const roundNumericValue = (value) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? Math.round(numericValue) : null;
+};
+
+const toCompactTextList = (
+  sources = [],
+  {
+    maxItems = MAX_CATA_AI_LIST_ITEMS,
+    maxLength = MAX_CATA_AI_LIST_ITEM_LENGTH,
+  } = {},
+) => {
+  const result = [];
+  const seen = new Set();
+
+  const pushValue = (value) => {
+    if (result.length >= maxItems || value === null || value === undefined) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((entry) => pushValue(entry));
+      return;
+    }
+
+    if (isPlainObject(value)) {
+      [
+        value.label,
+        value.name,
+        value.title,
+        value.serviceName,
+        value.slug,
+        value.id,
+      ].forEach((entry) => pushValue(entry));
+      return;
+    }
+
+    String(value)
+      .split(/\r?\n|;|,(?=\s*[A-Za-z0-9])/)
+      .forEach((entry) => {
+        if (result.length >= maxItems) return;
+
+        const normalized = truncateText(entry, maxLength);
+        const key = String(normalized || "").toLowerCase();
+        if (!normalized || seen.has(key)) return;
+
+        seen.add(key);
+        result.push(normalized);
+      });
+  };
+
+  pushValue(sources);
+  return result;
+};
+
+const getProposalContextSnapshot = (proposal = {}) => {
+  if (isPlainObject(proposal?.proposalContext)) {
+    return proposal.proposalContext;
+  }
+
+  if (isPlainObject(proposal?.project?.proposalJson?.contextSnapshot)) {
+    return proposal.project.proposalJson.contextSnapshot;
+  }
+
+  return {};
+};
+
+const buildCompactProjectForCataAi = (proposal = {}) => {
+  const project = isPlainObject(proposal?.project) ? proposal.project : {};
+  const title = truncateText(project?.title || proposal?.projectTitle, 160);
+  const description = truncateText(
+    project?.description || proposal?.summary || proposal?.content,
+    MAX_CATA_AI_PROPOSAL_TEXT_LENGTH,
+  );
+  const serviceKey = truncateText(
+    project?.serviceKey || proposal?.serviceKey || proposal?.service,
+    80,
+  );
+  const serviceType = truncateText(
+    project?.serviceType || proposal?.serviceType || proposal?.serviceName,
+    80,
+  );
+  const timeline = truncateText(project?.timeline || proposal?.timeline || proposal?.duration, 120);
+  const budget = proposal?.amount ?? proposal?.budget ?? project?.budget ?? null;
+
+  return {
+    id: project?.id || proposal?.projectId || proposal?.syncedProjectId || null,
+    ...(title ? { title } : {}),
+    ...(description ? { description } : {}),
+    ...(serviceKey ? { serviceKey } : {}),
+    ...(serviceType ? { serviceType } : {}),
+    ...(budget !== null && budget !== undefined && budget !== ""
+      ? { budget }
+      : {}),
+    ...(project?.budgetSummary || proposal?.budgetSummary
+      ? {
+          budgetSummary: truncateText(
+            project?.budgetSummary || proposal?.budgetSummary,
+            80,
+          ),
+        }
+      : {}),
+    ...(timeline ? { timeline } : {}),
+  };
+};
+
+const buildCompactProposalForCataAi = (proposal = {}) => {
+  const project = buildCompactProjectForCataAi(proposal);
+  const context = getProposalContextSnapshot(proposal);
+  const title = truncateText(
+    proposal?.title || proposal?.projectTitle || project?.title,
+    160,
+  );
+  const summary = truncateText(
+    proposal?.summary ||
+      proposal?.content ||
+      proposal?.coverLetter ||
+      proposal?.proposalContent ||
+      project?.description,
+    MAX_CATA_AI_PROPOSAL_TEXT_LENGTH,
+  );
+  const budget = proposal?.amount ?? proposal?.budget ?? project?.budget ?? null;
+  const serviceKey = truncateText(
+    proposal?.serviceKey || proposal?.service || project?.serviceKey,
+    80,
+  );
+  const serviceType = truncateText(
+    proposal?.serviceType || proposal?.serviceName || proposal?.service || project?.serviceType,
+    80,
+  );
+  const services = toCompactTextList(
+    [
+      proposal?.services,
+      proposal?.serviceKeys,
+      context?.selectedServiceNames,
+      context?.serviceNames,
+      Array.isArray(context?.selectedServices)
+        ? context.selectedServices.map((service) =>
+            isPlainObject(service)
+              ? service?.serviceName || service?.name || service?.slug || service?.id
+              : service,
+          )
+        : [],
+    ],
+    { maxItems: 4 },
+  );
+  const compactProposalContext = {
+    ...(truncateText(context?.flowMode, 24) ? { flowMode: truncateText(context.flowMode, 24) } : {}),
+    ...(toCompactTextList([context?.selectedServiceIds, context?.serviceIds], {
+      maxItems: 4,
+    }).length > 0
+      ? {
+          selectedServiceIds: toCompactTextList([context?.selectedServiceIds, context?.serviceIds], {
+            maxItems: 4,
+          }),
+        }
+      : {}),
+    ...(toCompactTextList([context?.selectedServiceNames, context?.serviceNames], {
+      maxItems: 4,
+    }).length > 0
+      ? {
+          selectedServiceNames: toCompactTextList(
+            [context?.selectedServiceNames, context?.serviceNames],
+            { maxItems: 4 },
+          ),
+        }
+      : {}),
+    ...(Array.isArray(context?.selectedServices) && context.selectedServices.length > 0
+      ? {
+          selectedServices: context.selectedServices
+            .slice(0, 4)
+            .map((service) => {
+              if (!isPlainObject(service)) {
+                return truncateText(service, 80);
+              }
+
+              return {
+                ...(truncateText(service?.id || service?.slug, 80)
+                  ? { id: truncateText(service.id || service.slug, 80) }
+                  : {}),
+                ...(truncateText(service?.serviceName || service?.name, 80)
+                  ? { name: truncateText(service.serviceName || service.name, 80) }
+                  : {}),
+              };
+            })
+            .filter(Boolean),
+        }
+      : {}),
+  };
+
+  const compactProposal = {
+    id: proposal?.id || proposal?.projectId || proposal?.syncedProjectId || null,
+    ...(proposal?.projectId ? { projectId: proposal.projectId } : {}),
+    ...(proposal?.syncedProjectId ? { syncedProjectId: proposal.syncedProjectId } : {}),
+    ...(typeof proposal?.isAgencyProposal === "boolean"
+      ? { isAgencyProposal: proposal.isAgencyProposal }
+      : {}),
+    ...(title ? { title, projectTitle: title } : {}),
+    ...(serviceKey ? { serviceKey } : {}),
+    ...(serviceType ? { serviceType } : {}),
+    ...(serviceKey || serviceType ? { service: serviceKey || serviceType } : {}),
+    ...(summary ? { summary, content: summary, proposalContent: summary } : {}),
+    ...(budget !== null && budget !== undefined && budget !== ""
+      ? { amount: budget, budget }
+      : {}),
+    ...(truncateText(proposal?.budgetSummary || project?.budgetSummary, 80)
+      ? {
+          budgetSummary: truncateText(
+            proposal?.budgetSummary || project?.budgetSummary,
+            80,
+          ),
+        }
+      : {}),
+    ...(truncateText(proposal?.timeline || proposal?.duration || project?.timeline, 120)
+      ? {
+          timeline: truncateText(
+            proposal?.timeline || proposal?.duration || project?.timeline,
+            120,
+          ),
+        }
+      : {}),
+    ...(services.length > 0 ? { services } : {}),
+    techStack: toCompactTextList([
+      proposal?.techStack,
+      proposal?.projectStack,
+      proposal?.frontendFramework,
+      proposal?.backendTechnology,
+      proposal?.databaseType,
+    ]),
+    projectStack: toCompactTextList([
+      proposal?.projectStack,
+      proposal?.techStack,
+      proposal?.frontendFramework,
+      proposal?.backendTechnology,
+      proposal?.databaseType,
+    ]),
+    frontendFramework: toCompactTextList([proposal?.frontendFramework, context?.frontendFramework], {
+      maxItems: 4,
+    }),
+    backendTechnology: toCompactTextList([proposal?.backendTechnology, context?.backendTechnology], {
+      maxItems: 4,
+    }),
+    databaseType: toCompactTextList([proposal?.databaseType, context?.databaseType], {
+      maxItems: 4,
+    }),
+    featuresDeliverables: toCompactTextList([
+      proposal?.featuresDeliverables,
+      context?.featuresDeliverables,
+    ]),
+    brandDeliverables: toCompactTextList([
+      proposal?.brandDeliverables,
+      context?.brandDeliverables,
+    ]),
+    appFeatures: toCompactTextList([proposal?.appFeatures, context?.appFeatures]),
+    platformRequirements: toCompactTextList([
+      proposal?.platformRequirements,
+      context?.platformRequirements,
+    ]),
+    primaryObjectives: toCompactTextList([
+      proposal?.primaryObjectives,
+      context?.primaryObjectives,
+    ]),
+    targetLocations: toCompactTextList([
+      proposal?.targetLocations,
+      context?.targetLocations,
+    ]),
+    seoGoals: toCompactTextList([proposal?.seoGoals, context?.seoGoals]),
+    ...(truncateText(proposal?.websiteType || context?.websiteType, 80)
+      ? { websiteType: truncateText(proposal?.websiteType || context?.websiteType, 80) }
+      : {}),
+    ...(truncateText(proposal?.websiteBuildType || context?.websiteBuildType, 80)
+      ? {
+          websiteBuildType: truncateText(
+            proposal?.websiteBuildType || context?.websiteBuildType,
+            80,
+          ),
+        }
+      : {}),
+    ...(truncateText(proposal?.creativeType || context?.creativeType, 80)
+      ? { creativeType: truncateText(proposal?.creativeType || context?.creativeType, 80) }
+      : {}),
+    ...(truncateText(proposal?.appType || context?.appType, 80)
+      ? { appType: truncateText(proposal?.appType || context?.appType, 80) }
+      : {}),
+    ...(truncateText(proposal?.businessCategory || context?.businessCategory, 80)
+      ? {
+          businessCategory: truncateText(
+            proposal?.businessCategory || context?.businessCategory,
+            80,
+          ),
+        }
+      : {}),
+    ...(truncateText(proposal?.targetAudience || context?.targetAudience, 120)
+      ? {
+          targetAudience: truncateText(
+            proposal?.targetAudience || context?.targetAudience,
+            120,
+          ),
+        }
+      : {}),
+    ...(Object.keys(compactProposalContext).length > 0
+      ? { proposalContext: compactProposalContext }
+      : {}),
+    ...(Object.keys(project).length > 1 ? { project } : {}),
+  };
+
+  return compactProposal;
+};
+
+const buildCompactCandidateForCataAi = (candidate = {}) => {
+  const freelancerId = candidate?.id || candidate?.freelancerId || null;
+  const matchedService =
+    isPlainObject(candidate?.matchedService) &&
+    (candidate.matchedService?.serviceKey || candidate.matchedService?.serviceName)
+      ? {
+          ...(truncateText(candidate.matchedService.serviceKey, 80)
+            ? { serviceKey: truncateText(candidate.matchedService.serviceKey, 80) }
+            : {}),
+          ...(truncateText(candidate.matchedService.serviceName, 80)
+            ? { serviceName: truncateText(candidate.matchedService.serviceName, 80) }
+            : {}),
+        }
+      : (truncateText(candidate?.serviceKey, 80) || truncateText(candidate?.serviceType, 80))
+        ? {
+            ...(truncateText(candidate?.serviceKey, 80)
+              ? { serviceKey: truncateText(candidate.serviceKey, 80) }
+              : {}),
+            ...(truncateText(candidate?.serviceType || candidate?.service, 80)
+              ? {
+                  serviceName: truncateText(
+                    candidate?.serviceType || candidate?.service,
+                    80,
+                  ),
+                }
+              : {}),
+          }
+        : null;
+
+  return {
+    ...(freelancerId ? { id: freelancerId, freelancerId } : {}),
+    ...(truncateText(candidate?.fullName || candidate?.name, 120)
+      ? {
+          fullName: truncateText(candidate?.fullName || candidate?.name, 120),
+          name: truncateText(candidate?.name || candidate?.fullName, 120),
+        }
+      : {}),
+    ...(truncateText(candidate?.profileRole || candidate?.role, 40)
+      ? { profileRole: truncateText(candidate?.profileRole || candidate?.role, 40) }
+      : {}),
+    ...(truncateText(
+      candidate?.title || candidate?.jobTitle || candidate?.professionalTitle,
+      120,
+    )
+      ? {
+          title: truncateText(
+            candidate?.title || candidate?.jobTitle || candidate?.professionalTitle,
+            120,
+          ),
+        }
+      : {}),
+    ...(roundNumericValue(candidate?.sourceLevel) !== null
+      ? { sourceLevel: roundNumericValue(candidate.sourceLevel) }
+      : {}),
+    ...(roundNumericValue(candidate?.matchPercent ?? candidate?.matchScore) !== null
+      ? {
+          matchPercent: roundNumericValue(candidate?.matchPercent ?? candidate?.matchScore),
+        }
+      : {}),
+    ...(roundNumericValue(
+      candidate?.rawMatchScore ?? candidate?.scoreMetadata?.rawMatchScore,
+    ) !== null
+      ? {
+          rawMatchScore: roundNumericValue(
+            candidate?.rawMatchScore ?? candidate?.scoreMetadata?.rawMatchScore,
+          ),
+        }
+      : {}),
+    serviceMatch: Boolean(candidate?.serviceMatch),
+    ...(matchedService ? { matchedService } : {}),
+    matchedSkills: toCompactTextList([
+      candidate?.matchedSkills,
+      candidate?.matchedTechnologies,
+    ]),
+    matchedNiches: toCompactTextList([candidate?.matchedNiches]),
+    matchedProjectTypes: toCompactTextList([candidate?.matchedProjectTypes]),
+    matchedCaseStudyTitles: toCompactTextList([candidate?.matchedCaseStudyTitles], {
+      maxItems: 4,
+      maxLength: 120,
+    }),
+    matchReasons: toCompactTextList([
+      candidate?.matchReasons,
+      candidate?.matchHighlights,
+    ], {
+      maxItems: 4,
+      maxLength: 140,
+    }),
+    ...(roundNumericValue(
+      candidate?.budgetFitPercent ??
+        candidate?.budgetCompatibility?.budgetMatchPercentage,
+    ) !== null
+      ? {
+          budgetFitPercent: roundNumericValue(
+            candidate?.budgetFitPercent ??
+              candidate?.budgetCompatibility?.budgetMatchPercentage,
+          ),
+        }
+      : {}),
+    ...(roundNumericValue(candidate?.skillsMatchPercent) !== null
+      ? { skillsMatchPercent: roundNumericValue(candidate.skillsMatchPercent) }
+      : {}),
+    ...(roundNumericValue(candidate?.activeProjectCount) !== null
+      ? { activeProjectCount: roundNumericValue(candidate.activeProjectCount) }
+      : {}),
+    ...(truncateText(
+      candidate?.bio || candidate?.cleanBio || candidate?.about,
+      MAX_CATA_AI_CANDIDATE_TEXT_LENGTH,
+    )
+      ? {
+          bio: truncateText(
+            candidate?.bio || candidate?.cleanBio || candidate?.about,
+            MAX_CATA_AI_CANDIDATE_TEXT_LENGTH,
+          ),
+        }
+      : {}),
+  };
+};
+
+const extractFreelancersFromPayload = (payload = {}) => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.freelancers)) {
+    return payload.freelancers;
+  }
+
+  if (Array.isArray(payload?.results)) {
+    return payload.results;
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+
+  return [];
+};
+
+const resolveFreelancerIdentity = (candidate = {}) =>
+  String(candidate?.id || candidate?.freelancerId || "").trim();
+
+const mergeCataAiPayloadWithCandidates = (candidates = [], payload = {}) => {
+  const normalizedCandidates = Array.isArray(candidates) ? candidates : [];
+  const aiFreelancers = extractFreelancersFromPayload(payload);
+
+  if (aiFreelancers.length === 0) {
+    return {
+      ...payload,
+      data: normalizedCandidates,
+      freelancers: normalizedCandidates,
+      results: normalizedCandidates,
+      total: normalizedCandidates.length,
+    };
+  }
+
+  const aiFreelancerById = new Map(
+    aiFreelancers
+      .map((candidate, index) => {
+        const freelancerId = resolveFreelancerIdentity(candidate);
+        if (!freelancerId) return null;
+
+        return [
+          freelancerId,
+          {
+            candidate,
+            aiOrder: index,
+          },
+        ];
+      })
+      .filter(Boolean),
+  );
+
+  const mergedFreelancers = normalizedCandidates.map((candidate, index) => {
+    const freelancerId = resolveFreelancerIdentity(candidate);
+    const aiEntry = freelancerId ? aiFreelancerById.get(freelancerId) : null;
+
+    if (!aiEntry) {
+      return {
+        ...candidate,
+        __originalOrder: index,
+      };
+    }
+
+    return {
+      ...candidate,
+      ...(aiEntry.candidate?.aiMatch && typeof aiEntry.candidate.aiMatch === "object"
+        ? { aiMatch: aiEntry.candidate.aiMatch }
+        : {}),
+      __aiOrder: aiEntry.aiOrder,
+      __originalOrder: index,
+    };
+  });
+
+  const sortedFreelancers = mergedFreelancers
+    .sort((left, right) => {
+      const leftHasAiOrder = Number.isFinite(left?.__aiOrder);
+      const rightHasAiOrder = Number.isFinite(right?.__aiOrder);
+
+      if (leftHasAiOrder && rightHasAiOrder && left.__aiOrder !== right.__aiOrder) {
+        return left.__aiOrder - right.__aiOrder;
+      }
+
+      if (leftHasAiOrder !== rightHasAiOrder) {
+        return leftHasAiOrder ? -1 : 1;
+      }
+
+      return (left?.__originalOrder || 0) - (right?.__originalOrder || 0);
+    })
+    .map(({ __aiOrder, __originalOrder, ...candidate }) => candidate);
+
+  return {
+    ...payload,
+    data: sortedFreelancers,
+    freelancers: sortedFreelancers,
+    results: sortedFreelancers,
+    total: sortedFreelancers.length,
+  };
+};
+
 export const request = async (path, options = {}) => {
   const {
     returnFullPayload = false,
@@ -353,6 +905,7 @@ export const fetchMatchedFreelancersForProposal = (
   {
     includeAiInsights = false,
     useAiShortlist = false,
+    timeout = 45000,
   } = {},
 ) => {
   const proposalIdCandidates = [
@@ -368,6 +921,7 @@ export const fetchMatchedFreelancersForProposal = (
   return request("/proposals/match-freelancers", {
     method: "POST",
     returnFullPayload: true,
+    timeout,
     body: JSON.stringify({
       proposal,
       ...(proposalId ? { proposalId } : {}),
@@ -375,6 +929,42 @@ export const fetchMatchedFreelancersForProposal = (
       ...(useAiShortlist ? { useAiShortlist: true } : {}),
     })
   });
+};
+
+export const fetchMatchedFreelancerCataAi = (
+  proposal = {},
+  candidates = [],
+  {
+    useAiShortlist = true,
+  } = {},
+) => {
+  const proposalIdCandidates = [
+    !proposal?.isLocalDraft ? proposal?.id : "",
+    proposal?.syncedProjectId,
+    proposal?.projectId,
+  ];
+
+  const proposalId = proposalIdCandidates
+    .map((value) => String(value || "").trim())
+    .find((value) => isLikelyPersistedProposalIdentifier(value));
+
+  const normalizedCandidates = Array.isArray(candidates) ? candidates : [];
+  const compactCandidates = normalizedCandidates
+    .slice(0, MAX_CATA_AI_CANDIDATES)
+    .map((candidate) => buildCompactCandidateForCataAi(candidate))
+    .filter((candidate) => Boolean(candidate?.id || candidate?.freelancerId));
+
+  return request("/proposals/match-freelancers/cata-ai", {
+    method: "POST",
+    returnFullPayload: true,
+    timeout: 30000,
+    body: JSON.stringify({
+      proposal: buildCompactProposalForCataAi(proposal),
+      candidates: compactCandidates,
+      ...(proposalId ? { proposalId } : {}),
+      ...(useAiShortlist ? { useAiShortlist: true } : {}),
+    }),
+  }).then((payload) => mergeCataAiPayloadWithCandidates(normalizedCandidates, payload));
 };
 
 export const fetchStatesByCountry = (country) => {

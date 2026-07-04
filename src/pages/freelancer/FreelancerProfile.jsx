@@ -445,6 +445,7 @@ const FreelancerProfile = () => {
   );
   const [serviceSkillInput, setServiceSkillInput] = useState("");
   const [savingServiceProfile, setSavingServiceProfile] = useState(false);
+  const isSavingServiceProfileRef = useRef(false);
   const [uploadingServiceCover, setUploadingServiceCover] = useState(false);
   const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
     useState(null);
@@ -887,7 +888,22 @@ const FreelancerProfile = () => {
 
         setPersonal(loadedPersonal);
         setPortfolio(loadedPortfolio);
-        setPortfolioProjects(normalized.portfolioProjects || []);
+
+        // Deduplicate portfolioProjects by title (keep latest) to clean up
+        // corrupted data from previous bugs that created duplicate entries.
+        const rawPortfolioProjects = Array.isArray(normalized.portfolioProjects)
+          ? normalized.portfolioProjects
+          : [];
+        const dedupedPortfolioProjects = [];
+        const seenPortfolioTitles = new Set();
+        for (let i = rawPortfolioProjects.length - 1; i >= 0; i--) {
+          const title = String(rawPortfolioProjects[i]?.title || "").trim().toLowerCase();
+          if (title && seenPortfolioTitles.has(title)) continue;
+          if (title) seenPortfolioTitles.add(title);
+          dedupedPortfolioProjects.unshift(rawPortfolioProjects[i]);
+        }
+        setPortfolioProjects(dedupedPortfolioProjects);
+
         const loadedSocialMediaLinks =
           Array.isArray(normalized.socialMediaLinks)
             ? normalized.socialMediaLinks
@@ -910,7 +926,7 @@ const FreelancerProfile = () => {
           skills: loadedSkills,
           workExperience: normalizeWorkExperienceEntries(normalized.workExperience),
           services: loadedServices,
-          portfolioProjects: normalized.portfolioProjects || [],
+          portfolioProjects: dedupedPortfolioProjects,
           profileDetails: loadedProfileDetails,
           socialMediaLinks: loadedSocialMediaLinks,
         });
@@ -2112,9 +2128,14 @@ const FreelancerProfile = () => {
   };
 
   const saveOnboardingServiceProfile = async (wizardServiceProfileForm) => {
+    if (isSavingServiceProfileRef.current) return;
+    isSavingServiceProfileRef.current = true;
     const activeForm = wizardServiceProfileForm || serviceProfileForm;
     const serviceKey = resolveServiceStorageKey(activeForm.serviceKey);
-    if (!serviceKey) return;
+    if (!serviceKey) {
+      isSavingServiceProfileRef.current = false;
+      return;
+    }
     const existingServiceDetails =
       profileDetails?.serviceDetails &&
         typeof profileDetails.serviceDetails === "object"
@@ -2213,6 +2234,7 @@ const FreelancerProfile = () => {
       console.error("Failed to upload media files:", error);
       toast.error(error?.message || "Failed to upload media files.");
       setSavingServiceProfile(false);
+      isSavingServiceProfileRef.current = false;
       return;
     }
     const rawCaseStudies =
@@ -2351,6 +2373,7 @@ const FreelancerProfile = () => {
       toast.error(error?.message || "Failed to save service details");
     } finally {
       setSavingServiceProfile(false);
+      isSavingServiceProfileRef.current = false;
     }
   };
 
@@ -2435,9 +2458,27 @@ const FreelancerProfile = () => {
     setModalType("addProject");
   };
 
-  const openEditProject = (project, index) => {
+  const openEditProject = (project, _displayIndex) => {
     resetProjectDraft();
-    setEditingProjectIndex(index);
+
+    // Use _originalIndex if available (set by displayPortfolioProjects).
+    // This maps correctly back to the actual portfolioProjects state array.
+    // Fall back to searching by title/link for onboarding-sourced projects.
+    let sourceIndex = typeof project?._originalIndex === 'number' ? project._originalIndex : -1;
+    if (sourceIndex < 0) {
+      const projectLink = normalizeProjectLinkValue(project?.link || project?.projectLink || project?.url || "");
+      const projectTitle = String(project?.title || "").trim().toLowerCase();
+      sourceIndex = (Array.isArray(portfolioProjects) ? portfolioProjects : []).findIndex(
+        (entry) => {
+          const entryLink = normalizeProjectLinkValue(entry?.link || entry?.projectLink || entry?.url || "");
+          const entryTitle = String(entry?.title || "").trim().toLowerCase();
+          if (projectLink && entryLink && entryLink === projectLink) return true;
+          return Boolean(projectTitle && entryTitle && entryTitle === projectTitle);
+        }
+      );
+    }
+
+    setEditingProjectIndex(sourceIndex >= 0 ? sourceIndex : null);
     setNewProjectUrl(String(project?.link || "").trim());
     setNewProjectTitle(String(project?.title || "").trim());
     setNewProjectDescription(String(project?.description || "").trim());
@@ -2864,11 +2905,23 @@ const FreelancerProfile = () => {
         serviceKeys: normalizedProjectServiceKeys,
         serviceKey: normalizedProjectServiceKeys[0] || "",
       };
-      const nextProjects = isEditingProject
-        ? currentProjects.map((project, index) =>
-          index === editingProjectIndex ? nextProject : project
-        )
-        : [...currentProjects, nextProject];
+      // When editing: replace the target entry AND remove any other entries
+      // with the same title to clean up leftover duplicates.
+      let nextProjects;
+      if (isEditingProject) {
+        const editingTitle = finalTitle.toLowerCase();
+        nextProjects = currentProjects
+          .map((project, index) =>
+            index === editingProjectIndex ? nextProject : project
+          )
+          .filter((project, index) => {
+            if (index === editingProjectIndex) return true;
+            const projTitle = String(project?.title || "").trim().toLowerCase();
+            return !(projTitle && projTitle === editingTitle);
+          });
+      } else {
+        nextProjects = [...currentProjects, nextProject];
+      }
       const successMessage = isEditingProject ? "Case study updated" : "Case study added";
 
       const saved = await saveSectionChanges({
@@ -3228,10 +3281,10 @@ const FreelancerProfile = () => {
     profileDetails?.identity && typeof profileDetails.identity === "object"
       ? profileDetails.identity
       : {};
-  const onboardingServices = normalizeServiceStorageKeys([
+  const onboardingServices = useMemo(() => normalizeServiceStorageKeys([
     ...(Array.isArray(profileDetails?.services) ? profileDetails.services : []),
     ...(Array.isArray(services) ? services : []),
-  ]);
+  ]), [profileDetails?.services, services]);
   const onboardingGlobalIndustry = toUniqueLabels([
     ...(Array.isArray(profileDetails?.globalIndustryFocus)
       ? profileDetails.globalIndustryFocus
@@ -3323,7 +3376,7 @@ const FreelancerProfile = () => {
   const resolvedGithubLink =
     normalizePresenceLink(portfolio.githubUrl) || fallbackGithubLink;
   const resolvedResumeLink = normalizePresenceLink(portfolio.resume);
-  const onboardingServiceEntries = normalizeServiceStorageKeys([
+  const onboardingServiceEntries = useMemo(() => normalizeServiceStorageKeys([
     ...onboardingServices,
     ...Object.keys(onboardingServiceDetailMap),
   ]).map((serviceKey) => {
@@ -3336,7 +3389,7 @@ const FreelancerProfile = () => {
       serviceKey: resolvedService.serviceKey || serviceKey,
       detail: resolvedService.detail || {},
     };
-  });
+  }), [onboardingServices, onboardingServiceDetailMap]);
   const linkableServiceOptions = useMemo(
     () =>
       Array.from(
@@ -3500,7 +3553,7 @@ const FreelancerProfile = () => {
   const displayPortfolioProjects = useMemo(
     () => {
       const mappedPortfolio = (Array.isArray(portfolioProjects) ? portfolioProjects : []).map(
-        (project) => {
+        (project, originalIdx) => {
           const projectServiceKeys = resolveProjectServiceKeys(project);
           const currentDescription = String(project?.description || "").trim();
           const projectLink = normalizeProjectLinkValue(project?.link || "");
@@ -3521,6 +3574,7 @@ const FreelancerProfile = () => {
 
           return {
             ...project,
+            _originalIndex: originalIdx,
             serviceKeys: projectServiceKeys,
             serviceKey: projectServiceKeys[0] || String(project?.serviceKey || "").trim(),
             description: currentDescription || descriptionFromOnboarding,
@@ -3832,11 +3886,7 @@ const FreelancerProfile = () => {
       score: hasEducationEntries ? 1 : 0,
       weight: 6,
     },
-    {
-      label: "Industry focus",
-      score: hasIndustryFocus ? 1 : 0,
-      weight: 5,
-    },
+
     { label: "Policies accepted", score: policiesCoverage, weight: 5 },
   ];
 
@@ -3958,14 +4008,6 @@ const FreelancerProfile = () => {
       label: "Education history",
       detail: "Add your education details (school, degree, or year).",
       onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.EDUCATION),
-    });
-  }
-
-  if (!hasIndustryFocus) {
-    profileCompletionMissingDetails.push({
-      label: "Industry focus",
-      detail: "Select your global industry focus.",
-      onClick: () => openFullProfileEditor(FULL_PROFILE_EDITOR_SECTIONS.INDUSTRY_FOCUS),
     });
   }
 

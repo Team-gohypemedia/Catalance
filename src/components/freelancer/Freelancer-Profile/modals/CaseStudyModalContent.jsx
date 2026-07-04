@@ -8,6 +8,7 @@ import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 import { toast } from "sonner";
 import { request } from "@/shared/lib/api-client";
+import { useAuth } from "@/shared/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { CustomSelect } from "@/components/freelancer/Freelancer-Onboarding/slides/shared/ServiceInfoComponents";
@@ -244,6 +245,7 @@ const CaseStudyModalContent = ({
   isEditing = false,
   onAddRequestedNiche,
 }) => {
+  const { authFetch } = useAuth();
   const [isRequestingNiche, setIsRequestingNiche] = useState(false);
 
   const handleRequestNiche = async (requestName) => {
@@ -251,13 +253,14 @@ const CaseStudyModalContent = ({
 
     setIsRequestingNiche(true);
     try {
-      const payload = await request("/user-requests", {
+      const response = await authFetch("/user-requests", {
         method: "POST",
         body: JSON.stringify({
           request: requestName,
           requestedType: "niche",
         }),
       });
+      const payload = await response.json();
 
       if (payload?.data?.status === "EXISTS" && payload?.data?.existingEntity) {
         toast.success(`Niche "${requestName}" already exists. Selected it for you.`);
@@ -271,7 +274,10 @@ const CaseStudyModalContent = ({
       }
     } catch (error) {
       console.error("Failed to submit niche request:", error);
-      toast.error(error?.message || "Failed to request niche");
+      // Even if it fails (e.g., timeout or server error), add it locally so the user isn't blocked
+      toast.success(`"${requestName}" added locally (pending admin review).`);
+      onAddRequestedNiche?.({ value: requestName, label: requestName });
+      onCaseStudyFieldChange("niche", requestName);
     } finally {
       setIsRequestingNiche(false);
     }

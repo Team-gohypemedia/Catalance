@@ -38,6 +38,8 @@ import {
   extractAgencyProposalServiceEntries,
   statusColors,
   statusLabels,
+  parseProposalContent,
+  PROPOSAL_META_FIELDS,
 } from "./proposal-utils.js";
 
 const ProposalDetailsDialog = ({
@@ -54,6 +56,8 @@ const ProposalDetailsDialog = ({
   sendingProposalId,
   handleProposalDialogOpenChange,
   handleEditableProposalDraftChange,
+  handleDynamicFieldChange,
+  handleDynamicSectionChange,
   handleSaveProposalChanges,
   handleCancelProposalEditing,
   handleDelete,
@@ -72,12 +76,12 @@ const ProposalDetailsDialog = ({
     return normalizeProposalStatus(activeProposal?.status || "");
   }, [activeProposal?.status]);
 
-  const activeProposalStructuredData = useMemo(
+  const activeProposalParsed = useMemo(
     () =>
       activeProposal
-        ? buildProposalStructuredData(activeProposal, headerDisplayName)
+        ? parseProposalContent(activeProposal.content || activeProposal.summary || "")
         : null,
-    [activeProposal, headerDisplayName],
+    [activeProposal],
   );
   const canEditActiveProposal = useMemo(() => {
     return (
@@ -102,13 +106,11 @@ const ProposalDetailsDialog = ({
       <DialogContent className={cn(
         "fixed top-0 left-0 translate-x-0 translate-y-0 flex h-dvh w-full max-h-none max-w-none flex-col overflow-hidden border-none bg-background p-0 rounded-none transition-all duration-300 ease-in-out [&>button]:right-3.5 [&>button]:top-3.5 sm:[&>button]:right-5 sm:[&>button]:top-5 [&>button]:z-10 [&>button]:rounded-full [&>button]:border [&>button]:border-border/60 dark:[&>button]:border-white/10 [&>button]:bg-background/60 [&>button]:p-1.5 [&>button]:opacity-100 [&>button]:transition-colors [&>button:hover]:bg-background/80 dark:[&>button:hover]:bg-background/80 [&>button:hover]:text-foreground dark:[&>button:hover]:text-white [&>button_svg]:h-4 [&>button_svg]:w-4 sm:top-[50%] sm:left-[50%] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:h-[92vh] sm:max-h-[92vh] sm:rounded-[28px] sm:border sm:border-border/60",
         isAIChatOpen 
-          ? "lg:w-[min(95vw,1220px)] lg:max-w-[1220px] sm:w-[min(98vw,1000px)] sm:max-w-[1000px]" 
+          ? "lg:flex-row lg:w-[min(95vw,1220px)] lg:max-w-[1220px] sm:w-[min(98vw,1000px)] sm:max-w-[1000px]" 
           : "sm:w-[min(96vw,820px)] sm:max-w-[820px]"
       )}>
-        <div className={cn(
-          "shrink-0 border-b border-border/60 dark:border-white/10 px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 w-full",
-          isAIChatOpen && "lg:max-w-[calc(100%-400px)]"
-        )}>
+        <div className="flex flex-col flex-1 min-w-0 h-full overflow-hidden">
+          <div className="shrink-0 border-b border-border/60 dark:border-white/10 px-4 py-3 sm:px-6 sm:py-4 transition-all duration-300 w-full">
           <div className="flex flex-col gap-3 sm:gap-5">
             <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-2 sm:space-y-3">
@@ -209,10 +211,7 @@ const ProposalDetailsDialog = ({
           </div>
         </div>
 
-        <div className={cn(
-          "min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2 w-full",
-          isAIChatOpen && "lg:max-w-[calc(100%-400px)]"
-        )}>
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5 transition-all duration-300 [scrollbar-color:rgba(0,0,0,0.1)_transparent] dark:[scrollbar-color:rgba(255,255,255,0.18)_transparent] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/15 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar]:w-2 w-full">
           <div className="space-y-6 pb-2">
             <section className="space-y-2">
               <div className="space-y-0.5">
@@ -229,80 +228,40 @@ const ProposalDetailsDialog = ({
               </div>
 
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <ProposalMetric
-                  icon={FileText}
-                  label="Project Name"
-                  value={
-                    isEditingProposal ? (
-                      <Input
-                        value={editableProposalDraft.title}
-                        onChange={(event) =>
-                          handleEditableProposalDraftChange("title", event.target.value)
-                        }
-                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                        placeholder="Project name"
-                      />
-                    ) : (
-                      resolveProposalTitle(activeProposal) || "Not set"
-                    )
+                {PROPOSAL_META_FIELDS.map((field) => {
+                  let val = isEditingProposal 
+                    ? editableProposalDraft?.fields?.[field.key] || "" 
+                    : activeProposalParsed?.fields?.[field.key] || "";
+                  
+                  // Special fallback for empty values if needed, or rely on AI generating them properly.
+                  if (!isEditingProposal && !val) {
+                    if (field.key === "projectTitle") val = resolveProposalTitle(activeProposal) || "Not set";
+                    if (field.key === "clientName") val = headerDisplayName || "Client";
+                    if (field.key === "serviceType") val = resolveProposalServiceLabel(activeProposal);
                   }
-                />
-                <ProposalMetric
-                  icon={UserRound}
-                  label="Client Name"
-                  value={
-                    isEditingProposal ? (
-                      <Input
-                        value={editableProposalDraft.clientName}
-                        onChange={(event) =>
-                          handleEditableProposalDraftChange("clientName", event.target.value)
-                        }
-                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                        placeholder="Client name"
-                      />
-                    ) : (
-                      activeProposalStructuredData?.clientName || headerDisplayName
-                    )
-                  }
-                />
-                <ProposalMetric
-                  icon={Layers3}
-                  label="Service"
-                  value={
-                    isEditingProposal ? (
-                      <Input
-                        value={editableProposalDraft.service}
-                        onChange={(event) =>
-                          handleEditableProposalDraftChange("service", event.target.value)
-                        }
-                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                        placeholder="Service"
-                      />
-                    ) : (
-                      resolveProposalServiceLabel(activeProposal)
-                    )
-                  }
-                />
-                <ProposalMetric
-                  icon={CreditCard}
-                  label="Budget"
-                  value={
-                    isAgency ? (
-                      <span className="text-muted-foreground">Multiple Budgets</span>
-                    ) : isEditingProposal ? (
-                      <Input
-                        value={editableProposalDraft.budget}
-                        onChange={(event) =>
-                          handleEditableProposalDraftChange("budget", event.target.value)
-                        }
-                        className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                        placeholder="e.g. 40000"
-                      />
-                    ) : (
-                      activeProposalDetails?.budget || "Not set"
-                    )
-                  }
-                />
+
+                  return (
+                    <ProposalMetric
+                      key={field.key}
+                      icon={field.key === "budget" ? CreditCard : field.key === "clientName" ? UserRound : field.key === "serviceType" ? Layers3 : FileText}
+                      label={field.label}
+                      value={
+                        isEditingProposal ? (
+                          <Input
+                            value={val}
+                            onChange={(event) =>
+                              handleDynamicFieldChange(field.key, event.target.value)
+                            }
+                            className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
+                            placeholder={field.label}
+                          />
+                        ) : (
+                          val || "Not set"
+                        )
+                      }
+                    />
+                  );
+                })}
               </div>
 
               {agencyServiceEntries.length > 0 && (
@@ -334,220 +293,114 @@ const ProposalDetailsDialog = ({
               )}
             </section>
 
-            <div className="grid gap-4 items-start xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]">
-              <section className="space-y-3">
+            <div className="grid gap-4 items-start">
+              <section className="space-y-4">
                 <div className="space-y-0.5">
                   <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                    02 Project Scope
+                    02 Project Scope & Details
                   </p>
                   <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
                     What the project includes
                   </h3>
                 </div>
-                <ProposalSectionCard
-                  title="Project Overview"
-                  description="A clean summary of the project direction and business context."
-                >
-                  {isLoadingProposal ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Loader size="sm" />
-                      Loading details...
-                    </div>
-                  ) : isEditingProposal ? (
-                    <Textarea
-                      value={editableProposalDraft.projectOverview}
-                      onChange={(event) =>
-                        handleEditableProposalDraftChange("projectOverview", event.target.value)
+
+                <div className={cn("grid gap-4 items-start", !isAIChatOpen && "xl:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)]")}>
+                  <div className="space-y-4">
+                    {(isEditingProposal ? editableProposalDraft.sections : activeProposalParsed?.sections || []).map((section) => (
+                      <ProposalSectionCard
+                        key={section.key}
+                        title={section.title}
+                        description=""
+                      >
+                        {isLoadingProposal ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader size="sm" />
+                            Loading details...
+                          </div>
+                        ) : isEditingProposal ? (
+                          <Textarea
+                            value={section.lines.join('\n') + (section.list.length > 0 ? (section.lines.length > 0 ? '\n' : '') + section.list.map(i => '- ' + i).join('\n') : '')}
+                            onChange={(event) =>
+                              handleDynamicSectionChange(section.title, event.target.value)
+                            }
+                            className="min-h-[130px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
+                            placeholder="Add details here..."
+                          />
+                        ) : (
+                          <div className="space-y-3">
+                            {section.lines.length > 0 && (
+                                <div className="space-y-2">
+                                    {section.lines.map((line, index) => (
+                                        <p
+                                            key={`${section.key}-line-${index}`}
+                                            className="text-sm leading-relaxed text-slate-700 dark:text-slate-200"
+                                        >
+                                            {line}
+                                        </p>
+                                    ))}
+                                </div>
+                            )}
+
+                            {section.list.length > 0 && (
+                                <ProposalStructuredList
+                                  items={section.list}
+                                  emptyMessage=""
+                                />
+                            )}
+                            {section.lines.length === 0 && section.list.length === 0 && (
+                                <p className="text-sm leading-7 text-muted-foreground">
+                                    No details provided.
+                                </p>
+                            )}
+                          </div>
+                        )}
+                      </ProposalSectionCard>
+                    ))}
+                  </div>
+                  
+                  <div className="space-y-4 xl:sticky xl:top-0">
+                    <ProposalSectionCard
+                      title={isEditingProposal ? "Delivery Details" : "Project Details"}
+                      description={
+                        isEditingProposal
+                          ? "Update the timeline and review the current proposal status."
+                          : "Keep track of the delivery window and proposal state."
                       }
-                      className="min-h-[130px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                      placeholder="Summarize the project, business context, and intended outcome."
-                    />
-                  ) : (
-                    <p className="text-sm leading-7 text-foreground">
-                      {activeProposalStructuredData?.projectOverview || "No overview added yet."}
-                    </p>
-                  )}
-                </ProposalSectionCard>
-
-                <div className="grid gap-3 items-start lg:grid-cols-2">
-                  <ProposalSectionCard
-                    title="Primary Objectives"
-                    description="Key goals this proposal is meant to deliver."
-                    className="lg:sticky lg:top-0"
-                  >
-                    {isEditingProposal ? (
-                      <Textarea
-                        value={editableProposalDraft.objectivesText}
-                        onChange={(event) =>
-                          handleEditableProposalDraftChange("objectivesText", event.target.value)
-                        }
-                        className="min-h-[160px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                        placeholder={"One objective per line\nExample: Launch MVP for internal testing"}
-                      />
-                    ) : (
-                      <ProposalStructuredList
-                        items={activeProposalStructuredData?.objectives || []}
-                        emptyMessage="No objectives added yet."
-                      />
-                    )}
-                  </ProposalSectionCard>
-
-                  <ProposalSectionCard
-                    title="Deliverables"
-                    description="The concrete scope and outputs expected from this proposal."
-                    className="lg:sticky lg:top-0"
-                  >
-                    {isEditingProposal ? (
-                      <Textarea
-                        value={editableProposalDraft.deliverablesText}
-                        onChange={(event) =>
-                          handleEditableProposalDraftChange("deliverablesText", event.target.value)
-                        }
-                        className="min-h-[160px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                        placeholder={"One deliverable per line\nExample: Admin dashboard with analytics"}
-                      />
-                    ) : (
-                      <ProposalStructuredList
-                        items={activeProposalStructuredData?.deliverables || []}
-                        emptyMessage="No deliverables added yet."
-                      />
-                    )}
-                  </ProposalSectionCard>
-                </div>
-              </section>
-
-              <section className="space-y-3 xl:sticky xl:top-0">
-                <div className="space-y-0.5">
-                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                    03 Technical And Delivery
-                  </p>
-                  <h3 className="text-base sm:text-lg font-semibold tracking-tight text-foreground">
-                    Supporting details
-                  </h3>
-                </div>
-                <ProposalSectionCard
-                  title={isEditingProposal ? "Delivery Details" : "Project Details"}
-                  description={
-                    isEditingProposal
-                      ? "Update the timeline and review the current proposal status."
-                      : "Keep track of the delivery window and proposal state."
-                  }
-                >
-                  {isEditingProposal ? (
-                    <div className="space-y-3">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-2 sm:col-span-2">
-                          <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            Timeline
-                          </p>
-                          {isAgency ? (
-                            <p className="h-9 flex items-center text-sm font-medium text-muted-foreground">Multiple Timelines</p>
-                          ) : (
-                            <Input
-                              value={editableProposalDraft.timeline}
-                              onChange={(event) =>
-                                handleEditableProposalDraftChange("timeline", event.target.value)
-                              }
-                              className="h-9 rounded-xl border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                              placeholder="e.g. 3+ months"
+                    >
+                      {isEditingProposal ? (
+                        <div className="space-y-3">
+                          <div className="grid gap-3 border-t border-border dark:border-white/8 pt-3 sm:grid-cols-2 xl:grid-cols-1">
+                            <ProposalSummaryItem
+                              label="Current Status"
+                              value={activeProposalDetails?.statusDisplay || "Draft"}
                             />
-                          )}
+                            <ProposalSummaryItem
+                              label="Last Updated"
+                              value={activeProposal?.submittedDate || "No date"}
+                            />
+                          </div>
                         </div>
-                      </div>
-                      <div className="grid gap-3 border-t border-border dark:border-white/8 pt-3 sm:grid-cols-2">
-                        <ProposalSummaryItem
-                          label="Current Status"
-                          value={activeProposalDetails?.statusDisplay || "Draft"}
-                        />
-                        <ProposalSummaryItem
-                          label="Last Updated"
-                          value={activeProposal?.submittedDate || "No date"}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                      <ProposalSummaryItem
-                        label="Project Name"
-                        value={resolveProposalTitle(activeProposal) || "Not set"}
-                      />
-                      <ProposalSummaryItem
-                        label="Timeline"
-                        value={isAgency ? "Multiple Timelines" : (activeProposalDetails?.delivery || "Not set")}
-                      />
-                      <ProposalSummaryItem
-                        label="Current Status"
-                        value={activeProposalDetails?.statusDisplay || "Draft"}
-                      />
-                      <ProposalSummaryItem
-                        label="Last Updated"
-                        value={activeProposal?.submittedDate || "No date"}
-                      />
-                    </div>
-                  )}
-                </ProposalSectionCard>
-
-                <ProposalSectionCard
-                  title="Tech Stack"
-                  description="Preferred platforms, frameworks, and tools."
-                >
-                  {isEditingProposal ? (
-                    <Textarea
-                      value={editableProposalDraft.techStackText}
-                      onChange={(event) =>
-                        handleEditableProposalDraftChange("techStackText", event.target.value)
-                      }
-                      className="min-h-[110px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                      placeholder={"One technology per line\nExample: Next.js"}
-                    />
-                  ) : Array.isArray(activeProposalStructuredData?.techStack) &&
-                    activeProposalStructuredData.techStack.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {activeProposalStructuredData.techStack.map((item) => (
-                        <Badge
-                          key={item}
-                          variant="outline"
-                          className="rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                        >
-                          {item}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      No tech stack added yet.
-                    </p>
-                  )}
-                </ProposalSectionCard>
-
-                <ProposalSectionCard
-                  title="Delivery Notes"
-                  description="Extra constraints, assumptions, or handover expectations."
-                >
-                  {isEditingProposal ? (
-                    <Textarea
-                      value={editableProposalDraft.notes}
-                      onChange={(event) =>
-                        handleEditableProposalDraftChange("notes", event.target.value)
-                      }
-                      className="min-h-[130px] border-border bg-background/40 text-foreground placeholder:text-muted-foreground focus-visible:border-primary/45 focus-visible:ring-primary/20 dark:border-white/10 dark:bg-background/60"
-                      placeholder="Add any assumptions, dependencies, or special notes."
-                    />
-                  ) : (
-                    <p className="text-sm leading-7 text-foreground">
-                      {activeProposalStructuredData?.notes || "No delivery notes added yet."}
-                    </p>
-                  )}
-                </ProposalSectionCard>
+                      ) : (
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                          <ProposalSummaryItem
+                            label="Current Status"
+                            value={activeProposalDetails?.statusDisplay || "Draft"}
+                          />
+                          <ProposalSummaryItem
+                            label="Last Updated"
+                            value={activeProposal?.submittedDate || "No date"}
+                          />
+                        </div>
+                      )}
+                    </ProposalSectionCard>
+                  </div>
+                </div>
               </section>
             </div>
           </div>
         </div>
 
-        <DialogFooter className={cn(
-          "shrink-0 flex flex-row items-center justify-between gap-3 border-t border-border/60 bg-muted/40 p-3 dark:border-white/10 dark:bg-accent/60 transition-all duration-300 w-full",
-          isAIChatOpen && "sm:max-w-[calc(100%-350px)] lg:max-w-[calc(100%-400px)]"
-        )}>
+          <DialogFooter className="shrink-0 flex flex-row items-center justify-between gap-3 border-t border-border/60 bg-muted/40 p-3 dark:border-white/10 dark:bg-accent/60 transition-all duration-300 w-full">
           <div>
             {activeProposal && !activeProposal.requiresPayment ? (
               <Button
@@ -629,14 +482,17 @@ const ProposalDetailsDialog = ({
                   : "Approve & Pay"}
               </Button>
             ) : null}
-          </div>
-        </DialogFooter>
+            </div>
+          </DialogFooter>
+        </div>
 
         <ProposalAIChatSidebar 
           open={isAIChatOpen} 
           onClose={() => setIsAIChatOpen(false)} 
           editableProposalDraft={editableProposalDraft} 
           onDraftChange={handleEditableProposalDraftChange} 
+          onDynamicFieldChange={handleDynamicFieldChange}
+          onDynamicSectionChange={handleDynamicSectionChange}
         />
       </DialogContent>
     </Dialog>

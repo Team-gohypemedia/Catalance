@@ -763,7 +763,7 @@ const normalizePortfolioProjects = (projects) => {
     const project =
       entry && typeof entry === "object" ? entry : { title: String(entry || "") };
     const title = String(project.title || "").trim();
-    const link = normalizeProjectLink(project.link || project.url || "");
+    const link = normalizeProjectLink(project.link || project.projectLink || project.url || "");
     const readme = normalizeProjectLink(
       project.readme || project.readmeUrl || project.readmeLink || ""
     );
@@ -777,17 +777,20 @@ const normalizePortfolioProjects = (projects) => {
 
     if (!title && !link && !readme) return;
 
-    const dedupKey = link
-      ? link.toLowerCase()
+    const dedupKey = title
+      ? `title:${title.toLowerCase()}`
+      : link
+        ? `link:${link.toLowerCase()}`
       : readme
-        ? readme.toLowerCase()
-      : `${title.toLowerCase()}:${index}`;
+        ? `readme:${readme.toLowerCase()}`
+      : `index:${index}`;
     if (projectMap.has(dedupKey)) return;
 
     projectMap.set(dedupKey, {
       ...project,
       title: title || "Project",
       link,
+      projectLink: link,
       readme,
       image
     });
@@ -856,10 +859,10 @@ const mergePortfolioProjectCaseStudies = (
       fallbackId: `case-study-${index + 1}`,
       serviceKey
     });
-    const dedupKey = normalized.projectLink
-      ? `link:${normalized.projectLink.toLowerCase()}`
-      : normalized.title
-        ? `title:${normalized.title.toLowerCase()}`
+    const dedupKey = normalized.title
+      ? `title:${normalized.title.toLowerCase()}`
+      : normalized.projectLink
+        ? `link:${normalized.projectLink.toLowerCase()}`
         : normalized.id
           ? `id:${normalized.id.toLowerCase()}`
           : "";
@@ -1613,8 +1616,10 @@ const normalizeFreelancerProjectEntries = ({
 
     const resolvedTitle =
       title || `${serviceName || "Portfolio"} Project ${index + 1}`;
-    const dedupKey = link
-      ? `link:${link.toLowerCase()}`
+    const dedupKey = title
+      ? `title:${title.toLowerCase()}`
+      : link
+        ? `link:${link.toLowerCase()}`
       : readme
         ? `readme:${readme.toLowerCase()}`
       : `${String(serviceKey || "general").toLowerCase()}:${resolvedTitle.toLowerCase()}:${index}`;
@@ -1630,6 +1635,7 @@ const normalizeFreelancerProjectEntries = ({
       title: resolvedTitle,
       description,
       link,
+      projectLink: link,
       readme,
       fileName,
       fileUrl,
@@ -1721,7 +1727,7 @@ const deriveFreelancerProjects = ({
     const serviceKey = String(normalized.serviceKey || "").trim();
     const dedupKey = [
       serviceKey || "general",
-      link ? `link:${link.toLowerCase()}` : readme ? `readme:${readme.toLowerCase()}` : `title:${title.toLowerCase()}:${index}`
+      title ? `title:${title.toLowerCase()}` : link ? `link:${link.toLowerCase()}` : readme ? `readme:${readme.toLowerCase()}` : `index:${index}`
     ].join("|");
 
     if (!title && !link && !readme && !String(normalized.description || "").trim()) {
@@ -2176,6 +2182,42 @@ const upsertMarketplaceEntry = async ({
   await runUpsert({ includeServiceDetails: false, includeServiceKey: false });
 };
 
+const toFreelancerProjectCreateRow = (freelancerId, project = {}) => {
+  const link = normalizeOptionalProjectUrl(
+    project.link || project.projectLink || project.url || ""
+  );
+  const readme = normalizeOptionalProjectUrl(
+    project.readme || project.readmeUrl || project.readmeLink || ""
+  );
+
+  return {
+    freelancerId,
+    serviceKey: project.serviceKey || null,
+    serviceName: project.serviceName || null,
+    professionalTitle: project.professionalTitle || null,
+    languages: Array.isArray(project.languages) ? project.languages : [],
+    industriesOrNiches: Array.isArray(project.industriesOrNiches) ? project.industriesOrNiches : [],
+    yearsOfExperienceInService: project.yearsOfExperienceInService || null,
+    serviceSpecializations: Array.isArray(project.serviceSpecializations) ? project.serviceSpecializations : [],
+    activeTechnologies: Array.isArray(project.activeTechnologies) ? project.activeTechnologies : [],
+    averageProjectPriceRange: project.averageProjectPriceRange || null,
+    projectComplexityLevel: project.projectComplexityLevel || null,
+    acceptInProgressProjects: project.acceptInProgressProjects || null,
+    title: String(project.title || "Project").trim() || "Project",
+    description: project.description || null,
+    link,
+    readme,
+    fileName: project.fileName || null,
+    fileUrl: project.fileUrl || null,
+    role: project.role || null,
+    timeline: project.timeline || project.deliveryTime || null,
+    budget: normalizeBudgetValue(project.budget),
+    tags: Array.isArray(project.tags) ? project.tags : [],
+    techStack: Array.isArray(project.techStack) ? project.techStack : [],
+    sortOrder: Number.isInteger(project.sortOrder) ? project.sortOrder : 0
+  };
+};
+
 const replaceFreelancerProjects = async (freelancerId, projects = [], tx = prisma) => {
   if (!freelancerId) return;
 
@@ -2190,11 +2232,7 @@ const replaceFreelancerProjects = async (freelancerId, projects = [], tx = prism
     }
 
     await txClient.freelancerProject.createMany({
-      data: rows.map(({ deliveryTime, ...project }) => ({
-        freelancerId,
-        ...project,
-        timeline: project.timeline || deliveryTime || null
-      }))
+      data: rows.map((project) => toFreelancerProjectCreateRow(freelancerId, project))
     });
   };
 
@@ -2222,9 +2260,40 @@ const normalizeWorkExperienceEntries = (value) => {
       const title = normalizeOnboardingWorkExperienceTitle(entry.title);
       const period = normalizeOnboardingValueLabel(entry.period);
       const description = String(entry.description || "").trim();
+      const country = String(entry.country || "").trim();
+      const state = String(entry.state || entry.region || "").trim();
+      const location = String(
+        entry.location || [state, country].filter(Boolean).join(", ")
+      ).trim();
+      const locationType = String(entry.locationType || entry.workplaceType || "").trim();
+      const employmentType = String(entry.employmentType || entry.type || "").trim();
+      const companyWebsite = String(entry.companyWebsite || entry.website || "").trim();
+      const linkedinUrl = String(entry.linkedinUrl || entry.linkedin || "").trim();
 
-      if (!title && !period && !description) return null;
-      return { title, period, description };
+      if (
+        !title &&
+        !period &&
+        !description &&
+        !location &&
+        !country &&
+        !state &&
+        !locationType &&
+        !employmentType &&
+        !companyWebsite &&
+        !linkedinUrl
+      ) return null;
+      return {
+        title,
+        period,
+        description,
+        location,
+        country,
+        state,
+        locationType,
+        employmentType,
+        companyWebsite,
+        linkedinUrl
+      };
     })
     .filter(Boolean);
 };

@@ -28,14 +28,26 @@ const WorkExperienceModalContent = ({
 }) => {
   const EMPTY_VALUE = "__empty__";
 
+  const parseLocationParts = () => {
+    const parts = String(workForm.location || "")
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    return {
+      state: parts.length >= 2 ? parts[0] : "",
+      country: parts.length >= 2 ? parts.slice(1).join(", ") : parts[0] || "",
+    };
+  };
+
   const [selectedCountry, setSelectedCountry] = useState(() => {
-    const parts = String(workForm.location || "").split(",").map(p => p.trim());
-    return parts.length >= 2 ? parts[1] : (workForm.location || "");
+    const parsedLocation = parseLocationParts();
+    return String(workForm.country || parsedLocation.country || "").trim();
   });
 
   const [selectedState, setSelectedState] = useState(() => {
-    const parts = String(workForm.location || "").split(",").map(p => p.trim());
-    return parts.length >= 2 ? parts[0] : "";
+    const parsedLocation = parseLocationParts();
+    return String(workForm.state || parsedLocation.state || "").trim();
   });
 
   const countryOptions = ["India", "United States", "United Kingdom"];
@@ -53,6 +65,8 @@ const WorkExperienceModalContent = ({
     setSelectedState("");
     setWorkForm((prev) => ({
       ...prev,
+      country,
+      state: "",
       location: country,
     }));
   };
@@ -62,6 +76,8 @@ const WorkExperienceModalContent = ({
     const newLocation = [state, selectedCountry].filter(Boolean).join(", ");
     setWorkForm((prev) => ({
       ...prev,
+      country: selectedCountry,
+      state,
       location: newLocation,
     }));
   };

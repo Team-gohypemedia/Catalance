@@ -246,6 +246,13 @@ export const NotificationProvider = ({ children }) => {
       const updated = [newNotification, ...prev].slice(0, MAX_NOTIFICATIONS);
       return updated;
     });
+
+    if (newNotification.type !== "system") {
+      toast(newNotification.title, {
+        id: newNotification.id,
+        description: newNotification.message,
+      });
+    }
   }, []);
 
   // Mark a notification as read while keeping it visible in the list

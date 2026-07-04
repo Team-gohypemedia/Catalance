@@ -142,24 +142,26 @@ const MarketplacePage = () => {
       title="Talent Marketplace"
       subtitle="Assemble your dream team from our curated pool of elite digital specialists."
     >
-      <div className="mb-12 space-y-8">
+      <div className="mb-12 space-y-8 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 to-transparent -z-10 rounded-[48px] blur-3xl opacity-50 pointer-events-none" />
         <div className="flex flex-col md:flex-row items-center gap-4">
-           <div className="relative flex-1 w-full">
-              <Search className="absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+           <div className="relative flex-1 w-full group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-[24px] blur opacity-10 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
+              <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400 group-hover:text-blue-600 transition-colors" />
               <Input 
                 placeholder="Search by skill, industry, or expert name..." 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-16 rounded-[24px] border-slate-100 bg-white pl-14 text-base font-medium shadow-xl shadow-slate-200/20 focus-visible:ring-4 focus-visible:ring-blue-100 transition-all"
+                className="relative h-16 rounded-[24px] border-slate-200/80 bg-white/90 backdrop-blur-md pl-14 text-base font-semibold text-slate-800 shadow-xl shadow-slate-200/20 focus-visible:ring-4 focus-visible:ring-blue-500/20 focus-visible:border-blue-400 transition-all placeholder:text-slate-400 placeholder:font-medium"
               />
            </div>
            <Button
              type="button"
              variant="outline"
              onClick={() => setShowAdvancedFilters((current) => !current)}
-             className="h-16 rounded-[24px] border-slate-100 bg-white px-8 font-black text-[10px] uppercase tracking-widest text-slate-600 shadow-sm hover:bg-slate-50 transition-all active:scale-95"
+             className="relative h-16 rounded-[24px] border-slate-200/80 bg-white/90 backdrop-blur-md px-8 font-black text-[10px] uppercase tracking-widest text-slate-600 shadow-sm hover:bg-slate-50 hover:border-blue-300 hover:text-blue-600 transition-all active:scale-95 group"
            >
-              <Filter className="mr-3 h-4 w-4" />
+              <Filter className={`mr-3 h-4 w-4 transition-transform duration-300 ${showAdvancedFilters ? 'rotate-180 text-blue-600' : ''}`} />
               {showAdvancedFilters ? "Hide Filters" : "Advanced Filters"}
            </Button>
         </div>
@@ -170,7 +172,7 @@ const MarketplacePage = () => {
                key={tab} 
                type="button"
                onClick={() => setActiveTab(tab)}
-               className={`h-11 rounded-2xl px-6 text-[10px] font-black tracking-widest uppercase transition-all ${activeTab === tab ? 'bg-slate-900 text-white shadow-xl shadow-slate-900/20 scale-105' : 'border-slate-100 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-600'}`}
+               className={`relative overflow-hidden h-12 rounded-[24px] px-8 text-[10px] font-black tracking-[0.15em] uppercase transition-all duration-300 ${activeTab === tab ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/30 scale-105 border-0' : 'border border-slate-200 bg-white/80 backdrop-blur-sm text-slate-500 hover:bg-white hover:border-slate-300 hover:text-slate-800'}`}
              >
                {tab}
              </Button>
@@ -178,67 +180,67 @@ const MarketplacePage = () => {
         </div>
 
         {showAdvancedFilters ? (
-          <Card className="rounded-[28px] border-slate-100 bg-white p-5 shadow-sm">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <Card className="rounded-[32px] border-slate-200/60 bg-white/80 backdrop-blur-xl p-6 shadow-xl shadow-slate-200/20 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">
                   Availability
                 </p>
                 <select
                   value={availabilityFilter}
                   onChange={(event) => setAvailabilityFilter(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white/50 px-4 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all cursor-pointer hover:bg-white"
                 >
-                  <option value="ALL">All</option>
-                  <option value="AVAILABLE">Available</option>
-                  <option value="UNAVAILABLE">Unavailable</option>
+                  <option value="ALL">All Status</option>
+                  <option value="AVAILABLE">Available Now</option>
+                  <option value="UNAVAILABLE">Currently Busy</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">
                   Min Rating
                 </p>
                 <select
                   value={ratingFilter}
                   onChange={(event) => setRatingFilter(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white/50 px-4 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all cursor-pointer hover:bg-white"
                 >
-                  <option value="0">Any</option>
-                  <option value="3">3.0+</option>
-                  <option value="4">4.0+</option>
-                  <option value="4.5">4.5+</option>
+                  <option value="0">Any Rating</option>
+                  <option value="3">3.0 & Above</option>
+                  <option value="4">4.0 & Above</option>
+                  <option value="4.5">4.5 & Elite</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Min Experience
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">
+                  Experience
                 </p>
                 <select
                   value={experienceFilter}
                   onChange={(event) => setExperienceFilter(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white/50 px-4 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all cursor-pointer hover:bg-white"
                 >
-                  <option value="0">Any</option>
-                  <option value="1">1+ years</option>
-                  <option value="3">3+ years</option>
-                  <option value="5">5+ years</option>
+                  <option value="0">Any Experience</option>
+                  <option value="1">1+ Years</option>
+                  <option value="3">3+ Years</option>
+                  <option value="5">5+ Years Veteran</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  Sort By
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">
+                  Sort Order
                 </p>
                 <select
                   value={sortFilter}
                   onChange={(event) => setSortFilter(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white/50 px-4 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 outline-none transition-all cursor-pointer hover:bg-white"
                 >
-                  <option value="rating">Top Rated</option>
-                  <option value="best_match">Best Match</option>
+                  <option value="rating">Highest Rated First</option>
+                  <option value="best_match">Best Match Score</option>
                 </select>
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
+            <div className="mt-6 flex justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -248,7 +250,7 @@ const MarketplacePage = () => {
                   setExperienceFilter("0");
                   setSortFilter("rating");
                 }}
-                className="h-10 rounded-xl border-slate-200 px-4 text-xs font-black uppercase tracking-wider text-slate-600"
+                className="h-10 rounded-[18px] border-slate-200 px-6 text-[10px] font-black uppercase tracking-[0.15em] text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-all"
               >
                 Reset Filters
               </Button>
@@ -261,154 +263,176 @@ const MarketplacePage = () => {
         <div className="space-y-8">
            <div className="flex items-center justify-between px-2">
               <div className="flex items-center gap-3">
-                 <div className="h-2 w-2 rounded-full bg-blue-600 animate-pulse" />
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                 <div className="relative">
+                    <div className="absolute inset-0 bg-blue-600 rounded-full blur animate-ping opacity-50" />
+                    <div className="relative h-2 w-2 rounded-full bg-blue-600" />
+                 </div>
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.25em]">
                     {loading ? "SEARCHING GLOBAL TALENT..." : `${filteredFreelancerList.length} VERIFIED EXPERTS DISCOVERED`}
                  </p>
               </div>
-              <span className="text-[10px] font-bold text-slate-400">
-                Available now: {availableCount}
+              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
+                Available now: <span className="text-blue-600 font-black">{availableCount}</span>
               </span>
            </div>
 
            {loading ? (
-                Array.from({length: 3}).map((_, i) => (
-                    <Card key={i} className="h-80 rounded-[48px] bg-slate-50 animate-pulse border-none" />
-                ))
+                <div className="grid gap-6">
+                  {Array.from({length: 3}).map((_, i) => (
+                      <Card key={i} className="h-72 rounded-[40px] bg-white/50 backdrop-blur-sm animate-pulse border-slate-100" />
+                  ))}
+                </div>
            ) : filteredFreelancerList.length > 0 ? (
-                visibleFreelancers.map((f) => (
-                   <Card key={f.id} className="group relative overflow-hidden rounded-[48px] border-slate-100 p-1 bg-white shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500">
-                      <div className="p-8">
-                        <div className="flex flex-col md:flex-row gap-8">
-                           <div className="relative shrink-0 mx-auto md:mx-0">
-                              <div className="absolute -inset-2 rounded-[40px] bg-gradient-to-br from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-10 transition-opacity" />
-                              <Avatar className="h-32 w-32 rounded-[38px] shadow-2xl border-4 border-white bg-slate-50 relative z-10 transition-transform duration-500 group-hover:scale-105">
-                                 <AvatarImage src={f.avatar} />
-                                 <AvatarFallback className="text-2xl font-black bg-slate-100 text-slate-300">{String(f?.name || "F")[0]}</AvatarFallback>
-                              </Avatar>
-                              <div className="absolute -bottom-2 -right-2 flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500 border-4 border-white text-white shadow-lg relative z-20">
-                                 <CheckCircle2 className="h-5 w-5" />
-                              </div>
-                           </div>
-        
-                           <div className="flex-1 text-center md:text-left">
-                              <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                 <div>
-                                    <div className="flex items-center justify-center md:justify-start gap-4 mb-1">
-                                       <h3 className="text-2xl font-black text-slate-900 leading-tight group-hover:text-blue-600 transition-colors">{f.name}</h3>
-                                       {f.rating >= 4.8 && (
-                                           <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-full border border-blue-100">
-                                              <Award className="h-3 w-3" />
-                                              <span className="text-[9px] font-black uppercase tracking-widest">ELITE</span>
-                                           </div>
-                                       )}
-                                    </div>
-                                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-5">
-                                       <div className="flex items-center gap-1.5 text-slate-400">
-                                          <MapPin className="h-4 w-4" />
-                                          <span className="text-[10px] font-black uppercase tracking-tighter">{f.location || "Location not specified"}</span>
-                                       </div>
-                                       <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/10 border border-primary/20">
-                                          <Star className="h-3 w-3 fill-primary text-primary" />
-                                          <span className="text-[10px] font-black text-primary">{f.rating}</span>
-                                          <span className="text-[9px] font-bold text-primary/60">({f.reviewsCount})</span>
-                                       </div>
-                                       <Badge variant="secondary" className="bg-slate-100 text-slate-600 text-[9px] font-black px-3 py-0.5 rounded-lg border-none">
-                                           {f.projectExperience} YEARS EXPERIENCE
-                                       </Badge>
-                                    </div>
-                                 </div>
-                                 <div className="md:text-right p-4 rounded-3xl bg-slate-50/50 border border-slate-100 group-hover:bg-blue-600 group-hover:border-blue-500 group-hover:text-white transition-all">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 group-hover:text-blue-100">RATE FROM</p>
-                                    {Number(f.hourlyRate || 0) > 0 ? (
-                                      <p className="text-3xl font-black">
-                                        INR {Number(f.hourlyRate).toLocaleString("en-IN")}
-                                        <span className="ml-1 text-xs font-bold opacity-50">/hr</span>
-                                      </p>
-                                    ) : (
-                                      <p className="text-sm font-bold text-slate-500 group-hover:text-white">
-                                        Rate not specified
-                                      </p>
-                                    )}
-                                 </div>
-                              </div>
-        
-                              <div className="mb-6">
-                                 <h4 className="text-base font-bold text-slate-800 mb-2 truncate">{f.title}</h4>
-                                 <p className="text-sm font-medium text-slate-500 leading-relaxed line-clamp-2 max-w-2xl">
-                                    {f.bio || "Bio not available."}
-                                 </p>
-                              </div>
-        
-                              <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-8">
-                                 {(Array.isArray(f.skills) ? f.skills : []).map(skill => (
-                                   <Badge key={skill} variant="secondary" className="bg-white border border-slate-100 text-slate-600 text-[10px] font-bold rounded-xl px-4 py-1.5 shadow-sm group-hover:border-indigo-100 transition-colors uppercase tracking-tight">{skill}</Badge>
-                                 ))}
-                              </div>
-                           </div>
+                <div className="grid gap-6">
+                  {visibleFreelancers.map((f, idx) => (
+                     <Card 
+                       key={f.id} 
+                       className="group relative overflow-hidden rounded-[40px] border-slate-200/60 bg-white/80 backdrop-blur-xl shadow-lg shadow-slate-200/30 hover:shadow-2xl hover:shadow-blue-500/10 hover:-translate-y-1.5 transition-all duration-500 hover:border-blue-200 animate-in fade-in slide-in-from-bottom-4"
+                       style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
+                     >
+                        <div className="p-8">
+                          <div className="flex flex-col md:flex-row gap-8">
+                             <div className="relative shrink-0 mx-auto md:mx-0">
+                                <div className="absolute -inset-3 rounded-[44px] bg-gradient-to-br from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-15 blur-lg transition-all duration-500" />
+                                <Avatar className="h-32 w-32 rounded-[36px] shadow-xl shadow-slate-200/50 border-4 border-white bg-slate-50 relative z-10 transition-transform duration-500 group-hover:scale-[1.03] group-hover:-rotate-2">
+                                   <AvatarImage src={f.avatar} />
+                                   <AvatarFallback className="text-3xl font-black bg-gradient-to-br from-slate-100 to-slate-200 text-slate-400">{String(f?.name || "F")[0]}</AvatarFallback>
+                                </Avatar>
+                                <div className="absolute -bottom-2 -right-2 flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 border-4 border-white text-white shadow-lg relative z-20 transition-transform duration-300 group-hover:scale-110">
+                                   <CheckCircle2 className="h-5 w-5" />
+                                </div>
+                             </div>
+          
+                             <div className="flex-1 text-center md:text-left flex flex-col justify-between">
+                                <div className="mb-4 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                                   <div>
+                                      <div className="flex items-center justify-center md:justify-start gap-4 mb-2">
+                                         <h3 className="text-2xl font-black text-slate-900 leading-tight group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:bg-clip-text group-hover:text-transparent transition-all">{f.name}</h3>
+                                         {f.rating >= 4.8 && (
+                                             <div className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-600 rounded-full border border-amber-200/50 shadow-sm">
+                                                <Award className="h-3.5 w-3.5" />
+                                                <span className="text-[9px] font-black uppercase tracking-[0.2em]">ELITE</span>
+                                             </div>
+                                         )}
+                                      </div>
+                                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-2">
+                                         <h4 className="text-[15px] font-bold text-slate-700 line-clamp-1">{f.title}</h4>
+                                      </div>
+                                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-slate-50 text-slate-500 border border-slate-100">
+                                            <MapPin className="h-3.5 w-3.5" />
+                                            <span className="text-[10px] font-black uppercase tracking-wider">{f.location || "Remote"}</span>
+                                         </div>
+                                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-50/50 border border-blue-100/50">
+                                            <Star className="h-3.5 w-3.5 fill-blue-500 text-blue-500" />
+                                            <span className="text-[11px] font-black text-blue-700">{f.rating > 0 ? f.rating.toFixed(1) : 'New'}</span>
+                                            {f.reviewsCount > 0 && <span className="text-[10px] font-bold text-blue-500/70">({f.reviewsCount})</span>}
+                                         </div>
+                                         <div className="px-2.5 py-1 rounded-xl bg-indigo-50/50 border border-indigo-100/50">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600">{f.projectExperience} YRS EXP</span>
+                                         </div>
+                                      </div>
+                                   </div>
+                                   <div className="md:text-right p-5 rounded-[24px] bg-slate-50/80 border border-slate-100/80 group-hover:bg-gradient-to-br group-hover:from-blue-600 group-hover:to-indigo-600 group-hover:border-transparent group-hover:shadow-lg group-hover:shadow-blue-500/20 transition-all duration-300">
+                                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1.5 group-hover:text-blue-100">HOURLY RATE</p>
+                                      {Number(f.hourlyRate || 0) > 0 ? (
+                                        <div className="flex items-baseline justify-center md:justify-end gap-1">
+                                          <span className="text-lg font-black text-slate-400 group-hover:text-blue-200">₹</span>
+                                          <p className="text-3xl font-black text-slate-800 group-hover:text-white tracking-tight">
+                                            {Number(f.hourlyRate).toLocaleString("en-IN")}
+                                          </p>
+                                          <span className="text-xs font-bold text-slate-400 group-hover:text-blue-200">/hr</span>
+                                        </div>
+                                      ) : (
+                                        <p className="text-sm font-black text-slate-500 group-hover:text-white pt-2">
+                                          Negotiable
+                                        </p>
+                                      )}
+                                   </div>
+                                </div>
+          
+                                <div className="mb-6">
+                                   <p className="text-[14px] font-medium text-slate-500 leading-relaxed line-clamp-2 max-w-2xl">
+                                      {f.bio || "No biography provided. View profile for more details about this expert's experience and portfolio."}
+                                   </p>
+                                </div>
+          
+                                <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-auto">
+                                   {(Array.isArray(f.skills) ? f.skills : []).slice(0, 6).map(skill => (
+                                     <span key={skill} className="bg-slate-50 border border-slate-200/60 text-slate-600 text-[10px] font-black rounded-xl px-4 py-1.5 shadow-sm group-hover:border-blue-200 group-hover:bg-blue-50/50 transition-colors uppercase tracking-widest">{skill}</span>
+                                   ))}
+                                   {(Array.isArray(f.skills) && f.skills.length > 6) && (
+                                     <span className="bg-slate-100/50 text-slate-400 text-[10px] font-black rounded-xl px-3 py-1.5 uppercase tracking-widest">+{f.skills.length - 6} MORE</span>
+                                   )}
+                                </div>
+                             </div>
+                          </div>
+          
+                          <div className="flex flex-col sm:flex-row gap-4 pt-8 mt-8 border-t border-slate-100/80">
+                             <Button 
+                               className={`h-14 flex-1 rounded-[20px] font-black text-[10px] tracking-[0.2em] uppercase text-white shadow-xl transition-all hover:-translate-y-0.5 active:translate-y-0 ${projectId ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20 hover:shadow-blue-500/40' : 'bg-slate-900 shadow-slate-900/10 hover:shadow-slate-900/30'}`} 
+                               disabled={assigningId === f.id}
+                               onClick={async () => {
+                                 if (projectId) {
+                                     setAssigningId(f.id);
+                                     try {
+                                         if (isReassign) {
+                                             const result = await pmApi.replaceFreelancer(authFetch, projectId, f.id);
+                                             if (result?.approvalRequired) {
+                                               toast.success("Admin approval request sent for this reassignment");
+                                             } else {
+                                               toast.success("Freelancer reassigned successfully");
+                                             }
+                                         } else {
+                                             await pmApi.inviteFreelancer(authFetch, f.id, { projectId });
+                                             toast.success("Invitation sent successfully");
+                                         }
+                                         navigate(`/project-manager/projects/${projectId}`);
+                                     } catch (e) {
+                                         toast.error(e.message || "Operation failed");
+                                     } finally {
+                                         setAssigningId(null);
+                                     }
+                                 } else {
+                                     navigate(`/project-manager/create-project?freelancerId=${encodeURIComponent(f.id)}`);
+                                 }
+                               }}
+                             >
+                               {assigningId === f.id ? <Loader2 className="h-5 w-5 animate-spin" /> : (projectId ? (isReassign ? "Confirm Reassignment" : "Assign to Project") : "Initiate Booking")}
+                             </Button>
+                             <Button 
+                               variant="outline" 
+                               className="h-14 flex-1 rounded-[20px] border-slate-200 bg-white/50 backdrop-blur-sm font-black text-[10px] tracking-[0.2em] uppercase text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:text-slate-900 transition-all hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 group/btn" 
+                               disabled={loadingProfileId === f.id}
+                               onClick={() => handleViewFreelancerProfile(f)}
+                             >
+                                {loadingProfileId === f.id ? (
+                                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                                ) : (
+                                  <>
+                                    View Full Profile
+                                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover/btn:text-slate-800 group-hover/btn:translate-x-1 transition-all" />
+                                  </>
+                                )}
+                             </Button>
+                          </div>
                         </div>
-        
-                        <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-slate-50">
-                           <Button 
-                             className={`h-14 flex-1 rounded-[24px] font-black text-[10px] tracking-[0.2em] uppercase text-white shadow-xl transition-all hover:scale-[1.02] active:scale-95 ${projectId ? 'bg-blue-600 shadow-blue-600/20 hover:bg-blue-700' : 'bg-slate-900 shadow-slate-900/10 hover:bg-blue-600'}`} 
-                             disabled={assigningId === f.id}
-                             onClick={async () => {
-                               if (projectId) {
-                                   setAssigningId(f.id);
-                                   try {
-                                       if (isReassign) {
-                                           const result = await pmApi.replaceFreelancer(authFetch, projectId, f.id);
-                                           if (result?.approvalRequired) {
-                                             toast.success("Admin approval request sent for this reassignment");
-                                           } else {
-                                             toast.success("Freelancer reassigned successfully");
-                                           }
-                                       } else {
-                                           await pmApi.inviteFreelancer(authFetch, f.id, { projectId });
-                                           toast.success("Invitation sent successfully");
-                                       }
-                                       navigate(`/project-manager/projects/${projectId}`);
-                                   } catch (e) {
-                                       toast.error(e.message || "Operation failed");
-                                   } finally {
-                                       setAssigningId(null);
-                                   }
-                               } else {
-                                   navigate(`/project-manager/create-project?freelancerId=${encodeURIComponent(f.id)}`);
-                               }
-                             }}
-                           >
-                             {assigningId === f.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (projectId ? (isReassign ? "Confirm Reassignment" : "Assign to Project") : "Initiate Booking")}
-                           </Button>
-                           <Button 
-                             variant="outline" 
-                             className="h-14 flex-1 rounded-[24px] border-slate-200 bg-white font-black text-[10px] tracking-[0.2em] uppercase text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center justify-center gap-3" 
-                             disabled={loadingProfileId === f.id}
-                             onClick={() => handleViewFreelancerProfile(f)}
-                           >
-                              {loadingProfileId === f.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  View Freelancer Profile
-                                  <ChevronRight className="h-4 w-4" />
-                                </>
-                              )}
-                           </Button>
-                        </div>
-                      </div>
-                   </Card>
-                ))
+                     </Card>
+                  ))}
+                </div>
            ) : (
-                <div className="py-32 text-center space-y-8 rounded-[60px] bg-white border-2 border-dashed border-slate-100 shadow-inner">
-                    <div className="h-24 w-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto">
-                       <Search className="h-10 w-10 text-slate-200" />
+                <div className="py-24 text-center flex flex-col items-center justify-center space-y-8 rounded-[48px] bg-gradient-to-b from-white/60 to-slate-50/60 backdrop-blur-md border-2 border-dashed border-slate-200/80 shadow-sm animate-in fade-in duration-500">
+                    <div className="relative">
+                       <div className="absolute inset-0 bg-blue-100 rounded-full blur-xl animate-pulse opacity-50" />
+                       <div className="h-28 w-28 bg-white rounded-[32px] rotate-3 flex items-center justify-center relative z-10 shadow-xl shadow-slate-200/50 border border-slate-100">
+                          <Search className="h-12 w-12 text-blue-500 -rotate-3" />
+                       </div>
                     </div>
-                    <div className="space-y-2">
-                       <p className="text-xl font-black text-slate-900">Zero matches in current sector.</p>
-                       <p className="text-sm font-medium text-slate-400">Try broadening your parameters or search terms.</p>
+                    <div className="space-y-3 max-w-md px-4">
+                       <p className="text-2xl font-black text-slate-800 tracking-tight">No experts found.</p>
+                       <p className="text-sm font-medium text-slate-500 leading-relaxed">We couldn't find any professionals matching your exact criteria in this sector. Try broadening your parameters.</p>
                     </div>
-                    <Button variant="default" onClick={() => { setSearch(""); setActiveTab("Developers"); }} className="h-12 rounded-2xl bg-blue-600 px-10 text-[10px] font-black uppercase tracking-widest">Reset Discovery</Button>
+                    <Button variant="default" onClick={() => { setSearch(""); setActiveTab("Developers"); setAvailabilityFilter("ALL"); setRatingFilter("0"); setExperienceFilter("0"); }} className="h-14 rounded-[20px] bg-slate-900 hover:bg-slate-800 px-12 text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-slate-900/20 transition-all hover:-translate-y-1">Reset Discovery</Button>
                 </div>
            )}
 
@@ -417,77 +441,84 @@ const MarketplacePage = () => {
              variant="ghost"
              disabled={visibleFreelancers.length >= filteredFreelancerList.length}
              onClick={() => setVisibleCount((current) => current + 6)}
-             className="w-full h-16 rounded-[30px] text-slate-400 font-black text-[11px] tracking-[0.3em] uppercase hover:text-blue-600 hover:bg-white hover:shadow-sm transition-all disabled:opacity-40"
+             className="w-full h-16 rounded-[24px] text-slate-400 font-black text-[11px] tracking-[0.3em] uppercase hover:text-blue-600 hover:bg-blue-50 hover:shadow-sm transition-all disabled:opacity-30 disabled:hover:bg-transparent"
            >
              {visibleFreelancers.length >= filteredFreelancerList.length ? "END OF RESULTS" : "LOAD NEXT WAVE"}
            </Button>
         </div>
 
         <div className="space-y-6">
-           <Card className="rounded-[48px] border-slate-100 p-10 bg-white shadow-xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-700 pointer-events-none">
-                 <Zap className="h-48 w-48 text-blue-600" />
+           <Card className="rounded-[40px] border-slate-800 p-10 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-2xl relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:rotate-12 group-hover:scale-110 group-hover:opacity-20 transition-all duration-700 pointer-events-none">
+                 <Zap className="h-48 w-48 text-blue-400" />
               </div>
               <div className="relative z-10">
-                 <p className="mb-8 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">
-                    <Zap className="h-4 w-4 fill-blue-600 text-blue-600" />
+                 <p className="mb-8 flex items-center gap-3 text-[11px] font-black uppercase tracking-[0.25em] text-blue-400">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/20">
+                      <Zap className="h-3 w-3 fill-blue-400" />
+                    </span>
                     Pipeline Intel
                  </p>
                  <div className="space-y-6">
-                    <div className="group cursor-pointer">
-                       <h4 className="mb-2 text-base font-black text-slate-900 group-hover:text-blue-600 transition-colors">Contracting Velocity</h4>
-                       <p className="text-xs font-medium text-slate-500 leading-relaxed">
-                         You have <span className="font-black text-blue-600">{pipeline.activeInvites}</span> active proposals awaiting freelancer response.
+                    <div className="group/stat cursor-pointer">
+                       <h4 className="mb-2 text-base font-black text-white group-hover/stat:text-blue-400 transition-colors tracking-wide">Contracting Velocity</h4>
+                       <p className="text-[13px] font-medium text-slate-400 leading-relaxed">
+                         You have <span className="inline-flex items-center justify-center bg-blue-500/20 border border-blue-500/30 text-blue-400 font-black rounded-lg px-2.5 py-0.5 mx-1">{pipeline.activeInvites}</span> active proposals awaiting response.
                        </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                       <div className="rounded-[32px] border border-slate-100 bg-slate-50 p-6 text-center">
-                          <p className="text-2xl font-black text-slate-900">{pipeline.activeInterviews}</p>
-                          <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Interviews</p>
+                       <div className="rounded-[28px] border border-slate-700/50 bg-slate-800/50 backdrop-blur-sm p-6 text-center hover:bg-slate-700/50 hover:border-slate-600/50 transition-all cursor-default">
+                          <p className="text-3xl font-black text-white tracking-tight">{pipeline.activeInterviews}</p>
+                          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Interviews</p>
                        </div>
-                       <div className="rounded-[32px] border border-slate-100 bg-slate-50 p-6 text-center">
-                          <p className="text-2xl font-black text-slate-900">{pipeline.unreadChats}</p>
-                          <p className="mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">Unread Msg</p>
+                       <div className="rounded-[28px] border border-slate-700/50 bg-slate-800/50 backdrop-blur-sm p-6 text-center hover:bg-slate-700/50 hover:border-slate-600/50 transition-all cursor-default">
+                          <p className="text-3xl font-black text-white tracking-tight">{pipeline.unreadChats}</p>
+                          <p className="mt-2 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Unread Msg</p>
                        </div>
                     </div>
                  </div>
               </div>
            </Card>
 
-           <Card className="rounded-[40px] border-slate-100 bg-white p-8 shadow-sm">
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+           <Card className="rounded-[32px] border-slate-200/60 bg-white/80 backdrop-blur-xl p-8 shadow-xl shadow-slate-200/20">
+             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                Availability Snapshot
              </p>
-             <div className="mt-4 grid grid-cols-2 gap-3">
-               <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
-                 <p className="text-lg font-black text-emerald-700">{availableCount}</p>
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-700/80">
+             <div className="mt-6 grid grid-cols-2 gap-4">
+               <div className="rounded-[24px] border border-emerald-100 bg-gradient-to-b from-emerald-50/50 to-emerald-50/20 p-5 hover:shadow-md hover:shadow-emerald-500/10 transition-shadow">
+                 <p className="text-2xl font-black text-emerald-600">{availableCount}</p>
+                 <p className="mt-1 text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600/70">
                    Available
                  </p>
                </div>
-               <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                 <p className="text-lg font-black text-slate-800">{Math.max(filteredFreelancerList.length - availableCount, 0)}</p>
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+               <div className="rounded-[24px] border border-slate-100 bg-gradient-to-b from-slate-50 to-white p-5 hover:shadow-md hover:shadow-slate-200/30 transition-shadow">
+                 <p className="text-2xl font-black text-slate-700">{Math.max(filteredFreelancerList.length - availableCount, 0)}</p>
+                 <p className="mt-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
                    Busy
                  </p>
                </div>
              </div>
            </Card>
 
-           <Card className="rounded-[40px] border-slate-100 bg-white p-8 shadow-sm">
-             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-               Top Skills (Current Results)
+           <Card className="rounded-[32px] border-slate-200/60 bg-white/80 backdrop-blur-xl p-8 shadow-xl shadow-slate-200/20">
+             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-6">
+               Top Skills <span className="font-medium opacity-60">(Current Results)</span>
              </p>
-             <div className="mt-4 space-y-2">
+             <div className="space-y-3">
                {topSkills.length > 0 ? (
-                 topSkills.map(([skill, count]) => (
-                   <div key={skill} className="flex items-center justify-between rounded-xl border border-slate-100 px-3 py-2">
-                     <span className="text-xs font-bold text-slate-800">{skill}</span>
-                     <Badge className="bg-slate-100 text-[10px] font-black text-slate-700">{count}</Badge>
+                 topSkills.map(([skill, count], index) => (
+                   <div key={skill} className="group flex items-center justify-between rounded-[20px] border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-sm hover:border-slate-200 px-4 py-3 transition-all">
+                     <div className="flex items-center gap-3">
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-200/50 text-[10px] font-black text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">{index + 1}</span>
+                        <span className="text-[13px] font-bold text-slate-700 group-hover:text-slate-900 transition-colors uppercase tracking-wide">{skill}</span>
+                     </div>
+                     <Badge className="bg-slate-200/50 text-[10px] font-black text-slate-600 hover:bg-slate-200 rounded-lg px-2.5">{count}</Badge>
                    </div>
                  ))
                ) : (
-                 <p className="text-xs font-medium text-slate-500">No skill data available.</p>
+                 <div className="py-6 text-center rounded-[20px] bg-slate-50 border border-dashed border-slate-200">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No skill data</p>
+                 </div>
                )}
              </div>
            </Card>

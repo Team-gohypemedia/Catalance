@@ -333,7 +333,10 @@ const ProfileHeroCard = ({
                   })}
                 </span>
               ) : (
-                <span className="ml-1.5 text-muted-foreground">Links not set</span>
+                <span className="flex items-center ml-1.5 text-muted-foreground">
+                  <Link className="h-3 w-3 mr-1.5 opacity-80" />
+                  Links not set
+                </span>
               )}
             </span>
           </div>
@@ -372,7 +375,7 @@ const ProfileHeroCard = ({
               Uploading...
             </Button>
           ) : resolvedLinks.resume ? (
-            <DropdownMenu modal={false}
+            <DropdownMenu
               modal={false}
               open={dropdownOpen}
               onOpenChange={setDropdownOpen}

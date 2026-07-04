@@ -380,6 +380,16 @@ const resolveProjectTemplateSource = (project = {}) =>
     project?.title,
   );
 
+const resolveProjectSop = (project = {}) =>
+  project?.customSop || getSopFromTitle(resolveProjectTemplateSource(project));
+
+const isGenericPhaseLabel = (value = "") => /^phase\s+\d+$/i.test(String(value || "").trim());
+
+const resolveSopPhaseTitle = (sop, index) => {
+  const phase = Array.isArray(sop?.phases) ? sop.phases[index] : null;
+  return getFirstNonEmptyText(phase?.title, phase?.name, phase?.label);
+};
+
 const isPhaseMarkedComplete = (phaseLike, fallbackLabel = "Upcoming") => {
   const normalizedStatus = String(
     phaseLike?.status || phaseLike?.state || phaseLike?.phaseStatus || "",
@@ -429,7 +439,7 @@ const buildDefaultPhases = (count = 4) =>
   }));
 
 const buildProjectPhaseSteps = (project) => {
-  const sop = project?.customSop || getSopFromTitle(resolveProjectTemplateSource(project));
+  const sop = resolveProjectSop(project);
   const verifiedTaskIds = new Set(toTaskIdArray(project?.verifiedTasks));
   const completedTaskIds = new Set(toTaskIdArray(project?.completedTasks));
 
@@ -455,13 +465,16 @@ const buildProjectPhaseSteps = (project) => {
 
 const buildProjectPhases = (project) => {
   const phaseSteps = buildProjectPhaseSteps(project);
+  const sop = resolveProjectSop(project);
 
   if (Array.isArray(project?.phases) && project.phases.length > 0) {
     return project.phases.map((phase, index) => {
       const subLabel = resolvePhaseSummary(phase);
 
       return {
-        label: phase?.label || phase?.name || `Phase ${index + 1}`,
+        label: isGenericPhaseLabel(phase?.label || phase?.name)
+          ? resolveSopPhaseTitle(sop, index) || phase?.label || phase?.name || `Phase ${index + 1}`
+          : phase?.label || phase?.name || resolveSopPhaseTitle(sop, index) || `Phase ${index + 1}`,
         value: clampProgress(phase?.progress ?? phase?.value),
         progress: clampProgress(phase?.phaseProgress ?? phase?.progress ?? phase?.value),
         subLabel,
@@ -492,7 +505,9 @@ const buildProjectPhases = (project) => {
           : "Pending";
 
       return {
-        label: milestone?.label || milestone?.name || `Phase ${index + 1}`,
+        label: isGenericPhaseLabel(milestone?.label || milestone?.name)
+          ? resolveSopPhaseTitle(sop, index) || milestone?.label || milestone?.name || `Phase ${index + 1}`
+          : milestone?.label || milestone?.name || resolveSopPhaseTitle(sop, index) || `Phase ${index + 1}`,
         value,
         progress: Math.round(milestoneProgress * 100),
         subLabel,
@@ -506,6 +521,7 @@ const buildProjectPhases = (project) => {
 
     return {
       ...phase,
+      label: resolveSopPhaseTitle(sop, index) || phase.label,
       subLabel,
       steps: resolvePhaseStepsForDisplay(phaseSteps[index], phase, subLabel),
     };
@@ -1306,3 +1322,4 @@ const FreelancerProjectsContent = () => {
 const FreelancerProjects = () => <FreelancerProjectsContent />;
 
 export default FreelancerProjects;
+

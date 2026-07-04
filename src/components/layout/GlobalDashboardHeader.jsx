@@ -100,7 +100,7 @@ export const DashboardHeader = ({
                 </Button>
               )}
             </div>
-            <ScrollArea className="h-72">
+            <ScrollArea className="h-72 [&_[data-slot=scroll-area-scrollbar]]:hidden">
               {notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
                   <Bell className="mb-2 h-8 w-8 opacity-40" />

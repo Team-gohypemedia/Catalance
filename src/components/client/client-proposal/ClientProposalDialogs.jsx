@@ -45,6 +45,7 @@ const ClientProposalDialogs = ({
     sendingFreelancerId,
     freelancerSearch,
     isFreelancersLoading,
+    isFreelancerAiLoading,
     freelancerFetchStatus,
     freelancerFetchError,
     proposalForFreelancerSelection,
@@ -62,6 +63,8 @@ const ClientProposalDialogs = ({
     handleBudgetDialogOpenChange,
     handleProposalDialogOpenChange,
     handleEditableProposalDraftChange,
+    handleDynamicFieldChange,
+    handleDynamicSectionChange,
     handleSaveProposalChanges,
     handleCancelProposalEditing,
     handleDelete,
@@ -100,6 +103,8 @@ const ClientProposalDialogs = ({
         sendingProposalId={sendingProposalId}
         handleProposalDialogOpenChange={handleProposalDialogOpenChange}
         handleEditableProposalDraftChange={handleEditableProposalDraftChange}
+        handleDynamicFieldChange={handleDynamicFieldChange}
+        handleDynamicSectionChange={handleDynamicSectionChange}
         handleSaveProposalChanges={handleSaveProposalChanges}
         handleCancelProposalEditing={handleCancelProposalEditing}
         handleDelete={handleDelete}
@@ -124,6 +129,7 @@ const ClientProposalDialogs = ({
         onOpenChange={setShowFreelancerSelect}
         savedProposal={proposalForFreelancerSelection}
         isLoadingFreelancers={isFreelancersLoading}
+        isFreelancerAiLoading={isFreelancerAiLoading}
         freelancerFetchStatus={freelancerFetchStatus}
         freelancerFetchError={freelancerFetchError}
         isSendingProposal={

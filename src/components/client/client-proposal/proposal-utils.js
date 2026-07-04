@@ -11,6 +11,7 @@ import {
   resolveFreelancerMatchPercent,
 } from "@/shared/lib/proposal-match";
 import { resolveUserDisplayName } from "@/shared/lib/user-display";
+import { normalizeMarkdownContent } from "@/components/pages/guestAiMessageLayout";
 
 export const MIN_FREELANCER_MATCH_SCORE = 50;
 export const PROPOSAL_BLOCKED_STATUSES = new Set(["pending", "accepted", "sent"]);
@@ -26,6 +27,22 @@ export const statusColors = {
   pending: "border-primary/30 bg-primary/10 !text-primary",
   rejected: "border-rose-300 bg-rose-50/60 !text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:!text-rose-300",
 };
+
+export const STATUS_SORT_ORDER = {
+  pending: 1,
+  sent: 2,
+  accepted: 3,
+  rejected: 4,
+};
+
+export const PROPOSAL_META_FIELDS = [
+  { key: 'projectTitle', label: 'Project Title' },
+  { key: 'clientName', label: 'Client Name' },
+  { key: 'businessName', label: 'Business Name' },
+  { key: 'serviceType', label: 'Service Type' },
+  { key: 'launchTimeline', label: 'Launch Timeline' },
+  { key: 'budget', label: 'Budget' },
+];
 
 export const statusLabels = {
   draft: "Draft",
@@ -393,6 +410,26 @@ export const normalizeFreelancerCardData = (candidate = {}) => {
   }
 
   return freelancer;
+};
+
+export const extractMatchedFreelancersFromPayload = (payload = {}) => {
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+
+  if (Array.isArray(payload?.freelancers)) {
+    return payload.freelancers;
+  }
+
+  if (Array.isArray(payload?.results)) {
+    return payload.results;
+  }
+
+  if (Array.isArray(payload?.data)) {
+    return payload.data;
+  }
+
+  return [];
 };
 
 export const formatRating = (value) => {
@@ -1386,6 +1423,14 @@ export const extractProposalDetails = (proposal) => {
     normalizedProposal.project?.timeline ||
     "Not set";
 
+  if (budget === "Not set" && normalizedProposal.content) {
+    const extractedBudget = extractProposalLabeledValue(
+      normalizedProposal.content,
+      ["Budget", "Project Budget", "Estimated Budget", "Pricing", "Investment"]
+    );
+    if (extractedBudget) budget = extractedBudget;
+  }
+
   if (delivery === "Not set" && normalizedProposal.content) {
     const extractedTimeline = extractProposalLabeledValue(
       normalizedProposal.content,
@@ -1670,44 +1715,25 @@ export const mapApiDraftProject = (project) => {
 export const buildEditableProposalDraft = (proposal, clientNameFallback = "Client") => {
   if (!proposal) {
     return {
-      title: "",
-      businessName: "",
-      clientName: clientNameFallback,
-      service: "",
-      budget: "",
-      timeline: "",
-      projectOverview: "",
-      objectivesText: "",
-      deliverablesText: "",
-      techStackText: "",
-      notes: "",
-      content: "",
+      fields: {},
+      sections: [],
     };
   }
 
-  const details = extractProposalDetails(proposal);
-  const structuredDraft = buildProposalStructuredData(proposal, clientNameFallback);
+  const content = proposal.content || proposal.summary || "";
+  const parsed = parseProposalContent(content);
 
   return {
-    title: structuredDraft.title,
-    businessName: structuredDraft.businessName,
-    clientName: structuredDraft.clientName,
-    service: structuredDraft.service,
-    budget:
-      proposal?.budget !== undefined && proposal?.budget !== null
-        ? String(proposal.budget)
-        : details.budget === "Not set"
-          ? ""
-          : String(details.budget),
-    timeline:
-      structuredDraft.timeline ||
-      (details.delivery === "Not set" ? "" : details.delivery),
-    projectOverview: structuredDraft.projectOverview,
-    objectivesText: structuredDraft.objectivesText,
-    deliverablesText: structuredDraft.deliverablesText,
-    techStackText: structuredDraft.techStackText,
-    notes: structuredDraft.notes,
-    content: proposal?.content || structuredDraft.content || "",
+    fields: {
+      ...parsed.fields,
+      projectTitle: parsed.fields?.projectTitle || proposal.title || proposal.projectTitle || "",
+      clientName: parsed.fields?.clientName || proposal.clientName || clientNameFallback,
+      businessName: parsed.fields?.businessName || proposal.businessName || "",
+      serviceType: parsed.fields?.serviceType || resolveProposalServiceLabel(proposal) || "",
+      budget: parsed.fields?.budget || proposal.budget || "",
+      launchTimeline: parsed.fields?.launchTimeline || proposal.timeline || "",
+    },
+    sections: parsed.sections || [],
   };
 };
 
@@ -1774,4 +1800,303 @@ export const generateFreelancerGradient = (id) => {
   const firstHue = Math.abs(hash % 360);
   const secondHue = (firstHue + 44) % 360;
   return `linear-gradient(135deg, hsl(${firstHue}, 78%, 58%), hsl(${secondHue}, 78%, 48%))`;
+};
+
+// --- DYNAMIC PARSING UTILITIES ---
+
+const PROPOSAL_INLINE_FIELD_LABELS = [
+    'Client Name',
+    'Business Name',
+    'Service Type',
+    'Project Overview',
+    'Primary Objectives',
+    'Features/Deliverables Included',
+    'Website Type',
+    'Design Style',
+    'Website Build Type',
+    'Frontend Framework',
+    'Backend Technology',
+    'Database',
+    'Hosting',
+    'Page Count',
+    'Creative Type',
+    'Volume',
+    'Engagement Model',
+    'Brand Stage',
+    'Brand Deliverables',
+    'Target Audience',
+    'Business Category',
+    'Target Locations',
+    'SEO Goals',
+    'Duration',
+    'App Type',
+    'App Features',
+    'Platform Requirements',
+    'Additional Confirmed Inputs',
+    'Launch Timeline',
+    'Budget',
+];
+
+const PROPOSAL_DISPLAY_TOKEN_MAP = new Map([
+    ['ai', 'AI'],
+    ['api', 'API'],
+    ['aws', 'AWS'],
+    ['b2b', 'B2B'],
+    ['b2c', 'B2C'],
+    ['crm', 'CRM'],
+    ['erp', 'ERP'],
+    ['firebase', 'Firebase'],
+    ['flutter', 'Flutter'],
+    ['inr', 'INR'],
+    ['ios', 'iOS'],
+    ['mongodb', 'MongoDB'],
+    ['mysql', 'MySQL'],
+    ['netlify', 'Netlify'],
+    ['next.js', 'Next.js'],
+    ['nextjs', 'Next.js'],
+    ['node.js', 'Node.js'],
+    ['nodejs', 'Node.js'],
+    ['postgresql', 'PostgreSQL'],
+    ['react', 'React'],
+    ['react.js', 'React.js'],
+    ['saas', 'SaaS'],
+    ['seo', 'SEO'],
+    ['shopify', 'Shopify'],
+    ['sql', 'SQL'],
+    ['supabase', 'Supabase'],
+    ['ui', 'UI'],
+    ['ux', 'UX'],
+    ['vercel', 'Vercel'],
+    ['whatsapp', 'WhatsApp'],
+    ['woocommerce', 'WooCommerce'],
+    ['wordpress', 'WordPress'],
+]);
+
+const escapeRegExp = (value = '') =>
+    String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const applyProposalDisplayTokenOverrides = (value = '') => {
+    let normalized = String(value || '');
+    for (const [source, target] of PROPOSAL_DISPLAY_TOKEN_MAP.entries()) {
+        normalized = normalized.replace(new RegExp(`\\b${escapeRegExp(source)}\\b`, 'gi'), target);
+    }
+    return normalized;
+};
+
+const formatProposalDisplaySentenceCaseToken = (token = '', capitalize = false) => {
+    const raw = String(token || '');
+    const key = raw.toLowerCase();
+    if (PROPOSAL_DISPLAY_TOKEN_MAP.has(key)) {
+        return PROPOSAL_DISPLAY_TOKEN_MAP.get(key);
+    }
+
+    if (/[A-Z].*[a-z]/.test(raw) || /[a-z].*[A-Z]/.test(raw)) {
+        return raw;
+    }
+
+    const lowered = raw.toLowerCase();
+    return capitalize
+        ? `${lowered.charAt(0).toUpperCase()}${lowered.slice(1)}`
+        : lowered;
+};
+
+const stripMarkdownDecorators = (value = '') =>
+    String(value)
+        .replace(/\*\*/g, '')
+        .replace(/`/g, '')
+        .trim();
+
+const formatProposalDisplaySentenceCase = (value = '') => {
+    const normalized = stripMarkdownDecorators(String(value || ''))
+        .replace(/\s+/g, ' ')
+        .trim();
+    if (!normalized) return '';
+
+    const cased = normalized
+        .split(/(?<=[.!?])\s+/)
+        .map((sentence) => {
+            let capitalized = false;
+            return sentence.replace(/\S+/g, (token) => {
+                if (!/[A-Za-z]/.test(token)) {
+                    if (/[0-9]/.test(token)) {
+                        capitalized = true;
+                    }
+                    return token;
+                }
+
+                const prefixMatch = token.match(/^[^A-Za-z0-9]+/);
+                const suffixMatch = token.match(/[^A-Za-z0-9]+$/);
+                const prefix = prefixMatch?.[0] || '';
+                const suffix = suffixMatch?.[0] || '';
+                const core = token.slice(prefix.length, token.length - suffix.length);
+                if (!core) return token;
+
+                const nextCore = formatProposalDisplaySentenceCaseToken(core, !capitalized);
+                capitalized = true;
+                return `${prefix}${nextCore}${suffix}`;
+            });
+        })
+        .join(' ');
+
+    return applyProposalDisplayTokenOverrides(cased);
+};
+
+const normalizeProposalPreviewContent = (content = '') => {
+    let normalized = normalizeMarkdownContent(content).replace(/\r/g, '');
+
+    normalized = normalized.replace(/([^\n])\s+(#{1,6}\s+)/g, '$1\n$2');
+
+    PROPOSAL_INLINE_FIELD_LABELS.forEach((label) => {
+        const escaped = escapeRegExp(label);
+        const patterns = [
+            new RegExp(`([^\\n])\\s+(#{1,6}\\s*${escaped}\\s*:)`, 'gi'),
+            new RegExp(`([^\\n])\\s+(\\*\\*${escaped}\\*\\*\\s*:)`, 'gi'),
+            new RegExp(`([^\\n])\\s+(\\*\\*${escaped}:\\*\\*)`, 'gi'),
+            new RegExp(`([^\\n])\\s+(${escaped}\\s*:)`, 'gi'),
+        ];
+
+        patterns.forEach((pattern) => {
+            normalized = normalized.replace(pattern, '$1\n$2');
+        });
+    });
+
+    return normalized.replace(/\n{3,}/g, '\n\n').trim();
+};
+
+const PROPOSAL_META_KEY_MAP = {
+    'client name': 'clientName',
+    'business name': 'businessName',
+    'service type': 'serviceType',
+    'launch timeline': 'launchTimeline',
+    'budget': 'budget',
+};
+
+const PROPOSAL_SECTION_ORDER = [
+    'Project Overview',
+    'Primary Objectives',
+    'Features/Deliverables Included',
+    'App Features',
+    'Platform Requirements',
+    'Additional Confirmed Inputs',
+    'Service Breakdown',
+];
+
+const normalizeProposalKey = (value = '') =>
+    String(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+
+const ensureProposalSection = (sectionsMap, rawTitle = '') => {
+    const title = stripMarkdownDecorators(rawTitle).replace(/:$/, '').trim() || 'Details';
+    const key = normalizeProposalKey(title);
+
+    if (!sectionsMap.has(key)) {
+        sectionsMap.set(key, { key, title, lines: [], list: [] });
+    }
+
+    return sectionsMap.get(key);
+};
+
+export const parseProposalContent = (content = '') => {
+    const normalized = normalizeProposalPreviewContent(content);
+    const lines = normalized.split('\n');
+    const fields = {};
+    const sectionsMap = new Map();
+    let activeSection = null;
+
+    for (const rawLine of lines) {
+        let line = rawLine.trim();
+        if (!line) continue;
+
+        line = line.replace(/^#{1,6}\s*/, '').trim();
+        if (!line) continue;
+
+        const bulletMatch = line.match(/^[-*]\s+(.+)$/) || line.match(/^\d+\.\s+(.+)$/);
+        if (bulletMatch) {
+            const bulletText = formatProposalDisplaySentenceCase(bulletMatch[1]);
+            if (!activeSection) {
+                activeSection = ensureProposalSection(sectionsMap, 'Details');
+            }
+            activeSection.list.push(bulletText);
+            continue;
+        }
+
+        const keyValueMatch = line.match(/^([^:]{2,80}):\s*(.*)$/);
+        if (keyValueMatch) {
+            const rawKey = stripMarkdownDecorators(keyValueMatch[1]);
+            const value = formatProposalDisplaySentenceCase(keyValueMatch[2] || '');
+            const normalizedKey = normalizeProposalKey(rawKey);
+            const metaFieldKey = PROPOSAL_META_KEY_MAP[normalizedKey];
+
+            if (metaFieldKey && value) {
+                fields[metaFieldKey] = value;
+                activeSection = null;
+                continue;
+            }
+
+            activeSection = ensureProposalSection(sectionsMap, rawKey);
+            if (value) {
+                activeSection.lines.push(value);
+            }
+            continue;
+        }
+
+        if (!activeSection) {
+            activeSection = ensureProposalSection(sectionsMap, 'Details');
+        }
+        activeSection.lines.push(formatProposalDisplaySentenceCase(line));
+    }
+
+    const sections = Array.from(sectionsMap.values())
+        .filter((section) => section.lines.length > 0 || section.list.length > 0)
+        .sort((a, b) => {
+            const aIndex = PROPOSAL_SECTION_ORDER.indexOf(a.title);
+            const bIndex = PROPOSAL_SECTION_ORDER.indexOf(b.title);
+            const aScore = aIndex === -1 ? 999 : aIndex;
+            const bScore = bIndex === -1 ? 999 : bIndex;
+            return aScore - bScore;
+        });
+
+    return {
+        fields,
+        sections,
+        hasStructuredData: Object.keys(fields).length > 0 || sections.length > 0,
+    };
+};
+
+export const buildMarkdownFromParsedContent = (parsedData = { fields: {}, sections: [] }) => {
+    const output = [];
+
+    // Fields mapping back to nice labels
+    const fieldLabelMap = {
+        clientName: 'Client Name',
+        businessName: 'Business Name',
+        serviceType: 'Service Type',
+        launchTimeline: 'Launch Timeline',
+        budget: 'Budget',
+    };
+
+    if (parsedData.fields) {
+        for (const [key, label] of Object.entries(fieldLabelMap)) {
+            if (parsedData.fields[key]) {
+                output.push(`${label}: ${parsedData.fields[key]}`);
+            }
+        }
+    }
+
+    if (parsedData.sections) {
+        for (const section of parsedData.sections) {
+            output.push('');
+            output.push(`${section.title}:`);
+            if (section.lines && section.lines.length > 0) {
+                output.push(section.lines.join('\n'));
+            }
+            if (section.list && section.list.length > 0) {
+                section.list.forEach(item => output.push(`- ${item}`));
+            }
+        }
+    }
+
+    return output.join('\n').trim();
 };

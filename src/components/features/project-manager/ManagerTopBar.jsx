@@ -118,7 +118,7 @@ export const ManagerTopBar = () => {
                   </Button>
                 ) : null}
               </div>
-              <ScrollArea className="h-72">
+              <ScrollArea className="h-72 [&_[data-slot=scroll-area-scrollbar]]:hidden">
                 {notifications.length === 0 ? (
                   <div className="flex flex-col items-center justify-center px-4 py-10 text-center text-slate-400">
                     <Bell className="mb-2 h-8 w-8 opacity-40" />

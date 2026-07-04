@@ -4,6 +4,7 @@ import { AppError } from "../utils/app-error.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
 import { syncFreelancerOpenToWorkStatus } from "../lib/freelancer-open-to-work.js";
 import {
+  enrichMatchedFreelancersWithAi,
   matchFreelancersForProposal,
   matchFreelancersForProposalPayload,
 } from "../services/proposal-matching.service.js";
@@ -135,6 +136,100 @@ const clampPercentage = (value, fallback = null) => {
   return Math.max(0, Math.min(100, Math.round(numericValue)));
 };
 
+const normalizeMatchedFreelancersForResponse = (
+  matchedFreelancers = [],
+  {
+    proposalBudget = null,
+  } = {},
+) =>
+  (Array.isArray(matchedFreelancers) ? matchedFreelancers : []).map((freelancer) => {
+    const matchPercent = clampPercentage(
+      freelancer?.matchPercent ??
+        freelancer?.matchScore ??
+        freelancer?.projectRelevanceScore ??
+        freelancer?.score,
+      0,
+    );
+    const rawMatchScore = Number.isFinite(Number(freelancer?.rawMatchScore))
+      ? Math.round(Number(freelancer.rawMatchScore))
+      : Number.isFinite(Number(freelancer?.scoreMetadata?.rawMatchScore))
+        ? Math.round(Number(freelancer.scoreMetadata.rawMatchScore))
+        : null;
+    const matchedServiceName =
+      freelancer?.matchedService?.serviceName ||
+      freelancer?.serviceType ||
+      freelancer?.serviceName ||
+      freelancer?.service ||
+      null;
+    const matchedServiceKey =
+      freelancer?.matchedService?.serviceKey ||
+      freelancer?.serviceKey ||
+      null;
+    const profileRole =
+      String(
+        freelancer?.profileRole ||
+          freelancer?.profileDetails?.profileRole ||
+          freelancer?.profileDetails?.role ||
+          "",
+      )
+        .trim()
+        .toLowerCase() || null;
+
+    return {
+      ...freelancer,
+      freelancerId: freelancer?.id || freelancer?.freelancerId || null,
+      name: freelancer?.fullName || freelancer?.name || "Freelancer",
+      title:
+        freelancer?.title ||
+        freelancer?.jobTitle ||
+        freelancer?.professionalTitle ||
+        null,
+      bio:
+        freelancer?.bio ||
+        freelancer?.cleanBio ||
+        freelancer?.about ||
+        null,
+      avatarUrl: freelancer?.avatar || null,
+      service: matchedServiceName || matchedServiceKey,
+      serviceType: matchedServiceName,
+      serviceKey: matchedServiceKey,
+      proposalBudget,
+      startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
+      matchedSkills: Array.isArray(freelancer?.matchedSkills) ? freelancer.matchedSkills : [],
+      matchedCaseStudyTitles: Array.isArray(freelancer?.matchedCaseStudyTitles)
+        ? freelancer.matchedCaseStudyTitles
+        : Array.isArray(freelancer?.caseStudyMatch?.matchedCaseStudyTitles)
+          ? freelancer.caseStudyMatch.matchedCaseStudyTitles
+          : [],
+      budgetFitPercent: clampPercentage(
+        freelancer?.budgetFitPercent ??
+          freelancer?.budgetMatchPercentage ??
+          freelancer?.budgetCompatibility?.budgetMatchPercentage,
+      ),
+      skillsMatchPercent: clampPercentage(
+        freelancer?.skillsMatchPercent ??
+          (Number(freelancer?.scoreBreakdown?.skillsScore) / 42) * 100,
+      ),
+      matchPercent,
+      matchScore: matchPercent,
+      projectRelevanceScore: matchPercent,
+      score: matchPercent,
+      rawMatchScore,
+      serviceMatch: Boolean(freelancer?.serviceMatch),
+      profileRole,
+      isAgencyProfile: profileRole === "agency",
+      coveredServices: Array.isArray(freelancer?.coveredServices) ? freelancer.coveredServices : [],
+      coveredServiceKeys: Array.isArray(freelancer?.coveredServiceKeys)
+        ? freelancer.coveredServiceKeys
+        : [],
+      serviceMatches: Array.isArray(freelancer?.serviceMatches) ? freelancer.serviceMatches : [],
+      isOpenToWork:
+        freelancer?.openToWork === undefined
+          ? freelancer?.available ?? null
+          : freelancer.openToWork,
+    };
+  });
+
 export const matchProposalFreelancers = asyncHandler(async (req, res) => {
   const userId = req.user?.sub;
 
@@ -262,94 +357,12 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     matchingResult?.proposalId ||
     matchingResult?.sourceProjectId ||
     null;
-
-  const normalizedFreelancers = matchedFreelancers.map((freelancer) => {
-    const matchPercent = clampPercentage(
-      freelancer?.matchPercent ??
-        freelancer?.matchScore ??
-        freelancer?.projectRelevanceScore ??
-        freelancer?.score,
-      0,
-    );
-    const rawMatchScore = Number.isFinite(Number(freelancer?.rawMatchScore))
-      ? Math.round(Number(freelancer.rawMatchScore))
-      : Number.isFinite(Number(freelancer?.scoreMetadata?.rawMatchScore))
-        ? Math.round(Number(freelancer.scoreMetadata.rawMatchScore))
-        : null;
-    const matchedServiceName =
-      freelancer?.matchedService?.serviceName ||
-      freelancer?.serviceType ||
-      freelancer?.serviceName ||
-      freelancer?.service ||
-      null;
-    const matchedServiceKey =
-      freelancer?.matchedService?.serviceKey ||
-      freelancer?.serviceKey ||
-      null;
-    const profileRole =
-      String(
-        freelancer?.profileRole ||
-          freelancer?.profileDetails?.profileRole ||
-          freelancer?.profileDetails?.role ||
-          "",
-      )
-        .trim()
-        .toLowerCase() || null;
-
-    return {
-      ...freelancer,
-      freelancerId: freelancer?.id || null,
-      name: freelancer?.fullName || freelancer?.name || "Freelancer",
-      title:
-        freelancer?.title ||
-        freelancer?.jobTitle ||
-        freelancer?.professionalTitle ||
-        null,
-      bio:
-        freelancer?.bio ||
-        freelancer?.cleanBio ||
-        freelancer?.about ||
-        null,
-      avatarUrl: freelancer?.avatar || null,
-      service: matchedServiceName || matchedServiceKey,
-      serviceType: matchedServiceName,
-      serviceKey: matchedServiceKey,
+  const normalizedFreelancers = normalizeMatchedFreelancersForResponse(
+    matchedFreelancers,
+    {
       proposalBudget: resolvedProposalBudget,
-      startingPrice: freelancer?.budgetCompatibility?.startingPrice ?? null,
-      matchedSkills: Array.isArray(freelancer?.matchedSkills) ? freelancer.matchedSkills : [],
-      matchedCaseStudyTitles: Array.isArray(freelancer?.matchedCaseStudyTitles)
-        ? freelancer.matchedCaseStudyTitles
-        : Array.isArray(freelancer?.caseStudyMatch?.matchedCaseStudyTitles)
-          ? freelancer.caseStudyMatch.matchedCaseStudyTitles
-          : [],
-      budgetFitPercent: clampPercentage(
-        freelancer?.budgetFitPercent ??
-          freelancer?.budgetMatchPercentage ??
-          freelancer?.budgetCompatibility?.budgetMatchPercentage,
-      ),
-      skillsMatchPercent: clampPercentage(
-        freelancer?.skillsMatchPercent ??
-          (Number(freelancer?.scoreBreakdown?.skillsScore) / 42) * 100,
-      ),
-      matchPercent,
-      matchScore: matchPercent,
-      projectRelevanceScore: matchPercent,
-      score: matchPercent,
-      rawMatchScore,
-      serviceMatch: Boolean(freelancer?.serviceMatch),
-      profileRole,
-      isAgencyProfile: profileRole === "agency",
-      coveredServices: Array.isArray(freelancer?.coveredServices) ? freelancer.coveredServices : [],
-      coveredServiceKeys: Array.isArray(freelancer?.coveredServiceKeys)
-        ? freelancer.coveredServiceKeys
-        : [],
-      serviceMatches: Array.isArray(freelancer?.serviceMatches) ? freelancer.serviceMatches : [],
-      isOpenToWork:
-        freelancer?.openToWork === undefined
-          ? freelancer?.available ?? null
-          : freelancer.openToWork,
-    };
-  });
+    },
+  );
 
   res.json({
     success: true,
@@ -359,6 +372,71 @@ export const matchProposalFreelancers = asyncHandler(async (req, res) => {
     total: normalizedFreelancers.length,
     levelCounts: matchingResult?.levelCounts || null,
     meta: matchingResult?.meta || null,
+  });
+});
+
+export const enrichMatchedProposalFreelancersWithAi = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub;
+
+  if (!userId) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const proposalId = String(req.body?.proposalId || "").trim();
+  const proposalPayload =
+    req.body?.proposal && typeof req.body.proposal === "object"
+      ? req.body.proposal
+      : req.body && typeof req.body === "object"
+        ? req.body
+        : {};
+  const hasProposalPayload = Object.keys(proposalPayload).length > 0;
+  const rawCandidates = Array.isArray(req.body?.candidates) ? req.body.candidates : [];
+  const useAiShortlist = parseOptionalBoolean(req.body?.useAiShortlist);
+
+  if (!hasProposalPayload) {
+    throw new AppError("Proposal details are required to enrich freelancer matches.", 400);
+  }
+
+  const proposal = normalizeProposalMatchPayload(proposalPayload);
+  const enrichmentResult = await enrichMatchedFreelancersWithAi(
+    proposal,
+    rawCandidates,
+    {
+      useAiShortlist,
+    },
+  );
+  const normalizedFreelancers = normalizeMatchedFreelancersForResponse(
+    enrichmentResult?.results,
+    {
+      proposalBudget: proposal.budget ?? proposal.proposalBudget ?? null,
+    },
+  );
+  const resolvedProposalId =
+    proposalId ||
+    proposal?.id ||
+    proposal?.projectId ||
+    proposal?.syncedProjectId ||
+    null;
+
+  if (process.env.NODE_ENV !== "production") {
+    console.info("[Proposal Match][Cata AI][Background]", {
+      userId,
+      proposalId: resolvedProposalId,
+      candidateCount: rawCandidates.length,
+      returnedCount: normalizedFreelancers.length,
+      aiInsightsStatus: enrichmentResult?.meta?.aiInsightsStatus ?? null,
+      aiShortlistApplied: enrichmentResult?.meta?.aiShortlistApplied ?? false,
+    });
+  }
+
+  res.json({
+    success: true,
+    proposalId: resolvedProposalId,
+    data: normalizedFreelancers,
+    freelancers: normalizedFreelancers,
+    total: normalizedFreelancers.length,
+    levelCounts: null,
+    meta: enrichmentResult?.meta || null,
   });
 });
 

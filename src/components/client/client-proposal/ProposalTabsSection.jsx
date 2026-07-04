@@ -1,6 +1,5 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/shared/lib/utils";
 import ProposalCardsCarousel from "./ProposalCardsCarousel.jsx";
 import { EmptyStateCard, ProposalLoadingState } from "./ProposalStates.jsx";
@@ -12,6 +11,7 @@ import Check from "lucide-react/dist/esm/icons/check";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import History from "lucide-react/dist/esm/icons/history";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import ListFilter from "lucide-react/dist/esm/icons/list-filter";
 
 const proposalTypeConfig = [
   { value: "freelancer", label: "Freelancer" },
@@ -19,9 +19,16 @@ const proposalTypeConfig = [
 ];
 
 const statusTabConfig = [
-  { value: "draft", label: "Draft" },
+  { value: "draft", label: "Draft Proposals" },
   { value: "pending", label: "Pending Approval" },
-  { value: "rejected", label: "Rejected" },
+  { value: "rejected", label: "Rejected Proposals" },
+];
+
+const statusFilterConfig = [
+  { value: "all", label: "All Proposals" },
+  { value: "draft", label: "Draft Proposals" },
+  { value: "pending", label: "Pending Approval" },
+  { value: "rejected", label: "Rejected Proposals" },
 ];
 
 const segmentedControlClassName =
@@ -45,14 +52,12 @@ const buildProposalBucketsByType = (grouped = {}) => {
 
 const ProposalTabsSection = ({ proposalState, actions }) => {
   const {
-    activeTab,
     grouped,
     isLoading,
     processingPaymentProposalId,
     sendingProposalId,
   } = proposalState;
   const {
-    setActiveTab,
     handleApproveAndPay,
     handleDelete,
     openBudgetDialogForProposal,
@@ -61,6 +66,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
     openFreelancerSelection,
   } = actions;
   const [activeType, setActiveType] = useState("freelancer");
+  const [activeStatusFilter, setActiveStatusFilter] = useState("all");
   const [hasSelectedType, setHasSelectedType] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = React.useRef(null);
@@ -75,7 +81,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const activeTabLabel = statusTabConfig.find((item) => item.value === activeTab)?.label || "Draft";
+  const activeStatusLabel = statusFilterConfig.find((item) => item.value === activeStatusFilter)?.label || "All Proposals";
 
   const proposalsByType = useMemo(
     () => buildProposalBucketsByType(grouped),
@@ -118,34 +124,40 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
       }, {}),
     [scopedGrouped],
   );
-  const currentTabMeta = proposalTabCopy[activeTab] || proposalTabCopy.draft;
   const emptyStateTitle =
     activeType === "agency"
-      ? "No agency proposals found for selected status"
-      : "No freelancer proposals found for selected status";
-  const emptyStateDescription =
-    currentTabMeta.emptyDescription ||
-    `Select another status tab or create a new ${activeType} proposal to see results here.`;
+      ? "No agency proposals found"
+      : "No freelancer proposals found";
+  const emptyStateDescription = `Create a new ${activeType} proposal to see results here.`;
 
-  const renderTabContent = (tabValue) => {
+  const renderTabContent = (tabValue, title) => {
     const items = scopedGrouped[tabValue] || [];
 
     if (isLoading) {
-      return <ProposalLoadingState />;
+      return (
+        <div className="space-y-4">
+          {title && <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">{title}</h2>}
+          <ProposalLoadingState />
+        </div>
+      );
     }
 
     if (items.length === 0) {
       return (
-        <EmptyStateCard
-          title={emptyStateTitle}
-          description={emptyStateDescription}
-        />
+        <div className="space-y-4">
+          {title && <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">{title}</h2>}
+          <EmptyStateCard
+            title={emptyStateTitle}
+            description={emptyStateDescription}
+          />
+        </div>
       );
     }
 
     if (tabValue === "draft") {
       return (
         <ProposalCardsCarousel
+          title={title}
           proposals={items}
           showCreateCard={true}
           onOpen={handleOpenProposal}
@@ -161,6 +173,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
     if (tabValue === "pending") {
       return (
         <ProposalCardsCarousel
+          title={title}
           proposals={items}
           onOpen={handleOpenProposal}
           onDelete={handleDelete}
@@ -176,6 +189,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
 
     return (
       <ProposalCardsCarousel
+        title={title}
         proposals={items}
         onOpen={handleOpenProposal}
         onDelete={handleDelete}
@@ -186,11 +200,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
   };
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={setActiveTab}
-      className="w-full space-y-8"
-    >
+    <div className="w-full space-y-8">
       <ClientPageHeader
         title={
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
@@ -203,6 +213,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
         actions={
           <div className="flex flex-col items-start lg:items-end gap-3 w-full sm:w-auto">
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Freelancer / Agency Toggle */}
               {proposalTypeConfig.map((item) => {
                 const isActive = item.value === activeType;
 
@@ -228,7 +239,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                         "ml-1.5 sm:ml-2 inline-flex items-center justify-center rounded-full font-bold leading-none transition-colors duration-300",
                         "h-4 w-4 text-[10px] sm:h-5 sm:w-5 sm:text-[10px]",
                         isActive
-                          ? "bg-white/20 text-primary-foreground"
+                          ? "bg-white text-primary"
                           : "bg-muted text-foreground"
                       )}
                     >
@@ -247,7 +258,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
               >
                 <span className="flex items-center gap-2">
                   <ArrowUpNarrowWide className="h-5 w-5 text-primary" />
-                  <span>{activeTabLabel}</span>
+                  <span>{activeStatusLabel}</span>
                 </span>
                 <ChevronDown className={cn("h-5 w-5 text-foreground transition-transform duration-200", dropdownOpen && "rotate-180")} />
               </button>
@@ -255,9 +266,13 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
               {dropdownOpen && (
                 <div className="absolute right-0 top-full z-50 mt-2 w-full min-w-[14.5rem] rounded-[20px] border border-border bg-card p-2 shadow-[0_12px_32px_rgba(0,0,0,0.08)] animate-in fade-in slide-in-from-top-1 duration-200">
                   <div className="flex flex-col gap-1">
-                    {statusTabConfig.map((item) => {
-                      const isStatusActive = item.value === activeTab;
-                      const Icon = item.value === "draft" ? FileText : item.value === "pending" ? History : XCircle;
+                    {statusFilterConfig.map((item) => {
+                      const isStatusActive = item.value === activeStatusFilter;
+                      
+                      let Icon = ListFilter;
+                      if (item.value === "draft") Icon = FileText;
+                      else if (item.value === "pending") Icon = History;
+                      else if (item.value === "rejected") Icon = XCircle;
                       
                       // Custom styles for icons
                       const iconColor = item.value === "rejected" ? "text-destructive" : "text-primary";
@@ -267,7 +282,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                           key={item.value}
                           type="button"
                           onClick={() => {
-                            setActiveTab(item.value);
+                            setActiveStatusFilter(item.value);
                             setDropdownOpen(false);
                           }}
                           className={cn(
@@ -281,12 +296,8 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                             <Icon className={cn("h-5 w-5 shrink-0", iconColor)} />
                             <span>{item.label}</span>
                           </span>
-                          {isStatusActive ? (
+                          {isStatusActive && (
                             <Check className="h-[18px] w-[18px] text-primary" />
-                          ) : (
-                            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-bold text-foreground">
-                              {statusCounts[item.value] || 0}
-                            </span>
                           )}
                         </button>
                       );
@@ -299,18 +310,30 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
         }
       />
 
-      <TabsContent value="draft" className="m-0">
-        {renderTabContent("draft")}
-      </TabsContent>
+      <div className="space-y-12 pb-12">
+        {statusTabConfig.map((status) => {
+          if (activeStatusFilter !== "all" && activeStatusFilter !== status.value) {
+            return null;
+          }
 
-      <TabsContent value="pending" className="m-0">
-        {renderTabContent("pending")}
-      </TabsContent>
+          // If there are no items for this status and it's not "draft", we can choose to hide it or show empty state.
+          // Since the user wants to see the sections, let's render them with titles.
+          const items = scopedGrouped[status.value] || [];
+          
+          // Let's only render empty state for "draft". For pending and rejected, hide the section if empty so it doesn't look too cluttered.
+          // Unless isLoading is true, then render skeletons everywhere.
+          if (!isLoading && items.length === 0 && status.value !== "draft") {
+            return null;
+          }
 
-      <TabsContent value="rejected" className="m-0">
-        {renderTabContent("rejected")}
-      </TabsContent>
-    </Tabs>
+          return (
+            <section key={status.value} className="space-y-2">
+              {renderTabContent(status.value, status.label)}
+            </section>
+          );
+        })}
+      </div>
+    </div>
   );
 };
 

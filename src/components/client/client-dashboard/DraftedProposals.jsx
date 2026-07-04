@@ -1,5 +1,6 @@
 import React, {
   memo,
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -55,15 +56,19 @@ import {
   resolveActiveProposalId,
 } from "@/shared/lib/client-proposal-storage";
 import { formatINR } from "@/shared/lib/currency";
-import { fetchMatchedFreelancersForProposal } from "@/shared/lib/api-client";
+import {
+  fetchMatchedFreelancerCataAi,
+  fetchMatchedFreelancersForProposal,
+} from "@/shared/lib/api-client";
 import { isFreelancerOpenToWork } from "@/shared/lib/freelancer-availability";
 import {
   extractAgencyProposalServiceEntries,
+  extractMatchedFreelancersFromPayload,
+  normalizeFreelancerCardData,
   resolveBestMatchFreelancerIds,
   resolveProposalAgencyFlag,
   mapApiDraftProject,
 } from "@/components/client/client-proposal/proposal-utils.js";
-import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
 import { toast } from "sonner";
 import {
   CLIENT_DASHBOARD_PROPOSAL_ACTION_PARAM,
@@ -191,44 +196,6 @@ const hasFreelancerRole = (user = {}) => {
     : [];
 
   return primaryRole === "FREELANCER" || roles.includes("FREELANCER");
-};
-
-const normalizeFreelancerCardData = (candidate = {}) => {
-  const freelancer = { ...candidate };
-  const rawBio = freelancer.bio || freelancer.about;
-
-  if (typeof rawBio === "string" && rawBio.trim().startsWith("{")) {
-    try {
-      const parsed = JSON.parse(rawBio);
-      freelancer.cleanBio =
-        parsed.bio ||
-        parsed.about ||
-        parsed.description ||
-        parsed.summary ||
-        "No bio available.";
-
-      if ((!freelancer.skills || freelancer.skills.length === 0) && parsed.skills) {
-        freelancer.skills = parsed.skills;
-      }
-
-      if (!freelancer.rating && parsed.rating) {
-        freelancer.rating = parsed.rating;
-      }
-    } catch {
-      freelancer.cleanBio = "Overview available in profile.";
-    }
-  } else {
-    freelancer.cleanBio = rawBio || "No bio available for this freelancer.";
-  }
-
-  const matchPercent = resolveFreelancerMatchPercent(freelancer, null);
-  if (Number.isFinite(Number(matchPercent))) {
-    freelancer.matchPercent = Number(matchPercent);
-    freelancer.matchScore = Number(matchPercent);
-    freelancer.projectRelevanceScore = Number(matchPercent);
-  }
-
-  return freelancer;
 };
 
 const formatRating = (value) => {
@@ -579,7 +546,6 @@ const Proposals = memo(function Proposals({
   draftProposalRows,
   onOpenQuickProject,
   className = "",
-  isWide = false,
 }) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -610,6 +576,7 @@ const Proposals = memo(function Proposals({
   const [selectedDraftForSend, setSelectedDraftForSend] = useState(null);
   const [suggestedFreelancers, setSuggestedFreelancers] = useState([]);
   const [isFreelancersLoading, setIsFreelancersLoading] = useState(false);
+  const [isFreelancerAiLoading, setIsFreelancerAiLoading] = useState(false);
   const [freelancerFetchStatus, setFreelancerFetchStatus] = useState("idle");
   const [freelancerFetchError, setFreelancerFetchError] = useState("");
   const [sendingProposalId, setSendingProposalId] = useState(null);
@@ -747,6 +714,7 @@ const Proposals = memo(function Proposals({
 
     const loadFreelancers = async () => {
       setIsFreelancersLoading(true);
+      setIsFreelancerAiLoading(false);
       setFreelancerFetchStatus("loading");
       setFreelancerFetchError("");
 
@@ -757,21 +725,13 @@ const Proposals = memo(function Proposals({
 
         const matchedFreelancerPayload = await fetchMatchedFreelancersForProposal(
           proposalForFreelancerSelection,
-          {
-            includeAiInsights: true,
-            useAiShortlist: true,
-          },
         );
 
         if (cancelled) return;
 
-        const matchedFreelancers = Array.isArray(matchedFreelancerPayload?.freelancers)
-          ? matchedFreelancerPayload.freelancers
-          : Array.isArray(matchedFreelancerPayload?.data)
-            ? matchedFreelancerPayload.data
-            : Array.isArray(matchedFreelancerPayload)
-              ? matchedFreelancerPayload
-              : [];
+        const matchedFreelancers = extractMatchedFreelancersFromPayload(
+          matchedFreelancerPayload,
+        );
 
         const uniqueById = matchedFreelancers.filter(
           (freelancer, index, collection) =>
@@ -790,6 +750,49 @@ const Proposals = memo(function Proposals({
         setFreelancerFetchStatus(
           normalizedFreelancers.length > 0 ? "success" : "empty",
         );
+        setIsFreelancersLoading(false);
+
+        if (normalizedFreelancers.length === 0) {
+          setIsFreelancerAiLoading(false);
+          return;
+        }
+
+        setIsFreelancerAiLoading(true);
+
+        try {
+          const cataAiPayload = await fetchMatchedFreelancerCataAi(
+            proposalForFreelancerSelection,
+            normalizedFreelancers,
+          );
+
+          if (cancelled) return;
+
+          const cataAiFreelancers = extractMatchedFreelancersFromPayload(cataAiPayload)
+            .filter(
+              (freelancer, index, collection) =>
+                freelancer?.id &&
+                collection.findIndex((item) => item?.id === freelancer.id) === index,
+            )
+            .filter(
+              (freelancer) =>
+                freelancer?.id !== user.id && hasFreelancerRole(freelancer),
+            )
+            .map((freelancer) => normalizeFreelancerCardData(freelancer));
+
+          if (cataAiFreelancers.length > 0) {
+            startTransition(() => {
+              setSuggestedFreelancers(cataAiFreelancers);
+            });
+          }
+        } catch (error) {
+          if (!cancelled) {
+            console.warn("[Proposal Match][Cata AI] Background enrichment failed:", error);
+          }
+        } finally {
+          if (!cancelled) {
+            setIsFreelancerAiLoading(false);
+          }
+        }
       } catch (error) {
         if (cancelled) return;
         console.error("Failed to load suggested freelancers:", error);
@@ -798,6 +801,7 @@ const Proposals = memo(function Proposals({
         setFreelancerFetchError(
           error?.message || "Unable to load matched freelancers right now.",
         );
+        setIsFreelancerAiLoading(false);
       } finally {
         if (!cancelled) setIsFreelancersLoading(false);
       }
@@ -820,6 +824,7 @@ const Proposals = memo(function Proposals({
       setFreelancerSearch("");
       setSuggestedFreelancers([]);
       setIsFreelancersLoading(false);
+      setIsFreelancerAiLoading(false);
       setFreelancerFetchStatus("idle");
       setFreelancerFetchError("");
       setSelectedDraftForSend(null);
@@ -903,17 +908,13 @@ const Proposals = memo(function Proposals({
   const totalVisibleDraftCards = items.length + draftRedirectCards.length;
   const shouldUseDraftProposalCarousel = isMobile
     ? totalVisibleDraftCards > 1
-    : isWide
-      ? totalVisibleDraftCards > 3
-      : totalVisibleDraftCards > 2;
+    : totalVisibleDraftCards > 2;
 
-  const carouselItemClassName = isWide
-    ? "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-2.5rem)/3)] xl:basis-[calc((100%-2.5rem)/3)] 2xl:basis-[calc((100%-2.5rem)/3)]"
-    : "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-2.5rem)/3)]";
+  const carouselItemClassName =
+    "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-1.25rem)/2)]";
 
-  const gridClassName = isWide
-    ? "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 lg:gap-6 xl:gap-7"
-    : "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3 lg:gap-6 xl:gap-7";
+  const gridClassName =
+    "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 lg:gap-6 xl:gap-7";
 
   const measureDraftCardHeights = useCallback(() => {
     const heights = Object.values(draftCardRefs.current)
@@ -1369,6 +1370,7 @@ const Proposals = memo(function Proposals({
             onOpenChange={setShowFreelancerSelect}
             savedProposal={proposalForFreelancerSelection}
             isLoadingFreelancers={isFreelancersLoading}
+            isFreelancerAiLoading={isFreelancerAiLoading}
             freelancerFetchStatus={freelancerFetchStatus}
             freelancerFetchError={freelancerFetchError}
             isSendingProposal={
@@ -1432,3 +1434,5 @@ const Proposals = memo(function Proposals({
 });
 
 export default Proposals;
+
+
