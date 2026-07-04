@@ -22,7 +22,7 @@ const ClientProposalCarouselDots = memo(function ClientProposalCarouselDots({
 
   return (
     <div
-      className="mt-2.5 flex items-center justify-center gap-2"
+      className="mt-2.5 flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 md:gap-2 max-w-full px-4"
       aria-label="Proposals carousel pagination"
     >
       {Array.from({ length: count }, (_, index) => {
@@ -36,10 +36,10 @@ const ClientProposalCarouselDots = memo(function ClientProposalCarouselDots({
             aria-label={`Go to proposal ${index + 1}`}
             aria-pressed={isActive}
             className={cn(
-              "h-2.5 rounded-full transition-all duration-200",
+              "h-1.5 sm:h-2 md:h-2.5 rounded-full transition-all duration-200 shrink-0",
               isActive
-                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-2.5 bg-primary/20 hover:bg-primary/40",
+                ? "w-4 sm:w-5 md:w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-1.5 sm:w-2 md:w-2.5 bg-primary/20 hover:bg-primary/40",
             )}
           />
         );
