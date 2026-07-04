@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -99,6 +100,8 @@ const FreelancerProjectDetailMainColumn = ({
   const lastActivePhaseIdRef = useRef(activePhase?.id != null ? String(activePhase.id) : "");
   const [isOverviewExpanded, setIsOverviewExpanded] = useState(false);
   const [isFeaturesExpanded, setIsFeaturesExpanded] = useState(false);
+  const [isSpecificationsOpen, setIsSpecificationsOpen] = useState(true);
+  const [isDeliverablesOpen, setIsDeliverablesOpen] = useState(true);
 
   useEffect(() => {
     const activePhaseId =
@@ -218,9 +221,23 @@ const FreelancerProjectDetailMainColumn = ({
           return (
             <Card className={panelClassName}>
               <CardHeader className="px-4 pb-2 pt-4">
-                <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
+                <button
+                  type="button"
+                  onClick={() => setIsSpecificationsOpen((current) => !current)}
+                  className="flex w-full items-center justify-between gap-3 text-left"
+                  aria-expanded={isSpecificationsOpen}
+                >
+                  <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
+                  <ChevronDown
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                      isSpecificationsOpen ? "rotate-180" : "",
+                    )}
+                  />
+                </button>
               </CardHeader>
-              <CardContent className="px-4 pb-4 pt-1">
+              {isSpecificationsOpen ? (
+                <CardContent className="px-4 pb-4 pt-1">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                   {filteredSpecs.map((item) => {
                     const IconComponent = getMetadataIcon(item.label);
@@ -244,16 +261,31 @@ const FreelancerProjectDetailMainColumn = ({
                     );
                   })}
                 </div>
-              </CardContent>
+                </CardContent>
+              ) : null}
             </Card>
           );
         })()}
 
         <Card className={panelClassName}>
           <CardHeader className="px-4 pb-2 pt-4">
-            <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
+            <button
+              type="button"
+              onClick={() => setIsDeliverablesOpen((current) => !current)}
+              className="flex w-full items-center justify-between gap-3 text-left"
+              aria-expanded={isDeliverablesOpen}
+            >
+              <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
+              <ChevronDown
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                  isDeliverablesOpen ? "rotate-180" : "",
+                )}
+              />
+            </button>
           </CardHeader>
-          <CardContent className="px-4 pb-4 pt-1">
+          {isDeliverablesOpen ? (
+            <CardContent className="px-4 pb-4 pt-1">
             {featuresList.length > 0 ? (
               <div className="space-y-2">
                 {/* Mobile/Tablet view */}
@@ -296,7 +328,8 @@ const FreelancerProjectDetailMainColumn = ({
                 Feature and deliverable details will appear once the brief is structured.
               </p>
             )}
-          </CardContent>
+            </CardContent>
+          ) : null}
         </Card>
       </div>
 
@@ -600,3 +633,4 @@ const FreelancerProjectDetailMainColumn = ({
 };
 
 export default FreelancerProjectDetailMainColumn;
+
