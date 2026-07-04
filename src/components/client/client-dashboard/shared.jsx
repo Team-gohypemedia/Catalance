@@ -92,10 +92,10 @@ export const ProjectCarouselDots = memo(function ProjectCarouselDots({
             }
             aria-pressed={isActive}
             className={cn(
-              "h-1.5 sm:h-2 md:h-2.5 rounded-full transition-all duration-200 shrink-0",
+              "h-1 rounded-full transition-all duration-200 shrink-0",
               isActive
-                ? "w-4 sm:w-5 md:w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-1.5 sm:w-2 md:w-2.5 bg-primary/20 hover:bg-primary/40",
+                ? "w-5 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-1 bg-primary/20 hover:bg-primary/40",
             )}
           />
         );

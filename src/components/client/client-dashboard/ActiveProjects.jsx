@@ -11,6 +11,7 @@ import Plus from "lucide-react/dist/esm/icons/plus";
 import Users from "lucide-react/dist/esm/icons/users";
 import Filter from "lucide-react/dist/esm/icons/filter";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import X from "lucide-react/dist/esm/icons/x";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -419,6 +420,21 @@ const ActiveProjects = memo(function ActiveProjects({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+
+          {/* Clear Filters Button */}
+          {(selectedCategory !== "All projects" || selectedFreelancer !== "All freelancers") && (
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCategory("All projects");
+                setSelectedFreelancer("All freelancers");
+              }}
+              className="inline-flex items-center justify-center size-8 sm:size-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+              title="Clear all filters"
+            >
+              <X className="size-3.5 sm:size-4" />
+            </button>
           )}
 
           {!resolvedIsLoading && shouldUseProjectCarousel ? (

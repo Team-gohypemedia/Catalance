@@ -1321,10 +1321,10 @@ const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel }) => {
             aria-label={`Go to project ${index + 1}`}
             aria-pressed={isActive}
             className={cn(
-              "h-2.5 rounded-full transition-all duration-200",
+              "h-1 rounded-full transition-all duration-200 shrink-0",
               isActive
-                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-2.5 bg-primary/40 hover:bg-primary/60",
+                ? "w-5 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-1 bg-primary/20 hover:bg-primary/40",
             )}
           />
         );
