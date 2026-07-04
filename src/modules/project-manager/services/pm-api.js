@@ -107,6 +107,21 @@ export const pmApi = {
     return request(authFetch, `/pm/meetings${asQuery(params)}`);
   },
 
+  getManagerAvailability(authFetch, managerId, params = {}) {
+    return request(
+      authFetch,
+      `/appointments/availability${asQuery({ managerId, ...params })}`
+    );
+  },
+
+  setManagerAvailability(authFetch, payload) {
+    return request(authFetch, "/appointments/availability", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  },
+
   detectMeetingConflicts(authFetch, payload) {
     return request(authFetch, "/pm/meetings/conflicts", {
       method: "POST",

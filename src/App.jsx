@@ -11,7 +11,6 @@ import CataButton from "@/components/common/CataButton";
 import FreelancerOnboardingPage from "@/pages/freelancer/FreelancerOnboarding.jsx";
 import {
   ACCOUNT_ONBOARDING_PATH,
-  AGENCY_ONBOARDING_PATH,
   FREELANCER_DASHBOARD,
   canAccessDashboard,
 } from "@/shared/lib/dashboard-preference";
@@ -49,7 +48,7 @@ const ProjectManagerDashboard = lazy(
   () => import("@/modules/project-manager/pages/DashboardPage"),
 );
 const ManagerAvailability = lazy(
-  () => import("@/modules/project-manager/pages/CalendarPage"),
+  () => import("@/modules/project-manager/pages/AvailabilityPage"),
 );
 const ManagerAppointments = lazy(
   () => import("@/modules/project-manager/pages/CalendarPage"),

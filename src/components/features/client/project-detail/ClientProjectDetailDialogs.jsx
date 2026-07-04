@@ -312,7 +312,7 @@ const ClientProjectDetailDialogs = ({
                     <Select
                       value={time || undefined}
                       onValueChange={setTime}
-                      disabled={!date}
+                      disabled={!date || effectiveTimeSlots.length === 0}
                     >
                       <SelectTrigger
                         className={cn(
@@ -340,8 +340,9 @@ const ClientProjectDetailDialogs = ({
                 </div>
                 {date && availableTimeSlots.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    Manager has no configured slots for this date. Using default
-                    working-hour options.
+                    No Project Manager slots are available on this date. Choose
+                    another date or clear the date to submit without scheduling
+                    a call.
                   </p>
                 ) : null}
               </div>

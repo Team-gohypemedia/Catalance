@@ -198,7 +198,7 @@ const FreelancerProjectDetailDialogs = ({
                   <select
                     value={time}
                     onChange={(event) => setTime(event.target.value)}
-                    disabled={!date}
+                    disabled={!date || effectiveTimeSlots.length === 0}
                     className={cn(
                       "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm",
                       "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none",
@@ -223,8 +223,9 @@ const FreelancerProjectDetailDialogs = ({
               </div>
               {date && availableTimeSlots.length === 0 ? (
                 <p className="text-xs text-muted-foreground">
-                  Manager has no configured slots for this date. Using default
-                  working-hour options.
+                  No Project Manager slots are available on this date. Choose
+                  another date or clear the date to submit without scheduling a
+                  call.
                 </p>
               ) : null}
             </div>
