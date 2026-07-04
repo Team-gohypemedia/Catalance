@@ -72,13 +72,47 @@ export const ProjectCarouselDots = memo(function ProjectCarouselDots({
 }) {
   if (count <= 1) return null;
 
+  const maxVisible = 5;
+  let start = 0;
+  let end = count;
+
+  if (count > maxVisible) {
+    start = Math.max(0, activeIndex - 2);
+    end = start + maxVisible;
+    if (end > count) {
+      end = count;
+      start = Math.max(0, end - maxVisible);
+    }
+  }
+
   return (
     <div
-      className="mt-2.5 flex flex-wrap items-center justify-center gap-1 sm:gap-1.5 md:gap-2 max-w-full px-4"
+      className="mt-2.5 flex items-center justify-center gap-1.5 h-3"
       aria-label={ariaLabel}
     >
       {Array.from({ length: count }, (_, index) => {
+        if (count > maxVisible && (index < start || index >= end)) {
+          return null;
+        }
+
         const isActive = index === activeIndex;
+
+        let scaleClass = "scale-100";
+        if (count > maxVisible) {
+          const isFirstVisible = index === start;
+          const isLastVisible = index === end - 1;
+          const hasMoreBefore = start > 0;
+          const hasMoreAfter = end < count;
+
+          if ((isFirstVisible && hasMoreBefore) || (isLastVisible && hasMoreAfter)) {
+            scaleClass = "scale-[0.6]";
+          } else if (
+            (index === start + 1 && hasMoreBefore) ||
+            (index === end - 2 && hasMoreAfter)
+          ) {
+            scaleClass = "scale-[0.8]";
+          }
+        }
 
         return (
           <button
@@ -92,10 +126,11 @@ export const ProjectCarouselDots = memo(function ProjectCarouselDots({
             }
             aria-pressed={isActive}
             className={cn(
-              "h-1 rounded-full transition-all duration-200 shrink-0",
+              "h-1.5 rounded-full transition-all duration-300 shrink-0",
+              scaleClass,
               isActive
-                ? "w-5 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-1 bg-primary/20 hover:bg-primary/40",
+                ? "w-6 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-1.5 bg-primary/20 hover:bg-primary/40",
             )}
           />
         );

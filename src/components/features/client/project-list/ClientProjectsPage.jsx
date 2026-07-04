@@ -88,10 +88,44 @@ const EmptyProjectsState = ({
 const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel, getDotLabel }) => {
   if (count <= 1) return null;
 
+  const maxVisible = 5;
+  let start = 0;
+  let end = count;
+
+  if (count > maxVisible) {
+    start = Math.max(0, activeIndex - 2);
+    end = start + maxVisible;
+    if (end > count) {
+      end = count;
+      start = Math.max(0, end - maxVisible);
+    }
+  }
+
   return (
-    <div className="mt-2.5 flex items-center justify-center gap-2" aria-label={ariaLabel}>
+    <div className="mt-2.5 flex items-center justify-center gap-1.5 h-3" aria-label={ariaLabel}>
       {Array.from({ length: count }, (_, index) => {
+        if (count > maxVisible && (index < start || index >= end)) {
+          return null;
+        }
+
         const isActive = index === activeIndex;
+
+        let scaleClass = "scale-100";
+        if (count > maxVisible) {
+          const isFirstVisible = index === start;
+          const isLastVisible = index === end - 1;
+          const hasMoreBefore = start > 0;
+          const hasMoreAfter = end < count;
+
+          if ((isFirstVisible && hasMoreBefore) || (isLastVisible && hasMoreAfter)) {
+            scaleClass = "scale-[0.6]";
+          } else if (
+            (index === start + 1 && hasMoreBefore) ||
+            (index === end - 2 && hasMoreAfter)
+          ) {
+            scaleClass = "scale-[0.8]";
+          }
+        }
 
         return (
           <button
@@ -105,10 +139,11 @@ const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel, getDotLa
             }
             aria-pressed={isActive}
             className={cn(
-              "h-1 rounded-full transition-all duration-200 shrink-0",
+              "h-1.5 rounded-full transition-all duration-300 shrink-0",
+              scaleClass,
               isActive
-                ? "w-5 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-1 bg-primary/20 hover:bg-primary/40",
+                ? "w-6 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-1.5 bg-primary/20 hover:bg-primary/40",
             )}
           />
         );
@@ -376,9 +411,9 @@ const ClientProjectsPage = () => {
             />
 
             <main className="flex-1 pb-12">
-              <section className="mt-12 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <section className="mt-6 sm:mt-12 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-center justify-between w-full lg:w-auto min-w-0">
-                  <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
+                  <h1 className="text-[22px] sm:text-4xl md:text-[2.8rem] font-semibold leading-[1.1] tracking-[-0.04em] text-foreground">
                     {activeFilter === "completed" ? "Completed Projects" : "Active Projects"}
                   </h1>
 

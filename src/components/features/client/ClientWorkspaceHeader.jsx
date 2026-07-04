@@ -430,7 +430,7 @@ const ClientWorkspaceHeader = ({
 
   const notificationButton = notificationNode || <NotificationTriggerButton unreadCount={unreadCount} />;
 
-  const [headerHeight, setHeaderHeight] = React.useState(0);
+  const [headerHeight, setHeaderHeight] = React.useState(120);
   const headerRef = React.useRef(null);
 
   React.useEffect(() => {
