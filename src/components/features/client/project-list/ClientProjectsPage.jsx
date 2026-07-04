@@ -406,30 +406,6 @@ const ClientProjectsPage = () => {
                       );
                     })}
                   </div>
-<<<<<<< HEAD
-                  {availableServices.length > 1 && (
-                    <Select value={activeServiceFilter} onValueChange={setActiveServiceFilter} modal={false}>
-                      <SelectTrigger className="w-full sm:w-[160px] h-10 sm:h-11 rounded-[24px] border-border bg-background font-medium">
-                        <SelectValue placeholder="Filter by Service" />
-                      </SelectTrigger>
-                      <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
-                        {availableServices.map((service) => {
-                          const displayLabel = service === "all" 
-                            ? "All Services" 
-                            : service
-                                .split(/[_]/)
-                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                                .join(" ");
-                                
-                          return (
-                            <SelectItem key={service} value={service}>
-                              {displayLabel}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-=======
                   <div className="flex flex-col sm:flex-row w-full sm:w-auto items-end sm:items-center justify-end gap-3">
                     {availableServices.length > 1 && (
                       <DropdownMenu modal={false}>
@@ -541,7 +517,6 @@ const ClientProjectsPage = () => {
                         } projects`}
                       />
                     </div>
->>>>>>> ddd9943cbdc34fb3e9aac46fcf2195fd6e63ea78
                   )}
                 </div>
               </section>
