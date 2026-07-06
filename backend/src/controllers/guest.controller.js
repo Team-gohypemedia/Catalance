@@ -6640,6 +6640,7 @@ Rules:
 - Do not force a match when multiple options seem plausible.
 - Keep free-text answers short and close to what the user said.
 - Never map a company/brand/business name to a personal/client/contact name question, and never map a personal name to a company/brand/business name question, unless the user explicitly labels both in the same message.
+- Never map an age range, quantity, or random number to a budget or price question unless the user explicitly mentions money, currency, or words like budget/cost/price.
 - You may mark later questions as answered if this single message clearly answers them.
 - Use higher confidence only when the answer is clear enough that the question can be safely skipped.
 - If the message clearly answers the immediate next question, confidence should usually be 0.90 or higher.
@@ -6714,6 +6715,7 @@ Rules:
 - Use any provided option aliases when they clearly map the user's wording to an option.
 - Only map an answer into a dedicated _other field when the user explicitly describes that question's topic. Do not assign a future _other field from a generic correction or unrelated aside.
 - You may use semantic understanding to match a user's wording to the correct question or option when it is clearly implied.
+- Never map an age range, quantity, or random number to a budget or price question unless the user explicitly mentions money, currency, or words like budget/cost/price.
 - Do not force uncertain matches.
 - Prefer concise answer text.
 - Use confidence 0.90+ only for clear, reliable matches and 0.93+ for strong future-question matches.
