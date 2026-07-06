@@ -204,8 +204,8 @@ const DEFAULT_REFERER =
 const PROJECT_SOP_PHASE_COUNT = 4;
 const PROJECT_SOP_MIN_TASKS_PER_PHASE = 4;
 const PROJECT_SOP_MAX_TASKS_PER_PHASE = 6;
-const PROJECT_SOP_MAX_TASK_TITLE_WORDS = 6;
-const PROJECT_SOP_MAX_TASK_TITLE_LENGTH = 56;
+const PROJECT_SOP_MAX_TASK_TITLE_WORDS = 12;
+const PROJECT_SOP_MAX_TASK_TITLE_LENGTH = 100;
 const PROJECT_SOP_GENERIC_PHASE_LABELS = Object.freeze([
   "Scope and planning",
   "Direction and approval",
@@ -4396,8 +4396,8 @@ const buildProjectSopPromptContext = (projectContext = {}) => {
       truncateProjectSopPromptText(proposalJson?.timeline, 160),
     budget: truncateProjectSopPromptText(projectContext?.budget, 120),
     projectOverview:
-      truncateProjectSopPromptText(projectContext?.projectOverview, 500) ||
-      truncateProjectSopPromptText(proposalJson?.projectOverview, 500),
+      truncateProjectSopPromptText(projectContext?.projectOverview, 1500) ||
+      truncateProjectSopPromptText(proposalJson?.projectOverview, 1500),
     primaryObjectives: limitProjectSopPromptList(
       projectContext?.primaryObjectives || proposalJson?.primaryObjectives || [],
       8,
@@ -4423,7 +4423,7 @@ const buildProjectSopPromptContext = (projectContext = {}) => {
     ),
     proposalContent: truncateProjectSopPromptText(
       projectContext?.proposalContent,
-      2200,
+      4000,
     ),
     selectedServices,
   };
@@ -4439,18 +4439,17 @@ Return JSON only. Do not return markdown, notes, or explanations.
 Required rules:
 - Always return exactly 4 phases.
 - Always return 4 to 6 tasks in each phase.
-- Every task title must be short and practical.
-- Every task title must use 2 to 6 words only.
-- Never write long sentence-style tasks.
+- Every task title must be short, practical, and highly specific to the project context.
+- Every task title must use up to 12 words.
 - Keep each task logical, genuine, and execution-focused.
-- Make the task flow realistic from planning to delivery.
-- Make the phase names concise and service-appropriate.
-- First phase status must be "in-progress".
-- Remaining phase statuses must be "pending".
-- Every phase progress must be 0.
-- Every task status must be "pending".
-- Phase ids must be "1", "2", "3", "4".
-- Task phase values must be "1", "2", "3", or "4".
+- First phase status must be "in-progress", others "pending".
+- Every task status must be "pending", progress 0.
+
+PHASE INSTRUCTIONS:
+- Phase 1: Create tasks to request and gather ALL files, credentials, and documents the freelancer needs to start, tailored to this specific service.
+- Phase 2: Create tasks structured so that by the end of this phase, EXACTLY HALF (50%) of the project deliverables are completed.
+- Phase 3: Create tasks structured to complete the remaining 50% of the project deliverables (100% completion).
+- Phase 4: Create tasks for handover, bug fixing, final revisions, and project closure.
 
 Output schema:
 {
@@ -4461,11 +4460,11 @@ Output schema:
     { "id": "4", "name": "${serviceLabel} Delivery and handover ( Phase-4 )", "status": "pending", "progress": 0 }
   ],
   "tasks": [
-    { "id": "p1t1", "title": "Confirm goals", "phase": "1", "status": "pending" }
+    { "id": "p1t1", "title": "Request AWS credentials, brand assets, and API keys", "phase": "1", "status": "pending" }
   ]
 }
 
-${serviceHint ? `Service guidance:\n${serviceHint}\n` : ""}Use plain English and keep the output production-ready.`;
+${serviceHint ? `Service guidance:\n${serviceHint}\n` : ""}Use plain English and make the output reflect the actual client proposal deliverables.`;
 
 const buildProjectSopUserPrompt = ({
   promptContext = {},
@@ -4480,7 +4479,7 @@ const buildProjectSopUserPrompt = ({
         .join("\n")
     : "";
 
-  return `Generate a project SOP JSON from this project data.
+  return `Generate a project SOP JSON from this project data. Ensure tasks directly reflect the client proposal deliverables.
 
 Project context:
 ${JSON.stringify(promptContext, null, 2)}
@@ -4493,10 +4492,11 @@ ${fallbackPhaseReference || "Use a standard 4-phase delivery flow."}
 Important output rules:
 - Keep exactly 4 phases.
 - Keep 4 to 6 tasks inside every phase.
-- Keep every task title short.
-- Keep every task title logical and realistic.
-- Do not use vague tasks like "Work on project" or "Do changes".
-- Do not use placeholders, filler text, or duplicate tasks.
+- Phase 1: Onboarding, gathering credentials, files, and documents.
+- Phase 2: Complete exactly 50% of the project deliverables.
+- Phase 3: Complete the remaining project deliverables (100% completion).
+- Phase 4: Bug fixing, revisions, handover, and closure.
+- Do not use vague tasks like "Work on project". Be highly specific based on the context.
 - Return JSON only.`;
 };
 

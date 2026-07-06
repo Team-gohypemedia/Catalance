@@ -64,8 +64,8 @@ test("normalizeProjectSopJson enforces 4 phases and short task titles", () => {
 
     for (const task of phaseTasks) {
       assert.equal(task.status, "pending");
-      assert.equal(countWords(task.title) <= 6, true, `Task too long: ${task.title}`);
-      assert.equal(task.title.length <= 56, true, `Task too wide: ${task.title}`);
+      assert.equal(countWords(task.title) <= 12, true, `Task too long: ${task.title}`);
+      assert.equal(task.title.length <= 100, true, `Task too wide: ${task.title}`);
     }
   }
 });
@@ -89,7 +89,7 @@ test("normalizeProjectSopJson pads sparse fallback templates to the required tas
     assert.equal(phaseTasks.length <= 6, true);
     for (const task of phaseTasks) {
       assert.equal(countWords(task.title) >= 2, true);
-      assert.equal(countWords(task.title) <= 6, true);
+      assert.equal(countWords(task.title) <= 12, true);
     }
   }
 });
