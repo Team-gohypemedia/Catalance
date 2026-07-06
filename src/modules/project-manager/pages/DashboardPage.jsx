@@ -88,11 +88,16 @@ const DashboardPage = () => {
   return (
     <PmShell
       title="Management Hub"
-      subtitle={`Overseeing ${stats.activeProjects} operational units across the platform infrastructure.`}
+      subtitle={`Overseeing ${loading ? "..." : stats.activeProjects} operational units across the platform infrastructure.`}
 
     >
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-         {statCards.map((stat) => (
+        {loading ? (
+          [1, 2, 3, 4].map(i => (
+            <div key={i} className="h-40 rounded-[7px] bg-slate-50 animate-pulse border border-slate-100" />
+          ))
+        ) : (
+         statCards.map((stat) => (
            <button
              key={stat.label}
              type="button"
@@ -113,7 +118,8 @@ const DashboardPage = () => {
               </CardContent>
              </Card>
            </button>
-         ))}
+         ))
+        )}
       </div>
 
       <section className="mb-12">

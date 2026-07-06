@@ -7,6 +7,7 @@ import Search from "lucide-react/dist/esm/icons/search";
 import Send from "lucide-react/dist/esm/icons/send";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import Star from "lucide-react/dist/esm/icons/star";
+import X from "lucide-react/dist/esm/icons/x";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,7 +23,6 @@ import {
 import {
   Input,
 } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
 
@@ -293,33 +293,6 @@ const FreelancerSelectionDialog = ({
   const [activeAiFreelancerId, setActiveAiFreelancerId] = useState(null);
   const dialogContentRef = useRef(null);
 
-  // Prevent background scrolling on mobile/iOS when dialog is open
-  useEffect(() => {
-    if (!open) return;
-
-    const originalOverflow = document.body.style.overflow;
-    const originalPosition = document.body.style.position;
-    const originalTop = document.body.style.top;
-    const originalWidth = document.body.style.width;
-    const scrollY = window.scrollY;
-
-    // Lock body scroll by making it position fixed
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.width = "100%";
-
-    return () => {
-      // Restore styles
-      document.body.style.overflow = originalOverflow;
-      document.body.style.position = originalPosition;
-      document.body.style.top = originalTop;
-      document.body.style.width = originalWidth;
-      
-      // Restore scroll position
-      window.scrollTo(0, scrollY);
-    };
-  }, [open]);
 
   useEffect(() => {
     if (open) return;
@@ -356,6 +329,30 @@ const FreelancerSelectionDialog = ({
     };
   }, [open]);
 
+
+  const activeAiFreelancer = Array.isArray(filteredFreelancers)
+    ? filteredFreelancers.find(
+        (freelancer) => String(freelancer?.id || "") === String(activeAiFreelancerId || ""),
+      )
+    : null;
+  const activeAiMatch =
+    activeAiFreelancer?.aiMatch && typeof activeAiFreelancer.aiMatch === "object"
+      ? activeAiFreelancer.aiMatch
+      : null;
+  const activeAiDisplayName = activeAiFreelancer?.fullName || activeAiFreelancer?.name || "Freelancer";
+  const activeAiSummary = String(activeAiMatch?.summary || "").trim();
+  const activeAiHighlights = Array.isArray(activeAiMatch?.highlights)
+    ? activeAiMatch.highlights.map((entry) => String(entry || "").trim()).filter(Boolean).slice(0, 4)
+    : [];
+  const activeAiConcerns = Array.isArray(activeAiMatch?.concerns)
+    ? activeAiMatch.concerns.map((entry) => String(entry || "").trim()).filter(Boolean).slice(0, 3)
+    : [];
+  const activeAiSemanticFitScore = Number.isFinite(Number(activeAiMatch?.semanticFitScore))
+    ? Math.max(0, Math.min(100, Math.round(Number(activeAiMatch.semanticFitScore))))
+    : null;
+  const activeAiShortlistRank = Number.isFinite(Number(activeAiMatch?.shortlistRank))
+    ? Math.max(1, Math.round(Number(activeAiMatch.shortlistRank)))
+    : null;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
     <DialogContent 
@@ -366,7 +363,7 @@ const FreelancerSelectionDialog = ({
           event.preventDefault();
         }
       }}
-      className="h-[78vh] w-[94vw] max-w-300 p-3 sm:p-4 flex flex-col overscroll-contain"
+      className="fixed left-1/2 top-1/2 flex h-[82dvh] w-[96vw] max-w-[34rem] -translate-x-1/2 -translate-y-1/2 flex-col overscroll-contain p-3 sm:h-[84dvh] sm:max-w-5xl sm:p-4"
     >
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-lg">
@@ -382,7 +379,7 @@ const FreelancerSelectionDialog = ({
       </DialogHeader>
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-2 px-1">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="relative flex-1">
+          <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={freelancerSearch}
@@ -393,9 +390,14 @@ const FreelancerSelectionDialog = ({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {isFreelancerAiLoading && filteredFreelancers.length > 0 && (
-              <Badge variant="outline" className="h-9 px-2.5 text-primary font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap border-primary/20 bg-primary/5">
-                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-                Cata AI analyzing
+              <Badge
+                variant="outline"
+                title="Cata AI analyzing"
+                aria-label="Cata AI analyzing"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border-primary/20 bg-primary/5 p-0 text-xs font-medium text-primary sm:w-auto sm:px-2.5"
+              >
+                <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5 sm:h-3 sm:w-3" />
+                <span className="hidden whitespace-nowrap sm:inline">Cata AI analyzing</span>
               </Badge>
             )}
             <Badge className="h-9 px-2.5 border-primary/20 bg-primary/10 text-primary font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
@@ -423,7 +425,7 @@ const FreelancerSelectionDialog = ({
                       {Array.from({ length: 6 }).map((_, index) => (
                         <Card
                           key={`freelancer-loading-${index}`}
-                          className="min-h-[25rem] w-[290px] shrink-0 snap-start rounded-[20px] border border-border/60 bg-card/90 p-2.5 sm:w-auto sm:shrink sm:snap-align-none"
+                          className="min-h-[25rem] w-[min(23rem,calc(96vw-3.25rem))] shrink-0 snap-start rounded-[20px] border border-border/60 bg-card/90 p-2.5 sm:w-auto sm:shrink sm:snap-align-none"
                         >
 
                           <Skeleton className="h-28 w-full rounded-xl" />
@@ -517,9 +519,11 @@ const FreelancerSelectionDialog = ({
                   <div
                     onScroll={(e) => {
                       const container = e.currentTarget;
-                      const scrollLeft = container.scrollLeft;
-                      const cardWidth = 290 + 12; // card width + gap (gap-3 is 12px)
-                      const newIndex = Math.round(scrollLeft / cardWidth);
+                      const firstCard = container.firstElementChild;
+                      const cardWidth = firstCard
+                        ? firstCard.getBoundingClientRect().width + 12
+                        : 302;
+                      const newIndex = Math.round(container.scrollLeft / cardWidth);
                       setActiveIndices((prev) => {
                         if (prev[group.key] === newIndex) return prev;
                         return { ...prev, [group.key]: newIndex };
@@ -577,9 +581,6 @@ const FreelancerSelectionDialog = ({
                   ? Math.max(1, Math.round(Number(aiMatch.shortlistRank)))
                   : null;
                 const isAiTopPick = aiShortlistRank === 1;
-                const isAiPopoverOpen =
-                  Boolean(aiMatch) &&
-                  String(activeAiFreelancerId || "") === String(freelancer.id || "");
                 const isSendingSelectedFreelancer =
                   isSendingProposal &&
                   String(sendingFreelancerId ?? "") === String(freelancer.id ?? "");
@@ -605,8 +606,7 @@ const FreelancerSelectionDialog = ({
                 return (
                   <Card
                     key={freelancer.id}
-                    className="group relative flex min-h-[22.5rem] w-[290px] shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-2.5 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55 sm:w-auto sm:shrink sm:snap-align-none"
-                    onClick={() => onViewFreelancer(freelancer)}
+                    className="group relative flex min-h-[22.5rem] w-[min(23rem,calc(96vw-3.25rem))] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-2.5 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55 sm:w-auto sm:shrink sm:snap-align-none"
                   >
                     <div
                       className="relative isolate h-24 min-h-24 shrink-0 overflow-visible rounded-xl border border-border/70 shadow-none"
@@ -766,7 +766,7 @@ const FreelancerSelectionDialog = ({
                                 <Sparkles className="h-3 w-3 shrink-0" />
                                 Cata AI Predicted Fit
                               </p>
-                              <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                              <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground sm:line-clamp-none">
                                 {aiShortlistRank === 1
                                   ? "Cata AI ranked this freelancer first for your proposal."
                                   : aiShortlistRank
@@ -774,118 +774,18 @@ const FreelancerSelectionDialog = ({
                                     : "Cata AI reviewed why this freelancer matches your brief."}
                               </p>
                             </div>
-                            <Popover
-                              open={isAiPopoverOpen}
-                              onOpenChange={(nextOpen) => {
-                                setActiveAiFreelancerId(nextOpen ? freelancer.id : null);
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-7 shrink-0 rounded-full border-primary/20 bg-background/80 px-3 text-[10px] font-semibold text-primary shadow-none hover:bg-primary/10"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setActiveAiFreelancerId(freelancer.id);
                               }}
                             >
-                              <PopoverTrigger asChild>
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  className="h-7 shrink-0 rounded-full border-primary/20 bg-background/80 px-3 text-[10px] font-semibold text-primary shadow-none hover:bg-primary/10"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                  }}
-                                >
-                                  <Sparkles className="mr-1.5 h-3 w-3" />
-                                  Cata AI
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align="end"
-                                side="top"
-                                container={dialogContentRef.current || undefined}
-                                className="z-[100] w-[min(22rem,calc(100vw-2rem))] max-h-[22rem] overflow-y-auto rounded-[20px] border border-border/70 bg-background/98 p-0 shadow-[0_28px_60px_-32px_rgba(15,23,42,0.45)]"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                }}
-                                onOpenAutoFocus={(event) => {
-                                  event.preventDefault();
-                                }}
-                              >
-                                <div className="p-4">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/90">
-                                        <Sparkles className="h-3 w-3 shrink-0" />
-                                        Cata AI Match Reason
-                                      </p>
-                                      <h4 className="mt-1 text-sm font-semibold text-foreground">
-                                        {displayName}
-                                      </h4>
-                                    </div>
-                                    {aiSemanticFitScore !== null ? (
-                                      <Badge
-                                        variant="outline"
-                                        className="h-6 shrink-0 border-primary/20 bg-primary/[0.05] px-2 text-[10px] font-semibold text-primary"
-                                      >
-                                        {aiSemanticFitScore}% fit
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-
-                                  <p className="mt-3 text-xs leading-5 text-foreground">
-                                    {aiSummary ||
-                                      "Cata AI found this freelancer relevant based on service fit, proposal context, and matching proof from the shortlist."}
-                                  </p>
-
-                                  {aiHighlights.length > 0 ? (
-                                    <div className="mt-3">
-                                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                        Why Cata AI likes this match
-                                      </p>
-                                      <div className="mt-2 flex flex-col gap-1.5">
-                                        {aiHighlights.map((highlight, index) => (
-                                          <p
-                                            key={`${freelancer.id}-ai-highlight-${index}`}
-                                            className="text-xs leading-5 text-foreground/90"
-                                          >
-                                            {`- ${highlight}`}
-                                          </p>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : null}
-
-                                  {aiConcerns.length > 0 ? (
-                                    <div className="mt-3">
-                                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                        Watch-outs
-                                      </p>
-                                      <div className="mt-2 flex flex-col gap-1.5">
-                                        {aiConcerns.map((concern, index) => (
-                                          <p
-                                            key={`${freelancer.id}-ai-concern-${index}`}
-                                            className="text-xs leading-5 text-muted-foreground"
-                                          >
-                                            {`- ${concern}`}
-                                          </p>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  ) : null}
-
-                                  <div className="mt-4 flex flex-wrap gap-2">
-                                    <Badge
-                                      variant="outline"
-                                      className="h-6 border-border/70 bg-transparent px-2 text-[10px] font-medium text-foreground"
-                                    >
-                                      {getAiMatchConfidenceLabel(aiMatch?.confidence)}
-                                    </Badge>
-                                    {aiShortlistRank ? (
-                                      <Badge
-                                        variant="outline"
-                                        className="h-6 border-primary/20 bg-primary/[0.05] px-2 text-[10px] font-medium text-primary"
-                                      >
-                                        {`Cata AI shortlist #${aiShortlistRank}`}
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
+                              <Sparkles className="mr-1.5 h-3 w-3" />
+                              Cata AI
+                            </Button>
                           </div>
                         </div>
                       ) : null}
@@ -945,6 +845,115 @@ const FreelancerSelectionDialog = ({
           </div>
         </div>
       </div>
+      {activeAiMatch ? (
+        <div
+          className="absolute inset-0 z-[120] flex items-center justify-center bg-background/30 px-4 py-6 backdrop-blur-[1px]"
+          onClick={(event) => {
+            event.stopPropagation();
+            setActiveAiFreelancerId(null);
+          }}
+        >
+          <div
+            className="max-h-[min(28rem,calc(100%-2rem))] w-[min(21rem,calc(100%-1.5rem))] overflow-y-auto rounded-[16px] border border-border/70 bg-background/98 p-3 shadow-[0_28px_70px_-30px_rgba(15,23,42,0.55)] sm:w-[min(24rem,calc(100%-2rem))] sm:p-4"
+            onClick={(event) => {
+              event.stopPropagation();
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/90">
+                  <Sparkles className="h-3 w-3 shrink-0" />
+                  Cata AI Match Reason
+                </p>
+                <h4 className="mt-1 text-sm font-semibold text-foreground">
+                  {activeAiDisplayName}
+                </h4>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {activeAiSemanticFitScore !== null ? (
+                  <Badge
+                    variant="outline"
+                    className="h-6 border-primary/20 bg-primary/[0.05] px-2 text-[10px] font-semibold text-primary"
+                  >
+                    {activeAiSemanticFitScore}% fit
+                  </Badge>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close Cata AI match reason"
+                  className="h-6 w-6 rounded-full text-muted-foreground hover:bg-primary/10 hover:text-primary"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveAiFreelancerId(null);
+                  }}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            <p className="mt-3 text-xs leading-5 text-foreground">
+              {activeAiSummary ||
+                "Cata AI found this freelancer relevant based on service fit, proposal context, and matching proof from the shortlist."}
+            </p>
+
+            {activeAiHighlights.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Why Cata AI likes this match
+                </p>
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {activeAiHighlights.map((highlight, index) => (
+                    <p
+                      key={`active-ai-highlight-${index}`}
+                      className="text-xs leading-5 text-foreground/90"
+                    >
+                      {`- ${highlight}`}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {activeAiConcerns.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Watch-outs
+                </p>
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {activeAiConcerns.map((concern, index) => (
+                    <p
+                      key={`active-ai-concern-${index}`}
+                      className="text-xs leading-5 text-muted-foreground"
+                    >
+                      {`- ${concern}`}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Badge
+                variant="outline"
+                className="h-6 border-border/70 bg-transparent px-2 text-[10px] font-medium text-foreground"
+              >
+                {getAiMatchConfidenceLabel(activeAiMatch?.confidence)}
+              </Badge>
+              {activeAiShortlistRank ? (
+                <Badge
+                  variant="outline"
+                  className="h-6 border-primary/20 bg-primary/[0.05] px-2 text-[10px] font-medium text-primary"
+                >
+                  {`Cata AI shortlist #${activeAiShortlistRank}`}
+                </Badge>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
       <DialogFooter>
         <Button variant="outline" onClick={() => onOpenChange(false)}>
           Cancel

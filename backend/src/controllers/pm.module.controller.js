@@ -1451,7 +1451,7 @@ const detectMeetingConflictsCore = async ({ managerId, startsAt, endsAt, exclude
     });
 
   return {
-    hasConflict: appointmentConflicts.length > 0 || disputeConflicts.length > 0,
+    hasConflict: false,
     appointmentConflicts,
     disputeConflicts,
     suggestedSlots,

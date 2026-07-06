@@ -97,7 +97,7 @@ const buildMeetingFormDefaults = () => {
   return {
     title: "Project Sync",
     participantScope: "BOTH",
-    platform: "INTERNAL",
+    platform: "GOOGLE_MEET",
     notes: "",
     startsAt: toLocalDateTimeInputValue(startsAt),
     endsAt: toLocalDateTimeInputValue(endsAt),
@@ -1035,9 +1035,7 @@ const ProjectDetailsPage = () => {
               </Card>
 
               <div className="group relative overflow-hidden rounded-3xl border border-orange-200/70 bg-gradient-to-r from-orange-50 via-white to-indigo-50/70 p-8 shadow-sm">
-                 <div className="absolute top-0 right-0 p-12 opacity-5 pointer-events-none group-hover:opacity-100 transition-opacity">
-                    <CheckCircle className="h-48 w-48 text-[#D9692A]" />
-                 </div>
+
                  <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
                     <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[30px] bg-white text-[#D9692A] shadow-xl shadow-[#D9692A]/5">
                        <Download className="h-8 w-8" />
@@ -1106,9 +1104,21 @@ const ProjectDetailsPage = () => {
                           <p className="text-xs font-medium text-slate-600">Loading meetings...</p>
                         ) : projectMeetings.length > 0 ? (
                           projectMeetings.map((meeting) => (
-                            <div key={meeting.id} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
-                              <p className="text-xs font-bold text-slate-900">{meeting.title}</p>
-                              <p className="text-[11px] font-medium text-slate-700">
+                            <div key={meeting.id} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2 mb-2 last:mb-0">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-bold text-slate-900">{meeting.title}</p>
+                                {meeting.meetingLink && (
+                                  <a
+                                    href={meeting.meetingLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-[10px] font-bold uppercase tracking-widest text-[#D9692A] hover:text-[#B85A24] bg-orange-50 px-2 py-0.5 rounded border border-orange-200"
+                                  >
+                                    Join
+                                  </a>
+                                )}
+                              </div>
+                              <p className="mt-1 text-[11px] font-medium text-slate-700">
                                 {new Date(meeting.startsAt).toLocaleString()} - {new Date(meeting.endsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </p>
                               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
@@ -1282,17 +1292,17 @@ const ProjectDetailsPage = () => {
         <TabsContent value="milestones" className="mt-0 focus-visible:outline-none">
            <div className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                 <Card className="rounded-3xl border-slate-100 p-8 shadow-sm bg-white">
-                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">UNLOCKED FUNDS</p>
-                    <p className="text-2xl font-black text-emerald-600">INR {milestoneRows.filter(m => m.status === 'Approved' || m.status === 'Completed').reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString("en-IN")}</p>
+                 <Card className="rounded-3xl border-orange-100 p-8 shadow-sm bg-gradient-to-br from-white to-orange-50/50">
+                    <p className="text-[10px] font-black text-orange-600/70 uppercase tracking-widest mb-1">UNLOCKED FUNDS</p>
+                    <p className="text-2xl font-black text-[#D9692A]">INR {milestoneRows.filter(m => m.status === 'Approved' || m.status === 'Completed').reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString("en-IN")}</p>
                  </Card>
-                 <Card className="rounded-3xl border-slate-100 p-8 shadow-sm bg-white">
-                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">ESCROW HOLD</p>
+                 <Card className="rounded-3xl border-orange-100 p-8 shadow-sm bg-gradient-to-br from-white to-orange-50/50">
+                    <p className="text-[10px] font-black text-orange-600/70 uppercase tracking-widest mb-1">ESCROW HOLD</p>
                     <p className="text-2xl font-black text-[#D9692A]">INR {milestoneRows.filter(m => m.status === 'Locked' || m.status === 'Pending Approval').reduce((acc, m) => acc + (m.amount || 0), 0).toLocaleString("en-IN")}</p>
                  </Card>
-                 <Card className="rounded-3xl border-slate-100 p-8 shadow-sm bg-white">
-                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">TOTAL BUDGET</p>
-                    <p className="text-2xl font-black text-slate-900">INR {Number(project.budget || 0).toLocaleString("en-IN")}</p>
+                 <Card className="rounded-3xl border-orange-100 p-8 shadow-sm bg-gradient-to-br from-white to-orange-50/50">
+                    <p className="text-[10px] font-black text-orange-600/70 uppercase tracking-widest mb-1">TOTAL BUDGET</p>
+                    <p className="text-2xl font-black text-[#D9692A]">INR {Number(project.budget || 0).toLocaleString("en-IN")}</p>
                  </Card>
               </div>
 
@@ -1309,42 +1319,42 @@ const ProjectDetailsPage = () => {
                           return (
                           <div key={idx} className="flex gap-4 md:gap-10">
                              <div className="flex flex-col items-center">
-                                <div className={`h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center font-black ${milestone.status === 'Approved' ? 'bg-emerald-500 text-white shadow-lg' : 'bg-slate-100 text-slate-600'}`}>
+                                <div className={`h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center font-black ${milestone.status === 'Approved' ? 'bg-[#D9692A] text-white shadow-lg shadow-[#D9692A]/30' : 'bg-orange-100/50 text-[#D9692A]'}`}>
                                    {idx + 1}
                                 </div>
-                                {idx < milestoneRows.length - 1 && <div className="flex-1 w-0.5 bg-slate-100 my-4" />}
+                                {idx < milestoneRows.length - 1 && <div className="flex-1 w-0.5 bg-orange-100/50 my-4" />}
                              </div>
-                             <div className="flex-1 pb-10 border-b border-slate-50 last:border-0 last:pb-0 min-w-0">
+                             <div className="flex-1 pb-10 border-b border-orange-50 last:border-0 last:pb-0 min-w-0">
                                 <div className="flex flex-col sm:flex-row sm:justify-between items-start mb-4 gap-2">
                                    <div className="min-w-0">
                                       <h4 className="text-lg font-black text-slate-900 truncate">{milestone.title}</h4>
-                                      <Badge variant="outline" className={`mt-2 font-black text-[9px] uppercase ${milestone.status === 'Approved' ? 'border-emerald-200 text-emerald-600 bg-emerald-50' : 'border-slate-200 text-slate-600'}`}>{milestone.status}</Badge>
+                                      <Badge variant="outline" className={`mt-2 font-black text-[9px] uppercase ${milestone.status === 'Approved' ? 'border-[#D9692A] text-[#D9692A] bg-orange-50' : 'border-orange-200 text-orange-600 bg-orange-50/50'}`}>{milestone.status}</Badge>
                                    </div>
                                    <div className="sm:text-right mt-2 sm:mt-0">
-                                      <p className="text-xl font-black text-slate-900">INR {milestone.amount?.toLocaleString("en-IN")}</p>
-                                      <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Payout Volume</p>
+                                      <p className="text-xl font-black text-[#D9692A]">INR {milestone.amount?.toLocaleString("en-IN")}</p>
+                                      <p className="text-[10px] font-bold text-orange-600/70 uppercase tracking-widest">Payout Volume</p>
                                    </div>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mt-6 p-4 md:p-6 rounded-2xl bg-slate-50 border border-slate-100">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 mt-6 p-4 md:p-6 rounded-2xl bg-gradient-to-br from-orange-50/40 to-white border border-orange-100/50 shadow-sm">
                                    <div>
-                                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">Deliverables Verified</p>
+                                      <p className="text-[10px] font-black text-orange-600/70 uppercase tracking-widest mb-2">Deliverables Verified</p>
                                       {phaseTasks.length > 0 ? (
                                         <ul className="space-y-2">
                                           {phaseTasks.map((task) => (
-                                            <li key={task.id} className="flex items-center gap-2 text-xs font-medium text-slate-600">
-                                              <CheckCircle className="h-3 w-3 text-emerald-500" />
+                                            <li key={task.id} className="flex items-center gap-2 text-xs font-medium text-slate-700">
+                                              <CheckCircle className="h-3 w-3 text-[#D9692A]" />
                                               {task.title}
                                             </li>
                                           ))}
                                         </ul>
                                       ) : (
-                                        <p className="text-xs font-medium text-slate-700">
+                                        <p className="text-xs font-medium text-slate-500 italic">
                                           No verified deliverables in this phase yet.
                                         </p>
                                       )}
                                    </div>
                                    <div>
-                                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-2">PM Notes</p>
+                                      <p className="text-[10px] font-black text-orange-600/70 uppercase tracking-widest mb-2">PM Notes</p>
                                       <p className="text-xs font-medium text-slate-700 italic leading-relaxed">{milestone.validationNotes || "No specific auditor notes for this phase."}</p>
                                    </div>
                                 </div>
@@ -1446,15 +1456,11 @@ const ProjectDetailsPage = () => {
               </div>
               <div>
                 <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-600">Platform</p>
-                <select
-                  value={meetingForm.platform}
-                  onChange={(e) => setMeetingForm((prev) => ({ ...prev, platform: e.target.value }))}
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
-                >
-                  <option value="INTERNAL">Internal</option>
-                  <option value="GOOGLE_MEET">Google Meet</option>
-                  <option value="ZOOM">Zoom</option>
-                </select>
+                <Input
+                  value="Google Meet"
+                  disabled
+                  className="h-11 w-full rounded-xl border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-500 cursor-not-allowed"
+                />
               </div>
             </div>
 
