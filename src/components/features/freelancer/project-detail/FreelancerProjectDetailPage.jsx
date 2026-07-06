@@ -81,19 +81,6 @@ import FreelancerProjectDetailSidebar from "./FreelancerProjectDetailSidebar";
 import ProjectDetailSkeleton from "./ProjectDetailSkeleton";
 import IDEWorkspaceModal from "./IDEWorkspaceModal";
 
-const DEFAULT_MEETING_TIME_SLOTS = [
-  "09:00 AM",
-  "10:00 AM",
-  "11:00 AM",
-  "12:00 PM",
-  "01:00 PM",
-  "02:00 PM",
-  "03:00 PM",
-  "04:00 PM",
-  "05:00 PM",
-  "06:00 PM",
-];
-
 const initialMessages = [];
 
 const getPhaseIcon = (status) => {
@@ -390,9 +377,7 @@ const FreelancerProjectDetailContent = () => {
 
   const effectiveTimeSlots = useMemo(() => {
     if (!date) return [];
-    return availableTimeSlots.length > 0
-      ? availableTimeSlots
-      : DEFAULT_MEETING_TIME_SLOTS;
+    return availableTimeSlots;
   }, [date, availableTimeSlots]);
 
   useEffect(() => {
@@ -689,22 +674,31 @@ const FreelancerProjectDetailContent = () => {
     const meetingDateLocal = date ? format(date, "yyyy-MM-dd") : undefined;
 
     if (date) {
+      if (availableTimeSlots.length === 0) {
+        toast.error(
+          "No Project Manager slots are available on that date. Choose another date or clear the date to submit without scheduling."
+        );
+        return;
+      }
+
+      if (!time) {
+        toast.error(
+          "Select an available time or clear the date to submit without scheduling."
+        );
+        return;
+      }
+
       fullDescription += `\n\nDate of Issue: ${format(date, "PPP")}`;
 
       // Combine for structural save
       const combined = new Date(date);
-      if (time) {
-        fullDescription += `\nTime: ${time}`;
-        const [timeStr, period] = time.split(" ");
-        let [hours, minutes] = timeStr.split(":").map(Number);
-        if (period === "PM" && hours !== 12) hours += 12;
-        if (period === "AM" && hours === 12) hours = 0;
-        meetingHour = hours;
-        combined.setHours(hours, minutes, 0, 0);
-      } else {
-        combined.setHours(9, 0, 0, 0);
-        meetingHour = 9;
-      }
+      fullDescription += `\nTime: ${time}`;
+      const [timeStr, period] = time.split(" ");
+      let [hours, minutes] = timeStr.split(":").map(Number);
+      if (period === "PM" && hours !== 12) hours += 12;
+      if (period === "AM" && hours === 12) hours = 0;
+      meetingHour = hours;
+      combined.setHours(hours, minutes, 0, 0);
       meetingDateIso = combined.toISOString();
     }
 
@@ -721,21 +715,28 @@ const FreelancerProjectDetailContent = () => {
           meetingHour,
         }),
       });
-      if (res.ok) {
-        toast.success(
-          "Dispute raised. A Project Manager will review it shortly."
+
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          payload?.message ||
+            payload?.error ||
+            "Failed to raise dispute."
         );
-        setReportOpen(false);
-        setIssueText("");
-        setDate(undefined);
-        setTime("");
-        setDatePopoverOpen(false);
-      } else {
-        toast.error("Failed to raise dispute");
       }
+
+      toast.success(
+        "Dispute raised. A Project Manager will review it shortly."
+      );
+      setReportOpen(false);
+      setIssueText("");
+      setDate(undefined);
+      setTime("");
+      setDatePopoverOpen(false);
     } catch (e) {
       console.error(e);
-      toast.error("Error raising dispute");
+      toast.error(e?.message || "Error raising dispute");
     } finally {
       setIsReporting(false);
     }

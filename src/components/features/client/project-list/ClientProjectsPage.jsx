@@ -15,6 +15,7 @@ import {
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Check from "lucide-react/dist/esm/icons/check";
 import Filter from "lucide-react/dist/esm/icons/filter";
+import X from "lucide-react/dist/esm/icons/x";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { ProjectCarouselControls } from "@/components/client/client-dashboard/shared.jsx";
@@ -87,10 +88,44 @@ const EmptyProjectsState = ({
 const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel, getDotLabel }) => {
   if (count <= 1) return null;
 
+  const maxVisible = 5;
+  let start = 0;
+  let end = count;
+
+  if (count > maxVisible) {
+    start = Math.max(0, activeIndex - 2);
+    end = start + maxVisible;
+    if (end > count) {
+      end = count;
+      start = Math.max(0, end - maxVisible);
+    }
+  }
+
   return (
-    <div className="mt-2.5 flex items-center justify-center gap-2" aria-label={ariaLabel}>
+    <div className="mt-2.5 flex items-center justify-center gap-1.5 h-3" aria-label={ariaLabel}>
       {Array.from({ length: count }, (_, index) => {
+        if (count > maxVisible && (index < start || index >= end)) {
+          return null;
+        }
+
         const isActive = index === activeIndex;
+
+        let scaleClass = "scale-100";
+        if (count > maxVisible) {
+          const isFirstVisible = index === start;
+          const isLastVisible = index === end - 1;
+          const hasMoreBefore = start > 0;
+          const hasMoreAfter = end < count;
+
+          if ((isFirstVisible && hasMoreBefore) || (isLastVisible && hasMoreAfter)) {
+            scaleClass = "scale-[0.6]";
+          } else if (
+            (index === start + 1 && hasMoreBefore) ||
+            (index === end - 2 && hasMoreAfter)
+          ) {
+            scaleClass = "scale-[0.8]";
+          }
+        }
 
         return (
           <button
@@ -104,10 +139,11 @@ const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel, getDotLa
             }
             aria-pressed={isActive}
             className={cn(
-              "h-2.5 rounded-full transition-all duration-200",
+              "h-1.5 rounded-full transition-all duration-300 shrink-0",
+              scaleClass,
               isActive
-                ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-2.5 bg-primary/40 hover:bg-primary/60",
+                ? "w-6 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
+                : "w-1.5 bg-primary/20 hover:bg-primary/40",
             )}
           />
         );
@@ -375,14 +411,31 @@ const ClientProjectsPage = () => {
             />
 
             <main className="flex-1 pb-12">
-              <section className="mt-12 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <h1 className="text-[clamp(2rem,4vw,3rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground">
+              <section className="mt-6 sm:mt-12 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center justify-between w-full lg:w-auto min-w-0">
+                  <h1 className="text-[22px] sm:text-4xl md:text-[2.8rem] font-semibold leading-[1.1] tracking-[-0.04em] text-foreground">
                     {activeFilter === "completed" ? "Completed Projects" : "Active Projects"}
                   </h1>
+
+                  {!isLoading && shouldUseProjectCarousel ? (
+                    <div className="lg:hidden shrink-0 ml-3">
+                      <ProjectCarouselControls
+                        onPrevious={() => projectCarouselApi?.scrollPrev()}
+                        onNext={() => projectCarouselApi?.scrollNext()}
+                        canGoPrevious={canGoToPreviousProject}
+                        canGoNext={canGoToNextProject}
+                        previousLabel={`Show previous ${
+                          activeFilter === "completed" ? "completed" : "ongoing"
+                        } projects`}
+                        nextLabel={`Show next ${
+                          activeFilter === "completed" ? "completed" : "ongoing"
+                        } projects`}
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="flex flex-col items-end gap-3">
+                <div className="flex flex-col items-end gap-4 sm:gap-5">
                   <div className="inline-flex h-auto w-full flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-background p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {projectFilterOptions.map((option) => {
                       const count =
@@ -395,7 +448,7 @@ const ClientProjectsPage = () => {
                           type="button"
                           onClick={() => handleSelectFilter(option.key)}
                           className={cn(
-                            "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
+                            "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-4 sm:text-[0.88rem] sm:tracking-normal",
                             isActive
                               ? "border-[var(--primary)]/70 bg-[var(--primary)] text-white dark:text-[#141414]"
                               : "text-muted-foreground hover:text-foreground",
@@ -406,21 +459,19 @@ const ClientProjectsPage = () => {
                       );
                     })}
                   </div>
-                  <div className="flex flex-col sm:flex-row w-full sm:w-auto items-end sm:items-center justify-end gap-3">
+                  <div className="flex flex-row items-center justify-between lg:justify-end gap-2.5 lg:gap-3 w-full lg:w-auto">
                     {availableServices.length > 1 && (
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
-                          <button className="flex items-center justify-between w-full sm:w-auto sm:min-w-[180px] h-10 sm:h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shadow-sm">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Filter className="size-4 shrink-0" />
-                              <span className="truncate pr-2">
-                                {activeServiceFilter === "all" ? "All Services" : activeServiceFilter.split(/[_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
-                              </span>
-                            </div>
-                            <ChevronDown className="size-4 opacity-80 shrink-0" />
+                          <button className="flex items-center gap-1 sm:gap-2 rounded-full bg-primary px-2.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs md:text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shrink-0">
+                            <Filter className="size-3 sm:size-3.5 shrink-0" />
+                            <span className="max-w-[90px] xs:max-w-[110px] sm:max-w-[180px] truncate">
+                              {activeServiceFilter === "all" ? "All Services" : activeServiceFilter.split(/[_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ")}
+                            </span>
+                            <ChevronDown className="size-3 sm:size-3.5 opacity-80 shrink-0" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[280px] sm:w-auto sm:min-w-[200px] sm:max-w-[400px] max-h-[300px] overflow-y-auto rounded-2xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <DropdownMenuContent align="end" className="w-52 min-w-[var(--radix-dropdown-menu-trigger-width)] max-h-[300px] overflow-y-auto rounded-2xl border border-border bg-card p-1.5 shadow-md [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {availableServices.map((service) => {
                             const count = service === "all"
                               ? Object.values(servicesWithCounts).reduce((a, b) => a + b, 0)
@@ -441,7 +492,7 @@ const ClientProjectsPage = () => {
                                 onClick={() => setActiveServiceFilter(service)}
                                 className={cn("cursor-pointer rounded-xl flex items-center justify-between px-3 py-2 text-sm", activeServiceFilter === service && "bg-muted font-medium")}
                               >
-                                <span className="pr-2">{displayLabel}</span>
+                                <span className="pr-2 truncate">{displayLabel}</span>
                                 {activeServiceFilter === service && <Check className="size-4 opacity-50 shrink-0 ml-2" />}
                               </DropdownMenuItem>
                             );
@@ -452,17 +503,15 @@ const ClientProjectsPage = () => {
                     {availableFreelancers.length > 1 && (
                       <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
-                          <button className="flex items-center justify-between w-full sm:w-auto sm:min-w-[180px] h-10 sm:h-11 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shadow-sm">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Filter className="size-4 shrink-0" />
-                              <span className="truncate pr-2">
-                                {activeFreelancerFilter === "all" ? "All Freelancers" : activeFreelancerFilter}
-                              </span>
-                            </div>
-                            <ChevronDown className="size-4 opacity-80 shrink-0" />
+                          <button className="flex items-center gap-1 sm:gap-2 rounded-full bg-primary px-2.5 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs md:text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shrink-0">
+                            <Filter className="size-3 sm:size-3.5 shrink-0" />
+                            <span className="max-w-[90px] xs:max-w-[110px] sm:max-w-[180px] truncate">
+                              {activeFreelancerFilter === "all" ? "All Freelancers" : activeFreelancerFilter}
+                            </span>
+                            <ChevronDown className="size-3 sm:size-3.5 opacity-80 shrink-0" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[280px] sm:w-auto sm:min-w-[200px] sm:max-w-[400px] max-h-[300px] overflow-y-auto rounded-2xl [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <DropdownMenuContent align="end" className="w-52 min-w-[var(--radix-dropdown-menu-trigger-width)] max-h-[300px] overflow-y-auto rounded-2xl border border-border bg-card p-1.5 shadow-md [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {availableFreelancers.map((freelancer) => {
                             const count = freelancer === "all"
                               ? Object.values(freelancersWithCounts).reduce((a, b) => a + b, 0)
@@ -477,7 +526,7 @@ const ClientProjectsPage = () => {
                                 onClick={() => setActiveFreelancerFilter(freelancer)}
                                 className={cn("cursor-pointer rounded-xl flex items-center justify-between px-3 py-2 text-sm", activeFreelancerFilter === freelancer && "bg-muted font-medium")}
                               >
-                                <span className="pr-2">{displayLabel}</span>
+                                <span className="pr-2 truncate">{displayLabel}</span>
                                 {activeFreelancerFilter === freelancer && <Check className="size-4 opacity-50 shrink-0 ml-2" />}
                               </DropdownMenuItem>
                             );
@@ -485,8 +534,24 @@ const ClientProjectsPage = () => {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     )}
+
+                    {/* Clear Filters Button */}
+                    {(activeServiceFilter !== "all" || activeFreelancerFilter !== "all") && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveServiceFilter("all");
+                          setActiveFreelancerFilter("all");
+                        }}
+                        className="inline-flex items-center justify-center size-8 sm:size-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+                        title="Clear all filters"
+                      >
+                        <X className="size-3.5 sm:size-4" />
+                      </button>
+                    )}
+
                     {!isLoading && shouldUseProjectCarousel ? (
-                      <div className="hidden sm:flex items-center">
+                      <div className="hidden lg:flex items-center">
                         <ProjectCarouselControls
                           onPrevious={() => projectCarouselApi?.scrollPrev()}
                           onNext={() => projectCarouselApi?.scrollNext()}
@@ -502,22 +567,6 @@ const ClientProjectsPage = () => {
                       </div>
                     ) : null}
                   </div>
-                  {!isLoading && shouldUseProjectCarousel && (
-                    <div className="flex sm:hidden items-center justify-end w-full mt-2">
-                      <ProjectCarouselControls
-                        onPrevious={() => projectCarouselApi?.scrollPrev()}
-                        onNext={() => projectCarouselApi?.scrollNext()}
-                        canGoPrevious={canGoToPreviousProject}
-                        canGoNext={canGoToNextProject}
-                        previousLabel={`Show previous ${
-                          activeFilter === "completed" ? "completed" : "ongoing"
-                        } projects`}
-                        nextLabel={`Show next ${
-                          activeFilter === "completed" ? "completed" : "ongoing"
-                        } projects`}
-                      />
-                    </div>
-                  )}
                 </div>
               </section>
 

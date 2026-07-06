@@ -1168,7 +1168,7 @@ const FreelancerProjectsContent = () => {
                 </h1>
               </div>
 
-                <div className="flex flex-col items-end gap-3">
+                <div className="flex flex-col items-end gap-4 sm:gap-5">
                   <div className="inline-flex h-auto w-full max-w-[22rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-none sm:w-auto sm:max-w-none sm:gap-2 sm:p-1.5">
                     {projectFilterOptions.map((option) => {
                       const count =
@@ -1184,7 +1184,7 @@ const FreelancerProjectsContent = () => {
                             setActiveFilter(option.key);
                           }}
                           className={cn(
-                            "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-[0.95rem] sm:tracking-normal",
+                            "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-4 text-center text-[0.72rem] font-semibold tracking-[-0.01em] transition sm:h-11 sm:basis-auto sm:flex-none sm:px-4 sm:text-[0.88rem] sm:tracking-normal",
                             isActive
                               ? "border-primary/70 bg-primary text-primary-foreground"
                               : "text-muted-foreground hover:text-foreground",
@@ -1197,10 +1197,10 @@ const FreelancerProjectsContent = () => {
                   </div>
                   {availableServices.length > 1 && (
                     <Select value={activeServiceFilter} onValueChange={setActiveServiceFilter} modal={false}>
-                      <SelectTrigger className="w-full sm:w-[200px] h-10 sm:h-11 rounded-[24px] border-border bg-card font-medium">
+                      <SelectTrigger className="w-full sm:w-[160px] h-10 sm:h-11 rounded-[24px] border-border bg-card font-medium">
                         <SelectValue placeholder="Filter by Service" />
                       </SelectTrigger>
-                      <SelectContent position="popper">
+                      <SelectContent position="popper" className="w-[var(--radix-select-trigger-width)]">
                         {availableServices.map((service) => {
                           const displayLabel = service === "all" 
                             ? "All Services" 
@@ -1269,9 +1269,9 @@ const FreelancerProjectsContent = () => {
                       <ChevronRight className="size-4 md:size-5" />
                     </Button>
 
-                    <CarouselContent className="-ml-6 items-start [backface-visibility:hidden] [will-change:transform]">
+                    <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform] sm:gap-6 xl:gap-7">
                       {visibleProjectCards.map((project) => (
-                        <CarouselItem key={project.id} className="basis-full md:basis-1/2 xl:basis-1/3 pl-6 pt-1">
+                        <CarouselItem key={project.id} className="basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.5rem)/2)] lg:basis-[calc((100%-3rem)/3)] xl:basis-[calc((100%-3.5rem)/3)]">
                           <FreelancerProjectCard project={project} />
                         </CarouselItem>
                       ))}
@@ -1286,7 +1286,7 @@ const FreelancerProjectsContent = () => {
                   />
                 </div>
               ) : (
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid items-start gap-5 sm:gap-6 xl:gap-7 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                   {visibleProjectCards.map((project) => (
                     <FreelancerProjectCard key={project.id} project={project} />
                   ))}

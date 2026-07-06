@@ -20,7 +20,6 @@ import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
 import Info from "lucide-react/dist/esm/icons/info";
 import Headset from "lucide-react/dist/esm/icons/headset";
-import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -105,19 +104,6 @@ import ClientProjectDetailMainColumn from "./ClientProjectDetailMainColumn";
 import ClientProjectDetailSidebar from "./ClientProjectDetailSidebar";
 import ProjectDetailSkeleton from "./ProjectDetailSkeleton";
 import AICodeGeneratorChat from "./AICodeGeneratorChat";
-
-const DEFAULT_MEETING_TIME_SLOTS = [
-  "09:00 AM",
-  "10:00 AM",
-  "11:00 AM",
-  "12:00 PM",
-  "01:00 PM",
-  "02:00 PM",
-  "03:00 PM",
-  "04:00 PM",
-  "05:00 PM",
-  "06:00 PM",
-];
 
 const MAX_FREELANCER_CHANGE_REQUESTS = 2;
 const CATALYST_REQUEST_TYPES = {
@@ -652,9 +638,7 @@ const ProjectDashboard = () => {
 
   const effectiveTimeSlots = useMemo(() => {
     if (!date) return [];
-    return availableTimeSlots.length > 0
-      ? availableTimeSlots
-      : DEFAULT_MEETING_TIME_SLOTS;
+    return availableTimeSlots;
   }, [date, availableTimeSlots]);
 
   useEffect(() => {
@@ -756,8 +740,8 @@ const ProjectDashboard = () => {
   );
 
   const openCatalystDialog = useCallback(
-    (nextRequestType = CATALYST_REQUEST_TYPES.GENERAL) => {
-      resetCatalystDialog(nextRequestType);
+    () => {
+      resetCatalystDialog(CATALYST_REQUEST_TYPES.GENERAL);
       setReportOpen(true);
     },
     [resetCatalystDialog]
@@ -1097,22 +1081,31 @@ const ProjectDashboard = () => {
     const meetingDateLocal = date ? format(date, "yyyy-MM-dd") : undefined;
 
     if (date) {
+      if (availableTimeSlots.length === 0) {
+        toast.error(
+          "No Project Manager slots are available on that date. Choose another date or clear the date to submit without scheduling."
+        );
+        return;
+      }
+
+      if (!time) {
+        toast.error(
+          "Select an available time or clear the date to submit without scheduling."
+        );
+        return;
+      }
+
       fullDescription += `\n\nDate of Issue: ${format(date, "PPP")}`;
 
       // Combine date + time for structural saving
       const combined = new Date(date);
-      if (time) {
-        fullDescription += `\nTime: ${time}`;
-        const [timeStr, period] = time.split(" ");
-        let [hours, minutes] = timeStr.split(":").map(Number);
-        if (period === "PM" && hours !== 12) hours += 12;
-        if (period === "AM" && hours === 12) hours = 0;
-        meetingHour = hours;
-        combined.setHours(hours, minutes, 0, 0);
-      } else {
-        combined.setHours(9, 0, 0, 0); // Default to 9 AM if no time?? Or just omit time?
-        meetingHour = 9;
-      }
+      fullDescription += `\nTime: ${time}`;
+      const [timeStr, period] = time.split(" ");
+      let [hours, minutes] = timeStr.split(":").map(Number);
+      if (period === "PM" && hours !== 12) hours += 12;
+      if (period === "AM" && hours === 12) hours = 0;
+      meetingHour = hours;
+      combined.setHours(hours, minutes, 0, 0);
       meetingDateIso = combined.toISOString();
     }
 
@@ -1129,17 +1122,24 @@ const ProjectDashboard = () => {
           meetingHour,
         }),
       });
-      if (res.ok) {
-        toast.success(
-          "Dispute raised. A Project Manager will review it shortly."
+
+      const payload = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(
+          payload?.message ||
+            payload?.error ||
+            "Failed to raise dispute."
         );
-        setReportOpen(false);
-      } else {
-        toast.error("Failed to raise dispute");
       }
+
+      toast.success(
+        "Dispute raised. A Project Manager will review it shortly."
+      );
+      setReportOpen(false);
     } catch (e) {
       console.error(e);
-      toast.error("Error raising dispute");
+      toast.error(e?.message || "Error raising dispute");
     } finally {
       setIsReporting(false);
     }
@@ -3003,12 +3003,4 @@ const ProjectDashboard = () => {
 const ClientProjectDetailPage = () => <ProjectDashboard />;
 
 export default ClientProjectDetailPage;
-
-
-
-
-
-
-
-
 

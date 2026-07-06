@@ -87,14 +87,14 @@ const WorkspaceProfileDropdown = ({
         >
           <Avatar className="size-6.5 border border-border">
             <AvatarImage src={profile?.avatar} alt={displayName} />
-            <AvatarFallback className="bg-black/5 text-xs font-semibold text-black">
+            <AvatarFallback className="bg-black/5 text-xs font-semibold text-black dark:bg-white/5 dark:text-white">
               {profileInitial}
             </AvatarFallback>
           </Avatar>
 
           {showVerifiedBadge && profile?.isVerified ? (
             <span className="flex min-w-0 flex-col items-start gap-0.5 leading-none">
-              <span className="max-w-[104px] truncate whitespace-nowrap">{displayName}</span>
+              <span className="max-w-[104px] truncate whitespace-nowrap text-[#1C1B1F] dark:text-white">{displayName}</span>
               <Badge
                 title="This freelancer has successfully completed at least one project on our platform."
                 className="h-4.5 border-emerald-500/20 bg-emerald-500/10 px-1.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-emerald-300"
@@ -104,7 +104,7 @@ const WorkspaceProfileDropdown = ({
               </Badge>
             </span>
           ) : (
-            <span className="max-w-[104px] truncate whitespace-nowrap">{displayName}</span>
+            <span className="max-w-[104px] truncate whitespace-nowrap text-[#1C1B1F] dark:text-white">{displayName}</span>
           )}
 
           <ChevronDown

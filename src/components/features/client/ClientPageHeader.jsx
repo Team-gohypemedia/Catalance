@@ -41,7 +41,7 @@ const ClientPageHeader = ({
   return (
     <section
       className={cn(
-        "mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between",
+        "mt-6 sm:mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between",
         className,
       )}
     >

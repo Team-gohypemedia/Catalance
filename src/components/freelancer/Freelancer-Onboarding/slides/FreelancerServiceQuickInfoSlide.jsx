@@ -179,7 +179,15 @@ const getMediaFile = (value) => {
 };
 
 const getMediaUrl = (value) => {
-  const rawUrl = String(value?.uploadedUrl || value?.url || value?.previewUrl || "").trim();
+  const rawUrl = String(
+    value?.uploadedUrl ||
+      value?.url ||
+      value?.previewUrl ||
+      value?.mediaUrl ||
+      value?.src ||
+      value?.value ||
+      "",
+  ).trim();
   return resolveAvatarUrl(rawUrl, { allowBlob: true });
 };
 
@@ -284,15 +292,17 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
     filesRef.current = Array.isArray(files) ? files : [];
   }, [files]);
 
+  const normalizedFiles = useMemo(() => (Array.isArray(files) ? files : []), [files]);
+
   const previewItems = useMemo(
     () =>
-      files.map((entry, index) => {
+      normalizedFiles.map((entry, index) => {
         const localFile = getMediaFile(entry);
         const isVideo = isVideoMedia(entry);
         const remoteUrl = getMediaUrl(entry);
         return { id: getMediaItemId(entry, index), name: String(entry?.name || localFile?.name || "Media").trim(), isVideo, localFile, remoteUrl };
       }),
-    [files],
+    [normalizedFiles],
   );
 
   const [previewUrls, setPreviewUrls] = useState({});
@@ -322,12 +332,12 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
     [previewItems, previewUrls],
   );
 
-  const imageCount = files.filter((f) => !isVideoMedia(f)).length;
-  const videoCount = files.filter((f) => isVideoMedia(f)).length;
+  const imageCount = normalizedFiles.filter((f) => !isVideoMedia(f)).length;
+  const videoCount = normalizedFiles.filter((f) => isVideoMedia(f)).length;
   const canAddImage = imageCount < MAX_IMAGES;
   const canAddVideo = videoCount < MAX_VIDEOS;
   const hasMedia = resolvedPreviewItems.length > 0;
-  const totalCount = files.length;
+  const totalCount = normalizedFiles.length;
   const maxTotal = MAX_IMAGES + MAX_VIDEOS;
 
   const openImagePicker = useCallback((e) => { if (e) e.stopPropagation(); imageInputRef.current?.click(); }, []);
@@ -373,7 +383,14 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
       let nextFiles = [...filesRef.current];
       for (const file of validFiles) {
         const uploadedEntry = await uploadSingleFile(file);
-        const entryWithFile = { ...uploadedEntry, file };
+        const fileType = String(file?.type || "").trim().toLowerCase();
+        const entryWithFile = {
+          ...(uploadedEntry instanceof File ? {} : uploadedEntry),
+          file,
+          name: uploadedEntry?.name || file.name,
+          kind: uploadedEntry?.kind || (fileType.startsWith("video/") ? "video" : "image"),
+          mimeType: uploadedEntry?.mimeType || uploadedEntry?.type || file.type,
+        };
         nextFiles = [...nextFiles, entryWithFile];
         filesRef.current = nextFiles;
         onChange(nextFiles);
@@ -1186,3 +1203,4 @@ const FreelancerServiceQuickInfoSlide = ({
 };
 
 export default FreelancerServiceQuickInfoSlide;
+

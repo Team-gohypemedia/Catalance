@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Circle from "lucide-react/dist/esm/icons/circle";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -115,6 +116,8 @@ const ClientProjectDetailMainColumn = ({
   const [expandedPhaseId, setExpandedPhaseId] = useState(() =>
     currentActivePhase?.id != null ? String(currentActivePhase.id) : "",
   );
+  const [isSpecificationsOpen, setIsSpecificationsOpen] = useState(true);
+  const [isDeliverablesOpen, setIsDeliverablesOpen] = useState(true);
   const lastActivePhaseIdRef = useRef(currentActivePhase?.id != null ? String(currentActivePhase.id) : "");
 
   useEffect(() => {
@@ -188,9 +191,23 @@ const ClientProjectDetailMainColumn = ({
       return (
         <Card className={panelClassName}>
           <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-            <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
+            <button
+              type="button"
+              onClick={() => setIsSpecificationsOpen((current) => !current)}
+              className="flex w-full items-center justify-between gap-3 text-left"
+              aria-expanded={isSpecificationsOpen}
+            >
+              <CardTitle className={eyebrowClassName}>Specifications</CardTitle>
+              <ChevronDown
+                className={cn(
+                  "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                  isSpecificationsOpen ? "rotate-180" : "",
+                )}
+              />
+            </button>
           </CardHeader>
-          <CardContent className="px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
+          {isSpecificationsOpen ? (
+            <CardContent className="px-4 pb-4 pt-1 sm:px-6 sm:pb-6">
             <div className="flex flex-col gap-3.5">
               {filteredSpecs.map((item) => {
                 const IconComponent = getMetadataIcon(item.label);
@@ -214,7 +231,8 @@ const ClientProjectDetailMainColumn = ({
                 );
               })}
             </div>
-          </CardContent>
+            </CardContent>
+          ) : null}
         </Card>
       );
     })()}
@@ -231,9 +249,23 @@ const ClientProjectDetailMainColumn = ({
 
     <Card className={panelClassName}>
       <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">
-        <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
+        <button
+          type="button"
+          onClick={() => setIsDeliverablesOpen((current) => !current)}
+          className="flex w-full items-center justify-between gap-3 text-left"
+          aria-expanded={isDeliverablesOpen}
+        >
+          <CardTitle className={eyebrowClassName}>Features & Deliverables</CardTitle>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              isDeliverablesOpen ? "rotate-180" : "",
+            )}
+          />
+        </button>
       </CardHeader>
-      <CardContent className="pt-0">
+      {isDeliverablesOpen ? (
+        <CardContent className="pt-0">
         {projectDetailSnapshot.deliverablesItems.length > 0 ? (
           <ul className="space-y-2 px-2 pb-2">
             {projectDetailSnapshot.deliverablesItems.map((item, index) => (
@@ -253,6 +285,7 @@ const ClientProjectDetailMainColumn = ({
             </p>
           )}
         </CardContent>
+      ) : null}
       </Card>
 
     <Card className={panelClassName}>
@@ -787,3 +820,4 @@ const ClientProjectDetailMainColumn = ({
 };
 
 export default ClientProjectDetailMainColumn;
+
