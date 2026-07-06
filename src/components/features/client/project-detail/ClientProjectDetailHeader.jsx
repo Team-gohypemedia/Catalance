@@ -1,8 +1,11 @@
+import { Link } from "react-router-dom";
 import Headset from "lucide-react/dist/esm/icons/headset";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Store from "lucide-react/dist/esm/icons/store";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 
 const ClientProjectDetailHeader = ({
   pageTitle,
@@ -24,6 +28,8 @@ const ClientProjectDetailHeader = ({
   isUpdatingMarketplaceLive = false,
   onToggleMarketplaceLive,
   onOpenAiChat,
+  isAuditing = false,
+  onTriggerAudit,
 }) => (
   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
     <div className="space-y-1.5">
@@ -85,6 +91,34 @@ const ClientProjectDetailHeader = ({
         <Sparkles className="mr-2 h-4 w-4" />
         Generate Code with AI
       </Button> */}
+
+      {project?.externalLink && (
+        <>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-full border-emerald-500/30 bg-emerald-500/10 px-4 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15"
+          >
+            <Link to={`/client/project/${project.id || projectId}/staging`}>
+              <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Staging Sandbox Live
+            </Link>
+          </Button>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="h-9 rounded-full border-blue-500/20 bg-blue-500/10 px-4 text-blue-700 dark:text-blue-300 hover:bg-blue-500/15"
+          >
+            <Link to={`/client/project/${project.id || projectId}/audit`}>
+              <ShieldAlert className="mr-1.5 h-4 w-4" />
+              Run AI Audit
+            </Link>
+          </Button>
+        </>
+      )}
 
       <TooltipProvider>
         <Tooltip>

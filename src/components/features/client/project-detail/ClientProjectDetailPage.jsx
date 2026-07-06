@@ -531,8 +531,12 @@ const ProjectDashboard = () => {
   const [verifiedTaskIds, setVerifiedTaskIds] = useState(new Set());
   const [verifyingTaskIds, setVerifyingTaskIds] = useState(() => new Set());
   const [isAiChatOpen, setIsAiChatOpen] = useState(false);
+  const [aiUsage, setAiUsage] = useState(null);
+  const [isAuditingHeader, setIsAuditingHeader] = useState(false);
   const fileInputRef = useRef(null);
   const reportDialogContentRef = useRef(null);
+
+
   const completedTaskIdsRef = useRef(new Set());
   const verifiedTaskIdsRef = useRef(new Set());
   const latestProgressMutationIdRef = useRef(0);
@@ -1148,6 +1152,19 @@ const ProjectDashboard = () => {
     }
 
     let active = true;
+
+    const fetchAiUsage = async () => {
+      try {
+        const res = await authFetch(`/github/usage/${projectId}`);
+        if (res.ok && active) {
+          const data = await res.json();
+          setAiUsage(data);
+        }
+      } catch (err) {
+        console.error("Failed to load AI usage details:", err);
+      }
+    };
+
     const fetchProject = async (isBackground = false) => {
       const fetchStartTime = Date.now();
       if (isBackground && isUpdatingTaskRef.current) return;
@@ -1180,12 +1197,43 @@ const ProjectDashboard = () => {
     };
 
     fetchProject();
-    const interval = setInterval(() => fetchProject(true), 5000);
+    fetchAiUsage();
+
+    const interval = setInterval(() => {
+      fetchProject(true);
+      fetchAiUsage();
+    }, 10000); // Fetch AI usage and project stats periodically
+
     return () => {
       active = false;
       clearInterval(interval);
     };
   }, [authFetch, isAuthenticated, projectId, syncProjectState]);
+
+  const handleTriggerAuditHeader = async () => {
+    setIsAuditingHeader(true);
+    const toastId = toast.loading("Initiating AI Quality & Security Audit...");
+    try {
+      const res = await authFetch("/github/repo/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Audit failed");
+      toast.success("AI Code Quality & Security Audit Complete! 🛡️", { id: toastId });
+      
+      // Auto-reload window to display updated audits
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      console.error(err);
+      toast.error(`Auditing failed: ${err.message}`, { id: toastId });
+    } finally {
+      setIsAuditingHeader(false);
+    }
+  };
+
+
 
   const updateProjectProgress = async (
     newProgress,
@@ -2787,6 +2835,8 @@ const ProjectDashboard = () => {
                 isUpdatingMarketplaceLive={isUpdatingMarketplaceLive}
                 onToggleMarketplaceLive={handleToggleMarketplaceLive}
                 onOpenAiChat={() => setIsAiChatOpen(true)}
+                isAuditing={isAuditingHeader}
+                onTriggerAudit={handleTriggerAuditHeader}
               />
 
               {isAiChatOpen ? (
@@ -2856,6 +2906,8 @@ const ProjectDashboard = () => {
                   input={input}
                   setInput={setInput}
                   handleSendMessage={handleSendMessage}
+                  aiUsage={aiUsage}
+
                   fileInputRef={fileInputRef}
                   handleFileUpload={handleFileUpload}
                   isSending={isSending}

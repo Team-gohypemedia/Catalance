@@ -35,6 +35,12 @@ const ClientProjects = lazy(
 const ClientProjectDetail = lazy(
   () => import("@/components/pages/ClientProjectDetailPage.jsx"),
 );
+const ClientStagingPage = lazy(
+  () => import("@/pages/client/ClientStagingPage.jsx"),
+);
+const ProjectAuditPage = lazy(
+  () => import("@/pages/client/ProjectAuditPage.jsx"),
+);
 const ClientChat = lazy(
   () => import("@/components/features/client/ClientChat.jsx"),
 );
@@ -438,6 +444,22 @@ const App = () => {
               element={
                 <ProtectedRoute>
                   <ClientProjectDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/project/:projectId/staging"
+              element={
+                <ProtectedRoute>
+                  <ClientStagingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/project/:projectId/audit"
+              element={
+                <ProtectedRoute>
+                  <ProjectAuditPage />
                 </ProtectedRoute>
               }
             />

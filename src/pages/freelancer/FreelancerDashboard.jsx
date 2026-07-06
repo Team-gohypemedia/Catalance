@@ -108,6 +108,8 @@ const FreelancerDashboard = () => {
                       completionPercent={model.profileCompletionPercent}
                       isComplete={model.profileCompletionComplete}
                       onOpenProfile={model.onOpenProfile}
+                      missingDetails={model.profileCompletionMissingDetails}
+                      completionMessage={model.profileCompletionMessage}
                     />
                   )
                 ) : null}

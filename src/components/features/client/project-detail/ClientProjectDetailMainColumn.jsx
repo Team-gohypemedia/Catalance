@@ -17,6 +17,8 @@ import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Layers from "lucide-react/dist/esm/icons/layers";
 import PenTool from "lucide-react/dist/esm/icons/pen-tool";
 import Image from "lucide-react/dist/esm/icons/image";
+import AIQualityAuditCard from "./AIQualityAuditCard";
+
 
 const getMetadataIcon = (label) => {
   const normalized = String(label || "").toLowerCase();
@@ -216,6 +218,16 @@ const ClientProjectDetailMainColumn = ({
         </Card>
       );
     })()}
+
+    {projectDetailSnapshot?.externalLink && (
+      <AIQualityAuditCard
+        projectId={projectDetailSnapshot.id}
+        panelClassName={panelClassName}
+        eyebrowClassName={eyebrowClassName}
+        subheadingClassName={subheadingClassName}
+        isFreelancer={false}
+      />
+    )}
 
     <Card className={panelClassName}>
       <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-5">

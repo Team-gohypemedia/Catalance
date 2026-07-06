@@ -3796,6 +3796,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     showProfileCompletionSkeleton,
     profileCompletionPercent,
     profileCompletionComplete,
+    profileCompletionMissingDetails: profileCompletion?.missingDetails || [],
+    profileCompletionMessage: profileCompletion?.message || "",
     runningProjectCards,
     freelancerProjectRedirectCards,
     shouldUseProjectCarousel,

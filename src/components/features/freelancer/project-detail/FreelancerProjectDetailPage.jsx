@@ -79,6 +79,7 @@ import FreelancerProjectDetailHeader from "./FreelancerProjectDetailHeader";
 import FreelancerProjectDetailMainColumn from "./FreelancerProjectDetailMainColumn";
 import FreelancerProjectDetailSidebar from "./FreelancerProjectDetailSidebar";
 import ProjectDetailSkeleton from "./ProjectDetailSkeleton";
+import IDEWorkspaceModal from "./IDEWorkspaceModal";
 
 const DEFAULT_MEETING_TIME_SLOTS = [
   "09:00 AM",
@@ -291,10 +292,29 @@ const FreelancerProjectDetailContent = () => {
     totalPaid: 0,
     totalPending: 0,
   });
+  const [aiUsage, setAiUsage] = useState(null);
+  const [isAuditingHeader, setIsAuditingHeader] = useState(false);
   const fileInputRef = useRef(null);
+
+
   const reportDialogContentRef = useRef(null);
   const isUpdatingTaskRef = useRef(false);
   const lastMutationTimeRef = useRef(0);
+
+  // IDE Workspace state
+  const [ideOpen, setIdeOpen] = useState(false);
+  const [ideRepoState, setIdeRepoState] = useState({ repoUrl: null, repoFullName: null, isNewRepo: false });
+
+  const handleOpenIDE = useCallback(({ repoUrl, repoFullName, isNewRepo }) => {
+    setIdeRepoState({ repoUrl, repoFullName, isNewRepo });
+    setIdeOpen(true);
+  }, []);
+
+
+  const handleRepoLinked = useCallback((url) => {
+    // When a repo is linked, update project's externalLink locally
+    setProject((prev) => prev ? { ...prev, externalLink: url } : prev);
+  }, []);
 
   // Dispute Report State
   const [reportOpen, setReportOpen] = useState(false);
@@ -820,7 +840,7 @@ const FreelancerProjectDetailContent = () => {
     };
   }, [authFetch, isAuthenticated, projectId]);
 
-  // Fetch actual payment data from API
+  // Fetch payment and AI usage data from API
   useEffect(() => {
     if (!project?.id || !authFetch) return;
 
@@ -841,8 +861,49 @@ const FreelancerProjectDetailContent = () => {
       }
     };
 
+    const fetchAiUsage = async () => {
+      try {
+        const res = await authFetch(`/github/usage/${project.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setAiUsage(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch AI usage:", error);
+      }
+    };
+
     fetchPayments();
+    fetchAiUsage();
+
+    const interval = setInterval(fetchAiUsage, 10000); // refresh usage stats
+    return () => clearInterval(interval);
   }, [project?.id, authFetch]);
+
+  const handleTriggerAuditHeader = async () => {
+    setIsAuditingHeader(true);
+    const toastId = toast.loading("Initiating AI Quality & Security Audit...");
+    try {
+      const res = await authFetch("/github/repo/audit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Audit failed");
+      toast.success("AI Code Quality & Security Audit Complete! 🛡️", { id: toastId });
+      
+      // Auto-reload window to display updated audits
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (err) {
+      console.error(err);
+      toast.error(`Auditing failed: ${err.message}`, { id: toastId });
+    } finally {
+      setIsAuditingHeader(false);
+    }
+  };
+
+
 
   // Create or reuse a chat conversation for this project
   useEffect(() => {
@@ -1789,6 +1850,8 @@ const FreelancerProjectDetailContent = () => {
             project={project}
             projectId={projectId}
             isFallback={isFallback}
+            isAuditing={isAuditingHeader}
+            onTriggerAudit={handleTriggerAuditHeader}
           />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -1828,6 +1891,9 @@ const FreelancerProjectDetailContent = () => {
               spentBudget={spentBudget}
               remainingBudget={remainingBudget}
               billingRoadmap={billingRoadmap}
+              onOpenIDE={handleOpenIDE}
+              onRepoLinked={handleRepoLinked}
+              aiUsage={aiUsage}
             />
           </div>
         </div>
@@ -1857,6 +1923,15 @@ const FreelancerProjectDetailContent = () => {
         detailOpen={detailOpen}
         setDetailOpen={setDetailOpen}
         renderProjectDescription={renderProjectDescription}
+      />
+
+      {/* GitHub VS Code IDE full-screen modal */}
+      <IDEWorkspaceModal
+        isOpen={ideOpen}
+        onClose={() => setIdeOpen(false)}
+        repoUrl={ideRepoState.repoUrl}
+        repoFullName={ideRepoState.repoFullName}
+        project={project}
       />
     </>
   );

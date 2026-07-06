@@ -76,6 +76,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { cn } from "@/shared/lib/utils";
+import AIQualityAuditCard from "../../client/project-detail/AIQualityAuditCard";
+
 
 const FreelancerProjectDetailMainColumn = ({
   projectDetailSnapshot,
@@ -248,6 +250,16 @@ const FreelancerProjectDetailMainColumn = ({
             </Card>
           );
         })()}
+
+        {projectDetailSnapshot?.externalLink && (
+          <AIQualityAuditCard
+            projectId={projectDetailSnapshot.id}
+            panelClassName={panelClassName}
+            eyebrowClassName={eyebrowClassName}
+            subheadingClassName={subheadingClassName}
+            isFreelancer={true}
+          />
+        )}
 
         <Card className={panelClassName}>
           <CardHeader className="px-4 pb-2 pt-4">

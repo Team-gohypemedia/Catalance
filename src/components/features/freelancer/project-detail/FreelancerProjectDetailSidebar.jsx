@@ -23,7 +23,11 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/shared/lib/utils";
+import BrainCircuit from "lucide-react/dist/esm/icons/brain-circuit";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import ClientInfoCard from "./ClientInfoCard";
+
+import GitHubConnectCard from "./GitHubConnectCard";
 
 const FreelancerProjectDetailSidebar = ({
   panelClassName,
@@ -45,8 +49,62 @@ const FreelancerProjectDetailSidebar = ({
   spentBudget,
   remainingBudget,
   billingRoadmap,
+  onOpenIDE,
+  onRepoLinked,
+  aiUsage,
 }) => (
   <div className="space-y-4">
+    <GitHubConnectCard
+      project={project}
+      panelClassName={panelClassName}
+      eyebrowClassName={eyebrowClassName}
+      onOpenIDE={onOpenIDE}
+      onRepoLinked={onRepoLinked}
+    />
+
+    {/* AI Spend & Resource Tracker Widget */}
+    <Card className={cn(panelClassName, "overflow-hidden")}>
+      <CardHeader className="space-y-1.5 border-b border-border dark:border-white/[0.06] px-4 pb-3 pt-4">
+        <div className="flex items-center gap-2">
+          <BrainCircuit className="h-4 w-4 text-primary" />
+          <CardTitle className={eyebrowClassName}>AI Resource Spend</CardTitle>
+        </div>
+        <CardDescription className={cn(subheadingClassName, "text-xs")}>
+          Usage statistics for online IDE coding
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="px-4 py-3 space-y-3">
+        <div className="flex items-baseline justify-between border-b border-border dark:border-white/[0.04] pb-2.5">
+          <span className="text-xs text-muted-foreground font-medium">Estimated Cost</span>
+          <span className="text-lg font-bold text-foreground flex items-center">
+            <span className="text-xs text-muted-foreground font-normal mr-1">₹</span>
+            {aiUsage?.totalSpendInRupees !== undefined ? aiUsage.totalSpendInRupees.toFixed(2) : "0.00"}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-center">
+          <div className="rounded-lg bg-muted/30 dark:bg-white/[0.02] border border-border dark:border-white/[0.05] p-2">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total Tokens</p>
+            <p className="text-sm font-semibold text-foreground mt-0.5">
+              {aiUsage?.totalTokens !== undefined ? aiUsage.totalTokens.toLocaleString() : "0"}
+            </p>
+          </div>
+          <div className="rounded-lg bg-muted/30 dark:bg-white/[0.02] border border-border dark:border-white/[0.05] p-2">
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total Calls</p>
+            <p className="text-sm font-semibold text-foreground mt-0.5 flex items-center justify-center gap-1">
+              <Sparkles className="h-3 w-3 text-primary" />
+              {aiUsage?.totalTokens ? Math.ceil(aiUsage.totalTokens / 2000) : "0"}
+            </p>
+          </div>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          Charged to client budget for developer AI assistant usage in the online VS Code IDE workspace.
+        </p>
+      </CardContent>
+    </Card>
+
+
     <ClientInfoCard
       client={project?.owner}
       project={project}

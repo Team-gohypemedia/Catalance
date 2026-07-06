@@ -1,6 +1,9 @@
+import { Link } from "react-router-dom";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
 import Headset from "lucide-react/dist/esm/icons/headset";
 import Phone from "lucide-react/dist/esm/icons/phone";
+import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { Button } from "@/components/ui/button";
 import { ProjectNotepad } from "@/components/ui/notepad";
 import {
@@ -9,12 +12,15 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+
 const FreelancerProjectDetailHeader = ({
   pageTitle,
   activeProjectManager,
   project,
   projectId,
   isFallback,
+  isAuditing = false,
+  onTriggerAudit,
 }) => (
   <>
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -42,6 +48,34 @@ const FreelancerProjectDetailHeader = ({
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
+        {project?.externalLink && (
+          <>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-full border-emerald-500/30 bg-emerald-500/10 px-3 text-[12px] font-medium text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/15"
+            >
+              <Link to={`/client/project/${project.id || projectId}/staging`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Staging Sandbox
+              </Link>
+            </Button>
+
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-full border-blue-500/20 bg-blue-500/10 px-3 text-[12px] font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-500/15"
+            >
+              <Link to={`/client/project/${project.id || projectId}/audit`}>
+                <ShieldAlert className="h-3.5 w-3.5" />
+                Run AI Audit
+              </Link>
+            </Button>
+          </>
+        )}
+
         <Popover>
           <PopoverTrigger asChild>
             <Button
