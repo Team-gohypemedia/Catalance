@@ -186,6 +186,8 @@ const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
     role: toOptionalString(source.role),
     timeline: toOptionalString(source.timeline),
     budget: toOptionalString(source.budget),
+    pricingUnit: toOptionalString(source.pricingUnit),
+    pricingQuantity: toPositiveInteger(source.pricingQuantity) || 1,
     niche: toOptionalString(source.niche),
   };
 };
@@ -265,6 +267,8 @@ export const normalizeCanonicalServiceDetail = ({
     averageProjectPrice: toOptionalString(
       source.averageProjectPrice || source.averagePrice,
     ),
+    pricingUnit: toOptionalString(source.pricingUnit),
+    pricingQuantity: toPositiveInteger(source.pricingQuantity) || 1,
     coverImage: toOptionalString(source.coverImage),
     keywords: normalizeStringArray(source.keywords),
     media: Array.isArray(source.media)
