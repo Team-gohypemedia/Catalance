@@ -459,6 +459,13 @@ const ClientProjectDetailMainColumn = ({
           </div>
         ) : null}
 
+        {projectDetailSnapshot.isSopApprovedByPM === false ? (
+          <div className="mt-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50/50 p-8 flex flex-col items-center justify-center text-center">
+            <HelpCircle className="h-10 w-10 text-amber-500 mb-4" />
+            <h4 className="text-base font-semibold text-amber-900">SOP Pending Project Manager Approval</h4>
+            <p className="text-sm text-amber-700 mt-2 max-w-md">The Project Manager is currently finalizing the project phases and tasks. You will be able to proceed and view tasks once it is approved.</p>
+          </div>
+        ) : (
         <Accordion
           type="single"
           collapsible
@@ -535,13 +542,14 @@ const ClientProjectDetailMainColumn = ({
                           <div
                             key={task.uniqueKey}
                             className={`flex items-center gap-3 rounded-lg border border-border/60 bg-card p-3 transition-colors ${
-                              phaseGroup.isLocked || isProjectCompleted
+                              phaseGroup.isLocked || isProjectCompleted || task.isHeld
                                 ? "pointer-events-none bg-muted/50 opacity-50"
                                 : "cursor-pointer hover:bg-accent/60"
                             }`}
                             onClick={(event) =>
                               !phaseGroup.isLocked &&
                               !isProjectCompleted &&
+                              !task.isHeld &&
                               handleTaskClick(event, task.uniqueKey)
                             }
                           >
@@ -551,21 +559,25 @@ const ClientProjectDetailMainColumn = ({
                               <Circle className="h-5 w-5 shrink-0 text-muted-foreground" />
                             )}
                             <span
-                              className={`flex-1 text-sm ${
+                              className={`flex-1 text-sm flex items-center gap-2 ${
                                 task.status === "completed"
                                   ? "line-through text-muted-foreground"
                                   : "text-foreground"
                               }`}
                             >
-                              {task.title}
+                              <span>{task.title}</span>
                               {phaseGroup.isLocked ? (
-                                <span className="ml-2 inline-block text-xs font-medium text-primary no-underline">
+                                <span className="inline-block text-xs font-medium text-primary no-underline">
                                   {phaseGroup.isPaymentLocked
                                     ? "(Payment required)"
                                     : phaseGroup.isHistoricalLock
                                       ? "(Locked after next phase started)"
                                       : "(Locked)"}
                                 </span>
+                              ) : task.isHeld ? (
+                                <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 uppercase text-[9px] tracking-wider py-0 px-1.5 h-4">
+                                  On Hold
+                                </Badge>
                               ) : null}
                             </span>
                             {task.status === "completed" ? (
@@ -575,7 +587,8 @@ const ClientProjectDetailMainColumn = ({
                                 disabled={
                                   phaseGroup.isLocked ||
                                   isProjectCompleted ||
-                                  isTaskVerificationDisabled
+                                  isTaskVerificationDisabled ||
+                                  task.isHeld
                                 }
                                 title={
                                   isTaskVerificationPending
@@ -813,6 +826,7 @@ const ClientProjectDetailMainColumn = ({
             );
           })}
         </Accordion>
+        )}
       </CardContent>
     </Card>
     </div>

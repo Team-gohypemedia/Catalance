@@ -1160,23 +1160,26 @@ const FreelancerProjectDetailContent = () => {
   const derivedPhases = useMemo(() => {
     const phases = activeSOP.phases;
     const allTasks = activeSOP.tasks;
-
     return phases.map((phase) => {
-      const phaseTasks = allTasks.filter((t) => t.phase === phase.id);
+      const allPhaseTasks = allTasks.filter((t) => t.phase === phase.id);
+      const phaseTasks = allPhaseTasks.filter((t) => !t.isHeld);
       const totalPhaseTasks = phaseTasks.length;
 
       const verifiedCount = phaseTasks.filter((t) =>
         verifiedTaskIds.has(`${t.phase}-${t.id}`)
       ).length;
 
-      const progress =
-        totalPhaseTasks > 0
-          ? Math.round((verifiedCount / totalPhaseTasks) * 100)
-          : 0;
-
+      let progress = 0;
       let status = "pending";
-      if (progress >= 100) status = "completed";
-      else if (verifiedCount > 0) status = "in-progress";
+
+      if (allPhaseTasks.length > 0 && totalPhaseTasks === 0) {
+        progress = 100;
+        status = "completed";
+      } else if (totalPhaseTasks > 0) {
+        progress = Math.round((verifiedCount / totalPhaseTasks) * 100);
+        if (progress >= 100) status = "completed";
+        else if (verifiedCount > 0) status = "in-progress";
+      }
 
       return {
         ...phase,
@@ -1246,8 +1249,12 @@ const FreelancerProjectDetailContent = () => {
       const isLocked = !isPrevPhaseComplete;
 
       // Determine completion for THIS phase (for next iteration)
-      // A phase is complete if it has tasks AND all are verified
-      const isComplete = tasks.length > 0 && tasks.every((t) => t.verified);
+      // A phase is complete if it has tasks AND all active tasks are verified
+      const activeTasks = tasks.filter((t) => !t.isHeld);
+      const isComplete =
+        activeTasks.length > 0
+          ? activeTasks.every((t) => t.verified)
+          : tasks.length > 0;
 
       // Update check for next phase
       isPrevPhaseComplete = isComplete;

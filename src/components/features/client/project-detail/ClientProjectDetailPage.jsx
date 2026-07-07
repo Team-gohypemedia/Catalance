@@ -2241,7 +2241,8 @@ const ProjectDashboard = () => {
 
     return phases.map((phase) => {
       // Find tasks for this phase
-      const phaseTasks = allTasks.filter((t) => t.phase === phase.id);
+      const allPhaseTasks = allTasks.filter((t) => t.phase === phase.id);
+      const phaseTasks = allPhaseTasks.filter((t) => !t.isHeld);
       const totalPhaseTasks = phaseTasks.length;
 
       // Calculate verified count for this phase
@@ -2252,14 +2253,18 @@ const ProjectDashboard = () => {
         completedTaskIds.has(`${t.phase}-${t.id}`)
       ).length;
 
-      const progress =
-        totalPhaseTasks > 0
-          ? Math.round((verifiedCount / totalPhaseTasks) * 100)
-          : 0;
-
+      let progress = 0;
       let status = "pending";
-      if (progress >= 100) status = "completed";
-      else if (verifiedCount > 0 || completedCount > 0) status = "in-progress";
+
+      if (allPhaseTasks.length > 0 && totalPhaseTasks === 0) {
+        // All tasks are on hold
+        progress = 100;
+        status = "completed";
+      } else if (totalPhaseTasks > 0) {
+        progress = Math.round((verifiedCount / totalPhaseTasks) * 100);
+        if (progress >= 100) status = "completed";
+        else if (verifiedCount > 0 || completedCount > 0) status = "in-progress";
+      }
 
       return {
         ...phase,
@@ -2372,7 +2377,7 @@ const ProjectDashboard = () => {
   }, [derivedPhases, activeSOP, completedTaskIds, verifiedTaskIds]);
 
   const firstUnverifiedTaskKey = useMemo(
-    () => derivedTasks.find((task) => !task.verified)?.uniqueKey || null,
+    () => derivedTasks.find((task) => !task.verified && !task.isHeld)?.uniqueKey || null,
     [derivedTasks],
   );
 
@@ -2441,8 +2446,12 @@ const ProjectDashboard = () => {
         isPhaseSequenceLocked || isPaymentLocked || isHistoricalLock;
 
       // Determine completion for THIS phase (for next iteration)
-      // A phase is complete if it has tasks AND all are verified
-      const isComplete = tasks.length > 0 && tasks.every((t) => t.verified);
+      // A phase is complete if it has tasks AND all active tasks are verified
+      const activeTasks = tasks.filter((t) => !t.isHeld);
+      const isComplete =
+        activeTasks.length > 0
+          ? activeTasks.every((t) => t.verified)
+          : tasks.length > 0;
 
       // Update check for next phase
       isPrevPhaseComplete = isComplete;

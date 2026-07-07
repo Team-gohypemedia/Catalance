@@ -265,13 +265,70 @@ const ProjectDetailsPage = () => {
       setMeetingDialogOpen(false);
       setMeetingForm(buildMeetingFormDefaults());
       meetings.refresh();
-    } catch (e) {
-      toast.error(e.message || "Failed to schedule meeting.");
+    } catch (err) {
+      toast.error(err.message || "Failed to schedule meeting");
     } finally {
       setMeetingSubmitting(false);
     }
   };
 
+  const handleApproveSop = async () => {
+    try {
+      setSending(true);
+      await pmApi.approveSop(authFetch, projectId);
+      toast.success("SOP Approved & Released successfully.");
+      details.refresh();
+    } catch (err) {
+      toast.error(err.message || "Failed to approve SOP.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleHoldSop = async () => {
+    try {
+      setSending(true);
+      await pmApi.holdSop(authFetch, projectId);
+      toast.success("SOP is now on Hold.");
+      details.refresh();
+    } catch (err) {
+      toast.error(err.message || "Failed to hold SOP.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleHoldTask = async (taskId, phaseId, isHeld) => {
+    const previousData = details.data;
+    if (previousData?.project?.customSop?.tasks) {
+      const newTasks = previousData.project.customSop.tasks.map((t) => {
+        if (String(t.id) === String(taskId) && String(t.phase) === String(phaseId)) {
+          return { ...t, isHeld };
+        }
+        return t;
+      });
+      details.setData({
+        ...previousData,
+        project: {
+          ...previousData.project,
+          customSop: {
+            ...previousData.project.customSop,
+            tasks: newTasks,
+          },
+        },
+      });
+    }
+
+    try {
+      await pmApi.holdTask(authFetch, projectId, { taskId, phaseId, isHeld });
+      toast.success(`Task ${isHeld ? 'put on hold' : 'unheld'} successfully.`);
+    } catch (err) {
+      if (previousData) {
+        details.setData(previousData);
+      }
+      toast.error(err.message || "Failed to update task hold status.");
+    }
+  };
   const project = details.data?.project || {};
   const clientProfile = details.data?.clientProfile || {};
   const freelancerProfile = details.data?.freelancerProfile || null;
@@ -345,14 +402,28 @@ const ProjectDetailsPage = () => {
   }, [recentAlerts, projectId]);
 
   const sopTemplate = useMemo(() => project?.customSop || getSopFromTitle(project.title), [project?.customSop, project.title]);
-  const completedTaskSet = useMemo(
-    () => new Set(Array.isArray(project.completedTasks) ? project.completedTasks : []),
-    [project.completedTasks]
-  );
-  const verifiedTaskSet = useMemo(
-    () => new Set(Array.isArray(project.verifiedTasks) ? project.verifiedTasks : []),
-    [project.verifiedTasks]
-  );
+  const completedTaskSet = useMemo(() => {
+    let tasks = project?.completedTasks;
+    if (typeof tasks === "string") {
+      try {
+        tasks = JSON.parse(tasks);
+      } catch (e) {
+        tasks = [];
+      }
+    }
+    return new Set(Array.isArray(tasks) ? tasks : []);
+  }, [project?.completedTasks]);
+  const verifiedTaskSet = useMemo(() => {
+    let tasks = project?.verifiedTasks;
+    if (typeof tasks === "string") {
+      try {
+        tasks = JSON.parse(tasks);
+      } catch (e) {
+        tasks = [];
+      }
+    }
+    return new Set(Array.isArray(tasks) ? tasks : []);
+  }, [project?.verifiedTasks]);
 
   const assigneeNames = useMemo(
     () => ({
@@ -377,6 +448,7 @@ const ProjectDetailsPage = () => {
 
       return {
         id: key,
+        originalTaskId: task.id,
         serial: index + 1,
         phaseId: task.phase,
         phaseName: String(phaseName).replace(/\s*\(\s*Phase-\d+\s*\)/i, "").trim(),
@@ -385,6 +457,7 @@ const ProjectDetailsPage = () => {
         leadName: assigneeNames[leadRole],
         timeline: task.timeline,
         status: isVerified ? "VERIFIED" : isCompleted ? "COMPLETED" : "PENDING",
+        isHeld: !!task.isHeld,
       };
     });
   }, [assigneeNames, completedTaskSet, sopTemplate, verifiedTaskSet]);
@@ -433,7 +506,8 @@ const ProjectDetailsPage = () => {
 
     return milestoneRows.map((milestone) => {
       const phaseKey = String(milestone.phase || "");
-      const phaseTasks = tasksByPhase[phaseKey] || [];
+      const allPhaseTasks = tasksByPhase[phaseKey] || [];
+      const phaseTasks = allPhaseTasks.filter((task) => !task.isHeld);
       const verifiedCount = phaseTasks.filter((task) => task.status === "VERIFIED").length;
       const completedPendingVerification = phaseTasks.filter((task) => task.status === "COMPLETED");
       const pendingTasks = phaseTasks.filter((task) => task.status === "PENDING");
@@ -456,7 +530,7 @@ const ProjectDetailsPage = () => {
 
       return {
         ...milestone,
-        tasks: phaseTasks,
+        tasks: allPhaseTasks,
         totalTasks: phaseTasks.length,
         verifiedCount,
         stuckOn,
@@ -779,6 +853,44 @@ const ProjectDetailsPage = () => {
                   </div>
 
                   <div className="rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-emerald-50/70 p-4">
+                    {!project.isSopApprovedByPM ? (
+                      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3">
+                        <div className="flex gap-3 items-start sm:items-center">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                          <div>
+                            <h4 className="text-sm font-semibold text-amber-900">SOP Pending Approval</h4>
+                            <p className="text-xs text-amber-700 mt-0.5">The client and freelancer cannot proceed until you approve the SOP.</p>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={handleApproveSop} 
+                          disabled={sending} 
+                          className="bg-amber-600 hover:bg-amber-700 text-white font-semibold whitespace-nowrap text-xs h-9 px-4 rounded-lg shadow-sm w-full sm:w-auto"
+                        >
+                          {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
+                          Approve & Release SOP
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3">
+                        <div className="flex gap-3 items-start sm:items-center">
+                          <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+                          <div>
+                            <h4 className="text-sm font-semibold text-emerald-900">SOP is Active & Released</h4>
+                            <p className="text-xs text-emerald-700 mt-0.5">The client and freelancer have access to the phases.</p>
+                          </div>
+                        </div>
+                        <Button 
+                          onClick={handleHoldSop} 
+                          disabled={sending} 
+                          variant="outline"
+                          className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold whitespace-nowrap text-xs h-9 px-4 rounded-lg shadow-sm w-full sm:w-auto"
+                        >
+                          {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
+                          Hold SOP
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-slate-900">Phases Overview</p>
@@ -828,6 +940,7 @@ const ProjectDetailsPage = () => {
                             value={`phase-${milestone.phase}`}
                             milestone={milestone}
                             onApproveMilestone={handleApproveMilestone}
+                            onHoldTask={handleHoldTask}
                           />
                         ))}
                       </Accordion>
@@ -904,17 +1017,19 @@ const ProjectDetailsPage = () => {
                       <article key={task.id} className="rounded-xl border border-slate-200 bg-white p-3">
                         <div className="mb-2 flex items-start justify-between gap-3">
                           <p className="text-xs font-semibold text-slate-700">Point {task.serial}</p>
-                          <Badge
-                            className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
-                              task.status === "VERIFIED"
-                                ? "bg-emerald-500 text-white"
-                                : task.status === "COMPLETED"
-                                  ? "bg-[#D9692A] text-white"
-                                  : "bg-primary/10 text-primary border border-primary/20"
-                            }`}
-                          >
-                            {task.status}
-                          </Badge>
+                          {task.status !== "PENDING" && (
+                            <Badge
+                              className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
+                                task.status === "VERIFIED"
+                                  ? "bg-emerald-500 text-white"
+                                  : task.status === "COMPLETED"
+                                    ? "bg-amber-500 text-white"
+                                    : "bg-primary/10 text-primary border border-primary/20"
+                              }`}
+                            >
+                              {task.status === "COMPLETED" ? "PENDING REVIEW" : task.status}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm font-semibold text-slate-900">{task.title}</p>
                         <p className="mt-1 text-xs text-slate-700">
@@ -952,6 +1067,7 @@ const ProjectDetailsPage = () => {
                         <col className="w-[130px]" />
                         <col className="w-[170px]" />
                         <col className="w-[110px]" />
+                        <col className="w-[100px]" />
                       </colgroup>
                       <thead className="bg-slate-100/80">
                         <tr>
@@ -961,6 +1077,7 @@ const ProjectDetailsPage = () => {
                           <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Lead Role</th>
                           <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Assigned User</th>
                           <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Status</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Action</th>
                         </tr>
                       </thead>
                       <tbody className="bg-white">
@@ -991,17 +1108,35 @@ const ProjectDetailsPage = () => {
                             </td>
                             <td className="px-4 py-3 text-sm font-semibold text-slate-800 break-words">{task.leadName}</td>
                             <td className="px-4 py-3">
-                              <Badge
-                                className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
-                                  task.status === "VERIFIED"
-                                    ? "bg-emerald-500 text-white"
-                                    : task.status === "COMPLETED"
-                                      ? "bg-[#D9692A] text-white"
-                                      : "bg-primary/10 text-primary border border-primary/20"
+                              {task.status !== "PENDING" ? (
+                                <Badge
+                                  className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
+                                    task.status === "VERIFIED"
+                                      ? "bg-emerald-500 text-white"
+                                      : task.status === "COMPLETED"
+                                        ? "bg-amber-500 text-white"
+                                        : "bg-primary/10 text-primary border border-primary/20"
+                                  }`}
+                                >
+                                  {task.status === "COMPLETED" ? "PENDING REVIEW" : task.status}
+                                </Badge>
+                              ) : (
+                                <span className="text-slate-300">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleHoldTask(task.originalTaskId, task.phaseId, !task.isHeld)}
+                                className={`h-7 px-2 text-[10px] font-semibold uppercase tracking-wider ${
+                                  task.isHeld
+                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                 }`}
                               >
-                                {task.status}
-                              </Badge>
+                                {task.isHeld ? "UNHOLD" : "HOLD"}
+                              </Button>
                             </td>
                           </tr>
                         ))}

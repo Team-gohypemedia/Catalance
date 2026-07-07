@@ -1105,8 +1105,8 @@ export const getPmProjectDetails = asyncHandler(async (req, res) => {
         status: mappedStatus,
         budget: Number(project.budget || 0),
         progress: Number(project.progress || 0),
-        completedTasks: Array.isArray(project.completedTasks) ? project.completedTasks : [],
-        verifiedTasks: Array.isArray(project.verifiedTasks) ? project.verifiedTasks : [],
+        completedTasks: typeof project.completedTasks === "string" ? (function(){ try { return JSON.parse(project.completedTasks); } catch { return []; } })() : (Array.isArray(project.completedTasks) ? project.completedTasks : []),
+        verifiedTasks: typeof project.verifiedTasks === "string" ? (function(){ try { return JSON.parse(project.verifiedTasks); } catch { return []; } })() : (Array.isArray(project.verifiedTasks) ? project.verifiedTasks : []),
         customSop: typeof project.customSop === "string" ? JSON.parse(project.customSop) : (project.customSop || null),
         createdAt: toIsoOrNull(project.createdAt),
         updatedAt: toIsoOrNull(project.updatedAt),
@@ -2606,6 +2606,99 @@ export const updatePmProjectSop = asyncHandler(async (req, res) => {
 
   res.json({
     message: "Project SOP updated successfully",
+    data: { customSop }
+  });
+});
+
+export const approvePmProjectSop = asyncHandler(async (req, res) => {
+  const userId = getRequestUserId(req);
+  if (!userId) throw new AppError("Authentication required", 401);
+
+  const { id: projectId } = req.params;
+  if (!projectId) throw new AppError("Project ID required", 400);
+
+  const project = await ensureAssignedPm({ projectId, pmId: userId });
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { isSopApprovedByPM: true },
+  });
+
+  res.json({
+    message: "Project SOP approved successfully",
+    data: { isSopApprovedByPM: true }
+  });
+});
+
+export const holdPmProjectSop = asyncHandler(async (req, res) => {
+  const userId = getRequestUserId(req);
+  if (!userId) throw new AppError("Authentication required", 401);
+
+  const { id: projectId } = req.params;
+  if (!projectId) throw new AppError("Project ID required", 400);
+
+  const project = await ensureAssignedPm({ projectId, pmId: userId });
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { isSopApprovedByPM: false },
+  });
+
+  res.json({
+    message: "Project SOP held successfully",
+    data: { isSopApprovedByPM: false }
+  });
+});
+
+export const holdPmProjectTask = asyncHandler(async (req, res) => {
+  const userId = getRequestUserId(req);
+  if (!userId) throw new AppError("Authentication required", 401);
+
+  const { id: projectId } = req.params;
+  const { taskId, phaseId, isHeld } = req.body;
+
+  if (!projectId) throw new AppError("Project ID required", 400);
+  if (!taskId) throw new AppError("Task ID required", 400);
+
+  await ensureAssignedPm({ projectId, pmId: userId });
+
+  const fullProject = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { customSop: true, title: true }
+  });
+
+  let customSop = typeof fullProject.customSop === "string" 
+    ? JSON.parse(fullProject.customSop) 
+    : (fullProject.customSop || null);
+
+  if (!customSop) {
+    customSop = getSopFromTitle(fullProject.title || "");
+  }
+
+  if (!customSop || !Array.isArray(customSop.tasks)) {
+    throw new AppError("SOP not found or invalid", 404);
+  }
+
+  let taskFound = false;
+  customSop.tasks = customSop.tasks.map(task => {
+    if (String(task.id) === String(taskId) && String(task.phase) === String(phaseId)) {
+      taskFound = true;
+      return { ...task, isHeld: !!isHeld };
+    }
+    return task;
+  });
+
+  if (!taskFound) {
+    throw new AppError("Task not found in SOP", 404);
+  }
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { customSop },
+  });
+
+  res.json({
+    message: `Task ${isHeld ? 'held' : 'unheld'} successfully`,
     data: { customSop }
   });
 });

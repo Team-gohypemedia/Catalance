@@ -18,7 +18,7 @@ const phaseStatusStyles = {
 
 const taskStatusStyles = {
   VERIFIED: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  COMPLETED: "border-blue-200 bg-blue-50 text-blue-700",
+  COMPLETED: "border-amber-200 bg-amber-50 text-amber-700",
   PENDING: "border-primary/20 bg-primary/10 text-primary",
 };
 
@@ -30,7 +30,7 @@ const getStatusClass = (status, type = "phase") => {
   return phaseStatusStyles[status] || "border-slate-200 bg-slate-100 text-slate-600";
 };
 
-export const PhaseAccordionItem = ({ milestone, value, onApproveMilestone }) => {
+export const PhaseAccordionItem = ({ milestone, value, onApproveMilestone, onHoldTask }) => {
   const totalTasks = Number(milestone.totalTasks || milestone.tasks?.length || 0);
   const verifiedCount = Number(milestone.verifiedCount || 0);
   const pendingCount = Math.max(totalTasks - verifiedCount, 0);
@@ -82,15 +82,27 @@ export const PhaseAccordionItem = ({ milestone, value, onApproveMilestone }) => 
 
       <AccordionContent className="px-4 pb-4">
         <div className="grid gap-2 border-t border-slate-200 pt-3 text-xs md:grid-cols-3">
-          <div className="rounded-lg border border-emerald-100 bg-emerald-50/80 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-700">
-              Verified By
-            </p>
-            <p className="mt-1 text-sm font-medium text-slate-900">{milestone.verifierName}</p>
-            <p className="mt-1 text-[11px] text-slate-700">
-              {verifiedCount}/{totalTasks} tasks verified
-            </p>
-          </div>
+          {verifiedCount === totalTasks && totalTasks > 0 ? (
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50/80 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-emerald-700">
+                Verified By
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-900">{milestone.verifierName}</p>
+              <p className="mt-1 text-[11px] text-slate-700">
+                {verifiedCount}/{totalTasks} tasks verified
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-primary/20 bg-primary/10/80 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-primary">
+                Pending Verification
+              </p>
+              <p className="mt-1 text-sm font-medium text-slate-900">{milestone.verifierName}</p>
+              <p className="mt-1 text-[11px] text-slate-700">
+                {verifiedCount}/{totalTasks} tasks verified
+              </p>
+            </div>
+          )}
 
           <div className="rounded-lg border border-primary/20 bg-primary/10/80 p-3">
             <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-primary">
@@ -126,24 +138,45 @@ export const PhaseAccordionItem = ({ milestone, value, onApproveMilestone }) => 
           </p>
           {milestone.tasks.length > 0 ? (
             <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <div className="hidden grid-cols-[minmax(0,1fr)_160px_96px] gap-3 border-b border-slate-100 bg-slate-100/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-700 sm:grid">
+              <div className="hidden grid-cols-[minmax(0,1fr)_160px_130px_90px] gap-3 border-b border-slate-100 bg-slate-100/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-700 sm:grid">
                 <span>Task</span>
                 <span>Owner</span>
                 <span>Status</span>
+                <span>Action</span>
               </div>
               {milestone.tasks.map((task) => (
                 <div
                   key={task.id}
-                  className="grid gap-2 border-t border-slate-100 px-3 py-2 first:border-t-0 transition-colors hover:bg-blue-50/30 sm:grid-cols-[minmax(0,1fr)_160px_96px] sm:items-center sm:gap-3"
+                  className="grid gap-2 border-t border-slate-100 px-3 py-2 first:border-t-0 transition-colors hover:bg-blue-50/30 sm:grid-cols-[minmax(0,1fr)_160px_130px_90px] sm:items-center sm:gap-3"
                 >
                   <p className="text-sm font-medium text-slate-900 break-words">{task.title}</p>
                   <p className="text-[11px] text-slate-700">{task.leadName}</p>
-                  <Badge
-                    variant="outline"
-                    className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ${getStatusClass(task.status, "task")}`}
-                  >
-                    {task.status}
-                  </Badge>
+                  <div>
+                    {task.status !== "PENDING" ? (
+                      <Badge
+                        variant="outline"
+                        className={`inline-flex w-fit rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] ${getStatusClass(task.status, "task")}`}
+                      >
+                        {task.status === "COMPLETED" ? "PENDING REVIEW" : task.status}
+                      </Badge>
+                    ) : (
+                      <span className="text-slate-300 ml-4">-</span>
+                    )}
+                  </div>
+                  <div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onHoldTask(task.originalTaskId || task.id, milestone.phase, !task.isHeld)}
+                      className={`h-6 px-2 text-[10px] font-semibold uppercase tracking-wider ${
+                        task.isHeld
+                          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {task.isHeld ? "UNHOLD" : "HOLD"}
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -191,6 +224,7 @@ PhaseAccordionItem.propTypes = {
     verifierName: PropTypes.string,
   }).isRequired,
   onApproveMilestone: PropTypes.func.isRequired,
+  onHoldTask: PropTypes.func,
   value: PropTypes.string.isRequired,
 };
 

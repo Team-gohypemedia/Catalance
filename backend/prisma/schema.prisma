@@ -305,6 +305,7 @@ model Project {
   completedTasks           Json          @default("[]")
   verifiedTasks            Json          @default("[]")
   customSop                Json?
+  isSopApprovedByPM        Boolean       @default(false)
   notes                    String?       @db.Text
   owner                    User          @relation("ProjectOwner", fields: [ownerId], references: [id])
   ownerId                  String

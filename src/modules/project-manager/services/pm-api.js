@@ -65,6 +65,26 @@ export const pmApi = {
     });
   },
 
+  approveSop(authFetch, projectId) {
+    return request(authFetch, `/pm/projects/${projectId}/approve-sop`, {
+      method: "POST",
+    });
+  },
+
+  holdSop(authFetch, projectId) {
+    return request(authFetch, `/pm/projects/${projectId}/hold-sop`, {
+      method: "POST",
+    });
+  },
+
+  holdTask(authFetch, projectId, { taskId, phaseId, isHeld }) {
+    return request(authFetch, `/pm/projects/${projectId}/tasks/hold`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId, phaseId, isHeld }),
+    });
+  },
+
   generateProjectSop(authFetch, payload) {
     return request(authFetch, "/ai/sop", {
       method: "POST",

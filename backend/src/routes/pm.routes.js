@@ -35,6 +35,9 @@ import {
   createPmProjectSetup,
   getPmNotificationSnapshot,
   updatePmProjectSop,
+  approvePmProjectSop,
+  holdPmProjectSop,
+  holdPmProjectTask,
 } from "../controllers/pm.module.controller.js";
 
 const pmRouter = Router();
@@ -50,6 +53,9 @@ pmRouter.get("/projects/:id/messages", getPmProjectMessages);
 pmRouter.post("/projects/:id/messages", sendPmProjectMessage);
 pmRouter.get("/projects/:id/milestones", getPmProjectMilestones);
 pmRouter.put("/projects/:id/sop", updatePmProjectSop);
+pmRouter.post("/projects/:id/approve-sop", approvePmProjectSop);
+pmRouter.post("/projects/:id/hold-sop", holdPmProjectSop);
+pmRouter.post("/projects/:id/tasks/hold", holdPmProjectTask);
 
 pmRouter.get("/meetings", listPmMeetings);
 pmRouter.post("/meetings/conflicts", detectPmMeetingConflicts);
