@@ -103,6 +103,9 @@ const navigateAfterLogin = ({
   }
 
   if (redirectTo) {
+    if (requestedDashboard && canAccessDashboard(user, requestedDashboard)) {
+      setStoredDashboardPreference(user, requestedDashboard);
+    }
     navigate(resolveFreelancerPath(user, redirectTo), { replace: true });
     return;
   }
