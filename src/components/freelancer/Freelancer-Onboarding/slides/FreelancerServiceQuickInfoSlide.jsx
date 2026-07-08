@@ -34,6 +34,8 @@ import {
   getSubcategorySelectionKey,
   normalizeStringArray,
   syncDraftSubcategories,
+  getPricingUnitOptions,
+  resolveServiceKey,
 } from "../service-details";
 import CategoryMultiSelect from "./shared/CategoryComboSearch";
 import {
@@ -553,6 +555,8 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
 const FreelancerServiceQuickInfoSlide = ({
   totalSelectedServices = 1,
   currentServiceIndex = 0,
+  currentServiceKey,
+  dbServices = [],
   currentServiceName,
   onboardingContent,
   // Service Info props
@@ -915,7 +919,10 @@ const FreelancerServiceQuickInfoSlide = ({
   /* ─── Pricing render helpers ─── */
   const renderInputField = (field, value, error, onChange, { numeric = false } = {}) => (
     <div className="space-y-0">
-      <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>{field.label}</label>
+      <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+        {field.label}
+        {field.required === false && <span className="ml-1 text-muted-foreground/60 font-normal">(Optional)</span>}
+      </label>
       <div className="relative">
         {field.prefix && (
           <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground/50 text-sm">{field.prefix}</span>
@@ -1124,6 +1131,7 @@ const FreelancerServiceQuickInfoSlide = ({
                         <div className="space-y-1">
                           <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                             {infoFieldMap.experience?.label || "Experience Level"}
+                            {infoFieldMap.experience?.required === false && <span className="ml-1 text-muted-foreground/60 font-normal">(Optional)</span>}
                           </label>
                           <CustomSelect
                             value={serviceInfoForm.experience}
@@ -1147,6 +1155,69 @@ const FreelancerServiceQuickInfoSlide = ({
                           { numeric: true },
                         )
                       }
+
+                      {(() => {
+                        const actualServiceKey = resolveServiceKey(dbServices, currentServiceKey);
+                        const options = getPricingUnitOptions(actualServiceKey || currentServiceName);
+                        const currentUnit = servicePricingForm.pricingUnit || options[0].value;
+                        
+                        return (
+                          <>
+                            {options[0].value !== "project" && (
+                              <div className="space-y-1">
+                                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                                  Pricing Unit
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={currentUnit}
+                                    onChange={(e) => {
+                                      onServicePricingFieldChange("pricingUnit", e.target.value);
+                                    }}
+                                    className={cn(
+                                      "h-10 w-full appearance-none rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors",
+                                      "border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                                    )}
+                                  >
+                                    {options.map((opt) => (
+                                      <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                                </div>
+                              </div>
+                            )}
+    
+                            {options[0].value !== "project" && (
+                              <div className="space-y-1">
+                                <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block flex items-center")}>
+                                  Quantity Included in Price
+                                  <span className="ml-1 text-muted-foreground/60 font-normal normal-case tracking-normal">(Optional)</span>
+                                </label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={servicePricingForm.pricingQuantity !== undefined ? servicePricingForm.pricingQuantity : "1"}
+                                    onChange={(e) => {
+                                      const digitsOnly = e.target.value.replace(/\D/g, "");
+                                      onServicePricingFieldChange("pricingQuantity", digitsOnly);
+                                    }}
+                                    placeholder="e.g. 1, 1000"
+                                    className={cn(
+                                      "h-10 w-full rounded-xl border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors",
+                                      "border-border focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
+                                      "placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground placeholder:opacity-50"
+                                    )}
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
 
                     </div>
                   </motion.div>

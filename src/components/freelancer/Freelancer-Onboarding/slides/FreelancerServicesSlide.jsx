@@ -171,7 +171,20 @@ const FreelancerServicesSlide = ({
   dbServices,
   continueButton,
 }) => {
-  const services = Array.isArray(dbServices) ? dbServices : [];
+  const HIDDEN_SERVICE_KEYS = [
+    "software_development",
+    "lead_generation",
+    "customer_support",
+    "whatsapp_chatbot",
+    "3d_modeling",
+    "3d_animation_cgi_videos_vfx",
+    "cgi_video_services",
+    "cgi_vfx"
+  ];
+  
+  const services = Array.isArray(dbServices) 
+    ? dbServices.filter(service => !HIDDEN_SERVICE_KEYS.includes(resolveServiceKey(service))) 
+    : [];
 
   return (
     <section className="mx-auto flex w-full max-w-[340px] flex-col items-center mt-[10px] sm:max-w-[600px] md:max-w-6xl md:px-0 mt-[20px] sm:mt-0">

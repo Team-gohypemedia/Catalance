@@ -998,31 +998,33 @@ const AddEditServiceWizard = ({
                           
                           return (
                             <>
-                              <div className="space-y-2.5">
-                                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
-                                  Pricing Unit
-                                </label>
-                                <div className="relative">
-                                  <select
-                                    value={currentUnit}
-                                    onChange={(e) => {
-                                      setServiceProfileForm((prev) => ({
-                                        ...prev,
-                                        pricingUnit: e.target.value,
-                                      }));
-                                    }}
-                                    className="h-10 w-full appearance-none rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
-                                  >
-                                    {options.map((opt) => (
-                                      <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                      </option>
-                                    ))}
-                                  </select>
+                              {options[0].value !== "project" && (
+                                <div className="space-y-2.5">
+                                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                                    Pricing Unit
+                                  </label>
+                                  <div className="relative">
+                                    <select
+                                      value={currentUnit}
+                                      onChange={(e) => {
+                                        setServiceProfileForm((prev) => ({
+                                          ...prev,
+                                          pricingUnit: e.target.value,
+                                        }));
+                                      }}
+                                      className="h-10 w-full appearance-none rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                                    >
+                                      {options.map((opt) => (
+                                        <option key={opt.value} value={opt.value}>
+                                          {opt.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
                                 </div>
-                              </div>
+                              )}
       
-                              {currentUnit !== "project" && (
+                              {options[0].value !== "project" && (
                                 <div className="space-y-2.5">
                                   <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                                     Quantity Included in Price
@@ -1031,7 +1033,7 @@ const AddEditServiceWizard = ({
                                     <input
                                       type="text"
                                       inputMode="numeric"
-                                      value={serviceProfileForm.pricingQuantity || "1"}
+                                      value={serviceProfileForm.pricingQuantity !== undefined ? serviceProfileForm.pricingQuantity : "1"}
                                       onChange={(e) => {
                                         const digitsOnly = e.target.value.replace(/\D/g, "");
                                         setServiceProfileForm((prev) => ({

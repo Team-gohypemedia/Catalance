@@ -190,7 +190,7 @@ export const DEFAULT_SERVICE_PRICING_FIELDS = [
     label: "Starting Price",
     placeholder: "Enter starting price",
     prefix: "₹",
-    required: false,
+    required: true,
     visible: true,
     system: true,
     canDelete: false,

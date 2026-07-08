@@ -22,7 +22,9 @@ export const getPricingUnitOptions = (serviceKey) => {
     return [{ value: "word", label: "Per Word" }];
   } else if (key.includes("design") || key.includes("creative")) {
     return [{ value: "creative", label: "Per Creative" }];
-  } else if (key.includes("seo") || key.includes("marketing") || key.includes("gmp")) {
+  } else if (key.includes("seo") || key.includes("gmp")) {
+    return [{ value: "keyword", label: "Per Keyword" }];
+  } else if (key.includes("marketing")) {
     return [{ value: "campaign", label: "Per Campaign" }];
   } else if (key.includes("web") || key.includes("dev") || key.includes("app")) {
     return [{ value: "page", label: "Per Page" }];
@@ -392,9 +394,12 @@ export const normalizeServiceDraft = (
     pricingUnit: toOptionalString(
       source.pricingUnit || source.customFields?.servicePricing?.pricingUnit || "project"
     ),
-    pricingQuantity: toPositiveInteger(
-      source.pricingQuantity || source.customFields?.servicePricing?.pricingQuantity || 1
-    ),
+    pricingQuantity: (() => {
+      const q = source.pricingQuantity ?? source.customFields?.servicePricing?.pricingQuantity;
+      if (q === "") return "";
+      const parsed = toPositiveInteger(q);
+      return parsed !== null ? parsed : 1;
+    })(),
     coverImage: toOptionalString(source.coverImage),
     keywords: normalizeStringArray(source.keywords),
     mediaFiles: Array.isArray(source.mediaFiles)
@@ -820,6 +825,15 @@ const buildServicePricingValidationErrors = (normalizedDraft, fields = []) => {
     if (wordCount > 150) {
       errors.description = "Service description cannot exceed 150 words.";
     }
+  }
+
+  const priceRange = String(normalizedDraft.priceRange || "").trim();
+  if (
+    fieldMap.priceRange?.visible !== false &&
+    fieldMap.priceRange?.required !== false &&
+    !priceRange
+  ) {
+    errors.priceRange = "Please enter a starting price.";
   }
 
   return {

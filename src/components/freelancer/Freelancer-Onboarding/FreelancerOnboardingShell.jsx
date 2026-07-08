@@ -111,9 +111,11 @@ const SYSTEM_BASIC_PROFILE_FIELD_IDS = new Set(
 const SYSTEM_SERVICE_INFO_FIELD_IDS = new Set(
   DEFAULT_SERVICE_INFO_FIELDS.map((field) => field.id),
 );
-const SYSTEM_SERVICE_PRICING_FIELD_IDS = new Set(
-  DEFAULT_SERVICE_PRICING_FIELDS.map((field) => field.id),
-);
+const SYSTEM_SERVICE_PRICING_FIELD_IDS = new Set([
+  ...DEFAULT_SERVICE_PRICING_FIELDS.map((field) => field.id),
+  "pricingUnit",
+  "pricingQuantity",
+]);
 const SYSTEM_SERVICE_VISUAL_FIELD_IDS = new Set(
   DEFAULT_SERVICE_VISUALS_FIELDS.map((field) => field.id),
 );

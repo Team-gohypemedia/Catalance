@@ -40,6 +40,7 @@ import {
   DEFAULT_FREELANCER_ONBOARDING_CONTENT,
   resolveCaseStudyFields,
 } from "@/shared/lib/freelancer-onboarding-content";
+import { getPricingUnitOptions, resolveServiceKey } from "../service-details";
 
 const CASE_STUDY_BANNER_MAX_BYTES = 4.5 * 1024 * 1024;
 
@@ -194,9 +195,12 @@ const FreelancerCaseStudySlide = ({
   caseStudyForm,
   caseStudyFields = [],
   caseStudies = [],
+  activeCaseStudyId = null,
   activeCaseStudyIndex = 0,
-  activeCaseStudyId = "",
   nicheOptions = [],
+  dbServices = [],
+  currentServiceKey = "",
+  currentServiceName = "",
   onCaseStudyFieldChange,
   onAddCaseStudy,
   onRemoveCaseStudy,
@@ -773,6 +777,61 @@ const FreelancerCaseStudySlide = ({
                 ) : null}
               </div>
             </div>
+
+            {/* Pricing fields (Unit and Quantity) */}
+            {(() => {
+              const actualServiceKey = resolveServiceKey(dbServices, currentServiceKey);
+              const options = getPricingUnitOptions(actualServiceKey || currentServiceName);
+              const currentUnit = caseStudyForm.pricingUnit || options[0].value;
+
+              return options[0].value !== "project" ? (
+                <div className="grid min-w-0 gap-5 sm:grid-cols-2">
+                  <div className="min-w-0 space-y-0">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                      Pricing Unit
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={currentUnit}
+                        onChange={(e) => {
+                          onCaseStudyFieldChange("pricingUnit", e.target.value);
+                          if (e.target.value === "project") {
+                            onCaseStudyFieldChange("pricingQuantity", "1");
+                          }
+                        }}
+                        className="h-10 w-full appearance-none rounded-xl border border-border bg-card px-3 text-[14px] leading-5 text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                      >
+                        {options.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="min-w-0 space-y-0">
+                    <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
+                      Quantity
+                      <span className="ml-1 text-muted-foreground/60 font-normal normal-case tracking-normal">(Optional)</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={caseStudyForm.pricingQuantity !== undefined ? caseStudyForm.pricingQuantity : "1"}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "");
+                          onCaseStudyFieldChange("pricingQuantity", val);
+                        }}
+                        disabled={currentUnit === "project"}
+                        className="h-10 w-full rounded-xl border border-border bg-card px-3 text-[14px] leading-5 text-foreground outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20 disabled:opacity-50"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null;
+            })()}
 
             {/* 2-column row: Project File, Banner Image */}
             <div className="grid min-w-0 gap-5 sm:grid-cols-2">
