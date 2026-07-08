@@ -28,6 +28,7 @@ import {
   PendingProposals,
   ProfileCompletionPanel,
   RecentActivity,
+  FreelancerWelcomeHub,
 } from "@/components/freelancer/freelancer-dashboard";
 
 const FreelancerDashboard = () => {
@@ -100,6 +101,16 @@ const FreelancerDashboard = () => {
                   dateLabel={model.hero.dateLabel}
                 />
 
+                {!model.metricsLoading && !hasRunningProjects && model.pendingProposalRows.length === 0 && (
+                  <FreelancerWelcomeHub
+                    profileCompletionPercent={model.profileCompletionPercent}
+                    isDailyQuestCompleted={model.isDailyQuestCompleted}
+                    payoutMethodConnected={model.payoutMethodConnected}
+                    openToWork={model.headerProfile.openToWork}
+                    onOpenProfile={model.onOpenProfile}
+                  />
+                )}
+
                 {shouldShowProfileProgressPanel ? (
                   model.showProfileCompletionSkeleton ? (
                     <FreelancerProfileCompletionSkeleton />
@@ -135,12 +146,12 @@ const FreelancerDashboard = () => {
                       model.activeProjectRedirectCardClassName
                     }
                   />
-                ) : (
+                ) : model.pendingProposalRows.length > 0 ? (
                   <PendingProposals
                     pendingProposalRows={model.pendingProposalRows}
                     onOpenAll={model.onOpenProposals}
                   />
-                )}
+                ) : null}
 
                 <section className="grid items-stretch grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
                   <div className="flex h-full min-w-0 flex-col gap-5">
@@ -152,7 +163,7 @@ const FreelancerDashboard = () => {
                         onOpenAll={model.onOpenProposals}
                         gridCols={2}
                       />
-                    ) : (
+                    ) : model.pendingProposalRows.length > 0 ? (
                       <ActiveProjects
                         runningProjectCards={model.runningProjectCards}
                         redirectCards={model.freelancerProjectRedirectCards}
@@ -170,6 +181,12 @@ const FreelancerDashboard = () => {
                         activeProjectRedirectCardClassName={
                           model.activeProjectRedirectCardClassName
                         }
+                      />
+                    ) : (
+                      <PendingProposals
+                        pendingProposalRows={model.pendingProposalRows}
+                        onOpenAll={model.onOpenProposals}
+                        gridCols={2}
                       />
                     )}
 

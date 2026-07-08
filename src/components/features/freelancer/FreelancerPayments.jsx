@@ -487,7 +487,7 @@ const FreelancerPayments = () => {
   const [projectRows, setProjectRows] = useState([]);
   const [milestoneRows, setMilestoneRows] = useState([]);
   const [projectFilter, setProjectFilter] = useState(PROJECT_FILTER_ALL_VALUE);
-  const [isPayoutConnected, setIsPayoutConnected] = useState(false);
+  const [isPayoutConnected, setIsPayoutConnected] = useState(() => typeof window !== "undefined" ? localStorage.getItem("payoutMethodConnected") === "true" : false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [lastWithdrawalAt, setLastWithdrawalAt] = useState(null);
 
@@ -622,6 +622,9 @@ const FreelancerPayments = () => {
 
   const handleConnectPayoutAccount = useCallback(() => {
     setIsPayoutConnected(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("payoutMethodConnected", "true");
+    }
     toast.success(
       "Bank transfer is now marked as connected. Wire this to your real payout onboarding next.",
     );

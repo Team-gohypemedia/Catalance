@@ -16,3 +16,4 @@ export { default as CompactEarningsSummary } from "./CompactEarningsSummary.jsx"
 export { FreelancerCompactEarningsSummarySkeleton } from "./CompactEarningsSummary.jsx";
 export { default as DeliveryPipeline } from "./DeliveryPipeline.jsx";
 export { FreelancerDeliveryPipelineSkeleton } from "./DeliveryPipeline.jsx";
+export { default as FreelancerWelcomeHub } from "./FreelancerWelcomeHub.jsx";

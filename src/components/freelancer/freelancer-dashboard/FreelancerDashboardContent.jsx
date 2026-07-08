@@ -2100,6 +2100,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     isLoading: true,
   });
   const [clientReviewsLoading, setClientReviewsLoading] = useState(true);
+  const [isDailyQuestCompleted, setIsDailyQuestCompleted] = useState(false);
+  const [payoutMethodConnected, setPayoutMethodConnected] = useState(false);
   const [clientReviews, setClientReviews] = useState([]);
   const [clientReviewsMeta, setClientReviewsMeta] = useState({
     reviewCount: 0,
@@ -2335,10 +2337,36 @@ export const DashboardContent = ({ _roleOverride, children }) => {
       }
     };
 
+    const loadEngagementStatus = async () => {
+      if (!authFetch) return;
+      try {
+        const response = await authFetch("/engagement/dashboard", {
+          suppressToast: true,
+        });
+        if (response.ok) {
+          const payload = await response.json().catch(() => null);
+          const questStatus = payload?.data?.today?.status;
+          setIsDailyQuestCompleted(questStatus === "completed");
+        }
+      } catch (error) {
+        console.error("Failed to load engagement dashboard for checklist", error);
+      }
+    };
+
+    const checkPayoutStatus = () => {
+      if (typeof window !== "undefined") {
+        setPayoutMethodConnected(
+          localStorage.getItem("payoutMethodConnected") === "true"
+        );
+      }
+    };
+
     loadMetrics();
     loadAppointments();
     loadProfileCompletion();
     loadReceivedClientReviews();
+    loadEngagementStatus();
+    checkPayoutStatus();
   }, [authFetch, isFreelancerUser]);
 
   const activityItems = useMemo(() => {
@@ -3855,6 +3883,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         window.dispatchEvent(new CustomEvent("freelancer-notifications:open"));
       }
     },
+    isDailyQuestCompleted,
+    payoutMethodConnected,
   };
 
   if (typeof children === "function") {
