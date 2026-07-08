@@ -397,9 +397,15 @@ const parseProposalString = (text) => {
     <div className="w-full min-w-0">
       {/* Top Header Section */}
       <div className="flex items-center justify-between">
-        <div className="inline-flex items-center justify-center rounded bg-[#FFF0EA] dark:bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6A39] dark:text-primary">
-          DRAFT
-        </div>
+        {item.projectStatus === "OPEN" ? (
+          <div className="inline-flex items-center justify-center rounded bg-emerald-100 dark:bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+            LIVE IN MARKETPLACE
+          </div>
+        ) : (
+          <div className="inline-flex items-center justify-center rounded bg-[#FFF0EA] dark:bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF6A39] dark:text-primary">
+            DRAFT
+          </div>
+        )}
         
         <div className="flex items-center gap-1">
           <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
@@ -880,6 +886,7 @@ const Proposals = memo(function Proposals({
     () =>
       visibleSavedDrafts.map((proposal) => ({
         id: proposal.id,
+        projectStatus: String(proposal.projectStatus || proposal.status || "DRAFT").toUpperCase(),
         title: resolveDraftTitle(proposal),
         tag: resolveDraftService(proposal),
         summary: proposal.summary || proposal.content || proposal.proposalContent || "",
@@ -1154,6 +1161,38 @@ const Proposals = memo(function Proposals({
     ],
   );
 
+  const handleToggleMarketplaceStatus = useCallback(
+    async (isPublishing) => {
+      const targetProjectId = proposalForFreelancerSelection?.projectId || proposalForFreelancerSelection?.syncedProjectId;
+      if (!targetProjectId) {
+        toast.error("Invalid proposal or missing project reference.");
+        return;
+      }
+      const targetStatus = isPublishing ? "OPEN" : "DRAFT";
+      const actionName = isPublishing ? "Publish" : "Unpublish";
+
+      try {
+        const response = await authFetch(`/projects/${targetProjectId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: targetStatus }),
+        });
+        if (!response.ok) throw new Error(`Failed to ${actionName.toLowerCase()} project.`);
+        
+        toast.success(`Project ${isPublishing ? 'published' : 'unpublished'} successfully!`);
+        
+        setSelectedDraftForSend((current) => {
+          if (!current || String(current?.projectId || current?.syncedProjectId) !== String(targetProjectId)) return current;
+          return { ...current, status: targetStatus, projectStatus: targetStatus };
+        });
+        
+        await refreshDashboardData?.({ silent: true });
+      } catch (error) {
+        toast.error(error.message || `Failed to ${actionName.toLowerCase()} project.`);
+      }
+    },
+    [authFetch, proposalForFreelancerSelection, refreshDashboardData]
+  );
+
   const freelancerSelectionData = useMemo(() => {
     const sourceProjectId =
       proposalForFreelancerSelection?.syncedProjectId ||
@@ -1409,6 +1448,7 @@ const Proposals = memo(function Proposals({
             freelancerSelectionData={freelancerSelectionData}
             bestMatchFreelancerIds={bestMatchFreelancerIds}
             projectRequiredSkills={[]}
+            onPostToMarketplace={handleToggleMarketplaceStatus}
             onViewFreelancer={(freelancer) => {
               setViewingFreelancer(freelancer);
               setShowFreelancerProfile(true);

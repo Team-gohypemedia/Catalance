@@ -119,6 +119,9 @@ const navigateAfterSignup = ({
   }
 
   if (redirectTo) {
+    if (requestedDashboard && canAccessDashboard(user, requestedDashboard)) {
+      setStoredDashboardPreference(user, requestedDashboard);
+    }
     const resolvedRedirectPath = resolveFreelancerPath(user, redirectTo);
     navigate(resolvedRedirectPath, { replace: true });
     return resolvedRedirectPath;
