@@ -25,9 +25,15 @@ const normalizeComparableText = (value = "") =>
     .trim();
 
 const normalizeProposalStatus = (status = "") => {
-  switch (String(status || "").trim().toUpperCase()) {
+  switch (String(status).toUpperCase()) {
     case "DRAFT":
       return "draft";
+    case "OPEN":
+      return "open";
+    case "PAUSED":
+      return "paused";
+    case "CLOSED":
+      return "closed";
     case "ACCEPTED":
       return "accepted";
     case "REJECTED":
@@ -35,6 +41,8 @@ const normalizeProposalStatus = (status = "") => {
       return "rejected";
     case "PENDING":
       return "pending";
+    case "SENT":
+      return "sent";
     default:
       return "sent";
   }

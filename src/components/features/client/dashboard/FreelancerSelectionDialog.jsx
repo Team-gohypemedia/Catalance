@@ -23,6 +23,8 @@ import {
 import {
   Input,
 } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { resolveFreelancerMatchPercent } from "@/shared/lib/proposal-match";
 
@@ -288,9 +290,11 @@ const FreelancerSelectionDialog = ({
   _freelancerMatchesRequiredSkill,
   generateGradient,
   formatRating,
+  onPostToMarketplace,
 }) => {
   const [activeIndices, setActiveIndices] = useState({});
   const [activeAiFreelancerId, setActiveAiFreelancerId] = useState(null);
+  const [isLive, setIsLive] = useState(false);
   const dialogContentRef = useRef(null);
 
 
@@ -298,6 +302,17 @@ const FreelancerSelectionDialog = ({
     if (open) return;
     setActiveAiFreelancerId(null);
   }, [open]);
+
+  useEffect(() => {
+    const isProjectOpen = String(savedProposal?.projectStatus).toUpperCase() === "OPEN";
+    const isProposalOpen = String(savedProposal?.status).toUpperCase() === "OPEN";
+
+    if (isProjectOpen || isProposalOpen) {
+      setIsLive(true);
+    } else {
+      setIsLive(false);
+    }
+  }, [savedProposal?.status, savedProposal?.projectStatus]);
 
   // Prevent background dialog/panel containers from scrolling when this nested dialog is open
   useEffect(() => {
@@ -954,10 +969,27 @@ const FreelancerSelectionDialog = ({
           </div>
         </div>
       ) : null}
-      <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)}>
-          Cancel
-        </Button>
+      <DialogFooter className="sm:justify-between items-center w-full mt-2 border-t pt-4">
+        <div className="flex w-full items-center justify-end gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="marketplace-toggle"
+              checked={isLive}
+              onCheckedChange={(checked) => {
+                setIsLive(checked);
+                if (typeof onPostToMarketplace === 'function') {
+                  onPostToMarketplace(checked);
+                }
+              }}
+            />
+            <Label htmlFor="marketplace-toggle" className="text-sm font-medium">
+              Live in Marketplace
+            </Label>
+          </div>
+        </div>
       </DialogFooter>
     </DialogContent>
   </Dialog>

@@ -112,6 +112,7 @@ const ClientProposalDialogs = ({
         openBudgetDialogForProposal={openBudgetDialogForProposal}
         openFreelancerSelection={openFreelancerSelection}
         startEditingProposal={startEditingProposal}
+        handleToggleMarketplaceStatus={actions.handleToggleMarketplaceStatus}
       />
 
       <ProposalBudgetDialog
@@ -148,6 +149,11 @@ const ClientProposalDialogs = ({
         freelancerMatchesRequiredSkill={freelancerMatchesRequiredSkill}
         generateGradient={generateFreelancerGradient}
         formatRating={formatRating}
+        onPostToMarketplace={(checked) => {
+          if (actions?.handleToggleMarketplaceStatus) {
+            actions.handleToggleMarketplaceStatus(proposalForFreelancerSelection, checked);
+          }
+        }}
       />
 
       {showFreelancerProfile ? (

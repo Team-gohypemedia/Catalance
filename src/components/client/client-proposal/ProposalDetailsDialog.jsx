@@ -8,8 +8,10 @@ import Send from "lucide-react/dist/esm/icons/send";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
+import Globe from "lucide-react/dist/esm/icons/globe";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +67,7 @@ const ProposalDetailsDialog = ({
   openBudgetDialogForProposal,
   openFreelancerSelection,
   startEditingProposal,
+  handleToggleMarketplaceStatus,
 }) => {
   const [isAIChatOpen, setIsAIChatOpen] = React.useState(false);
 
@@ -415,8 +418,20 @@ const ProposalDetailsDialog = ({
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-            {normalizedStatus === "draft" && !activeProposal?.requiresPayment ? (
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-4">
+            {!activeProposal?.requiresPayment && (normalizedStatus === "draft" || normalizedStatus === "open") ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Live on Marketplace
+                </span>
+                <Switch
+                  checked={normalizedStatus === "open" || String(activeProposal?.projectStatus).toUpperCase() === "OPEN"}
+                  onCheckedChange={(checked) => handleToggleMarketplaceStatus(activeProposal, checked)}
+                />
+              </div>
+            ) : null}
+
+            {(normalizedStatus === "draft" || normalizedStatus === "open") && !activeProposal?.requiresPayment ? (
               <Button
                 type="button"
                 variant="outline"

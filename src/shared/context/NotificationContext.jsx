@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { io } from "socket.io-client";
 import { toast } from "sonner";
 import { useOptionalAuth } from "@/shared/context/AuthContext";
@@ -202,6 +202,7 @@ export const NotificationProvider = ({ children }) => {
   const isAuthenticated = Boolean(auth?.isAuthenticated);
   const isLoading = Boolean(auth?.isLoading);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [socket, setSocket] = useState(null);
   const [fcmToken, setFcmToken] = useState(null);
@@ -248,12 +249,38 @@ export const NotificationProvider = ({ children }) => {
     });
 
     if (newNotification.type !== "system") {
+      const notifType = String(newNotification.type || "").trim().toLowerCase();
+      const notifProjectId = newNotification.data?.projectId || newNotification.data?.syncedProjectId;
+      
+      let destinationUrl = "";
+      if (notifType === "chat") {
+        const chatProjectId = notifProjectId || (newNotification.data?.service?.split(":")[1]);
+        destinationUrl = `/${activeAudience || "client"}/messages${chatProjectId ? `?projectId=${chatProjectId}` : ""}`;
+      } else if (
+        notifType === "proposal" ||
+        notifType === "proposal_followup" ||
+        notifType === "budget_suggestion" ||
+        notifType === "proposal_expired"
+      ) {
+        if (activeAudience === "freelancer") {
+          destinationUrl = `/freelancer/proposals`;
+        } else {
+          destinationUrl = notifProjectId ? `/client/proposal?projectId=${notifProjectId}` : `/client/proposal`;
+        }
+      } else {
+        destinationUrl = `/${activeAudience || "client"}/project${notifProjectId ? `/${notifProjectId}` : ""}`;
+      }
+
       toast(newNotification.title, {
         id: newNotification.id,
         description: newNotification.message,
+        action: destinationUrl ? {
+          label: "View",
+          onClick: () => navigate(destinationUrl)
+        } : undefined,
       });
     }
-  }, []);
+  }, [navigate, activeAudience]);
 
   // Mark a notification as read while keeping it visible in the list
   const markAsRead = useCallback(async (notificationId) => {

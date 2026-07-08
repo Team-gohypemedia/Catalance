@@ -14,6 +14,9 @@ const CATEGORY_ALIAS_MAP = new Map([
   ["web_dev", "web_development"],
   ["web-development", "web_development"],
   ["webdevelopment", "web_development"],
+  ["website_development", "web_development"],
+  ["websitedevelopment", "web_development"],
+  ["website-development", "web_development"],
   ["app_dev", "app_development"],
   ["app-development", "app_development"],
   ["appdevelopment", "app_development"],
@@ -38,6 +41,27 @@ const CATEGORY_ALIAS_MAP = new Map([
   ["customersupport", "customer_support"],
   ["public-relations", "public_relations"],
   ["publicrelations", "public_relations"],
+  ["cgi_videos", "cgi_videos"],
+  ["cgi-videos", "cgi_videos"],
+  ["cgivideos", "cgi_videos"],
+  ["3d_animation_cgi_videos_vfx", "cgi_videos"],
+  ["3danimationcgivideosvfx", "cgi_videos"],
+  ["3d-animation-cgi-videos-vfx", "cgi_videos"],
+  ["3d_animation", "cgi_videos"],
+  ["3danimation", "cgi_videos"],
+  ["vfx", "cgi_videos"],
+  ["3d_modeling", "3d_modeling"],
+  ["3dmodeling", "3d_modeling"],
+  ["3d-modeling", "3d_modeling"],
+  ["creative_design", "creative_design"],
+  ["creative-design", "creative_design"],
+  ["creativedesign", "creative_design"],
+  ["video_services", "video_services"],
+  ["video-services", "video_services"],
+  ["videoservices", "video_services"],
+  ["website_uiux", "website_uiux"],
+  ["website-uiux", "website_uiux"],
+  ["websiteuiux", "website_uiux"],
 ]);
 
 const FILTER_SERVICE_KEY_BY_NAME = new Map([
@@ -452,6 +476,7 @@ const mapLiveProjectCardPayload = (project = {}) => {
     hasSubmittedProposal: Boolean(proposal?.id),
     proposalStatus: proposal?.status || null,
     proposalId: proposal?.id || null,
+    ownerId: project.ownerId || null,
   };
 };
 
@@ -499,6 +524,8 @@ const parseMarketplaceLiveBoolean = (value) => {
 };
 
 const resolveProjectMarketplaceLiveState = (project = {}) => {
+  if (project?.status === "OPEN") return true;
+
   const proposalJson = asObject(project?.proposalJson);
   const contextSnapshot = asObject(proposalJson?.contextSnapshot);
   const structuredFields = asObject(proposalJson?.structuredFields);
@@ -649,12 +676,15 @@ const buildFreelancerSkillProfile = ({ skillRows = [], profile = {} } = {}) => {
   });
 
   const profileServiceDetails = asObject(profile?.serviceDetails);
-  [
-    profileServiceDetails?.skillsAndTechnologies,
-    profileServiceDetails?.serviceSpecializations,
-    profileServiceDetails?.techStack,
-  ]
-    .flatMap((entry) => flattenTextValues(entry))
+  Object.values(profileServiceDetails)
+    .flatMap((serviceDetail) => {
+      const detail = asObject(serviceDetail);
+      return [
+        detail?.skillsAndTechnologies,
+        detail?.serviceSpecializations,
+        detail?.techStack,
+      ].flatMap((entry) => flattenTextValues(entry));
+    })
     .forEach((token) => {
       const normalized = normalizeFacetToken(token);
       if (normalized) keywordTokens.add(normalized);
@@ -2139,8 +2169,8 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
     : [];
   const effectiveRoles = new Set([tokenRole, primaryRole, ...additionalRoles]);
 
-  if (!dbUser || dbUser.status !== "ACTIVE" || !effectiveRoles.has("FREELANCER")) {
-    throw new AppError("Access denied. Freelancer permissions required.", 403);
+  if (!dbUser || dbUser.status === "SUSPENDED") {
+    throw new AppError("Access denied. Active account required.", 403);
   }
 
   const page = clampInteger(parseOptionalInteger(req.query?.page) ?? 1, 1, 100000);
@@ -2229,12 +2259,18 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
         none: { status: "ACCEPTED" },
       },
       owner: {
-        role: "CLIENT",
-        status: "ACTIVE",
+        OR: [
+          { role: "CLIENT" },
+          { roles: { has: "CLIENT" } },
+          { roles: { has: "FREELANCER" } },
+        ],
+        status: { not: "SUSPENDED" },
       },
+      ownerId: { not: userId },
     },
     select: {
       id: true,
+      ownerId: true,
       title: true,
       description: true,
       budget: true,
@@ -2297,8 +2333,11 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
     .filter((project) => Boolean(project?.id));
 
   const baseFiltered = mappedRows.filter((project) => {
-    if (selectedServiceKey && project.serviceKey !== selectedServiceKey) return false;
-    if (!matchesFreelancerSkillProfile(project, freelancerSkillProfile)) return false;
+    if (selectedServiceKey) {
+      if (project.serviceKey !== selectedServiceKey) return false;
+    } else {
+      if (!matchesFreelancerSkillProfile(project, freelancerSkillProfile)) return false;
+    }
 
     if (minBudget !== null) {
       if (!Number.isFinite(project?.budget) || Number(project.budget) < minBudget) return false;

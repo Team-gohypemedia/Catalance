@@ -605,8 +605,19 @@ const Proposals = memo(function Proposals({
   const loadDrafts = useCallback(() => {
     if (isControlled) return;
 
+    const projectIdsWithProposals = new Set(
+      proposals
+        .filter(p => !String(p.id).startsWith("draft-project:"))
+        .map(p => String(p.projectId || p.syncedProjectId || ""))
+    );
+
     const backendDrafts = (dashboardData?.projects || [])
-      .filter((project) => project?.status === "DRAFT")
+      .filter((project) => {
+        const status = String(project?.status || "").toUpperCase();
+        if (status === "DRAFT") return true;
+        if (status === "OPEN" && !projectIdsWithProposals.has(String(project.id))) return true;
+        return false;
+      })
       .map(mapApiDraftProject);
 
     const deduplicatedDrafts = [];
@@ -634,7 +645,7 @@ const Proposals = memo(function Proposals({
     } else if (sortedProposals.length > 0 && !activeDraftId) {
       setActiveDraftId(sortedProposals[0].id);
     }
-  }, [isControlled, dashboardData?.projects, searchParams, activeDraftId]);
+  }, [isControlled, dashboardData?.projects, searchParams, activeDraftId, proposals]);
 
   useEffect(() => {
     if (isControlled) return undefined;

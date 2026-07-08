@@ -49,6 +49,8 @@ const SERVICE_EQUIVALENCE_GROUPS = Object.freeze([
   ["ui_ux_design", "ux_ui_design", "product_design"],
   ["graphic_design", "branding", "brand_design"],
   ["video_editing", "video_production"],
+  ["cgi_video_services", "cgi_videos", "3d_animation_cgi_videos_vfx", "3d_animation", "vfx"],
+  ["3d_modeling", "modeling_3d"],
 ]);
 
 const SERVICE_ALIAS_MAP = SERVICE_EQUIVALENCE_GROUPS.reduce((accumulator, group) => {

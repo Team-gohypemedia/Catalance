@@ -1,5 +1,6 @@
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import {
@@ -70,10 +71,36 @@ export const ClientProposalDataProvider = ({ children }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [confirmState, setConfirmState] = useState(null);
 
-  const showConfirm = useCallback((message) => {
+  const showConfirm = useCallback((titleOrMessage, messageStr, actionText, cancelText, isDestructive = true) => {
     return new Promise((resolve) => {
+      let title = "Confirm Action";
+      let message = titleOrMessage;
+      let action = "Confirm";
+      let destructive = true;
+
+      if (messageStr) {
+        title = titleOrMessage;
+        message = messageStr;
+        action = actionText || "Confirm";
+        destructive = isDestructive;
+      } else {
+        // Fallback for old usages passing only a message string
+        title = "Confirm Action";
+        message = titleOrMessage;
+        if (typeof titleOrMessage === "string" && titleOrMessage.toLowerCase().includes("delete")) {
+          title = "Delete Proposal";
+          action = "Delete";
+        } else if (typeof titleOrMessage === "string" && titleOrMessage.toLowerCase().includes("unsend")) {
+          title = "Unsend Proposal";
+          action = "Unsend";
+        }
+      }
+
       setConfirmState({
+        title,
         message,
+        action,
+        destructive,
         resolve: (value) => {
           setConfirmState(null);
           resolve(value);
@@ -350,12 +377,6 @@ export const ClientProposalDataProvider = ({ children }) => {
         ? await syncLocalDraftsToDatabase(initialLocalSavedProposals, remoteProjects)
         : initialLocalSavedProposals;
       const localDrafts = syncedLocalSavedProposals.map(mapLocalDraftProposal);
-      const remoteDraftProjects = Array.isArray(projectPayload?.data)
-        ? projectPayload.data
-            .filter((project) => String(project?.status || "").toUpperCase() === "DRAFT")
-            .map(mapApiDraftProject)
-        : [];
-
       const uniqueById = remoteNormalized.reduce(
         (acc, proposal) => {
           const key = proposal.id || `${proposal.projectId}-${proposal.freelancerId}`;
@@ -366,6 +387,19 @@ export const ClientProposalDataProvider = ({ children }) => {
         },
         { seen: new Set(), list: [] },
       ).list;
+      
+      const projectIdsWithProposals = new Set(uniqueById.map(p => String(p.projectId)));
+
+      const remoteDraftProjects = Array.isArray(projectPayload?.data)
+        ? projectPayload.data
+            .filter((project) => {
+              const status = String(project?.status || "").toUpperCase();
+              if (status === "DRAFT") return true;
+              if (status === "OPEN" && !projectIdsWithProposals.has(String(project.id))) return true;
+              return false;
+            })
+            .map(mapApiDraftProject)
+        : [];
 
       const allProposals = mergeProposalCollections(
         [...uniqueById, ...remoteDraftProjects],
@@ -1110,6 +1144,53 @@ export const ClientProposalDataProvider = ({ children }) => {
     [activeProposal?.id, authFetch, fetchProposals, user?.id, showConfirm],
   );
 
+  const handleToggleMarketplaceStatus = useCallback(
+    async (proposal, isPublishing) => {
+      if (!proposal?.projectId) {
+        toast.error("Invalid proposal or missing project reference.");
+        return;
+      }
+      const targetStatus = isPublishing ? "OPEN" : "DRAFT";
+      const actionName = isPublishing ? "Publish" : "Unpublish";
+
+      const confirmed = await showConfirm(
+        `${actionName} Marketplace Listing`,
+        isPublishing
+          ? "Are you sure you want to publish this project to the open marketplace? It will become visible to all freelancers."
+          : "Are you sure you want to unpublish this project? It will no longer be visible on the marketplace.",
+        actionName,
+        "Cancel",
+        false // Not destructive
+      );
+      if (!confirmed) return;
+
+      try {
+        const response = await authFetch(`/projects/${proposal.projectId}`, {
+          method: "PATCH",
+          body: JSON.stringify({ status: targetStatus }),
+        });
+        if (!response.ok) throw new Error(`Failed to ${actionName.toLowerCase()} project.`);
+        
+        toast.success(`Project ${isPublishing ? 'published' : 'unpublished'} successfully!`);
+        
+        setActiveProposal((current) => {
+          if (!current || String(current?.projectId) !== String(proposal.projectId)) return current;
+          return { ...current, status: targetStatus, projectStatus: targetStatus };
+        });
+
+        setSelectedProposalForSend((current) => {
+          if (!current || String(current?.projectId) !== String(proposal.projectId)) return current;
+          return { ...current, status: targetStatus, projectStatus: targetStatus };
+        });
+        
+        fetchProposals();
+      } catch (error) {
+        toast.error(error.message || `Failed to ${actionName.toLowerCase()} project.`);
+      }
+    },
+    [authFetch, fetchProposals, showConfirm]
+  );
+
   const handleOpenFreelancerDetails = useCallback((proposal) => {
     if (!proposal) return;
     setFreelancerDetailsProposal(proposal);
@@ -1562,6 +1643,21 @@ export const ClientProposalDataProvider = ({ children }) => {
       if (syncTasks.length > 0) {
         const syncResults = await Promise.allSettled(syncTasks);
         hasSyncFailure = syncResults.some((result) => result.status === "rejected");
+        
+        // Find if a project was created and update activeProposal
+        const createdProjectResult = syncResults.find(
+          (result) => result.status === "fulfilled" && result.value?.id && activeProposal?.isLocalDraft
+        );
+        
+        if (createdProjectResult) {
+          const createdProject = createdProjectResult.value;
+          setActiveProposal((current) => current ? {
+            ...current,
+            projectId: createdProject.id,
+            syncedProjectId: createdProject.id,
+            projectStatus: String(createdProject.status || "DRAFT").toUpperCase(),
+          } : current);
+        }
       }
 
       setIsEditingProposal(false);
@@ -2350,6 +2446,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       handleViewFreelancerProfile,
       handleFreelancerProfileOpenChange,
       startEditingProposal,
+      handleToggleMarketplaceStatus,
     }),
     [
       budgetDialogActions,
@@ -2371,6 +2468,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       setFreelancerSearch,
       setShowFreelancerSelect,
       startEditingProposal,
+      handleToggleMarketplaceStatus,
     ],
   );
 
@@ -2392,10 +2490,10 @@ export const ClientProposalDataProvider = ({ children }) => {
         <AlertDialogContent className="border border-border bg-background text-foreground shadow-[0_28px_84px_-48px_rgba(0,0,0,0.4)] dark:shadow-[0_28px_84px_-48px_rgba(0,0,0,1)] sm:max-w-md rounded-[24px]">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-semibold text-foreground">
-              Delete Proposal
+              {confirmState?.title || "Confirm Action"}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm leading-6 text-muted-foreground">
-              {confirmState?.message || "Are you sure you want to delete this proposal? This action cannot be undone."}
+              {confirmState?.message || "Are you sure you want to proceed? This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0 mt-4">
@@ -2404,9 +2502,14 @@ export const ClientProposalDataProvider = ({ children }) => {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => confirmState?.resolve(true)}
-              className="bg-rose-500 text-white hover:bg-rose-600 rounded-full dark:bg-rose-600 dark:text-white dark:hover:bg-rose-700"
+              className={cn(
+                "rounded-full text-white",
+                confirmState?.destructive !== false 
+                  ? "bg-rose-500 hover:bg-rose-600 dark:bg-rose-600 dark:hover:bg-rose-700" 
+                  : "bg-primary hover:bg-primary/90"
+              )}
             >
-              Delete
+              {confirmState?.action || "Confirm"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

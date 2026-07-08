@@ -262,16 +262,24 @@ const statusConfig = {
 };
 
 const normalizeProposalStatus = (status = "") => {
-  switch (status.toUpperCase()) {
+  switch (String(status).toUpperCase()) {
+    case "DRAFT":
+      return "draft";
+    case "OPEN":
+      return "open";
+    case "PAUSED":
+      return "paused";
+    case "CLOSED":
+      return "closed";
     case "ACCEPTED":
       return "accepted";
     case "REJECTED":
+    case "DECLINED":
       return "rejected";
-    case "AWARDED":
-      return "awarded";
-    case "RECEIVED":
     case "PENDING":
-      return "pending"; // Group received/pending together
+      return "pending";
+    case "SENT":
+      return "sent";
     default:
       return "pending";
   }

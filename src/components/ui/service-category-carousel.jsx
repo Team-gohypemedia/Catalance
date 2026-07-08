@@ -114,7 +114,7 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
           "relative h-[290px] w-56 md:w-64 overflow-hidden rounded-[26px] border flex flex-col items-stretch justify-between p-5 transition-all duration-300 themed-card",
           isActive
             ? "border-primary/40 bg-primary/10 shadow-[0_0_40px_-10px_rgba(var(--brand-rgb),0.5)] dark:bg-primary/8"
-            : "border-white/8 bg-white/[0.04] shadow-[0_20px_60px_-20px_rgba(2,6,23,0.7)] hover:border-white/15 dark:bg-slate-950/40"
+            : "border-slate-200 bg-white shadow-sm hover:border-slate-300 hover:shadow-md dark:border-white/8 dark:bg-white/[0.04] dark:shadow-[0_20px_60px_-20px_rgba(2,6,23,0.7)] dark:hover:border-white/15 dark:hover:bg-slate-950/40"
         )}
       >
         {/* Subtle grid texture */}
@@ -142,7 +142,7 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
               "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-200",
               isActive
                 ? "border-primary/35 bg-primary/12 text-primary"
-                : "border-black/5 bg-black/[0.02] text-slate-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-400"
+                : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-400"
             )}
           >
             <Icon className="h-4 w-4" />
@@ -154,7 +154,7 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
           <img
             src={logoSrc}
             alt={service.label}
-            className="w-24 h-24 object-contain drop-shadow-md group-hover:scale-[1.06] transition-transform duration-300"
+            className="w-24 h-24 object-contain drop-shadow-md group-hover:scale-[1.06] transition-all duration-300 hue-rotate-[-25deg] saturate-[1.5] dark:hue-rotate-0 dark:saturate-100"
           />
         </div>
 
@@ -175,7 +175,7 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
               Active filter
             </span>
           ) : (
-            <span className="mx-auto inline-flex items-center gap-1 rounded-full border border-black/8 bg-white/40 px-4 py-1.5 text-[11px] font-medium text-slate-500 dark:border-white/8 dark:bg-white/[0.03] dark:text-slate-400 group-hover:border-primary/30 group-hover:bg-white group-hover:text-primary dark:group-hover:bg-white/10 dark:group-hover:text-white transition-all duration-200">
+            <span className="mx-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-[11px] font-medium text-slate-600 dark:border-white/8 dark:bg-white/[0.03] dark:text-slate-400 group-hover:border-primary/30 group-hover:text-primary dark:group-hover:bg-white/10 dark:group-hover:text-white transition-all duration-200">
               Tap to filter &rarr;
             </span>
           )}
@@ -226,13 +226,13 @@ const AllServicesCard = ({ isActive, onSelect }) => (
           "flex h-12 w-12 items-center justify-center rounded-xl border",
           isActive
             ? "border-primary/35 bg-primary/12 text-primary"
-            : "border-white/12 bg-white/[0.04] text-slate-400"
+            : "border-slate-200 bg-slate-50 text-slate-500 dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-400"
         )}
       >
         <LayoutGrid className="h-6 w-6" />
       </div>
       <div className="text-center">
-        <p className={cn("text-[15px] font-semibold", isActive ? "text-white" : "text-slate-300")}>
+        <p className={cn("text-[15px] font-semibold", isActive ? "text-primary dark:text-white" : "text-slate-800 dark:text-slate-300")}>
           All
         </p>
         <p className="text-[11px] text-slate-500">Browse all</p>
@@ -324,7 +324,7 @@ const ServiceCategoryCarousel = ({
           type="button"
           onClick={() => scrollBy(-1)}
           disabled={!canScrollLeft}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white disabled:opacity-25 disabled:cursor-not-allowed"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:border-white/25 dark:hover:bg-white/[0.08] dark:hover:text-white disabled:opacity-25 disabled:cursor-not-allowed"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
@@ -332,7 +332,7 @@ const ServiceCategoryCarousel = ({
           type="button"
           onClick={() => scrollBy(1)}
           disabled={!canScrollRight}
-          className="flex h-9 w-9 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-slate-300 transition hover:border-white/25 hover:bg-white/[0.08] hover:text-white disabled:opacity-25 disabled:cursor-not-allowed"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:border-white/25 dark:hover:bg-white/[0.08] dark:hover:text-white disabled:opacity-25 disabled:cursor-not-allowed"
         >
           <ChevronRight className="h-4 w-4" />
         </button>

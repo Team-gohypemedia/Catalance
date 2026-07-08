@@ -609,6 +609,12 @@ export const normalizeProposalStatus = (status = "") => {
   switch (String(status).toUpperCase()) {
     case "DRAFT":
       return "draft";
+    case "OPEN":
+      return "open";
+    case "PAUSED":
+      return "paused";
+    case "CLOSED":
+      return "closed";
     case "ACCEPTED":
       return "accepted";
     case "REJECTED":
@@ -616,6 +622,8 @@ export const normalizeProposalStatus = (status = "") => {
       return "rejected";
     case "PENDING":
       return "pending";
+    case "SENT":
+      return "sent";
     default:
       return "sent";
   }
@@ -1945,6 +1953,9 @@ const normalizeProposalPreviewContent = (content = '') => {
     let normalized = normalizeMarkdownContent(content).replace(/\r/g, '');
 
     normalized = normalized.replace(/([^\n])\s+(#{1,6}\s+)/g, '$1\n$2');
+    
+    // Split inline bullet points (e.g. "Sentence. - Bullet") onto new lines
+    normalized = normalized.replace(/([^\n])\s+-\s+/g, '$1\n- ');
 
     PROPOSAL_INLINE_FIELD_LABELS.forEach((label) => {
         const escaped = escapeRegExp(label);

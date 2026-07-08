@@ -17,7 +17,7 @@ import {
   loadSavedProposalsFromStorage,
   deleteLocalDraftProposal,
 } from "@/shared/lib/client-proposal-storage";
-import { buildProjectDraftPayload } from "@/components/client/client-proposal/proposal-utils";
+import { buildProjectDraftPayload, mapApiDraftProject } from "@/components/client/client-proposal/proposal-utils";
 import {
   createMarketplaceFavoriteSnapshot,
   loadMarketplaceFavorites,
@@ -571,11 +571,26 @@ const fetchClientDashboardData = async (authFetch) => {
     }
   };
 
-  const [projects, proposals, chatConversations] = await Promise.all([
+  const [projects, fetchedProposals, chatConversations] = await Promise.all([
     readArrayResponse(authFetch("/projects", { skipLogoutOn401: true })),
     readArrayResponse(authFetch("/proposals?as=owner", { skipLogoutOn401: true })),
     fetchChatConversations().catch(() => []),
   ]);
+
+  const projectIdsWithProposals = new Set(
+    fetchedProposals.map(p => String(p.projectId || p.syncedProjectId || ""))
+  );
+
+  const remoteDraftProjects = projects
+    .filter((project) => {
+      const status = String(project?.status || "").toUpperCase();
+      if (status === "DRAFT") return true;
+      if (status === "OPEN" && !projectIdsWithProposals.has(String(project.id))) return true;
+      return false;
+    })
+    .map(mapApiDraftProject);
+
+  const proposals = [...fetchedProposals, ...remoteDraftProjects];
 
   return {
     projects,

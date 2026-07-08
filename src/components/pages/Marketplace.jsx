@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowRight, BadgeCheck, Bot, BriefcaseBusiness, Banknote, Tag, Check,
-  ChevronLeft, ChevronRight, Clock, Cloud, Code2,
-  Database, Heart, LayoutGrid, LineChart, MessageSquare,
-  Plus, RefreshCcw, Rocket, Search, Settings, SlidersHorizontal,
+  ArrowRight, BadgeCheck, Bot, Briefcase, BriefcaseBusiness, Banknote, Tag, Check,
+  ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Cloud, Code2,
+  Database, Eye, Heart, LayoutGrid, LineChart, MessageSquare,
+  Plus, RefreshCcw, Rocket, Search, Send, Settings, SlidersHorizontal,
   Sparkles, Star, Users, Workflow, X
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -12,7 +12,18 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import {
   AnimatedCard,
   CardBody,
@@ -37,6 +48,8 @@ import {
   loadMarketplaceFavorites,
   saveMarketplaceFavorites,
 } from "@/shared/lib/marketplace-favorites";
+import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
+import { parseProposalContent } from "@/components/client/client-proposal/proposal-utils";
 import { cn } from "@/shared/lib/utils";
 import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import { AnimatedHeroText } from "@/components/ui/animated-hero";
@@ -394,9 +407,132 @@ const resolveProjectCardCta = (project = {}) =>
         to: `/freelancer/project/${project.id}`,
       }
     : {
-        label: "Send Proposal",
-        to: "/freelancer/proposals",
+        label: "Accept Project",
       };
+
+const formatProjectDate = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const MarketplaceProjectCard = ({ item, onViewDetails, onAcceptProject }) => {
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
+  const timeline = String(item?.timeline || item?.duration || "").trim();
+  const clientLabel = String(item?.clientName || item?.companyName || "").trim();
+  const summary = String(item?.summary || item?.description || "").trim();
+  const cta = resolveProjectCardCta(item);
+  const dateStr = formatProjectDate(item?.postedAt || item?.createdAt);
+  const serviceName = item?.serviceName || "General service";
+
+  return (
+    <motion.article key={item.id} className="h-full">
+      <Card className="group h-full overflow-hidden rounded-[20px] border border-border bg-card p-6 shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] flex flex-col">
+        <CardContent className="p-0 flex-1 flex flex-col">
+          <div className="w-full min-w-0 flex-1 flex flex-col">
+            {/* Top: Status + Date */}
+            <div className="flex items-center justify-between">
+              <div className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
+                {item?.hasSubmittedProposal ? "Applied" : "Open"}
+              </div>
+              <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
+                {dateStr}
+              </span>
+            </div>
+
+            {/* Title */}
+            <h3 title={item.title || "Untitled project"} className="mt-4 truncate text-xl font-bold tracking-tight text-foreground">
+              {item.title || "Untitled project"}
+            </h3>
+
+            {/* Service Type */}
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Briefcase className="size-3.5 text-muted-foreground/70 shrink-0" />
+              <span className="truncate">Service: {serviceName}</span>
+            </div>
+
+            {/* Collapsible Project Overview */}
+            {summary && (
+              <div className="mt-4 border border-border/60 bg-background rounded-xl overflow-hidden">
+                <div
+                  onClick={() => setOverviewExpanded(!overviewExpanded)}
+                  className="flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-muted/30 transition-colors"
+                >
+                  <span className="text-xs font-semibold text-foreground">Project Overview</span>
+                  {overviewExpanded ? (
+                    <ChevronUp className="size-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="size-4 text-muted-foreground" />
+                  )}
+                </div>
+                {overviewExpanded && (
+                  <div className="border-t border-border/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground bg-muted/10">
+                    {summary}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Budget + Timeline Boxes */}
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#F8F9FA] dark:bg-muted/10 py-3.5 text-center">
+                <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/85 leading-none">Budget</span>
+                <span className="text-[17px] font-extrabold text-foreground truncate max-w-full px-2 mt-1.5">{formatProjectBudget(item)}</span>
+              </div>
+              <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#F8F9FA] dark:bg-muted/10 py-3.5 text-center">
+                <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/85 leading-none">Timeline</span>
+                <span className="text-[17px] font-extrabold text-foreground truncate max-w-full px-2 mt-1.5">{timeline || "Not set"}</span>
+              </div>
+            </div>
+
+            {/* Client */}
+            {clientLabel ? (
+              <div className="mt-4 rounded-[14px] border border-border/70 bg-background/35 p-3">
+                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-1">Client</p>
+                <p className="text-sm font-medium text-foreground">{clientLabel}</p>
+              </div>
+            ) : null}
+
+            {/* Action Buttons */}
+            <div className="mt-5 grid grid-cols-2 gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => onViewDetails?.(item)}
+                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors border border-transparent cursor-pointer"
+              >
+                <Eye className="size-4 text-muted-foreground" />
+                <span>View Details</span>
+              </button>
+              {cta.to ? (
+                <Link
+                  to={cta.to}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors"
+                >
+                  <Send className="size-3.5" />
+                  <span>{cta.label}</span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onAcceptProject?.(item)}
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors cursor-pointer"
+                >
+                  <Check className="size-4" />
+                  <span>{cta.label}</span>
+                </button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.article>
+  );
+};
 
 const scrollToSection = (id) => {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -707,21 +843,15 @@ const Marketplace = () => {
     (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
   const [favorites, setFavorites] = useState({});
-  const [activeMarketplaceView, setActiveMarketplaceView] = useState(() => {
-    const sessionUser = getSession()?.user;
-    const roles = Array.isArray(sessionUser?.roles) ? sessionUser.roles : [];
-    const roleTokens = [
-      normalizeRoleToken(sessionUser?.role),
-      ...roles.map((entry) => normalizeRoleToken(entry)),
-    ].filter(Boolean);
-    if (initialSearchState.view === "projects" && roleTokens.includes("FREELANCER")) {
-      return "projects";
-    }
-    if (initialSearchState.view === "freelancers") {
-      return "freelancers";
-    }
-    return roleTokens.includes("FREELANCER") ? "projects" : "freelancers";
-  });
+  const { currentDashboard } = useDashboardSwitcher();
+  
+  const [activeMarketplaceView, setActiveMarketplaceView] = useState(
+    currentDashboard === "freelancer" ? "projects" : "freelancers"
+  );
+
+  useEffect(() => {
+    setActiveMarketplaceView(currentDashboard === "freelancer" ? "projects" : "freelancers");
+  }, [currentDashboard]);
   const [q, setQ] = useState(initialSearchState.q);
   const [category, setCategory] = useState(initialSearchState.category);
   const [filterServices, setFilterServices] = useState([]);
@@ -793,6 +923,57 @@ const Marketplace = () => {
   const [projectTotalPages, setProjectTotalPages] = useState(0);
   const [projectLoading, setProjectLoading] = useState(false);
   const [projectAccessError, setProjectAccessError] = useState("");
+  const [selectedProjectDetail, setSelectedProjectDetail] = useState(null);
+  const [acceptProjectConfirm, setAcceptProjectConfirm] = useState(null);
+
+  const handleConfirmAcceptProject = async () => {
+    if (!acceptProjectConfirm) return;
+    const projectId = acceptProjectConfirm.id;
+    try {
+      setProjectLoading(true);
+      
+      // Create an accepted proposal for this freelancer
+      const res = await authFetch("/proposals", {
+        method: "POST",
+        body: JSON.stringify({
+          projectId,
+          status: "ACCEPTED",
+          amount: acceptProjectConfirm.budget || 0,
+          coverLetter: "Instantly accepted project from the marketplace.",
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to accept project");
+      }
+
+      // Now that the freelancer is the accepted freelancer, they have permission to make the project active
+      const updateRes = await authFetch(`/projects/${projectId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "AWAITING_PAYMENT",
+        }),
+      });
+
+      if (!updateRes.ok) {
+        const err = await updateRes.json().catch(() => ({}));
+        console.warn("Could not mark project as ACTIVE, but proposal was accepted.", err);
+      }
+
+      toast.success("Project accepted successfully! It is now in your active projects.");
+      setAcceptProjectConfirm(null);
+      if (selectedProjectDetail) setSelectedProjectDetail(null);
+      
+      // Redirect to the projects list dashboard
+      navigate(`/freelancer/project`);
+    } catch (error) {
+      console.error("[Marketplace] Error accepting project:", error);
+      toast.error(error.message || "Something went wrong while accepting the project.");
+    } finally {
+      setProjectLoading(false);
+    }
+  };
   const [openFaqItems, setOpenFaqItems] = useState({});
   const previousCategoryRef = useRef(category);
   const didInitializeBuildModesRef = useRef(false);
@@ -832,12 +1013,11 @@ const Marketplace = () => {
     isAuthenticated && viewerRoleTokens.includes("CLIENT");
   const wishlistOwnerId = canUseClientWishlist ? sessionUser?.id : null;
 
-  const canViewProjectsMarketplace =
-    isAuthenticated && normalizeRoleToken(user?.role) === "FREELANCER";
+  const canViewProjectsMarketplace = isAuthenticated;
 
   const serviceCategories = useMemo(
-    () =>
-      (filterServices.length
+    () => {
+      const baseList = filterServices.length
         ? dedupeServiceCategories(
             filterServices.map((service) =>
               buildServiceCategoryEntry({
@@ -850,8 +1030,20 @@ const Marketplace = () => {
               })
             )
           )
-        : FALLBACK_CATEGORIES
-      ).map((entry) => {
+        : [...FALLBACK_CATEGORIES];
+
+      const requiredServices = [
+        { key: "video_services", label: "Video Services", value: "video_services", description: "Video editing and production" },
+        { key: "ai_automation", label: "AI Automation", value: "ai_automation", description: "Agents and workflows" }
+      ];
+
+      requiredServices.forEach(req => {
+        if (!baseList.find(c => c.value === req.value || c.key === req.key)) {
+          baseList.push(req);
+        }
+      });
+
+      return baseList.map((entry) => {
         if (entry.icon) {
           return {
             ...entry,
@@ -864,7 +1056,8 @@ const Marketplace = () => {
           ...normalized,
           key: normalized.key || normalized.value,
         };
-      }),
+      });
+    },
     [filterServices]
   );
 
@@ -977,15 +1170,6 @@ const Marketplace = () => {
     setSelectedBuildModes([]);
   }, [category]);
 
-  useEffect(() => {
-    if (canViewProjectsMarketplace && activeMarketplaceView !== "projects") {
-      setActiveMarketplaceView("projects");
-      return;
-    }
-    if (!canViewProjectsMarketplace && activeMarketplaceView === "projects") {
-      setActiveMarketplaceView("freelancers");
-    }
-  }, [activeMarketplaceView, canViewProjectsMarketplace]);
 
   useEffect(() => {
     if (!location.hash) return;
@@ -1188,7 +1372,7 @@ const Marketplace = () => {
     const requestId = projectRequestIdRef.current + 1;
     projectRequestIdRef.current = requestId;
 
-    const projectsModeActive = canViewProjectsMarketplace || activeMarketplaceView === "projects";
+    const projectsModeActive = activeMarketplaceView === "projects";
     if (!projectsModeActive) {
       if (requestId === projectRequestIdRef.current) {
         setProjectLoading(false);
@@ -1233,7 +1417,7 @@ const Marketplace = () => {
         setProjectData([]);
         setProjectTotal(0);
         setProjectTotalPages(0);
-        setProjectAccessError("Only logged-in freelancers can view live client projects.");
+        setProjectAccessError("Access denied. An active account is required to view live client projects.");
         return;
       }
 
@@ -1302,7 +1486,6 @@ const Marketplace = () => {
     if (duration) params.set("duration", duration);
     if (rating) params.set("rating", rating);
     if (page > 1) params.set("page", String(page));
-    if (activeMarketplaceView === "projects") params.set("view", "projects");
     return params.toString();
   }, [
     activeMarketplaceView,
@@ -1381,6 +1564,10 @@ const Marketplace = () => {
       });
 
       return [...filtered].sort((a, b) => {
+        const isA = a.value === "video_services" || a.value === "ai_automation" ? 1 : 0;
+        const isB = b.value === "video_services" || b.value === "ai_automation" ? 1 : 0;
+        if (isA !== isB) return isB - isA;
+
         const summaryA = browseServicesByKey.get(a.value || a.key);
         const summaryB = browseServicesByKey.get(b.value || b.key);
         const countA = summaryA?.freelancerCount || 0;
@@ -1414,10 +1601,8 @@ const Marketplace = () => {
       }),
     [browseServicesByKey, visibleBrowseServices]
   );
-  const isProjectsView = canViewProjectsMarketplace || activeMarketplaceView === "projects";
-  const shouldRenderFreelancerResults =
-    !canViewProjectsMarketplace &&
-    activeMarketplaceView === "freelancers";
+  const isProjectsView = activeMarketplaceView === "projects";
+  const shouldRenderFreelancerResults = activeMarketplaceView === "freelancers";
   const activeTotalPages = isProjectsView ? projectTotalPages : totalPages;
 
   const openProjectsShowcase = useMemo(() => {
@@ -1676,7 +1861,7 @@ const Marketplace = () => {
               {/* Header row with Title and Search/Filters */}
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between px-2 sm:px-5">
                 <div>
-                  <h2 className="text-2xl font-semibold tracking-[-0.04em] text-white">
+                  <h2 className="text-2xl font-semibold tracking-[-0.04em] text-slate-900 dark:text-white">
                     Professional Services
                   </h2>
                 </div>
@@ -2142,7 +2327,7 @@ const Marketplace = () => {
                       Client project listings
                     </h3>
                   </div>
-                  <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
                       <Card key={`project-skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
                         <Skeleton className="h-44 w-full rounded-none" />
@@ -2186,81 +2371,10 @@ const Marketplace = () => {
                         : "."}
                     </p>
                   </div>
-                  <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                    {projectData.map((item) => {
-                      const timeline = String(item?.timeline || item?.duration || "").trim();
-                      const clientLabel = String(item?.companyName || item?.clientName || "").trim();
-                      const summary = String(item?.summary || item?.description || "").trim();
-                      const cta = resolveProjectCardCta(item);
-                      return (
-                        <motion.article key={item.id} className="h-full">
-                          <Card className="group h-full overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.04] dark-card shadow-[0_22px_70px_-42px_rgba(2,6,23,0.82)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-primary/50 hover:shadow-[0_28px_90px_-40px_color-mix(in_srgb,var(--primary)_22%,transparent)]">
-                            <div className="relative h-44 overflow-hidden border-b border-white/10 bg-slate-950">
-                              <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />
-                              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/35 to-transparent" />
-                              <div className="absolute inset-x-0 bottom-0 space-y-2 p-4">
-                                <Badge className="inline-flex w-fit rounded-full border border-white/20 bg-white/12 px-3 py-1 text-[11px] font-semibold text-white">
-                                  {item.serviceName || "General service"}
-                                </Badge>
-                                <p className="text-xs text-white/80">
-                                  {getRelativePostedLabel(item.postedAt || item.createdAt)}
-                                </p>
-                              </div>
-                            </div>
-                            <CardContent className="flex min-h-[180px] flex-col p-5">
-                              <h3 className="line-clamp-2 text-base font-semibold leading-6 text-white">
-                                {item.title || "Untitled project"}
-                              </h3>
-                              <div className="mt-3 flex flex-wrap items-center gap-2">
-                                {item.subCategory ? (
-                                  <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-slate-300">
-                                    {item.subCategory}
-                                  </span>
-                                ) : null}
-                                {timeline ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-slate-300">
-                                    <Clock className="h-3 w-3" />
-                                    {timeline}
-                                  </span>
-                                ) : null}
-                              </div>
-                              <p className="mt-3 line-clamp-3 text-xs leading-6 text-slate-400">
-                                {summary || "No project summary provided yet."}
-                              </p>
-                              {clientLabel ? (
-                                <p className="mt-3 truncate text-xs font-medium text-slate-300">
-                                  Client: {clientLabel}
-                                </p>
-                              ) : null}
-                              <div className="mt-auto flex items-end justify-between border-t border-white/10 pt-4">
-                                <div>
-                                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                    Budget
-                                  </p>
-                                  <p className="mt-1 text-lg font-semibold tracking-tight text-white">
-                                    {formatProjectBudget(item)}
-                                  </p>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                  {item.hasSubmittedProposal && item.proposalStatus ? (
-                                    <Badge className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300">
-                                      {formatTokenLabel(item.proposalStatus)}
-                                    </Badge>
-                                  ) : null}
-                                  <Link
-                                    to={cta.to}
-                                    className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:border-primary hover:bg-primary/90"
-                                  >
-                                    {cta.label}
-                                    
-                                  </Link>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </motion.article>
-                      );
-                    })}
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {projectData.map((item) => (
+                      <MarketplaceProjectCard key={item.id} item={item} onViewDetails={setSelectedProjectDetail} onAcceptProject={setAcceptProjectConfirm} />
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -2842,6 +2956,190 @@ const Marketplace = () => {
           </div>
         </section>
       </div>
+
+      <Dialog
+        open={Boolean(selectedProjectDetail)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProjectDetail(null);
+        }}
+      >
+        <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[840px] rounded-[32px] border border-border bg-card p-0 shadow-2xl sm:w-[840px] overflow-hidden flex flex-col max-h-[90vh]">
+          {selectedProjectDetail && (
+            <>
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-border px-8 py-5 shrink-0 bg-background/50">
+                <div className="flex items-center gap-3">
+                  <DialogTitle className="text-xl font-bold tracking-tight text-foreground truncate max-w-[400px]">
+                    {selectedProjectDetail.title || "Untitled project"}
+                  </DialogTitle>
+                  <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
+                    {selectedProjectDetail.hasSubmittedProposal ? "Applied" : "Open"}
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-6">
+                    {formatProjectDate(selectedProjectDetail.postedAt || selectedProjectDetail.createdAt)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-10 no-scrollbar bg-card">
+                
+                {/* 01 SUMMARY */}
+                <section>
+                  <div className="mb-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground mb-1">01 Project Summary</p>
+                    <h4 className="text-xl font-bold tracking-tight text-foreground">Start with the essentials</h4>
+                    <p className="text-sm text-muted-foreground mt-1">Review the project details, service, and budget before diving into the full scope.</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Project Title</p>
+                      <p className="text-sm font-medium text-foreground truncate">{selectedProjectDetail.title || "Untitled"}</p>
+                    </div>
+                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Client Name</p>
+                      <p className="text-sm font-medium text-foreground truncate">{selectedProjectDetail.clientName || selectedProjectDetail.companyName || "Unknown"}</p>
+                    </div>
+                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Service Type</p>
+                      <p className="text-sm font-medium text-foreground truncate">{selectedProjectDetail.serviceName || "General"}</p>
+                    </div>
+                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Budget</p>
+                      <p className="text-sm font-medium text-foreground truncate">{formatProjectBudget(selectedProjectDetail)}</p>
+                    </div>
+                  </div>
+                </section>
+
+                {/* 02 SCOPE */}
+                <section>
+                  <div className="mb-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground mb-1">02 Project Scope & Details</p>
+                    <h4 className="text-xl font-bold tracking-tight text-foreground">What the project includes</h4>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)] gap-5">
+                    {/* Left Column: Parsed Sections */}
+                    <div className="flex flex-col gap-4">
+                      {(() => {
+                        const parsedContent = parseProposalContent(selectedProjectDetail.description || selectedProjectDetail.content || selectedProjectDetail.summary || "");
+                        return parsedContent?.sections?.map((section) => (
+                          <div key={section.key} className="rounded-[20px] border border-border/60 bg-background p-6">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-3">{section.title}</p>
+                            
+                            <div className="space-y-3">
+                              {section.lines.length > 0 && (
+                                <div className="space-y-2">
+                                  {section.lines.map((line, index) => (
+                                    <p key={`${section.key}-line-${index}`} className="text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                                      {line}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {section.list.length > 0 && (
+                                <ul className="flex flex-col gap-2.5 mt-3">
+                                  {section.list.map((item, index) => (
+                                    <li key={`${section.key}-list-${index}`} className="flex items-start gap-2 text-[13px] text-muted-foreground">
+                                      <div className="h-1.5 w-1.5 rounded-full bg-[#FF6A39] shrink-0 mt-[6px]" />
+                                      <span className="leading-relaxed">{item}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                      
+                      {/* Fallback if no sections parsed */}
+                      {(!parseProposalContent(selectedProjectDetail.description || selectedProjectDetail.content || selectedProjectDetail.summary || "")?.sections?.length) && (
+                        <div className="rounded-[20px] border border-border/60 bg-background p-6">
+                           <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-3">Project Overview</p>
+                           <div className="text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                             {selectedProjectDetail.description || selectedProjectDetail.content || selectedProjectDetail.summary || "No description provided."}
+                           </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Column: Project Details box */}
+                    <div className="flex flex-col gap-4 h-fit sticky top-0">
+                      <div className="rounded-[20px] border border-border/60 bg-background p-6 flex flex-col gap-5">
+                        <div>
+                          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Project Details</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">Keep track of the delivery window and proposal state.</p>
+                        </div>
+                        <div className="space-y-4 pt-4 border-t border-border/40">
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Current Status</p>
+                            <p className="text-sm font-medium text-foreground">{selectedProjectDetail.hasSubmittedProposal ? "Applied" : "Open"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Launch Timeline</p>
+                            <p className="text-sm font-medium text-foreground">{selectedProjectDetail.timeline || selectedProjectDetail.duration || "Asap"}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Last Updated</p>
+                            <p className="text-sm font-medium text-foreground">{formatProjectDate(selectedProjectDetail.postedAt || selectedProjectDetail.createdAt)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+              </div>
+              
+              {/* Footer */}
+              <div className="border-t border-border p-4 bg-muted/20 flex justify-end gap-3 shrink-0">
+                <Button variant="ghost" className="h-10 rounded-full px-5 hover:bg-muted" onClick={() => setSelectedProjectDetail(null)}>
+                  Close
+                </Button>
+                {resolveProjectCardCta(selectedProjectDetail).to ? (
+                  <Link
+                    to={resolveProjectCardCta(selectedProjectDetail).to}
+                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold text-white dark:text-[#141414] transition-colors hover:bg-primary/90 shadow-sm"
+                  >
+                    <Send className="size-4" />
+                    <span>{resolveProjectCardCta(selectedProjectDetail).label}</span>
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setAcceptProjectConfirm(selectedProjectDetail)}
+                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold text-white dark:text-[#141414] transition-colors hover:bg-primary/90 shadow-sm cursor-pointer"
+                  >
+                    <Check className="size-4" />
+                    <span>{resolveProjectCardCta(selectedProjectDetail).label}</span>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={Boolean(acceptProjectConfirm)} onOpenChange={(open) => !open && setAcceptProjectConfirm(null)}>
+        <AlertDialogContent className="rounded-[24px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Accept this project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to accept <strong>{acceptProjectConfirm?.title}</strong>? Once accepted, the project will be created and added to your active workspace.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAcceptProject} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
+              Confirm Accept
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
