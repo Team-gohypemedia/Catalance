@@ -29,6 +29,8 @@ import {
   ProfileCompletionPanel,
   RecentActivity,
   FreelancerWelcomeHub,
+  FreelancerGrowthQuestWidget,
+  RecommendedProjects,
 } from "@/components/freelancer/freelancer-dashboard";
 
 const FreelancerDashboard = () => {
@@ -183,10 +185,8 @@ const FreelancerDashboard = () => {
                         }
                       />
                     ) : (
-                      <PendingProposals
-                        pendingProposalRows={model.pendingProposalRows}
-                        onOpenAll={model.onOpenProposals}
-                        gridCols={2}
+                      <RecommendedProjects
+                        liveProjects={model.liveProjects}
                       />
                     )}
 
@@ -204,12 +204,16 @@ const FreelancerDashboard = () => {
                   <div className="flex h-full flex-col gap-5 self-stretch">
                     {model.metricsLoading ? (
                       <>
+                        <div className="h-[200px] w-full rounded-[28px] bg-white/[0.04] animate-pulse" />
                         <FreelancerChatsSkeleton />
                         <FreelancerClientReviewsSkeleton />
                         <FreelancerCompactEarningsSummarySkeleton />
                       </>
                     ) : (
                       <>
+                        <FreelancerGrowthQuestWidget
+                          engagementDetails={model.engagementDetails}
+                        />
                         <ActiveChats
                           previewMessages={model.previewMessages}
                           onOpenMessages={model.onOpenMessages}

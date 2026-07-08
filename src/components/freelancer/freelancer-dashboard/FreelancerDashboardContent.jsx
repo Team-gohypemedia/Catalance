@@ -2100,8 +2100,10 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     isLoading: true,
   });
   const [clientReviewsLoading, setClientReviewsLoading] = useState(true);
-  const [isDailyQuestCompleted, setIsDailyQuestCompleted] = useState(false);
+  const [engagementDetails, setEngagementDetails] = useState(null);
   const [payoutMethodConnected, setPayoutMethodConnected] = useState(false);
+  const isDailyQuestCompleted = engagementDetails?.today?.status === "completed";
+  const [liveProjects, setLiveProjects] = useState([]);
   const [clientReviews, setClientReviews] = useState([]);
   const [clientReviewsMeta, setClientReviewsMeta] = useState({
     reviewCount: 0,
@@ -2345,8 +2347,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
         });
         if (response.ok) {
           const payload = await response.json().catch(() => null);
-          const questStatus = payload?.data?.today?.status;
-          setIsDailyQuestCompleted(questStatus === "completed");
+          setEngagementDetails(payload?.data || null);
         }
       } catch (error) {
         console.error("Failed to load engagement dashboard for checklist", error);
@@ -2361,12 +2362,30 @@ export const DashboardContent = ({ _roleOverride, children }) => {
       }
     };
 
+    const loadLiveProjects = async () => {
+      if (!authFetch) return;
+      try {
+        const response = await authFetch("/marketplace/projects/live?limit=3", {
+          suppressToast: true,
+          skipLogoutOn401: true,
+        });
+        if (response.ok) {
+          const payload = await response.json().catch(() => null);
+          const nextData = Array.isArray(payload?.data) ? payload.data : [];
+          setLiveProjects(nextData);
+        }
+      } catch (error) {
+        console.error("Failed to load live projects for recommendation", error);
+      }
+    };
+
     loadMetrics();
     loadAppointments();
     loadProfileCompletion();
     loadReceivedClientReviews();
     loadEngagementStatus();
     checkPayoutStatus();
+    loadLiveProjects();
   }, [authFetch, isFreelancerUser]);
 
   const activityItems = useMemo(() => {
@@ -3885,6 +3904,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     },
     isDailyQuestCompleted,
     payoutMethodConnected,
+    engagementDetails,
+    liveProjects,
   };
 
   if (typeof children === "function") {

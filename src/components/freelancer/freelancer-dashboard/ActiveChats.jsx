@@ -38,7 +38,7 @@ export const FreelancerChatsSkeleton = () => (
 );
 
 const ActiveChats = ({ previewMessages, onOpenMessages }) => (
-  <section className="flex h-full w-full min-w-0 flex-col">
+  <section className="flex w-full min-w-0 flex-col">
     <div className="mb-6">
       <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
         Active Chats

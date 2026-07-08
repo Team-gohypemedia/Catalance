@@ -17,3 +17,5 @@ export { FreelancerCompactEarningsSummarySkeleton } from "./CompactEarningsSumma
 export { default as DeliveryPipeline } from "./DeliveryPipeline.jsx";
 export { FreelancerDeliveryPipelineSkeleton } from "./DeliveryPipeline.jsx";
 export { default as FreelancerWelcomeHub } from "./FreelancerWelcomeHub.jsx";
+export { default as FreelancerGrowthQuestWidget } from "./FreelancerGrowthQuestWidget.jsx";
+export { default as RecommendedProjects } from "./RecommendedProjects.jsx";
