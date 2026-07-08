@@ -71,6 +71,19 @@ import {
   rejectUserRequest,
 } from "../controllers/userRequest.controller.js";
 
+import {
+  getAdminMarketplaceFilters,
+  createAdminService,
+  updateAdminService,
+  deleteAdminService,
+  createAdminSubCategory,
+  updateAdminSubCategory,
+  deleteAdminSubCategory,
+  createAdminTool,
+  updateAdminTool,
+  deleteAdminTool,
+} from "../controllers/adminMarketplaceFilters.controller.js";
+
 const router = Router();
 
 router.use(requireAuth, requireAdmin);
@@ -157,6 +170,18 @@ router.patch("/user-requests/:id/approve", approveUserRequest);
 router.patch("/user-requests/:id/reject", rejectUserRequest);
 
 router.use("/engagement", adminEngagementRouter);
+
+// Marketplace Filters Management
+router.get("/marketplace-filters", getAdminMarketplaceFilters);
+router.post("/marketplace-filters/services", createAdminService);
+router.put("/marketplace-filters/services/:id", updateAdminService);
+router.delete("/marketplace-filters/services/:id", deleteAdminService);
+router.post("/marketplace-filters/sub-categories", createAdminSubCategory);
+router.put("/marketplace-filters/sub-categories/:id", updateAdminSubCategory);
+router.delete("/marketplace-filters/sub-categories/:id", deleteAdminSubCategory);
+router.post("/marketplace-filters/tools", createAdminTool);
+router.put("/marketplace-filters/tools/:id", updateAdminTool);
+router.delete("/marketplace-filters/tools/:id", deleteAdminTool);
 
 export default router;
 

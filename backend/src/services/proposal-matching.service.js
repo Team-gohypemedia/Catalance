@@ -61,47 +61,7 @@ const SERVICE_ALIAS_MAP = SERVICE_EQUIVALENCE_GROUPS.reduce((accumulator, group)
   return accumulator;
 }, {});
 
-const SERVICE_HIERARCHY = Object.freeze({
-  creative_design: [
-    "ui_ux_design",
-    "graphic_design",
-    "publishing",
-    "motion_design",
-    "prototyping",
-    "presentation_design",
-    "video_editing",
-    "branding",
-    "brand_design",
-    "product_design",
-    "ux_ui_design",
-    "video_production",
-  ],
-  digital_marketing: [
-    "seo",
-    "social_media_marketing",
-    "search_engine_optimization",
-    "smm",
-    "performance_marketing",
-    "email_marketing",
-    "content_marketing",
-    "marketing",
-  ],
-  web_development: [
-    "website_development",
-    "web_dev",
-    "frontend_development",
-    "backend_development",
-    "full_stack_development",
-    "ecommerce_development",
-    "wordpress_development",
-  ],
-  app_development: [
-    "mobile_app_development",
-    "android_app_development",
-    "ios_app_development",
-    "cross_platform_app_development",
-  ],
-});
+const SERVICE_HIERARCHY = Object.freeze({});
 
 const SERVICE_PARENT_MAP = Object.freeze(
   Object.entries(SERVICE_HIERARCHY).reduce((acc, [parent, children]) => {
@@ -685,12 +645,15 @@ export const buildMatchingProfile = (source = {}) => {
       ...normalizeList(source?.appFeatures),
       ...normalizeList(source?.platformRequirements),
     ]),
-    budgetRange: parseBudgetRange({
-      minBudget: matchingQuery?.minBudget,
-      maxBudget: matchingQuery?.maxBudget,
-      budget: source?.amount ?? source?.budget ?? null,
-      budgetSummary: source?.budgetSummary || project?.budgetSummary || "",
-    }),
+    budgetRange: {
+      ...parseBudgetRange({
+        minBudget: matchingQuery?.minBudget,
+        maxBudget: matchingQuery?.maxBudget,
+        budget: source?.amount ?? source?.budget ?? null,
+        budgetSummary: source?.budgetSummary || project?.budgetSummary || "",
+      }),
+      targetQuantity: parseFloat(source?.volume) || parseFloat(matchingQuery?.volume) || parseFloat(project?.volume) || 1,
+    },
     timeline:
       cleanText(source?.timeline) ||
       cleanText(source?.duration) ||
@@ -896,7 +859,11 @@ const buildCaseStudyProfile = (source = {}, index = 0) => {
     niches,
     projectTypes,
     budget,
-    budgetRange: parseBudgetRange({ budget }),
+    budgetRange: {
+      ...parseBudgetRange({ budget }),
+      pricingUnit: cleanText(caseStudy?.pricingUnit) || "project",
+      pricingQuantity: parseInt(caseStudy?.pricingQuantity) || 1,
+    },
     timeline,
     role: cleanText(caseStudy?.role) || null,
     projectLink:
@@ -967,12 +934,14 @@ const resolveDetailBudgetRange = (detailEntries = []) => {
       });
 
       if (parsedRange.min !== null || parsedRange.max !== null) {
+        parsedRange.pricingUnit = detail?.pricingUnit || "project";
+        parsedRange.pricingQuantity = parseInt(detail?.pricingQuantity) || 1;
         return parsedRange;
       }
     }
   }
 
-  return { min: null, max: null };
+  return { min: null, max: null, pricingUnit: "project", pricingQuantity: 1 };
 };
 
 const resolveProfileServiceKey = ({
@@ -1122,10 +1091,21 @@ const scoreBudgetCompatibility = (targetRange = {}, sourceRange = {}) => {
     };
   }
 
-  const freelancerMinimumBudget = sourceRange?.min ?? null;
-  const freelancerMaximumBudget = sourceRange?.max ?? null;
+  let freelancerMinimumBudget = sourceRange?.min ?? null;
+  let freelancerMaximumBudget = sourceRange?.max ?? null;
   const projectBudgetFloor = targetRange?.min ?? null;
   const projectBudgetCeiling = targetRange?.max ?? null;
+
+  if (
+    sourceRange?.pricingUnit && 
+    sourceRange?.pricingUnit !== 'project' && 
+    targetRange?.targetQuantity && 
+    sourceRange?.pricingQuantity
+  ) {
+    const multiplier = targetRange.targetQuantity / sourceRange.pricingQuantity;
+    if (freelancerMinimumBudget !== null) freelancerMinimumBudget *= multiplier;
+    if (freelancerMaximumBudget !== null) freelancerMaximumBudget *= multiplier;
+  }
 
   // Matching rule: the freelancer budget is the minimum acceptable project value.
   // Reject only when the full project budget sits below that minimum.

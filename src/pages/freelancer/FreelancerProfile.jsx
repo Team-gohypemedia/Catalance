@@ -425,6 +425,8 @@ const FreelancerProfile = () => {
   const [newProjectRole, setNewProjectRole] = useState("");
   const [newProjectTimeline, setNewProjectTimeline] = useState("");
   const [newProjectBudget, setNewProjectBudget] = useState("");
+  const [newProjectPricingUnit, setNewProjectPricingUnit] = useState("");
+  const [newProjectPricingQuantity, setNewProjectPricingQuantity] = useState("");
   const [newProjectServiceKeys, setNewProjectServiceKeys] = useState([]);
   const [newProjectImageFile, setNewProjectImageFile] = useState(null);
   const [newProjectImagePreview, setNewProjectImagePreview] = useState("");
@@ -2265,6 +2267,8 @@ const FreelancerProfile = () => {
         timeline: String(caseStudy?.timeline || "").trim(),
         budget: String(caseStudy?.budget || "").trim(),
         niche: String(caseStudy?.niche || "").trim(),
+        pricingUnit: String(caseStudy?.pricingUnit || normalizedDraft.pricingUnit || "").trim(),
+        pricingQuantity: Number(caseStudy?.pricingQuantity || normalizedDraft.pricingQuantity || 1),
       };
     });
     const primaryCaseStudy =
@@ -2318,6 +2322,8 @@ const FreelancerProfile = () => {
       priceRange: String(normalizedDraft.priceRange || "").trim(),
       averageProjectPrice: String(normalizedDraft.priceRange || "").trim(),
       averagePrice: String(normalizedDraft.priceRange || "").trim(),
+      pricingUnit: String(normalizedDraft.pricingUnit || "").trim(),
+      pricingQuantity: Number(normalizedDraft.pricingQuantity || 1),
       coverImage: nextCoverImage,
       skillsAndTechnologies: nextServiceSkillTags,
       keywords: nextServiceKeywords,
@@ -2440,6 +2446,8 @@ const FreelancerProfile = () => {
     setNewProjectRole("");
     setNewProjectTimeline("");
     setNewProjectBudget("");
+    setNewProjectPricingUnit("");
+    setNewProjectPricingQuantity("");
     setNewProjectServiceKeys([]);
     setNewProjectImageFile(null);
     setIsProjectCoverDragActive(false);
@@ -2486,6 +2494,8 @@ const FreelancerProfile = () => {
     setNewProjectRole(String(project?.role || "").trim());
     setNewProjectTimeline(String(project?.timeline || "").trim());
     setNewProjectBudget(String(project?.budget || "").trim());
+    setNewProjectPricingUnit(String(project?.pricingUnit || "").trim());
+    setNewProjectPricingQuantity(String(project?.pricingQuantity || "").trim());
     setNewProjectServiceKeys(resolveProjectServiceKeys(project));
     setNewProjectImagePreview(resolveAvatarUrl(project?.image, { allowBlob: true }) || "");
     setModalType("addProject");
@@ -2902,6 +2912,8 @@ const FreelancerProfile = () => {
         role: String(newProjectRole || "").trim(),
         timeline: String(newProjectTimeline || "").trim(),
         budget: String(newProjectBudget || "").trim(),
+        pricingUnit: String(newProjectPricingUnit || "").trim(),
+        pricingQuantity: String(newProjectPricingQuantity || "").trim(),
         serviceKeys: normalizedProjectServiceKeys,
         serviceKey: normalizedProjectServiceKeys[0] || "",
       };
@@ -4739,6 +4751,8 @@ const FreelancerProfile = () => {
               timeline: newProjectTimeline,
               budget: newProjectBudget,
               niche: newProjectNiche,
+              pricingUnit: newProjectPricingUnit,
+              pricingQuantity: newProjectPricingQuantity,
               serviceKey: newProjectServiceKeys[0] || "",
               serviceKeys: newProjectServiceKeys,
             }}
@@ -4754,6 +4768,8 @@ const FreelancerProfile = () => {
               else if (field === "role") setNewProjectRole(value);
               else if (field === "timeline") setNewProjectTimeline(value);
               else if (field === "budget") setNewProjectBudget(String(value || ""));
+              else if (field === "pricingUnit") setNewProjectPricingUnit(String(value || ""));
+              else if (field === "pricingQuantity") setNewProjectPricingQuantity(String(value || ""));
               else if (field === "serviceKeys" || field === "serviceKey") {
                 setNewProjectServiceKeys(normalizeProjectServiceKeys(value));
               }

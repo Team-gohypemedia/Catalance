@@ -22,6 +22,7 @@ import { API_BASE_URL } from "@/shared/lib/api-client";
 import {
   MAX_ONBOARDING_CASE_STUDIES,
   isServiceVisualsUploadValid,
+  getPricingUnitOptions,
 } from "../../Freelancer-Onboarding/service-details";
 
 import {
@@ -241,6 +242,19 @@ const AddEditServiceWizard = ({
   const serviceKey = serviceProfileForm.serviceKey;
   const [marketplaceServices, setMarketplaceServices] = useState([]);
   const [isServicesLoading, setIsServicesLoading] = useState(false);
+
+  useEffect(() => {
+    const options = getPricingUnitOptions(serviceKey);
+    const currentUnit = serviceProfileForm.pricingUnit;
+    const isValid = currentUnit && options.some((opt) => opt.value === currentUnit);
+    
+    if (!isValid && options.length > 0) {
+      setServiceProfileForm((prev) => ({
+        ...prev,
+        pricingUnit: options[0].value,
+      }));
+    }
+  }, [serviceKey, serviceProfileForm.pricingUnit]);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -978,6 +992,63 @@ const AddEditServiceWizard = ({
                         </div>
 
 
+                        {(() => {
+                          const options = getPricingUnitOptions(serviceKey);
+                          const currentUnit = serviceProfileForm.pricingUnit || options[0].value;
+                          
+                          return (
+                            <>
+                              <div className="space-y-2.5">
+                                <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                                  Pricing Unit
+                                </label>
+                                <div className="relative">
+                                  <select
+                                    value={currentUnit}
+                                    onChange={(e) => {
+                                      setServiceProfileForm((prev) => ({
+                                        ...prev,
+                                        pricingUnit: e.target.value,
+                                      }));
+                                    }}
+                                    className="h-10 w-full appearance-none rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                                  >
+                                    {options.map((opt) => (
+                                      <option key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+      
+                              {currentUnit !== "project" && (
+                                <div className="space-y-2.5">
+                                  <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                                    Quantity Included in Price
+                                  </label>
+                                  <div className="relative">
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={serviceProfileForm.pricingQuantity || "1"}
+                                      onChange={(e) => {
+                                        const digitsOnly = e.target.value.replace(/\D/g, "");
+                                        setServiceProfileForm((prev) => ({
+                                          ...prev,
+                                          pricingQuantity: digitsOnly,
+                                        }));
+                                      }}
+                                      placeholder="e.g. 1, 1000"
+                                      className="h-10 w-full rounded-xl border border-border bg-card px-4 !text-[14px] !leading-5 text-foreground outline-none transition-colors placeholder:!text-[14px] placeholder:!leading-5 placeholder:text-muted-foreground placeholder:opacity-50 [&::placeholder]:opacity-50 [&::placeholder]:!text-[14px] [&::placeholder]:!leading-5 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
+
                       </div>
                     </div>
                   </motion.div>
@@ -1065,7 +1136,7 @@ const AddEditServiceWizard = ({
         </div>
       </div>
 
-      <style jsx>{`
+      <style jsx="true">{`
          .custom-wizard-content::-webkit-scrollbar {
            width: 4px;
          }

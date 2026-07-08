@@ -841,6 +841,8 @@ const normalizePortfolioProjectCaseStudy = (
     role: String(source.role || "").trim(),
     timeline: String(source.timeline || "").trim(),
     budget: String(source.budget || "").trim(),
+    pricingUnit: String(source.pricingUnit || "").trim(),
+    pricingQuantity: source.pricingQuantity || null,
     niche: String(source.niche || "").trim(),
     serviceKeys,
     serviceKey: serviceKeys[0] || String(source.serviceKey || serviceKey || "").trim()
@@ -895,6 +897,8 @@ const mergePortfolioProjectCaseStudies = (
       role: normalized.role || current.role || null,
       timeline: normalized.timeline || current.timeline || null,
       budget: normalized.budget || current.budget || null,
+      pricingUnit: normalized.pricingUnit || current.pricingUnit || null,
+      pricingQuantity: normalized.pricingQuantity ?? current.pricingQuantity ?? null,
       niche: normalized.niche || current.niche || null,
       serviceKeys: mergedServiceKeys,
       serviceKey: mergedServiceKeys[0] || current.serviceKey || normalized.serviceKey || serviceKey || ""
@@ -1998,7 +2002,9 @@ const deriveMarketplaceServiceDetails = ({
       ),
       averageProjectPriceRange: normalizeOptionalText(
         detail?.averageProjectPrice || detail?.averagePrice
-      )
+      ),
+      pricingUnit: detail?.pricingUnit || "project",
+      pricingQuantity: detail?.pricingQuantity || 1
     };
   });
 };
@@ -2101,6 +2107,8 @@ const upsertMarketplaceEntry = async ({
           createData.serviceDetails = detailWithStorageKey;
           updateData.serviceDetails = detailWithStorageKey;
         }
+
+        console.log("Upserting marketplace with details:", detailWithStorageKey);
 
         if (includeServiceKey) {
           await txClient.marketplace.upsert({

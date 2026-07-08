@@ -1,3 +1,4 @@
+import { useMemo, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -5,6 +6,7 @@ import {
   DEFAULT_FREELANCER_ONBOARDING_CONTENT,
   resolveServicePricingFields,
 } from "@/shared/lib/freelancer-onboarding-content";
+import { getPricingUnitOptions } from "../service-details";
 import {
   ONBOARDING_FIELD_LABEL_CLASS,
   ONBOARDING_SERVICE_SKIP_BUTTON_CLASS,
@@ -67,6 +69,18 @@ const FreelancerServicePricingSlide = ({
       !["description", "deliveryTimeline", "priceRange"].includes(field.id) &&
       field.visible !== false,
   );
+
+  useEffect(() => {
+    const options = getPricingUnitOptions(serviceDraft?.serviceKey || currentServiceName);
+    const currentUnit = servicePricingForm?.pricingUnit;
+    const isValid = currentUnit && options.some(opt => opt.value === currentUnit);
+    
+    // Only dispatch an update if there's an actual mismatch
+    if (!isValid && options.length > 0) {
+      // Force it to match the actual dropdown default so the Quantity field shows up
+      onServicePricingFieldChange("pricingUnit", options[0].value);
+    }
+  }, [serviceDraft?.serviceKey, currentServiceName, servicePricingForm?.pricingUnit, onServicePricingFieldChange]);
 
   const renderInputField = (field, value, error, onChange, { numeric = false } = {}) => (
     <div className="space-y-0">
@@ -218,6 +232,32 @@ const FreelancerServicePricingSlide = ({
                     { numeric: true },
                   )
                 : null}
+                
+              {(() => {
+                const options = getPricingUnitOptions(serviceDraft?.serviceKey || currentServiceName);
+                const isValidUnit = servicePricingForm.pricingUnit && options.some(opt => opt.value === servicePricingForm.pricingUnit);
+                const currentUnit = isValidUnit ? servicePricingForm.pricingUnit : options[0].value;
+                
+                return (
+                  <>
+                    {renderSelectField(
+                      { label: "Pricing Unit", placeholder: "e.g. Project, Video, Word" },
+                      currentUnit,
+                      String(servicePricingValidationErrors.pricingUnit || "").trim(),
+                      (value) => onServicePricingFieldChange("pricingUnit", value),
+                      options
+                    )}
+                    
+                    {currentUnit !== 'project' && renderInputField(
+                      { label: "Quantity included in price", placeholder: "e.g. 1, 1000" },
+                      servicePricingForm.pricingQuantity || "1",
+                      String(servicePricingValidationErrors.pricingQuantity || "").trim(),
+                      (value) => onServicePricingFieldChange("pricingQuantity", value),
+                      { numeric: true },
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {customPricingFields.map((field) => {

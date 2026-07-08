@@ -12,6 +12,7 @@ import { useAuth } from "@/shared/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { CustomSelect } from "@/components/freelancer/Freelancer-Onboarding/slides/shared/ServiceInfoComponents";
+import { getPricingUnitOptions } from "@/components/freelancer/Freelancer-Onboarding/service-details";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -247,6 +248,11 @@ const CaseStudyModalContent = ({
 }) => {
   const { authFetch } = useAuth();
   const [isRequestingNiche, setIsRequestingNiche] = useState(false);
+  const primaryServiceKey = (Array.isArray(caseStudyForm?.serviceKeys) ? caseStudyForm.serviceKeys[0] : caseStudyForm?.serviceKey) || caseStudyForm?.serviceKeys?.[0] || "";
+  const pricingUnitOptions = useMemo(
+    () => getPricingUnitOptions(primaryServiceKey),
+    [primaryServiceKey]
+  );
 
   const handleRequestNiche = async (requestName) => {
     if (!requestName) return;
@@ -388,7 +394,7 @@ const CaseStudyModalContent = ({
               </div>
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-0">
                 <label className="mb-1 block text-sm font-medium text-muted-foreground">Timeline</label>
                 <CustomSelect
@@ -410,6 +416,27 @@ const CaseStudyModalContent = ({
                     className="h-12 w-full rounded-xl border border-border bg-card pl-10 pr-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-0">
+                <label className="mb-1 block text-sm font-medium text-muted-foreground">Pricing Unit</label>
+                <CustomSelect
+                  value={caseStudyForm.pricingUnit}
+                  onChange={(val) => onCaseStudyFieldChange("pricingUnit", val)}
+                  options={pricingUnitOptions}
+                  placeholder="Select unit"
+                />
+              </div>
+
+              <div className="space-y-0">
+                <label className="mb-1 block text-sm font-medium text-muted-foreground">Quantity Delivered</label>
+                <input
+                  type="text"
+                  value={caseStudyForm.pricingQuantity || ""}
+                  onChange={(e) => onCaseStudyFieldChange("pricingQuantity", e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="e.g. 5"
+                  className="h-12 w-full rounded-xl border border-border bg-card px-4 text-sm text-foreground outline-none placeholder:text-muted-foreground/50 focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                />
               </div>
             </div>
           </div>

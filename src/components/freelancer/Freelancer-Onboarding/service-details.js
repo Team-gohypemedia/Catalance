@@ -13,6 +13,24 @@ const toPositiveInteger = (value) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+export const getPricingUnitOptions = (serviceKey) => {
+  const key = String(serviceKey || "").toLowerCase();
+  
+  if (key.includes("video")) {
+    return [{ value: "video", label: "Per Video" }];
+  } else if (key.includes("writ") || key.includes("content") || key.includes("translation") || key.includes("copy")) {
+    return [{ value: "word", label: "Per Word" }];
+  } else if (key.includes("design") || key.includes("creative")) {
+    return [{ value: "creative", label: "Per Creative" }];
+  } else if (key.includes("seo") || key.includes("marketing") || key.includes("gmp")) {
+    return [{ value: "campaign", label: "Per Campaign" }];
+  } else if (key.includes("web") || key.includes("dev") || key.includes("app")) {
+    return [{ value: "page", label: "Per Page" }];
+  }
+  
+  return [{ value: "project", label: "Per Project" }];
+};
+
 const createDraftId = (prefix = "draft") =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -196,6 +214,8 @@ export const createEmptyServiceCaseStudy = ({
   role: "",
   timeline: "",
   budget: "",
+  pricingUnit: "",
+  pricingQuantity: "",
   niche: "",
   customFields: {},
 });
@@ -219,6 +239,8 @@ const normalizeServiceCaseStudy = (value = {}, { fallbackId } = {}) => {
     role: toOptionalString(source.role),
     timeline: toOptionalString(source.timeline),
     budget: toOptionalString(source.budget),
+    pricingUnit: toOptionalString(source.pricingUnit),
+    pricingQuantity: toOptionalString(source.pricingQuantity),
     niche: toOptionalString(source.niche),
     customFields:
       isPlainObject(source.customFields) ? { ...source.customFields } : {},
@@ -366,6 +388,12 @@ export const normalizeServiceDraft = (
     ),
     priceRange: toOptionalString(
       source.priceRange || source.averageProjectPrice || source.averagePrice || source.customFields?.servicePricing?.priceRange,
+    ),
+    pricingUnit: toOptionalString(
+      source.pricingUnit || source.customFields?.servicePricing?.pricingUnit || "project"
+    ),
+    pricingQuantity: toPositiveInteger(
+      source.pricingQuantity || source.customFields?.servicePricing?.pricingQuantity || 1
     ),
     coverImage: toOptionalString(source.coverImage),
     keywords: normalizeStringArray(source.keywords),
@@ -665,6 +693,10 @@ export const serializeServiceDraft = ({
       ) || null,
     averageProjectPrice:
       toOptionalString(normalizedDraft.priceRange) || null,
+    pricingUnit:
+      toOptionalString(normalizedDraft.pricingUnit) || null,
+    pricingQuantity:
+      toPositiveInteger(normalizedDraft.pricingQuantity) || null,
     coverImage: toOptionalString(normalizedDraft.coverImage || primaryImageUrl) || null,
     keywords: normalizeStringArray(normalizedDraft.keywords).slice(0, 5),
     media: Array.isArray(normalizedDraft.mediaFiles)

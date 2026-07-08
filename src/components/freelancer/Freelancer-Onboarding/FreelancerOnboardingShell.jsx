@@ -1880,11 +1880,15 @@ const FreelancerOnboardingShell = () => {
       description: currentServiceDraft.description,
       deliveryTimeline: currentServiceDraft.deliveryTimeline,
       priceRange: currentServiceDraft.priceRange,
+      pricingUnit: currentServiceDraft.pricingUnit,
+      pricingQuantity: currentServiceDraft.pricingQuantity,
     }),
     [
       currentServiceDraft.deliveryTimeline,
       currentServiceDraft.description,
       currentServiceDraft.priceRange,
+      currentServiceDraft.pricingUnit,
+      currentServiceDraft.pricingQuantity,
     ],
   );
 
