@@ -974,21 +974,7 @@ const FreelancerSelectionDialog = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <div className="flex items-center space-x-2">
-            <Switch
-              id="marketplace-toggle"
-              checked={isLive}
-              onCheckedChange={(checked) => {
-                setIsLive(checked);
-                if (typeof onPostToMarketplace === 'function') {
-                  onPostToMarketplace(checked);
-                }
-              }}
-            />
-            <Label htmlFor="marketplace-toggle" className="text-sm font-medium">
-              Live in Marketplace
-            </Label>
-          </div>
+
         </div>
       </DialogFooter>
     </DialogContent>

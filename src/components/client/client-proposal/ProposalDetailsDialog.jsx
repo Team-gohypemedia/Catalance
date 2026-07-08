@@ -148,6 +148,17 @@ const ProposalDetailsDialog = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pr-10 sm:justify-end sm:pr-12">
+                {!activeProposal?.requiresPayment && (normalizedStatus === "draft" || normalizedStatus === "open") ? (
+                  <div className="flex items-center gap-2 mr-2 sm:mr-4">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Show on Marketplace
+                    </span>
+                    <Switch
+                      checked={normalizedStatus === "open" || String(activeProposal?.projectStatus).toUpperCase() === "OPEN"}
+                      onCheckedChange={(checked) => handleToggleMarketplaceStatus(activeProposal, checked)}
+                    />
+                  </div>
+                ) : null}
                 {canEditActiveProposal ? (
                   isEditingProposal ? (
                     <>
@@ -419,18 +430,6 @@ const ProposalDetailsDialog = ({
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-4">
-            {!activeProposal?.requiresPayment && (normalizedStatus === "draft" || normalizedStatus === "open") ? (
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Live on Marketplace
-                </span>
-                <Switch
-                  checked={normalizedStatus === "open" || String(activeProposal?.projectStatus).toUpperCase() === "OPEN"}
-                  onCheckedChange={(checked) => handleToggleMarketplaceStatus(activeProposal, checked)}
-                />
-              </div>
-            ) : null}
-
             {(normalizedStatus === "draft" || normalizedStatus === "open") && !activeProposal?.requiresPayment ? (
               <Button
                 type="button"
