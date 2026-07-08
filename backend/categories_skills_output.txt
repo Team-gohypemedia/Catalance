@@ -1,0 +1,483 @@
+
+## Service: SEO
+
+### Category: Keyword Research
+  - Skills: Ahrefs, SEMrush, Ubersuggest, Google Keyword Planner, Moz
+
+### Category: On-Page SEO
+  - Skills: Yoast, Rank Math, Surfer SEO
+
+### Category: Technical SEO
+  - Skills: Screaming Frog, Google Search Console, PageSpeed Insights, GTmetrix
+
+### Category: Off-Page SEO
+  - Skills: Ahrefs, SEMrush, Majestic, Pitchbox
+
+### Category: Local SEO
+  - Skills: Google Business Profile, BrightLocal, Whitespark
+
+### Category: Content SEO
+  - Skills: Clearscope, Frase
+
+### Category: Rank Tracking
+  - Skills: SERPWatcher, AccuRanker
+
+### Category: Analytics
+  - Skills: Google Analytics, Looker Studio
+
+## Service: Social Media Management
+
+### Category: Content Creation
+  - Skills: Canva, Photoshop, Illustrator, Adobe Express
+
+### Category: Content Posting
+  - Skills: Instagram, Facebook, LinkedIn, Twitter, Threads
+
+### Category: Short Video Platforms
+  - Skills: YouTube Shorts, TikTok, Instagram Reels
+
+### Category: Scheduling
+  - Skills: Buffer, Hootsuite, Later, SocialBee
+
+### Category: Analytics
+  - Skills: Meta Business Suite, Sprout Social
+
+### Category: Community Management
+  - Skills: Agorapulse, Sprinklr
+
+### Category: Social Listening
+  - Skills: Brand24, Mention
+
+## Service: App Development
+
+### Category: Native Development
+  - Skills: Kotlin, Java, Swift
+
+### Category: Cross Platform
+  - Skills: Flutter, React Native, Xamarin
+
+### Category: Backend
+  - Skills: Firebase, Supabase, Node.js
+
+### Category: Database
+  - Skills: SQLite, MongoDB, PostgreSQL
+
+### Category: Testing
+  - Skills: BrowserStack, Firebase Test Lab
+
+### Category: App Distribution
+  - Skills: Google Play Console, App Store Connect
+
+### Category: Push Notifications
+  - Skills: OneSignal
+
+### Category: Analytics
+  - Skills: Firebase Analytics, Mixpanel
+
+### Category: CI/CD
+  - Skills: Bitrise, Codemagic
+
+### Category: Tools
+  - Skills: Android Studio, Xcode
+
+## Service: Software Development
+
+### Category: Backend
+  - Skills: Java, .NET, Python, Node.js, PHP, Go
+
+### Category: Frontend
+  - Skills: React, Angular, Vue
+
+### Category: Desktop Apps
+  - Skills: Electron, .NET WPF
+
+### Category: Database
+  - Skills: PostgreSQL, MySQL, MongoDB, Redis
+
+### Category: DevOps
+  - Skills: Docker, Kubernetes, AWS, Azure, GCP
+
+### Category: CI/CD
+  - Skills: Jenkins, GitHub Actions, CircleCI
+
+### Category: Testing
+  - Skills: Selenium, Cypress, Jest, Mocha
+
+### Category: Version Control
+  - Skills: Git, GitHub, GitLab
+
+### Category: Monitoring
+  - Skills: Datadog, New Relic, Prometheus
+
+### Category: API Testing
+  - Skills: Postman
+
+## Service: Lead Generation
+
+### Category: CRM
+  - Skills: HubSpot, Zoho, Salesforce, Pipedrive, Freshsales
+
+### Category: Prospecting
+  - Skills: Apollo, Hunter, Snov.io, Clearbit
+
+### Category: Outreach
+  - Skills: Lemlist, Instantly, Mailshake
+
+### Category: LinkedIn Outreach
+  - Skills: Sales Navigator
+
+### Category: Cold Calling
+  - Skills: Aircall, Dialpad
+
+### Category: Email Verification
+  - Skills: NeverBounce, ZeroBounce
+
+### Category: Data Management
+  - Skills: Google Sheets, Airtable
+
+### Category: Data Scraping
+  - Skills: Phantombuster
+
+## Service: Video Services
+
+### Category: Video Editing
+  - Skills: Premiere Pro, Final Cut Pro, DaVinci Resolve, CapCut, Filmora
+
+### Category: Motion Graphics
+  - Skills: After Effects
+
+### Category: Color Grading
+  - Skills: DaVinci Resolve
+
+### Category: Audio Editing
+  - Skills: Audition, Audacity
+
+### Category: Subtitles
+  - Skills: VEED, Kapwing
+
+### Category: Stock Footage
+  - Skills: Artgrid, Storyblocks, Envato Elements
+
+### Category: Screen Recording
+  - Skills: OBS Studio, Camtasia
+
+### Category: Collaboration
+  - Skills: Frame.io
+
+## Service: Writing & Content
+
+### Category: Writing
+  - Skills: Google Docs, Notion, Microsoft Word
+
+### Category: SEO Writing
+  - Skills: Surfer SEO, Ahrefs, SEMrush
+
+### Category: Proofreading
+  - Skills: Grammarly, Hemingway
+
+### Category: Plagiarism
+  - Skills: Copyscape, Quetext
+
+### Category: Content Planning
+  - Skills: Trello, Notion, ClickUp
+
+### Category: Email Marketing
+  - Skills: Mailchimp, ConvertKit, Klaviyo
+
+### Category: Documentation
+  - Skills: Confluence
+
+## Service: Customer Support
+
+### Category: Helpdesk
+  - Skills: Zendesk, Freshdesk, Zoho Desk
+
+### Category: Live Chat
+  - Skills: Intercom, LiveChat, Tawk.to
+
+### Category: CRM Support
+  - Skills: HubSpot Service Hub, Salesforce Service Cloud
+
+### Category: Communication
+  - Skills: Slack, WhatsApp Business
+
+### Category: Knowledge Base
+  - Skills: Document360, Helpjuice
+
+### Category: Call Center
+  - Skills: Aircall, RingCentral
+
+## Service: Influencer Marketing
+
+### Category: Platforms
+  - Skills: Instagram, YouTube, TikTok, LinkedIn
+
+### Category: Discovery
+  - Skills: Modash, Upfluence, Aspire, Heepsy
+
+### Category: Campaign Management
+  - Skills: GRIN, CreatorIQ
+
+### Category: Outreach
+  - Skills: Gmail, Instantly
+
+### Category: Payments
+  - Skills: Razorpay, Stripe
+
+## Service: UGC Marketing
+
+### Category: Platforms
+  - Skills: TikTok, Instagram Reels, YouTube Shorts
+
+### Category: Editing
+  - Skills: CapCut, InShot, VN Editor
+
+### Category: Design
+  - Skills: Canva
+
+### Category: Publishing
+  - Skills: Meta Creator Studio
+
+### Category: Creator Sourcing
+  - Skills: Billo, Insense
+
+## Service: AI Automation
+
+### Category: Workflow Automation
+  - Skills: Zapier, Make, n8n, Pabbly
+
+### Category: RPA
+  - Skills: UiPath
+
+### Category: Scripting
+  - Skills: Google Apps Script
+
+### Category: Data Handling
+  - Skills: Airtable
+
+## Service: WhatsApp Chatbot
+
+### Category: API
+  - Skills: WhatsApp Business API, Twilio, 360dialog
+
+### Category: Platforms
+  - Skills: WATI, Gupshup, Interakt
+
+### Category: Bot Builder
+  - Skills: Dialogflow, Botpress
+
+### Category: Automation
+  - Skills: Make
+
+### Category: Broadcasting
+  - Skills: Interakt, WATI
+
+## Service: Creative & Design
+
+### Category: UI/UX
+  - Skills: Figma, Adobe XD, Sketch
+
+### Category: Graphic Design
+  - Skills: Photoshop, Illustrator, Canva
+
+### Category: Publishing
+  - Skills: InDesign
+
+### Category: Motion Design
+  - Skills: After Effects
+
+### Category: Prototyping
+  - Skills: Figma, InVision
+
+### Category: Presentation Design
+  - Skills: PowerPoint, Pitch
+
+## Service: 3D Modeling
+
+### Category: Modeling
+  - Skills: Blender, Maya, 3ds Max
+
+### Category: Sculpting
+  - Skills: ZBrush
+
+### Category: Texturing
+  - Skills: Substance Painter
+
+### Category: Rendering
+  - Skills: KeyShot, V-Ray
+
+### Category: Real-Time
+  - Skills: Unreal Engine, Unity
+
+## Service: CRM & ERP
+
+### Category: CRM
+  - Skills: Salesforce, Zoho, HubSpot, Pipedrive
+
+### Category: ERP
+  - Skills: Odoo, SAP, Oracle NetSuite
+
+### Category: Analytics
+  - Skills: Power BI, Tableau
+
+### Category: Automation
+  - Skills: Zapier
+
+### Category: Sales Automation
+  - Skills: Freshsales
+
+## Service: Paid Advertising
+
+### Category: Paid Ads
+  - Skills: Google Ads, Meta Ads, LinkedIn Ads, YouTube Ads, Microsoft Ads
+
+### Category: Tracking
+  - Skills: Google Tag Manager, Meta Pixel, Conversion API
+
+### Category: Analytics
+  - Skills: Google Analytics, Looker Studio
+
+### Category: Landing Pages
+  - Skills: Unbounce, Instapage, Leadpages
+
+### Category: A/B Testing
+  - Skills: VWO, Optimizely
+
+### Category: Heatmaps
+  - Skills: Hotjar, Microsoft Clarity
+
+### Category: Attribution
+  - Skills: Triple Whale
+
+## Service: Website Development
+
+### Category: CMS Development
+  - Skills: WordPress, Webflow, Wix, Squarespace, WooCommerce
+
+### Category: Frontend Development
+  - Skills: HTML, CSS, JavaScript, TypeScript, React, Next.js, Vue, Angular, Tailwind, Bootstrap, Sass
+
+### Category: Backend Development
+  - Skills: Node.js, Express.js, PHP (Laravel), Python (Django, Flask), Ruby on Rails
+
+### Category: Full Stack
+  - Skills: MERN, MEAN, LAMP
+
+### Category: E-commerce Development
+  - Skills: Shopify, Magento, WooCommerce, BigCommerce
+
+### Category: Static Sites
+  - Skills: Gatsby, Hugo, Jekyll
+
+### Category: Database
+  - Skills: MySQL, PostgreSQL, MongoDB, Firebase, Supabase
+
+### Category: API Development
+  - Skills: REST API, GraphQL, Postman, Swagger
+
+### Category: Authentication
+  - Skills: Firebase Auth, Auth0, OAuth, JWT
+
+### Category: Version Control
+  - Skills: Git, GitHub, GitLab, Bitbucket
+
+### Category: Dev Tools
+  - Skills: VS Code, WebStorm, Sublime Text
+
+### Category: Build Tools
+  - Skills: Webpack, Vite, Parcel
+
+### Category: Package Managers
+  - Skills: npm, yarn, pnpm
+
+### Category: Testing
+  - Skills: Jest, Cypress, Selenium
+
+### Category: Deployment
+  - Skills: Vercel, Netlify, AWS, DigitalOcean, cPanel
+
+### Category: CI/CD
+  - Skills: Jenkins, GitHub Actions, GitLab CI
+
+### Category: Hosting
+  - Skills: Hostinger, Bluehost, SiteGround
+
+### Category: Performance Optimization
+  - Skills: GTmetrix, PageSpeed Insights
+
+## Service: AI Video Generation
+
+### Category: Presenter-led Videos
+  - Skills: HeyGen, Synthesia, D-ID, Colossyan
+
+### Category: Fully Animated Videos
+  - Skills: Runway Gen-2, Pika Labs, Midjourney, Stable Diffusion
+
+### Category: AI Promotional & Ad Videos
+  - Skills: Sora, InVideo, Adobe Firefly, CapCut
+
+### Category: AI Script & Voiceover Generation
+  - Skills: ChatGPT, Claude, ElevenLabs, Murf.ai
+
+## Service: 3D Animation/CGI Videos/VFX
+
+### Category: 3D Tools
+  - Skills: Blender, Cinema 4D, Maya, Houdini
+
+### Category: Rendering
+  - Skills: Octane, Redshift, Arnold
+
+### Category: Compositing
+  - Skills: Nuke, After Effects
+
+### Category: Tracking
+  - Skills: PFTrack
+
+### Category: Simulation
+  - Skills: Houdini
+
+### Category: Editing
+  - Skills: DaVinci Resolve
+
+## Service: Voice Agent
+
+### Category: Voice API
+  - Skills: Twilio, Exotel
+
+### Category: Speech Processing
+  - Skills: Deepgram, AssemblyAI
+
+### Category: Calling Systems
+  - Skills: Aircall, Dialpad
+
+### Category: Call Tracking
+  - Skills: CallRail
+
+### Category: IVR Systems
+  - Skills: Knowlarity
+
+## Service: Branding Kit
+
+### Category: Logo Design
+  - Skills: Illustrator, Photoshop, CorelDRAW, Figma, Canva
+
+### Category: Brand Identity
+  - Skills: Illustrator, Photoshop, Figma, InDesign
+
+### Category: Brand Guidelines
+  - Skills: InDesign, Figma
+
+### Category: Packaging Design
+  - Skills: Illustrator, Photoshop, CorelDRAW
+
+### Category: Typography
+  - Skills: Adobe Fonts, Google Fonts
+
+### Category: Color Systems
+  - Skills: Adobe Color, Coolors
+
+### Category: Brand Assets & Mockups
+  - Skills: Placeit, Smartmockups, Mockup World
+
+### Category: Iconography
+  - Skills: Illustrator, Figma, Noun Project

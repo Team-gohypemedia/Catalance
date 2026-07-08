@@ -18,6 +18,7 @@ import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import UserCheck from "lucide-react/dist/esm/icons/user-check";
 import MessageSquareCode from "lucide-react/dist/esm/icons/message-square-code";
 import Mail from "lucide-react/dist/esm/icons/mail";
+import Layers from "lucide-react/dist/esm/icons/layers";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -178,6 +179,12 @@ const navConfigs = {
       title: "Services",
       url: "/admin/services",
       icon: Briefcase,
+      isActive: true,
+    },
+    {
+      title: "Categories & Skills",
+      url: "/admin/categories-skills",
+      icon: Layers,
       isActive: true,
     },
     {

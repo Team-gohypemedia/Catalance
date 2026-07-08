@@ -160,6 +160,9 @@ const AdminUserDetails = lazy(
 const AdminServices = lazy(
   () => import("@/components/features/admin/AdminServices"),
 );
+const AdminCategoriesSkills = lazy(
+  () => import("@/components/features/admin/AdminCategoriesSkills"),
+);
 const AdminServiceQuestions = lazy(
   () => import("@/components/features/admin/AdminServiceQuestions"),
 );
@@ -800,6 +803,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminServices />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/categories-skills"
+              element={
+                <AdminRoute>
+                  <AdminCategoriesSkills />
                 </AdminRoute>
               }
             />
