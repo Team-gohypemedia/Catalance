@@ -100,6 +100,7 @@ export const ProposalFreelancerAvatars = memo(function ProposalFreelancerAvatars
   avatarClassName = "h-10 w-10",
   stackClassName,
   maxVisible = 5,
+  onClick,
 }) {
   const sentFreelancers = Array.isArray(proposal?.sentFreelancers)
     ? proposal.sentFreelancers.filter(Boolean)
@@ -112,7 +113,10 @@ export const ProposalFreelancerAvatars = memo(function ProposalFreelancerAvatars
 
   if (sentFreelancers.length > 0) {
     return (
-      <div className={cn("flex items-center -space-x-3", stackClassName)}>
+      <div 
+        className={cn("flex items-center -space-x-3", stackClassName, onClick && "cursor-pointer hover:opacity-80 transition-opacity")}
+        onClick={onClick}
+      >
         {sentFreelancers.slice(0, maxVisible).map((freelancer) => (
           <Avatar
             key={freelancer.id}
@@ -139,11 +143,16 @@ export const ProposalFreelancerAvatars = memo(function ProposalFreelancerAvatars
   }
 
   return (
-    <Avatar className={cn(avatarClassName, "border border-border dark:border-white/10")}>
-      <AvatarImage src={proposal?.avatar} alt={fallbackAvatarName} />
+    <div 
+      className={cn("inline-flex", onClick && "cursor-pointer hover:opacity-80 transition-opacity")} 
+      onClick={onClick}
+    >
+      <Avatar className={cn(avatarClassName, "border border-border dark:border-white/10")}>
+        <AvatarImage src={proposal?.avatar} alt={fallbackAvatarName} />
       <AvatarFallback className="bg-muted text-xs font-bold text-primary dark:bg-[#111214]">
         {initials}
       </AvatarFallback>
     </Avatar>
+    </div>
   );
 });

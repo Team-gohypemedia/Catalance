@@ -518,7 +518,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     viewingFreelancer,
     null,
   );
-  const matchScore = Number.isFinite(Number(normalizedMatchPercent))
+  const matchScore = typeof normalizedMatchPercent === "number" && Number.isFinite(normalizedMatchPercent)
     ? `${normalizedMatchPercent}%`
     : null;
   const roleValue = firstNonEmptyText(

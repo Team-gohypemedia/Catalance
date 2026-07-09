@@ -1,5 +1,5 @@
 import { asyncHandler } from "../utils/async-handler.js";
-import { createUser, listUsers, deleteUserService } from "../modules/users/user.service.js";
+import { createUser, listUsers, deleteUserService, getUserById } from "../modules/users/user.service.js";
 
 export const getUsers = asyncHandler(async (req, res) => {
   const filters = req.query;
@@ -22,4 +22,10 @@ export const deleteMeHandler = asyncHandler(async (req, res) => {
   await deleteUserService(user.id, user.email);
   
   res.json({ message: "Account deleted successfully" });
+});
+
+export const getUserByIdHandler = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const user = await getUserById(id);
+  res.json({ data: user });
 });

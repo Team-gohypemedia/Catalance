@@ -92,9 +92,13 @@ const ProposalCardsCarousel = ({
   onOpen,
   onPay,
   onSend,
+  onAcceptApplication,
+  onRejectApplication,
   onViewFreelancers,
   processingPaymentProposalId,
   sendingProposalId,
+  acceptingProposalId,
+  rejectingProposalId,
 }) => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -149,9 +153,13 @@ const ProposalCardsCarousel = ({
             onOpen={onOpen}
             onPay={onPay}
             onSend={onSend}
+            onAcceptApplication={onAcceptApplication}
+            onRejectApplication={onRejectApplication}
             onViewFreelancers={onViewFreelancers}
             isPaying={processingPaymentProposalId === proposal.id}
             isSending={sendingProposalId === proposal.id}
+            isAccepting={acceptingProposalId === proposal.id}
+            isRejecting={rejectingProposalId === proposal.id}
           />
         ))}
         {showCreateCard && (
@@ -255,7 +263,7 @@ const ProposalCardsCarousel = ({
           </>
         ) : null}
 
-        <CarouselContent className="ml-0 items-stretch gap-4 [backface-visibility:hidden] [will-change:transform]">
+        <CarouselContent className="ml-0 items-start gap-4 [backface-visibility:hidden] [will-change:transform]">
           {proposals.map((proposal) => (
             <CarouselItem
               key={proposal.id}
@@ -268,9 +276,13 @@ const ProposalCardsCarousel = ({
                 onOpen={onOpen}
                 onPay={onPay}
                 onSend={onSend}
+                onAcceptApplication={onAcceptApplication}
+                onRejectApplication={onRejectApplication}
                 onViewFreelancers={onViewFreelancers}
                 isPaying={processingPaymentProposalId === proposal.id}
                 isSending={sendingProposalId === proposal.id}
+                isAccepting={acceptingProposalId === proposal.id}
+                isRejecting={rejectingProposalId === proposal.id}
               />
             </CarouselItem>
           ))}

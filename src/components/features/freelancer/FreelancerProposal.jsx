@@ -327,6 +327,7 @@ const mapApiProposal = (proposal = {}) => {
       : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
     budget: proposal.amount ?? proposal.budget ?? null,
     rejectionReason: String(proposal.rejectionReason || "").trim(),
+    coverLetter: proposal.coverLetter || "",
     content:
       proposal.content ||
       proposal.description ||
@@ -396,12 +397,21 @@ const ProposalRowCard = ({
   processingId,
   processingAction,
 }) => {
-  const config = statusConfig[proposal.status] || statusConfig.pending;
+  const isMarketplaceApplication = proposal.coverLetter === "Applied from the marketplace.";
+  const config = isMarketplaceApplication && proposal.status === "pending"
+    ? {
+        label: "Applied",
+        icon: Clock,
+        className: "bg-blue-500/10 text-blue-600 border-transparent dark:bg-blue-500/5 dark:text-blue-400 dark:border-blue-500/20",
+        dotColor: "bg-blue-500",
+      }
+    : (statusConfig[proposal.status] || statusConfig.pending);
+
   const { budget, timeline } = extractProposalDetails(
     proposal.content,
     proposal.budget
   );
-  const isPendingProposal = proposal.status === "pending";
+  const isPendingProposal = proposal.status === "pending" && !isMarketplaceApplication;
   const isProcessing = processingId === proposal.id;
   const isAccepting = isProcessing && processingAction === "accept";
   const isRejecting = isProcessing && processingAction === "reject";
@@ -444,50 +454,52 @@ const ProposalRowCard = ({
   return (
     <Card
       className={cn(
-        "h-full w-full max-w-[360px] mx-auto shadow-none border border-border/55 dark:border-white/[0.06] rounded-[28px] bg-card p-6 transition-all duration-200 hover:-translate-y-1",
+        "h-full w-full shadow-none border border-border/55 dark:border-white/[0.06] rounded-[28px] bg-card p-6 transition-all duration-200 hover:-translate-y-1",
       )}
     >
       <CardContent className="p-0 flex flex-col h-full">
         {/* Header row: Status badge, Date, and Delete/Reject icon */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className={cn(
-              "inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border",
-              proposal.status === "pending" || proposal.status === "received"
-                ? "bg-[#FAF1EB] text-[#D9692A] border-transparent dark:bg-[#F9D949]/5 dark:text-[#F9D949] dark:border-[#F9D949]/30"
-                : proposal.status === "accepted"
-                ? "bg-emerald-500/10 text-emerald-600 border-transparent dark:bg-emerald-500/5 dark:text-emerald-400 dark:border-emerald-500/20"
-                : "bg-red-500/10 text-red-600 border-transparent dark:bg-red-500/5 dark:text-red-400 dark:border-red-500/20"
-            )}>
-              {config.label}
-            </span>
+          <span className={cn(
+            "inline-flex items-center justify-center px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border",
+            isMarketplaceApplication && proposal.status === "pending"
+              ? "bg-blue-500/10 text-blue-600 border-transparent dark:bg-blue-500/5 dark:text-blue-400 dark:border-blue-500/20"
+              : proposal.status === "pending" || proposal.status === "received"
+              ? "bg-[#FAF1EB] text-[#D9692A] border-transparent dark:bg-[#F9D949]/5 dark:text-[#F9D949] dark:border-[#F9D949]/30"
+              : proposal.status === "accepted"
+              ? "bg-emerald-500/10 text-emerald-600 border-transparent dark:bg-emerald-500/5 dark:text-emerald-400 dark:border-emerald-500/20"
+              : "bg-red-500/10 text-red-600 border-transparent dark:bg-red-500/5 dark:text-red-400 dark:border-red-500/20"
+          )}>
+            {config.label}
+          </span>
+          <div className="flex items-center gap-3 ml-auto">
             {proposal.submittedDate && (
               <span className="text-sm font-medium text-muted-foreground">
                 {proposal.submittedDate}
               </span>
             )}
+            {isPendingProposal ? (
+              <button
+                type="button"
+                onClick={() => onReject(proposal)}
+                disabled={isProcessing}
+                className="text-muted-foreground hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+                title="Reject Proposal"
+              >
+                <Trash2 className="size-5 text-[#D9692A] dark:text-[#F9D949]" />
+              </button>
+            ) : proposal.status === "rejected" ? (
+              <button
+                type="button"
+                onClick={() => onDelete(proposal.id)}
+                disabled={isProcessing}
+                className="group p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
+                title="Delete Proposal"
+              >
+                <Trash2 className="size-5 text-red-500/60 dark:text-red-400/50 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
+              </button>
+            ) : null}
           </div>
-          {isPendingProposal ? (
-            <button
-              type="button"
-              onClick={() => onReject(proposal)}
-              disabled={isProcessing}
-              className="text-muted-foreground hover:text-rose-500 transition-colors p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
-              title="Reject Proposal"
-            >
-              <Trash2 className="size-5 text-[#D9692A] dark:text-[#F9D949]" />
-            </button>
-          ) : proposal.status === "rejected" ? (
-            <button
-              type="button"
-              onClick={() => onDelete(proposal.id)}
-              disabled={isProcessing}
-              className="group p-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 disabled:opacity-50"
-              title="Delete Proposal"
-            >
-              <Trash2 className="size-5 text-red-500/60 dark:text-red-400/50 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
-            </button>
-          ) : null}
         </div>
 
         {/* Project Title Section */}
@@ -551,7 +563,7 @@ const ProposalRowCard = ({
                 )}
               </div>
               {overviewExpanded && (
-                <div className="border-t border-border/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground bg-muted/10 max-h-32 overflow-y-auto">
+                <div className="border-t border-border/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground bg-muted/10">
                   {projectOverview}
                 </div>
               )}
@@ -573,7 +585,7 @@ const ProposalRowCard = ({
                 )}
               </div>
               {objectivesExpanded && (
-                <div className="border-t border-border/40 px-4 py-3 bg-muted/10 max-h-32 overflow-y-auto">
+                <div className="border-t border-border/40 px-4 py-3 bg-muted/10">
                   <ul className="flex flex-col gap-2">
                     {objectives.map((obj, i) => (
                       <li key={i} className="flex items-start gap-2 text-xs text-foreground">
@@ -715,7 +727,7 @@ const ProposalCardsCarousel = ({
           containScroll: "trimSnaps",
         }}
       >
-        <CarouselContent className="ml-0 items-stretch gap-5 [backface-visibility:hidden] [will-change:transform]">
+        <CarouselContent className="ml-0 items-start gap-5 [backface-visibility:hidden] [will-change:transform]">
           {proposals.map((proposal) => (
             <CarouselItem
               key={proposal.id}
@@ -773,7 +785,7 @@ const FreelancerProposalCarouselDots = ({ count, activeIndex, onSelect }) => {
               "h-2.5 rounded-full transition-all duration-200",
               isActive
                 ? "w-7 bg-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.32)]"
-                : "w-2.5 bg-white/[0.14] hover:bg-white/[0.28]",
+                : "w-2.5 bg-primary/20 hover:bg-primary/40 dark:bg-white/15 dark:hover:bg-white/30",
             )}
           />
         );
@@ -1019,7 +1031,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
         return;
       }
 
-      if (p.status === "pending" || p.status === "received") {
+      if (p.status === "pending" || p.status === "received" || p.status === "accepted") {
         groups.pending.push(p);
       }
     });

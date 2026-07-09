@@ -148,7 +148,8 @@ const ProposalDetailsDialog = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pr-10 sm:justify-end sm:pr-12">
-                {!activeProposal?.requiresPayment && (normalizedStatus === "draft" || normalizedStatus === "open") ? (
+                {!activeProposal?.requiresPayment &&
+                ["draft", "open", "pending", "received", "sent"].includes(normalizedStatus) ? (
                   <div className="flex items-center gap-2 mr-2 sm:mr-4">
                     <span className="text-xs font-medium text-muted-foreground">
                       Show on Marketplace

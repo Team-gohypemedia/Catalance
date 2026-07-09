@@ -8,6 +8,7 @@ import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import Send from "lucide-react/dist/esm/icons/send";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -94,9 +95,13 @@ const ProposalRowCard = ({
   onOpen,
   onPay,
   onSend,
+  onAcceptApplication,
+  onRejectApplication,
   onViewFreelancers,
   isPaying,
   isSending,
+  isAccepting,
+  isRejecting,
 }) => {
   const details = extractProposalDetails(proposal);
   const agencyServiceEntries = proposal?.isAgency
@@ -104,13 +109,16 @@ const ProposalRowCard = ({
     : [];
   const showAgencyServiceBreakdown = agencyServiceEntries.length > 0;
   const isDraft = proposal.status === "draft";
+  const isMarketplaceApplication = Boolean(proposal.isMarketplaceApplication);
   const canIncreaseBudget =
     Boolean(onIncreaseBudget) && Boolean(proposal?.canIncreaseBudget);
   const canSendToFreelancers =
     Boolean(onSend) &&
     !proposal.requiresPayment &&
+    !isMarketplaceApplication &&
     (isDraft || proposal.status === "pending" || proposal.status === "sent");
-  const showPrimaryAction = canSendToFreelancers || Boolean(proposal.requiresPayment && onPay);
+  const canAcceptApplication = Boolean(onAcceptApplication) && isMarketplaceApplication;
+  const showPrimaryAction = canSendToFreelancers || canAcceptApplication || Boolean(proposal.requiresPayment && onPay);
   const businessName = resolveProposalBusinessName(proposal);
   const displayBusinessName = businessName ? toDisplayTitleCase(businessName) : "";
   const projectName = resolveProposalProjectName(proposal);
@@ -132,18 +140,22 @@ const ProposalRowCard = ({
     : getFirstNonEmptyText(proposal.rejectionReason);
   const showRejectionReason = proposal.status === "rejected" && Boolean(rejectionReasonText);
   const recipientCount = freelancerRecipients.length;
-  const primaryActionLabel = canSendToFreelancers
-    ? canIncreaseBudget
-      ? "Increase Budget"
-      : isSending
-        ? "Sending..."
-        : "Send Proposal"
-    : proposal.requiresPayment && onPay
-      ? isPaying
-        ? "Processing..."
-        : "Approve & Pay"
-      : "";
-  const showRecipientSection = isDraft || recipientCount > 0;
+  const primaryActionLabel = canAcceptApplication
+    ? isAccepting
+      ? "Accepting..."
+      : "Accept Application"
+    : canSendToFreelancers
+      ? canIncreaseBudget
+        ? "Increase Budget"
+        : isSending
+          ? "Sending..."
+          : "Send Proposal"
+      : proposal.requiresPayment && onPay
+        ? isPaying
+          ? "Processing..."
+          : "Approve & Pay"
+        : "";
+  const showRecipientSection = isDraft || isMarketplaceApplication || recipientCount > 0;
 
   const [overviewExpanded, setOverviewExpanded] = useState(false);
   const [objectivesExpanded, setObjectivesExpanded] = useState(false);
@@ -346,7 +358,7 @@ const ProposalRowCard = ({
             <div className="mt-4 rounded-[14px] border border-border/70 bg-background/35 p-3">
               <div className="mb-2 flex items-start justify-between gap-2">
                 <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">
-                  Proposal Sent To
+                  {isMarketplaceApplication ? "Applicant" : "Proposal Sent To"}
                 </p>
                 {canViewFreelancerDetails ? (
                   <button
@@ -370,6 +382,7 @@ const ProposalRowCard = ({
                   avatarClassName="h-9 w-9"
                   stackClassName="-space-x-2.5"
                   maxVisible={4}
+                  onClick={() => onViewFreelancers?.(proposal)}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -382,43 +395,88 @@ const ProposalRowCard = ({
           {/* Action Buttons */}
           <div className="mt-5 flex items-center gap-3 w-full">
             {showPrimaryAction ? (
-              <div className="grid grid-cols-2 gap-3 w-full">
-                <button
-                  type="button"
-                  onClick={() => onOpen?.(proposal)}
-                  className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors cursor-pointer border border-transparent"
-                >
-                  <Eye className="size-4 text-muted-foreground" />
-                  <span>View Details</span>
-                </button>
+              <div className={cn("w-full flex flex-col gap-2.5", !canAcceptApplication && "grid grid-cols-2 gap-3")}>
+                {canAcceptApplication ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                      <button
+                        type="button"
+                        onClick={() => onOpen?.(proposal)}
+                        className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors cursor-pointer border border-transparent"
+                      >
+                        <Eye className="size-4 text-muted-foreground" />
+                        <span>View Details</span>
+                      </button>
 
-                <button
-                  type="button"
-                  disabled={isSending || isPaying}
-                  onClick={() => {
-                    if (canSendToFreelancers) {
-                      if (canIncreaseBudget) {
-                        onIncreaseBudget?.(proposal);
-                        return;
-                      }
+                      <button
+                        type="button"
+                        disabled={isRejecting}
+                        onClick={() => onRejectApplication?.(proposal)}
+                        className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/20 hover:bg-rose-100 dark:hover:bg-rose-900/30 text-xs font-bold text-rose-600 dark:text-rose-400 transition-colors cursor-pointer border border-transparent"
+                      >
+                        {isRejecting ? (
+                          <Loader size="sm" className="mr-2" />
+                        ) : (
+                          <XCircle className="size-3.5" />
+                        )}
+                        <span>Reject</span>
+                      </button>
+                    </div>
 
-                      onSend?.(proposal);
-                      return;
-                    }
+                    <button
+                      type="button"
+                      disabled={isAccepting}
+                      onClick={() => onAcceptApplication?.(proposal)}
+                      className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors cursor-pointer"
+                    >
+                      {isAccepting ? (
+                        <Loader size="sm" className="mr-2" />
+                      ) : (
+                        <CheckCircle2 className="size-3.5" />
+                      )}
+                      <span>Accept Application</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onOpen?.(proposal)}
+                      className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors cursor-pointer border border-transparent"
+                    >
+                      <Eye className="size-4 text-muted-foreground" />
+                      <span>View Details</span>
+                    </button>
 
-                    if (proposal.requiresPayment && onPay) {
-                      onPay(proposal);
-                    }
-                  }}
-                  className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors cursor-pointer"
-                >
-                  {isSending || isPaying ? (
-                    <Loader size="sm" className="mr-2" />
-                  ) : (
-                    <Send className="size-3.5" />
-                  )}
-                  <span>{primaryActionLabel}</span>
-                </button>
+                    <button
+                      type="button"
+                      disabled={isSending || isPaying || isAccepting}
+                      onClick={() => {
+                        if (canSendToFreelancers) {
+                          if (canIncreaseBudget) {
+                            onIncreaseBudget?.(proposal);
+                            return;
+                          }
+
+                          onSend?.(proposal);
+                          return;
+                        }
+
+                        if (proposal.requiresPayment && onPay) {
+                          onPay(proposal);
+                        }
+                      }}
+                      className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors cursor-pointer"
+                    >
+                      {isSending || isPaying || isAccepting ? (
+                        <Loader size="sm" className="mr-2" />
+                      ) : (
+                        <Send className="size-3.5" />
+                      )}
+                      <span>{primaryActionLabel}</span>
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               <button

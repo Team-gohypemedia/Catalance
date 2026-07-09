@@ -4066,6 +4066,7 @@ export const sanitizeUser = (user) => {
     profileDetails: resolvedProfileDetails,
     skills: mergedSkills.length ? mergedSkills : fallbackSkills,
     avatar: freelancerAvatar,
+    coverImage: resolvedFreelancerProfile.coverImage || resolvedProfileDetails?.identity?.coverImage || null,
     isVerified: Boolean(resolvedFreelancerProfile.isVerified),
     location: identityLocation || null,
     jobTitle: identityJobTitle || null,

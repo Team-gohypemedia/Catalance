@@ -274,10 +274,7 @@ export const NotificationProvider = ({ children }) => {
       toast(newNotification.title, {
         id: newNotification.id,
         description: newNotification.message,
-        action: destinationUrl ? {
-          label: "View",
-          onClick: () => navigate(destinationUrl)
-        } : undefined,
+        onClick: destinationUrl ? () => navigate(destinationUrl) : undefined,
       });
     }
   }, [navigate, activeAudience]);

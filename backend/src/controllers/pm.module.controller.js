@@ -1667,6 +1667,43 @@ export const createPmMeeting = asyncHandler(async (req, res) => {
       )
   );
 
+  try {
+    const serviceKey = getCanonicalProjectChatServiceKey(meeting.project);
+    let conversation = await prisma.chatConversation.findFirst({
+      where: { service: serviceKey },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    if (!conversation) {
+      conversation = await prisma.chatConversation.create({
+        data: {
+          service: serviceKey,
+          projectTitle: meeting.project.title,
+          createdById: userId,
+        },
+      });
+    }
+
+    const messageContent = `[System] A new meeting "${title}" has been scheduled for ${startsAt.toLocaleString()}.`;
+    await prisma.chatMessage.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: userId,
+        senderRole: PM_ROLE,
+        senderName: "Project Manager",
+        role: "user",
+        content: messageContent,
+      },
+    });
+
+    await prisma.chatConversation.update({
+      where: { id: conversation.id },
+      data: { updatedAt: new Date() },
+    });
+  } catch (err) {
+    console.error("Failed to send meeting system message:", err);
+  }
+
   res.status(201).json({
     data: serializeMeeting(meeting),
     message: "Meeting scheduled successfully.",

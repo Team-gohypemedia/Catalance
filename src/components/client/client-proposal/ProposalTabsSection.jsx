@@ -21,6 +21,7 @@ const proposalTypeConfig = [
 const statusTabConfig = [
   { value: "draft", label: "Draft Proposals" },
   { value: "pending", label: "Pending Approval" },
+  { value: "applications", label: "Marketplace Proposals" },
   { value: "rejected", label: "Rejected Proposals" },
 ];
 
@@ -28,6 +29,7 @@ const statusFilterConfig = [
   { value: "all", label: "All Proposals" },
   { value: "draft", label: "Draft Proposals" },
   { value: "pending", label: "Pending Approval" },
+  { value: "applications", label: "Marketplace Proposals" },
   { value: "rejected", label: "Rejected Proposals" },
 ];
 
@@ -36,8 +38,8 @@ const segmentedControlClassName =
 
 const buildProposalBucketsByType = (grouped = {}) => {
   const buckets = {
-    freelancer: { draft: [], pending: [], rejected: [] },
-    agency: { draft: [], pending: [], rejected: [] },
+    freelancer: { draft: [], pending: [], applications: [], rejected: [] },
+    agency: { draft: [], pending: [], applications: [], rejected: [] },
   };
 
   statusTabConfig.forEach(({ value }) => {
@@ -56,6 +58,8 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
     isLoading,
     processingPaymentProposalId,
     sendingProposalId,
+    acceptingProposalId,
+    rejectingProposalId,
   } = proposalState;
   const {
     handleApproveAndPay,
@@ -64,6 +68,8 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
     handleOpenFreelancerDetails,
     handleOpenProposal,
     openFreelancerSelection,
+    handleAcceptApplication,
+    handleRejectApplication,
   } = actions;
   const [activeType, setActiveType] = useState("freelancer");
   const [activeStatusFilter, setActiveStatusFilter] = useState("all");
@@ -187,6 +193,22 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
       );
     }
 
+    if (tabValue === "applications") {
+      return (
+        <ProposalCardsCarousel
+          title={title}
+          proposals={items}
+          onOpen={handleOpenProposal}
+          onDelete={handleDelete}
+          onAcceptApplication={handleAcceptApplication}
+          onRejectApplication={handleRejectApplication}
+          onViewFreelancers={handleOpenFreelancerDetails}
+          acceptingProposalId={acceptingProposalId}
+          rejectingProposalId={rejectingProposalId}
+        />
+      );
+    }
+
     return (
       <ProposalCardsCarousel
         title={title}
@@ -272,6 +294,7 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
                       let Icon = ListFilter;
                       if (item.value === "draft") Icon = FileText;
                       else if (item.value === "pending") Icon = History;
+                      else if (item.value === "applications") Icon = Check;
                       else if (item.value === "rejected") Icon = XCircle;
                       
                       // Custom styles for icons
@@ -320,9 +343,10 @@ const ProposalTabsSection = ({ proposalState, actions }) => {
           // Since the user wants to see the sections, let's render them with titles.
           const items = scopedGrouped[status.value] || [];
           
-          // Let's only render empty state for "draft". For pending and rejected, hide the section if empty so it doesn't look too cluttered.
-          // Unless isLoading is true, then render skeletons everywhere.
-          if (!isLoading && items.length === 0 && status.value !== "draft") {
+          // Let's only render empty state for "draft" when viewing "All Proposals". 
+          // For pending, applications, and rejected, hide the section if empty so it doesn't look too cluttered in the "All" view.
+          // However, if the user explicitly filters by a status, show its empty state.
+          if (!isLoading && items.length === 0 && status.value !== "draft" && activeStatusFilter === "all") {
             return null;
           }
 

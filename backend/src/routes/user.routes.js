@@ -8,11 +8,13 @@ import {
 import {
   createUserHandler,
   getUsers,
-  deleteMeHandler
+  deleteMeHandler,
+  getUserByIdHandler
 } from "../controllers/user.controller.js";
 
 export const userRouter = Router();
 
 userRouter.get("/", validateResource(listUsersSchema), getUsers);
+userRouter.get("/:id", getUserByIdHandler);
 userRouter.post("/", validateResource(createUserSchema), createUserHandler);
 userRouter.delete("/me", requireAuth, deleteMeHandler);

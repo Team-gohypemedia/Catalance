@@ -122,6 +122,8 @@ export const ClientProposalDataProvider = ({ children }) => {
   const [processingPaymentProposalId, setProcessingPaymentProposalId] =
     useState(null);
   const [sendingProposalId, setSendingProposalId] = useState(null);
+  const [acceptingProposalId, setAcceptingProposalId] = useState(null);
+  const [rejectingProposalId, setRejectingProposalId] = useState(null);
   const [sendingFreelancerId, setSendingFreelancerId] = useState(null);
   const [unsendingProposalId, setUnsendingProposalId] = useState(null);
   const [hasHandledDeepLink, setHasHandledDeepLink] = useState(false);
@@ -1234,6 +1236,78 @@ export const ClientProposalDataProvider = ({ children }) => {
     [activeProposal?.id, authFetch, fetchProposals],
   );
 
+  const handleAcceptApplication = useCallback(
+    async (proposal) => {
+      if (!proposal?.id) {
+        toast.error("Invalid proposal reference.");
+        return;
+      }
+      
+      setAcceptingProposalId(proposal.id);
+      try {
+        const response = await authFetch(`/proposals/${proposal.id}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "ACCEPTED" }),
+        });
+        
+        const payload = await response.json().catch(() => null);
+        
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to accept application.");
+        }
+        
+        if (proposal.projectId) {
+          await authFetch(`/projects/${proposal.projectId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "AWAITING_PAYMENT" }),
+          });
+        }
+        
+        toast.success("Freelancer application accepted!");
+        await fetchProposals();
+      } catch (error) {
+        toast.error(error?.message || "Unable to accept application right now.");
+      } finally {
+        setAcceptingProposalId(null);
+      }
+    },
+    [authFetch, fetchProposals]
+  );
+
+  const handleRejectApplication = useCallback(
+    async (proposal) => {
+      if (!proposal?.id) {
+        toast.error("Invalid proposal reference.");
+        return;
+      }
+      
+      setRejectingProposalId(proposal.id);
+      try {
+        const response = await authFetch(`/proposals/${proposal.id}/status`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "REJECTED" }),
+        });
+        
+        const payload = await response.json().catch(() => null);
+        
+        if (!response.ok) {
+          throw new Error(payload?.message || "Failed to reject application.");
+        }
+        
+        toast.success("Freelancer application rejected.");
+        await fetchProposals();
+      } catch (error) {
+        toast.error(error?.message || "Unable to reject application right now.");
+      } finally {
+        setRejectingProposalId(null);
+      }
+    },
+    [authFetch, fetchProposals]
+  );
+
   const handleApproveAndPay = useCallback(
     async (proposal) => {
       if (!proposal?.projectId) {
@@ -1941,7 +2015,7 @@ export const ClientProposalDataProvider = ({ children }) => {
 
     const draftIndexes = new Map();
     const pendingIndexes = new Map();
-    const groupedBuckets = { draft: [], pending: [], rejected: [] };
+    const groupedBuckets = { draft: [], pending: [], applications: [], rejected: [] };
 
     const pushDraftOnce = (proposal, options = {}) => {
       const draftKey = getProposalDraftGroupKey(proposal);
@@ -2031,6 +2105,14 @@ export const ClientProposalDataProvider = ({ children }) => {
         return;
       }
 
+      if (proposal.status === "pending" && proposal.coverLetter === "Applied from the marketplace.") {
+        groupedBuckets.applications.push({
+          ...proposal,
+          isMarketplaceApplication: true,
+        });
+        return;
+      }
+
       if (proposal.status === "rejected") {
         if (!shouldHideRejectedProposal(proposal)) {
           groupedBuckets.rejected.push(proposal);
@@ -2053,6 +2135,9 @@ export const ClientProposalDataProvider = ({ children }) => {
       pending: (groupedBuckets.pending || []).map((proposal) => ({
         ...proposal,
         canIncreaseBudget: isProposalEligibleForBudgetIncrease(proposal, proposals),
+      })),
+      applications: (groupedBuckets.applications || []).map((proposal) => ({
+        ...proposal,
       })),
       rejected: (groupedBuckets.rejected || []).map((proposal) => ({
         ...proposal,
@@ -2089,9 +2174,12 @@ export const ClientProposalDataProvider = ({ children }) => {
   }, [selectedProposalForSend]);
 
   const projectRequiredSkills = useMemo(() => {
-    if (!showFreelancerSelect) return [];
-    return extractProjectRequiredSkills(proposalForFreelancerSelection || {});
-  }, [proposalForFreelancerSelection, showFreelancerSelect]);
+    const targetProposal = showFreelancerSelect 
+      ? proposalForFreelancerSelection 
+      : freelancerDetailsProposal;
+    if (!targetProposal) return [];
+    return extractProjectRequiredSkills(targetProposal || {});
+  }, [proposalForFreelancerSelection, freelancerDetailsProposal, showFreelancerSelect]);
 
   const rankedSuggestedFreelancers = useMemo(() => {
     if (!showFreelancerSelect) return [];
@@ -2264,7 +2352,7 @@ export const ClientProposalDataProvider = ({ children }) => {
       return "pending";
     };
 
-    const validTabs = new Set(["draft", "pending", "rejected"]);
+    const validTabs = new Set(["draft", "pending", "applications", "rejected"]);
 
     if (deepLinkDraftId || (!deepLinkProjectId && deepLinkAction === "send")) {
       const targetDraft =
@@ -2376,10 +2464,36 @@ export const ClientProposalDataProvider = ({ children }) => {
     if (!open) setFreelancerDetailsProposal(null);
   }, []);
 
-  const handleViewFreelancerProfile = useCallback((freelancer) => {
+  const handleViewFreelancerProfile = useCallback(async (freelancer) => {
     setViewingFreelancer(freelancer);
     setShowFreelancerProfile(true);
-  }, []);
+
+    const targetFreelancerId = freelancer?.freelancerId || freelancer?.id || freelancer?.freelancer?.id;
+
+    // Enrich with AI match data if available
+    const matchedAiData = suggestedFreelancers?.find(
+      m => (m.freelancerId || m.id) === targetFreelancerId
+    );
+    
+    // Merge the AI data first so it's instantly available
+    if (matchedAiData) {
+      const normalizedMatch = normalizeFreelancerCardData(matchedAiData);
+      setViewingFreelancer(prev => ({ ...normalizedMatch, ...prev, ...freelancer }));
+    }
+
+    if (targetFreelancerId) {
+      try {
+        const res = await authFetch(`/users/${targetFreelancerId}`);
+        if (res.ok) {
+          const payload = await res.json();
+          const data = payload?.data || payload;
+          setViewingFreelancer((prev) => ({ ...prev, ...data, id: targetFreelancerId, freelancerId: targetFreelancerId }));
+        }
+      } catch (err) {
+        console.error("Failed to fetch freelancer details", err);
+      }
+    }
+  }, [authFetch, suggestedFreelancers]);
 
   const handleFreelancerProfileOpenChange = useCallback((open) => {
     setShowFreelancerProfile(open);
@@ -2426,6 +2540,8 @@ export const ClientProposalDataProvider = ({ children }) => {
       canOpenFreelancerSelectionForActiveProposal,
       processingPaymentProposalId,
       sendingProposalId,
+      acceptingProposalId,
+      rejectingProposalId,
     }),
     [
       activeProposal,
@@ -2441,6 +2557,8 @@ export const ClientProposalDataProvider = ({ children }) => {
       processingPaymentProposalId,
       proposals,
       sendingProposalId,
+      acceptingProposalId,
+      rejectingProposalId,
     ],
   );
 
@@ -2505,6 +2623,8 @@ export const ClientProposalDataProvider = ({ children }) => {
       handleOpenFreelancerDetails,
       handleUnsendProposalFromFreelancer,
       handleApproveAndPay,
+      handleAcceptApplication,
+      handleRejectApplication,
       handleOpenProposal,
       handleEditableProposalDraftChange,
       handleDynamicFieldChange,
@@ -2522,6 +2642,8 @@ export const ClientProposalDataProvider = ({ children }) => {
     [
       budgetDialogActions,
       handleApproveAndPay,
+      handleAcceptApplication,
+      handleRejectApplication,
       handleCancelProposalEditing,
       handleDelete,
       handleEditableProposalDraftChange,

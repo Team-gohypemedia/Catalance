@@ -400,15 +400,22 @@ const formatProjectBudget = (project = {}) => {
   return "Budget on request";
 };
 
-const resolveProjectCardCta = (project = {}) =>
-  project?.hasSubmittedProposal
-    ? {
-        label: "View Details",
-        to: `/freelancer/project/${project.id}`,
-      }
-    : {
-        label: "Accept Project",
-      };
+const resolveProjectCardCta = (project = {}) => {
+  if (project?.hasSubmittedProposal) {
+    return {
+      label: "View Application",
+      to: `/freelancer/project/${project.id}`,
+    };
+  }
+  if (project?.proposalStatus === "REJECTED") {
+    return {
+      label: "Apply Again",
+    };
+  }
+  return {
+    label: "Apply for Project",
+  };
+};
 
 const formatProjectDate = (value) => {
   if (!value) return "";
@@ -437,9 +444,15 @@ const MarketplaceProjectCard = ({ item, onViewDetails, onAcceptProject }) => {
           <div className="w-full min-w-0 flex-1 flex flex-col">
             {/* Top: Status + Date */}
             <div className="flex items-center justify-between">
-              <div className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
-                {item?.hasSubmittedProposal ? "Applied" : "Open"}
-              </div>
+              {item?.proposalStatus === "REJECTED" ? (
+                <div className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                  Rejected
+                </div>
+              ) : (
+                <div className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
+                  {item?.hasSubmittedProposal ? "Applied" : "Open"}
+                </div>
+              )}
               <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
                 {dateStr}
               </span>
@@ -499,32 +512,45 @@ const MarketplaceProjectCard = ({ item, onViewDetails, onAcceptProject }) => {
             ) : null}
 
             {/* Action Buttons */}
-            <div className="mt-5 grid grid-cols-2 gap-3 w-full">
-              <button
-                type="button"
-                onClick={() => onViewDetails?.(item)}
-                className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors border border-transparent cursor-pointer"
-              >
-                <Eye className="size-4 text-muted-foreground" />
-                <span>View Details</span>
-              </button>
-              {cta.to ? (
-                <Link
-                  to={cta.to}
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors"
-                >
-                  <Send className="size-3.5" />
-                  <span>{cta.label}</span>
-                </Link>
-              ) : (
+            <div className="mt-5 w-full">
+              {item?.hasSubmittedProposal ? (
                 <button
                   type="button"
-                  onClick={() => onAcceptProject?.(item)}
-                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold text-white dark:text-[#141414] transition-colors cursor-pointer"
+                  onClick={() => onViewDetails?.(item)}
+                  className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors border border-transparent cursor-pointer"
                 >
-                  <Check className="size-4" />
-                  <span>{cta.label}</span>
+                  <Eye className="size-4 text-muted-foreground" />
+                  <span>View Details</span>
                 </button>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 w-full">
+                  <button
+                    type="button"
+                    onClick={() => onViewDetails?.(item)}
+                    className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors border border-transparent cursor-pointer"
+                  >
+                    <Eye className="size-4 text-muted-foreground" />
+                    <span>View Details</span>
+                  </button>
+                  {cta.to ? (
+                    <Link
+                      to={cta.to}
+                      className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold !text-white transition-colors"
+                    >
+                      <Send className="size-3.5 !text-white" />
+                      <span className="!text-white">{cta.label}</span>
+                    </Link>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onAcceptProject?.(item)}
+                      className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold !text-white transition-colors cursor-pointer"
+                    >
+                      <Check className="size-4 !text-white" />
+                      <span className="!text-white">{cta.label}</span>
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -932,41 +958,34 @@ const Marketplace = () => {
     try {
       setProjectLoading(true);
       
-      // Create an accepted proposal for this freelancer
+      // Create a pending proposal for this freelancer
       const res = await authFetch("/proposals", {
         method: "POST",
         body: JSON.stringify({
           projectId,
-          status: "ACCEPTED",
+          status: "PENDING",
           amount: acceptProjectConfirm.budget || 0,
-          coverLetter: "Instantly accepted project from the marketplace.",
+          coverLetter: "Applied from the marketplace.",
         }),
       });
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Failed to accept project");
+        throw new Error(err.message || "Failed to apply for project");
       }
 
-      // Now that the freelancer is the accepted freelancer, they have permission to make the project active
-      const updateRes = await authFetch(`/projects/${projectId}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          status: "AWAITING_PAYMENT",
-        }),
-      });
-
-      if (!updateRes.ok) {
-        const err = await updateRes.json().catch(() => ({}));
-        console.warn("Could not mark project as ACTIVE, but proposal was accepted.", err);
-      }
-
-      toast.success("Project accepted successfully! It is now in your active projects.");
+      toast.success("Project application submitted! The client has been notified.");
       setAcceptProjectConfirm(null);
       if (selectedProjectDetail) setSelectedProjectDetail(null);
       
-      // Redirect to the projects list dashboard
-      navigate(`/freelancer/project`);
+      // Update local state to show applied
+      setProjectData((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? { ...p, hasSubmittedProposal: true, proposalStatus: "PENDING" }
+            : p
+        )
+      );
     } catch (error) {
       console.error("[Marketplace] Error accepting project:", error);
       toast.error(error.message || "Something went wrong while accepting the project.");
@@ -2101,7 +2120,7 @@ const Marketplace = () => {
       </div>
 
       <AnimatePresence>
-        {(shouldRenderFreelancerResults || (isProjectsView && category !== "all")) && (
+        {(shouldRenderFreelancerResults || isProjectsView) && (
           <motion.div
             key="results-panel"
             id="specialists-section"
@@ -2127,18 +2146,20 @@ const Marketplace = () => {
                   )}
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedSubCategoryId(null);
-                  setSelectedToolId(null);
-                  navigate(buildMarketplaceHref("all"), { replace: false });
-                }}
-                className="group inline-flex items-center gap-2.5 rounded-full border border-primary/10 bg-white/60 px-5 py-2.5 text-[13px] font-bold text-muted-foreground shadow-sm backdrop-blur-md transition-all hover:border-primary/40 hover:bg-white hover:text-primary dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]"
-              >
-                <X className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
-                Clear filter
-              </button>
+              {category !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedSubCategoryId(null);
+                    setSelectedToolId(null);
+                    navigate(buildMarketplaceHref("all"), { replace: false });
+                  }}
+                  className="group inline-flex items-center gap-2.5 rounded-full border border-primary/10 bg-white/60 px-5 py-2.5 text-[13px] font-bold text-muted-foreground shadow-sm backdrop-blur-md transition-all hover:border-primary/40 hover:bg-white hover:text-primary dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]"
+                >
+                  <X className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
+                  Clear filter
+                </button>
+              )}
             </div>
 
             {/* Subcategory row - Commented out as requested */}
@@ -2972,9 +2993,15 @@ const Marketplace = () => {
                   <DialogTitle className="text-xl font-bold tracking-tight text-foreground truncate max-w-[400px]">
                     {selectedProjectDetail.title || "Untitled project"}
                   </DialogTitle>
-                  <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
-                    {selectedProjectDetail.hasSubmittedProposal ? "Applied" : "Open"}
-                  </div>
+                  {selectedProjectDetail.proposalStatus === "REJECTED" ? (
+                    <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                      Rejected
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
+                      {selectedProjectDetail.hasSubmittedProposal ? "Applied" : "Open"}
+                    </div>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -3077,7 +3104,13 @@ const Marketplace = () => {
                         <div className="space-y-4 pt-4 border-t border-border/40">
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Current Status</p>
-                            <p className="text-sm font-medium text-foreground">{selectedProjectDetail.hasSubmittedProposal ? "Applied" : "Open"}</p>
+                            <p className="text-sm font-medium text-foreground">
+                              {selectedProjectDetail.proposalStatus === "REJECTED"
+                                ? "Rejected"
+                                : selectedProjectDetail.hasSubmittedProposal
+                                ? "Applied"
+                                : "Open"}
+                            </p>
                           </div>
                           <div>
                             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Launch Timeline</p>
@@ -3092,7 +3125,6 @@ const Marketplace = () => {
                     </div>
                   </div>
                 </section>
-
               </div>
               
               {/* Footer */}
@@ -3103,19 +3135,19 @@ const Marketplace = () => {
                 {resolveProjectCardCta(selectedProjectDetail).to ? (
                   <Link
                     to={resolveProjectCardCta(selectedProjectDetail).to}
-                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold text-white dark:text-[#141414] transition-colors hover:bg-primary/90 shadow-sm"
+                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold !text-white transition-colors hover:bg-primary/90 shadow-sm"
                   >
-                    <Send className="size-4" />
-                    <span>{resolveProjectCardCta(selectedProjectDetail).label}</span>
+                    <Send className="size-4 !text-white" />
+                    <span className="!text-white">{resolveProjectCardCta(selectedProjectDetail).label}</span>
                   </Link>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setAcceptProjectConfirm(selectedProjectDetail)}
-                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold text-white dark:text-[#141414] transition-colors hover:bg-primary/90 shadow-sm cursor-pointer"
+                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold !text-white transition-colors hover:bg-primary/90 shadow-sm cursor-pointer"
                   >
-                    <Check className="size-4" />
-                    <span>{resolveProjectCardCta(selectedProjectDetail).label}</span>
+                    <Check className="size-4 !text-white" />
+                    <span className="!text-white">{resolveProjectCardCta(selectedProjectDetail).label}</span>
                   </button>
                 )}
               </div>

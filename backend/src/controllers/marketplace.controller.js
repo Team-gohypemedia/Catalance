@@ -473,7 +473,7 @@ const mapLiveProjectCardPayload = (project = {}) => {
     createdAt: project.createdAt,
     postedAt: project.createdAt,
     status: String(project?.status || "").toUpperCase(),
-    hasSubmittedProposal: Boolean(proposal?.id),
+    hasSubmittedProposal: Boolean(proposal?.id && proposal.status !== "REJECTED" && proposal.status !== "REPLACED"),
     proposalStatus: proposal?.status || null,
     proposalId: proposal?.id || null,
     ownerId: project.ownerId || null,
@@ -2335,8 +2335,6 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
   const baseFiltered = mappedRows.filter((project) => {
     if (selectedServiceKey) {
       if (project.serviceKey !== selectedServiceKey) return false;
-    } else {
-      if (!matchesFreelancerSkillProfile(project, freelancerSkillProfile)) return false;
     }
 
     if (minBudget !== null) {

@@ -87,6 +87,8 @@ const ClientProposalDialogs = ({
         onOpenChange={handleFreelancerDetailsDialogOpenChange}
         onUnsend={handleUnsendProposalFromFreelancer}
         unsendingProposalId={unsendingProposalId}
+        onViewProfile={handleViewFreelancerProfile}
+        projectRequiredSkills={projectRequiredSkills}
       />
 
       <ProposalDetailsDialog

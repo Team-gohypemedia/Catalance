@@ -708,33 +708,34 @@ export const resolveProposalAgencyFlag = (proposal = {}) => {
 };
 
 export const getProposalInvitee = (proposal = {}) => {
-  const normalizedProposal = normalizeProposalRecord(proposal);
+  const normalizedProposal = normalizeProposalRecord(proposal) || {};
   const name =
-    normalizedProposal.recipientName ||
-    normalizedProposal.freelancerName ||
-    normalizedProposal.freelancer?.fullName ||
-    normalizedProposal.freelancer?.name ||
+    normalizedProposal?.recipientName ||
+    normalizedProposal?.freelancerName ||
+    normalizedProposal?.freelancer?.fullName ||
+    normalizedProposal?.freelancer?.name ||
     "";
 
   if (!isAssignedFreelancerName(name)) return null;
 
   const inviteeId =
-    normalizedProposal.freelancerId ||
-    normalizedProposal.recipientId ||
-    normalizedProposal.freelancer?.id ||
+    normalizedProposal?.freelancerId ||
+    normalizedProposal?.recipientId ||
+    normalizedProposal?.freelancer?.id ||
     name.toLowerCase();
 
   return {
     id: String(inviteeId),
     name: String(name).trim(),
-    proposalId: normalizedProposal.id || null,
-    status: normalizeProposalStatus(normalizedProposal.status || "PENDING"),
+    proposalId: normalizedProposal?.id || null,
+    status: normalizeProposalStatus(normalizedProposal?.status || "PENDING"),
     submittedDate: formatProposalDate(
-      normalizedProposal.updatedAt || normalizedProposal.createdAt,
+      normalizedProposal?.updatedAt || normalizedProposal?.createdAt,
     ),
-    avatar: normalizedProposal.avatar || normalizedProposal.freelancer?.avatar || "",
-    rejectionReason: normalizedProposal.rejectionReason || null,
-    rejectionReasonKey: normalizedProposal.rejectionReasonKey || null,
+    avatar: normalizedProposal?.avatar || normalizedProposal?.freelancer?.avatar || "",
+    rejectionReason: normalizedProposal?.rejectionReason || null,
+    rejectionReasonKey: normalizedProposal?.rejectionReasonKey || null,
+    freelancer: normalizedProposal?.freelancer || normalizedProposal?.user || normalizedProposal,
   };
 };
 
@@ -1555,6 +1556,7 @@ export const mapApiProposal = (proposal) => {
       normalizedProposal.summary ||
       normalizedProposal.project?.description ||
       "",
+    coverLetter: normalizedProposal.coverLetter || "",
     budget:
       normalizedProposal.budget ||
       normalizedProposal.amount ||
@@ -1630,6 +1632,7 @@ export const mapLocalDraftProposal = (proposal) => {
     avatar: normalizedProposal.avatar || "",
     summary: normalizedProposal.summary || normalizedProposal.content || "",
     content: normalizedProposal.summary || normalizedProposal.content || "",
+    coverLetter: normalizedProposal.coverLetter || "",
     budget: normalizedProposal.budget || "",
     timeline: normalizedProposal.timeline || "",
     projectStatus: normalizedProposal.syncedProjectId ? "DRAFT" : "LOCAL_DRAFT",
