@@ -587,6 +587,7 @@ const Proposals = memo(function Proposals({
   const [freelancerFetchError, setFreelancerFetchError] = useState("");
   const [sendingProposalId, setSendingProposalId] = useState(null);
   const [sendingFreelancerId, setSendingFreelancerId] = useState(null);
+  const [sessionInvitedFreelancerIds, setSessionInvitedFreelancerIds] = useState([]);
   const [freelancerSearch, setFreelancerSearch] = useState("");
   const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
   const [viewingFreelancer, setViewingFreelancer] = useState(null);
@@ -715,6 +716,7 @@ const Proposals = memo(function Proposals({
     if (hasAutoOpenedProposalIntentRef.current) return;
 
     hasAutoOpenedProposalIntentRef.current = true;
+    setSessionInvitedFreelancerIds([]);
     setSelectedDraftForSend(activeSavedDraft);
     setShowFreelancerSelect(true);
 
@@ -844,6 +846,7 @@ const Proposals = memo(function Proposals({
       setIsFreelancerAiLoading(false);
       setFreelancerFetchStatus("idle");
       setFreelancerFetchError("");
+      setSessionInvitedFreelancerIds([]);
       setSelectedDraftForSend(null);
     }
   }, [showFreelancerSelect]);
@@ -899,6 +902,7 @@ const Proposals = memo(function Proposals({
         serviceEntries: buildDraftServiceEntries(proposal),
         onSend: () => {
           setActiveDraftId(proposal.id);
+          setSessionInvitedFreelancerIds([]);
           setSelectedDraftForSend(proposal);
           setShowFreelancerSelect(true);
         },
@@ -1095,10 +1099,7 @@ const Proposals = memo(function Proposals({
         if (!project?.id) {
           throw new Error("Could not resolve project for this proposal.");
         }
-
-        const normalizedProjectStatus = String(
-          project.status || "OPEN",
-        ).toUpperCase();
+        const normalizedProjectStatus = String(project.status || "OPEN").toUpperCase();
         const syncedAt = new Date().toISOString();
 
         const proposalRes = await authFetch("/proposals", {
@@ -1134,11 +1135,16 @@ const Proposals = memo(function Proposals({
               }
             : current,
         );
+        setSessionInvitedFreelancerIds((current) => {
+          const nextId = String(freelancer.id);
+          return current.includes(nextId) ? current : [...current, nextId];
+        });
         setSavedDrafts((current) =>
           current.filter((entry) => entry?.id !== proposal.id),
         );
         setActiveDraftId((current) => (current === proposal.id ? null : current));
-        await refreshDashboardData?.({ silent: true });
+
+        void refreshDashboardData?.({ silent: true });
 
         toast.success(`Proposal sent to ${freelancer.fullName || "freelancer"}!`);
         return true;
@@ -1205,13 +1211,17 @@ const Proposals = memo(function Proposals({
         if (String(proposal?.projectId) !== String(sourceProjectId)) return;
         const status = String(proposal?.status || "").toLowerCase();
         if (proposal?.freelancerId && PROPOSAL_BLOCKED_STATUSES.has(status)) {
-          alreadyInvitedIds.add(proposal.freelancerId);
+          alreadyInvitedIds.add(String(proposal.freelancerId));
         }
       });
     }
 
+    sessionInvitedFreelancerIds.forEach((freelancerId) => {
+      alreadyInvitedIds.add(String(freelancerId));
+    });
+
     const available = suggestedFreelancers.filter((freelancer) => {
-      if (alreadyInvitedIds.has(freelancer.id)) return false;
+      if (alreadyInvitedIds.has(String(freelancer.id))) return false;
       if (!isFreelancerOpenToWork(freelancer)) return false;
       return true;
     });
@@ -1221,7 +1231,12 @@ const Proposals = memo(function Proposals({
       invitedCount: alreadyInvitedIds.size,
       available,
     };
-  }, [proposalForFreelancerSelection, proposals, suggestedFreelancers]);
+  }, [
+    proposalForFreelancerSelection,
+    proposals,
+    sessionInvitedFreelancerIds,
+    suggestedFreelancers,
+  ]);
 
   const filteredFreelancers = useMemo(() => {
     const query = String(freelancerSearch || "").trim().toLowerCase();

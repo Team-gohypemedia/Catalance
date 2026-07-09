@@ -584,8 +584,7 @@ export const createProposal = asyncHandler(async (req, res) => {
   if (isClientSendingToFreelancer) {
     // Client is sending a proposal TO a freelancer - notify the freelancer
     console.log(`[Proposal] Client sending to freelancer - notifying freelancer: ${freelancerId}`);
-    try {
-      await sendNotificationToUser(freelancerId, {
+    void sendNotificationToUser(freelancerId, {
         audience: "freelancer",
         type: "proposal",
         title: "New Proposal Received",
@@ -594,16 +593,17 @@ export const createProposal = asyncHandler(async (req, res) => {
           projectId: projectId,
           proposalId: proposal.id 
         }
+      })
+      .then(() => {
+        console.log(`[Proposal] Notification sent successfully to freelancer: ${freelancerId}`);
+      })
+      .catch((error) => {
+        console.error("Failed to send proposal notification to freelancer:", error);
       });
-      console.log(`[Proposal] Notification sent successfully to freelancer: ${freelancerId}`);
-    } catch (error) {
-      console.error("Failed to send proposal notification to freelancer:", error);
-    }
   } else if (isFreelancerSendingToClient) {
     // Freelancer is sending a proposal TO a client's project - notify the client (owner)
     console.log(`[Proposal] Freelancer sending to client - notifying owner: ${project.ownerId}`);
-    try {
-      sendNotificationToUser(project.ownerId, {
+    void sendNotificationToUser(project.ownerId, {
         audience: "client",
         type: "proposal",
         title: "New Proposal Application",
@@ -612,10 +612,10 @@ export const createProposal = asyncHandler(async (req, res) => {
           projectId: projectId,
           proposalId: proposal.id 
         }
+      })
+      .catch((error) => {
+        console.error("Failed to send proposal notification to owner:", error);
       });
-    } catch (error) {
-      console.error("Failed to send proposal notification to owner:", error);
-    }
   } else {
     console.log(`[Proposal] Skipping notification - sender is recipient or unknown scenario`);
   }

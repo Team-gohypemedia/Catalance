@@ -336,7 +336,7 @@ export const ClientProposalDataProvider = ({ children }) => {
     [authFetch, buildDraftProjectMatchKey, user?.id],
   );
 
-  const fetchProposals = useCallback(async () => {
+  const fetchProposals = useCallback(async ({ suppressToast = false } = {}) => {
     const { proposals: initialLocalSavedProposals } = loadSavedProposalsFromStorage(user?.id);
 
     try {
@@ -347,6 +347,7 @@ export const ClientProposalDataProvider = ({ children }) => {
             "Cache-Control": "no-cache",
             Pragma: "no-cache",
           },
+          suppressToast,
         }),
         authFetch("/projects", {
           cache: "no-store",
@@ -1791,6 +1792,8 @@ export const ClientProposalDataProvider = ({ children }) => {
           project.id,
           String(project.status || "OPEN").toUpperCase(),
         );
+        const normalizedProjectStatus = String(project.status || "OPEN").toUpperCase();
+        const syncedAt = new Date().toISOString();
 
         const proposalRes = await authFetch("/proposals", {
           method: "POST",
@@ -1808,9 +1811,77 @@ export const ClientProposalDataProvider = ({ children }) => {
           throw new Error(proposalPayload?.message || "Failed to send proposal.");
         }
 
+        const optimisticProposal = proposalPayload?.data?.id
+          ? mapApiProposal({
+              ...(proposalPayload?.data || {}),
+              projectId: project.id,
+              freelancerId: freelancer.id,
+              amount: normalizedBudget,
+              timeline: proposal.timeline || "1 month",
+              summary: proposal.summary || proposal.content || "",
+              content: proposal.content || proposal.summary || "",
+              serviceKey: proposal.serviceKey || resolveProposalServiceLabel(proposal),
+              serviceType:
+                proposal.serviceType ||
+                proposal.service ||
+                resolveProposalServiceLabel(proposal),
+              proposalContext: projectProposalContext || proposal.proposalContext || null,
+              project: {
+                ...(proposalPayload?.data?.project && typeof proposalPayload.data.project === "object"
+                  ? proposalPayload.data.project
+                  : {}),
+                id: project.id,
+                title: resolveProposalTitle(proposal),
+                description: proposal.summary || proposal.content || "",
+                budget: normalizedBudget,
+                timeline: proposal.timeline || "1 month",
+                status: String(project.status || "OPEN").toUpperCase(),
+                serviceKey: proposal.serviceKey || resolveProposalServiceLabel(proposal),
+                serviceType:
+                  proposal.serviceType ||
+                  proposal.service ||
+                  resolveProposalServiceLabel(proposal),
+              },
+              freelancer: {
+                ...(proposalPayload?.data?.freelancer && typeof proposalPayload.data.freelancer === "object"
+                  ? proposalPayload.data.freelancer
+                  : {}),
+                id: freelancer.id,
+                fullName: freelancer.fullName || freelancer.name || "Freelancer",
+                avatar: freelancer.avatar || "",
+              },
+            })
+          : null;
+
         deleteLocalDraftProposal(proposal.id, user?.id);
-        setProposals((current) =>
-          current.filter((entry) => entry.id !== proposal.id),
+        setProposals((current) => {
+          const next = current.filter((entry) => entry.id !== proposal.id);
+          return optimisticProposal ? [optimisticProposal, ...next] : next;
+        });
+        setSelectedProposalForSend((current) =>
+          current?.id === proposal.id
+            ? {
+                ...current,
+                projectId: project.id,
+                syncedProjectId: project.id,
+                projectStatus: normalizedProjectStatus,
+                syncedAt,
+                project: {
+                  ...(current.project && typeof current.project === "object"
+                    ? current.project
+                    : {}),
+                  id: project.id,
+                  status: normalizedProjectStatus,
+                  title: resolveProposalTitle(proposal),
+                  description: proposal.summary || proposal.content || "",
+                  budget: normalizedBudget,
+                  timeline: proposal.timeline || "1 month",
+                },
+              }
+            : current,
+        );
+        setActiveProposal((current) =>
+          current?.id === proposal.id && optimisticProposal ? optimisticProposal : current,
         );
 
         toast.success(
@@ -1819,7 +1890,7 @@ export const ClientProposalDataProvider = ({ children }) => {
             : `Proposal sent to ${freelancer.fullName || "freelancer"}!`,
         );
 
-        await fetchProposals();
+        void fetchProposals({ suppressToast: true });
         return true;
       } catch (error) {
         console.error("Failed to send proposal:", error);

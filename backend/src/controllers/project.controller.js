@@ -427,6 +427,95 @@ const hasMeaningfulValue = (value) => {
   return String(value).trim().length > 0;
 };
 
+const sortComparableValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => sortComparableValue(entry));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.keys(value)
+      .sort()
+      .reduce((acc, key) => {
+        acc[key] = sortComparableValue(value[key]);
+        return acc;
+      }, {});
+  }
+
+  return value;
+};
+
+const areComparableValuesEqual = (left, right) =>
+  JSON.stringify(sortComparableValue(left)) === JSON.stringify(sortComparableValue(right));
+
+const normalizeComparableProjectFieldValue = (key, value) => {
+  if (key === "budget") {
+    return normalizeBudget(value);
+  }
+
+  if (
+    PROJECT_PROPOSAL_TEXT_FIELD_SET.has(key)
+    || ["title", "description", "proposalContent", "serviceKey", "serviceType"].includes(key)
+  ) {
+    return normalizeProjectProposalText(value);
+  }
+
+  if (PROJECT_PROPOSAL_LIST_FIELD_SET.has(key)) {
+    return normalizeProjectProposalList(value);
+  }
+
+  return value ?? null;
+};
+
+const hasNormalizedProjectFieldChange = ({ existing = null, updates = {}, key }) => {
+  if (!hasOwnField(updates, key)) {
+    return false;
+  }
+
+  const nextValue = normalizeComparableProjectFieldValue(key, updates[key]);
+  const currentValue = normalizeComparableProjectFieldValue(key, existing?.[key]);
+  return !areComparableValuesEqual(nextValue, currentValue);
+};
+
+const hasProjectProposalPayloadChanges = ({ existing = null, updates = {} } = {}) => {
+  const hasProposalInputs =
+    hasOwnField(updates, "description")
+    || hasOwnField(updates, "proposalContent")
+    || hasOwnField(updates, "serviceKey")
+    || hasOwnField(updates, "proposalContext")
+    || PROJECT_PROPOSAL_FIELD_KEYS.some((field) => hasOwnField(updates, field));
+
+  if (!hasProposalInputs) {
+    return false;
+  }
+
+  const currentProposalData = buildProjectProposalData(
+    {},
+    { fallback: existing, preserveFallback: true },
+  );
+  const nextProposalData = buildProjectProposalData(
+    updates,
+    { fallback: existing, preserveFallback: true },
+  );
+  const nextAgencyFlag = resolveProjectAgencyProposalFlag({
+    payload: updates,
+    fallback: existing,
+  });
+
+  const proposalFieldsChanged = PROJECT_PROPOSAL_FIELD_KEYS.some((field) => {
+    const currentValue = normalizeComparableProjectFieldValue(
+      field,
+      currentProposalData[field],
+    );
+    const nextValue = normalizeComparableProjectFieldValue(
+      field,
+      nextProposalData[field],
+    );
+    return !areComparableValuesEqual(nextValue, currentValue);
+  });
+
+  return proposalFieldsChanged || nextAgencyFlag !== Boolean(existing?.isAgencyProposal);
+};
+
 const buildProjectFreelancerMatchingContext = ({
   input = {},
   proposalData = null,
@@ -543,19 +632,8 @@ const buildProjectSopGenerationContext = ({
 
 const shouldRegenerateProjectSop = ({
   existing = null,
-  updates = {},
-  shouldRefreshProposalFields = false,
+  hasRelevantProjectChanges = false,
 } = {}) => {
-  const hasRelevantProjectChanges =
-    shouldRefreshProposalFields ||
-    hasOwnField(updates, "title") ||
-    hasOwnField(updates, "description") ||
-    hasOwnField(updates, "serviceType") ||
-    hasOwnField(updates, "serviceKey") ||
-    hasOwnField(updates, "service") ||
-    hasOwnField(updates, "serviceName") ||
-    hasOwnField(updates, "category");
-
   if (!hasRelevantProjectChanges) {
     return false;
   }
@@ -1328,24 +1406,41 @@ export const updateProject = asyncHandler(async (req, res) => {
       }
     }
 
-    const shouldRefreshProposalFields =
-      hasOwnField(updates, "description")
-      || hasOwnField(updates, "proposalContent")
-      || hasOwnField(updates, "serviceKey")
-      || hasOwnField(updates, "proposalContext")
-      || PROJECT_PROPOSAL_FIELD_KEYS.some((field) => hasOwnField(updates, field));
+    const shouldRefreshProposalFields = hasProjectProposalPayloadChanges({
+      existing,
+      updates,
+    });
+
+    const nextProjectStatus = String(
+      sanitizedUpdates.status || existing.status || "DRAFT"
+    ).toUpperCase();
+    const shouldGenerateFreelancerMatchingForPublish =
+      nextProjectStatus !== "DRAFT" && !hasMeaningfulValue(existing?.freelancerMatchingJson);
+    const shouldGenerateProjectSopForPublish =
+      nextProjectStatus !== "DRAFT" && !hasMeaningfulValue(existing?.customSop);
 
     const shouldRefreshFreelancerMatching =
       shouldRefreshProposalFields
-      || hasOwnField(updates, "title")
-      || hasOwnField(updates, "budget");
+      || hasNormalizedProjectFieldChange({ existing, updates, key: "title" })
+      || hasNormalizedProjectFieldChange({ existing, updates, key: "budget" })
+      || shouldGenerateFreelancerMatchingForPublish;
+    const hasRelevantProjectSopChanges =
+      shouldRefreshProposalFields
+      || hasNormalizedProjectFieldChange({ existing, updates, key: "title" })
+      || hasNormalizedProjectFieldChange({ existing, updates, key: "description" })
+      || hasNormalizedProjectFieldChange({ existing, updates, key: "serviceType" })
+      || hasNormalizedProjectFieldChange({ existing, updates, key: "serviceKey" })
+      || hasOwnField(updates, "service")
+      || hasOwnField(updates, "serviceName")
+      || hasOwnField(updates, "category");
     const shouldRefreshProjectSop = shouldRegenerateProjectSop({
       existing,
-      updates,
-      shouldRefreshProposalFields,
+      hasRelevantProjectChanges:
+        hasRelevantProjectSopChanges || shouldGenerateProjectSopForPublish,
     });
 
-    const resolvedProposalStructure = shouldRefreshProposalFields
+    const resolvedProposalStructure =
+      shouldRefreshProposalFields || shouldRefreshProjectSop
       ? await resolveProjectProposalStructure({
         input: updates,
         fallback: existing,
@@ -1374,9 +1469,6 @@ export const updateProject = asyncHandler(async (req, res) => {
       });
     }
 
-    const nextProjectStatus = String(
-      sanitizedUpdates.status || existing.status || "DRAFT"
-    ).toUpperCase();
     const hasActiveAssignedManager =
       existing.manager?.role === "PROJECT_MANAGER" &&
       existing.manager?.status === "ACTIVE";
