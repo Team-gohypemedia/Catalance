@@ -664,9 +664,17 @@ export const useNotifications = () => {
   const context = useContext(NotificationContext);
 
   if (!context) {
-    throw new Error(
-      "useNotifications must be used within a NotificationProvider",
-    );
+    console.warn("useNotifications was called outside a NotificationProvider. Returning fallback notifications.");
+    return {
+      notifications: [],
+      unreadCount: 0,
+      markAsRead: () => {},
+      markAllAsRead: () => {},
+      removeNotification: () => {},
+      clearNotifications: () => {},
+      socket: null,
+      loading: false,
+    };
   }
 
   return context;
