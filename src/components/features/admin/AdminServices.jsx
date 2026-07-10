@@ -35,7 +35,8 @@ const EMPTY_FORM = {
     internalProposalStructure: "",
     proposalPrompt: "",
     minBudget: 0,
-    currency: "INR"
+    currency: "INR",
+    serviceToolsText: ""
 };
 
 const CORE_PREFIX = [
@@ -82,6 +83,24 @@ const DynamicIcon = ({ name, className }) => {
 
 const cleanLine = (value = "") => String(value ?? "").replace(/\s+/g, " ").trim();
 const cleanBlock = (value = "") => String(value ?? "").replace(/\r/g, "").trim();
+const normalizeServiceToolNames = (value = []) => {
+    const source = Array.isArray(value)
+        ? value
+        : String(value ?? "").split(/[,\n]/);
+    const seen = new Set();
+
+    return source.reduce((accumulator, entry) => {
+        const normalizedValue = cleanLine(typeof entry === "string" ? entry : entry?.name || entry?.label || "");
+        if (!normalizedValue) return accumulator;
+
+        const dedupKey = normalizedValue.toLowerCase();
+        if (seen.has(dedupKey)) return accumulator;
+
+        seen.add(dedupKey);
+        accumulator.push(normalizedValue);
+        return accumulator;
+    }, []);
+};
 const normalizeType = (value = "") => ["list", "array", "bullets", "bullet_list"].includes(String(value || "").trim().toLowerCase()) ? "list" : "text";
 const formatLabelFromKey = (value = "") => String(value || "").replace(/[_-]+/g, " ").trim().split(/\s+/).filter(Boolean).map((part) => part[0].toUpperCase() + part.slice(1)).join(" ");
 const fieldKey = (value = "") => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
@@ -424,6 +443,8 @@ const AdminServices = () => {
     const serviceCards = useMemo(
         () => services.map((service) => ({
             ...service,
+            serviceToolLabels: normalizeServiceToolNames(service.serviceTools),
+            serviceToolCount: normalizeServiceToolNames(service.serviceTools).length,
             hasCustomProposalStructure: Boolean(cleanBlock(service.proposalStructure)),
             hasCustomAgencyProposalStructure: Boolean(cleanBlock(service.agencyProposalStructure)),
             hasCustomInternalProposalStructure: Boolean(cleanBlock(service.internalProposalStructure)),
@@ -449,7 +470,7 @@ const AdminServices = () => {
         const query = serviceSearch.trim().toLowerCase();
 
         return serviceCards.filter((service) => {
-            const matchesQuery = !query || [service.name, service.id, service.description]
+            const matchesQuery = !query || [service.name, service.id, service.description, ...(Array.isArray(service.serviceToolLabels) ? service.serviceToolLabels : [])]
                 .filter(Boolean)
                 .some((value) => String(value).toLowerCase().includes(query));
             if (!matchesQuery) return false;
@@ -563,7 +584,8 @@ const AdminServices = () => {
             internalProposalStructure: service.internalProposalStructure || "",
             proposalPrompt: service.proposalPrompt || "",
             minBudget: service.minBudget || 0,
-            currency: service.currency || "INR"
+            currency: service.currency || "INR",
+            serviceToolsText: normalizeServiceToolNames(service.serviceTools).join("\n")
         } : { ...EMPTY_FORM };
         const hasCustomProposal = Boolean(cleanBlock(nextForm.proposalStructure));
         const hasCustomAgency = Boolean(cleanBlock(nextForm.agencyProposalStructure));
@@ -725,7 +747,8 @@ const AdminServices = () => {
             proposalStructure,
             agencyProposalStructure,
             internalProposalStructure,
-            minBudget: Number(formData.minBudget) || 0
+            minBudget: Number(formData.minBudget) || 0,
+            serviceTools: normalizeServiceToolNames(formData.serviceToolsText)
         };
         try {
             const response = await authFetch("/admin/services", {
@@ -961,6 +984,38 @@ const AdminServices = () => {
                                         </div>
                                     </div>
 
+                                    <div className="rounded-2xl border border-border bg-muted/30 p-3.5">
+                                        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                                            <div>
+                                                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary/70">Service Tools</p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {service.serviceToolCount > 0
+                                                        ? `${service.serviceToolCount} admin-managed tools are available in onboarding`
+                                                        : "No service-specific tools configured yet"}
+                                                </p>
+                                            </div>
+                                            <Badge variant={service.serviceToolCount > 0 ? "secondary" : "outline"} className="rounded-full">
+                                                {service.serviceToolCount} tools
+                                            </Badge>
+                                        </div>
+                                        {service.serviceToolLabels.length > 0 ? (
+                                            <div className="flex flex-wrap gap-2">
+                                                {service.serviceToolLabels.slice(0, 6).map((label) => (
+                                                    <Badge key={`${service.id}-tool-${label}`} variant="outline" className="rounded-full">
+                                                        {label}
+                                                    </Badge>
+                                                ))}
+                                                {service.serviceToolLabels.length > 6 ? (
+                                                    <Badge variant="outline" className="rounded-full">+{service.serviceToolLabels.length - 6} more</Badge>
+                                                ) : null}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">
+                                                Add a tool list in the service editor to ask freelancers which stack they use for this service.
+                                            </p>
+                                        )}
+                                    </div>
+
                                     <div className="space-y-3">
                                         <div className="rounded-2xl border border-border bg-muted/30 p-3.5">
                                             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -1157,6 +1212,19 @@ const AdminServices = () => {
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="service-tools">Service Tools</Label>
+                                                <Textarea
+                                                    id="service-tools"
+                                                    value={formData.serviceToolsText}
+                                                    onChange={(event) => setFormData((current) => ({ ...current, serviceToolsText: event.target.value }))}
+                                                    className="min-h-[128px] resize-y"
+                                                    placeholder={"One tool per line or comma-separated.\n\nExamples:\nFigma\nAdobe Illustrator\nPhotoshop"}
+                                                />
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    These tools appear in freelancer onboarding for this service and on the freelancer service profile.
+                                                </p>
                                             </div>
                                         </CardContent>
                                     </Card>

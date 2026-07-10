@@ -425,6 +425,9 @@ const ProfileSkillsCard = ({
           (typeof getServiceLabel === "function" && getServiceLabel(serviceKey)) ||
           String(serviceKey || "").trim();
         const directTags = normalizeTags([
+          ...(Array.isArray(serviceDetail.serviceTools)
+            ? serviceDetail.serviceTools
+            : []),
           ...(Array.isArray(serviceDetail.skillsAndTechnologies)
             ? serviceDetail.skillsAndTechnologies
             : []),

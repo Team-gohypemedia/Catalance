@@ -153,6 +153,8 @@ const createInitialServiceProfileForm = (serviceKey = "") => {
     serviceKey: String(serviceKey || "").trim(),
     title: "",
     subcategories: [],
+    serviceToolIds: [],
+    serviceTools: [],
     skillsAndTechnologies: [],
     experience: "",
     description: "",
@@ -2165,6 +2167,9 @@ const FreelancerProfile = () => {
       ...(Array.isArray(normalizedDraft.skillsAndTechnologies)
         ? normalizedDraft.skillsAndTechnologies
         : []),
+      ...(Array.isArray(normalizedDraft.serviceTools)
+        ? normalizedDraft.serviceTools
+        : []),
       ...parseDelimitedValues(serviceSkillInput),
     ]);
     const nextServiceKeywords = normalizeServiceSkillTags(
@@ -2325,6 +2330,12 @@ const FreelancerProfile = () => {
       pricingUnit: String(normalizedDraft.pricingUnit || "").trim(),
       pricingQuantity: Number(normalizedDraft.pricingQuantity || 1),
       coverImage: nextCoverImage,
+      serviceToolIds: Array.isArray(normalizedDraft.serviceToolIds)
+        ? normalizedDraft.serviceToolIds
+        : [],
+      serviceTools: Array.isArray(normalizedDraft.serviceTools)
+        ? normalizedDraft.serviceTools
+        : [],
       skillsAndTechnologies: nextServiceSkillTags,
       keywords: nextServiceKeywords,
       mediaFiles: nextServiceMediaFiles,

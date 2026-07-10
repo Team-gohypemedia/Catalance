@@ -326,6 +326,8 @@ export const createEmptyServiceDraft = ({
     serviceId: toPositiveInteger(serviceId),
     title: "",
     subcategories: [],
+    serviceToolIds: [],
+    serviceTools: [],
     skillsAndTechnologies: [],
     experience: "",
 
@@ -379,6 +381,12 @@ export const normalizeServiceDraft = (
     serviceId: toPositiveInteger(source.serviceId ?? fallback.serviceId),
     title: toDraftText(source.title),
     subcategories: normalizedSubcategories,
+    serviceToolIds: normalizeIntegerArray(
+      source.serviceToolIds || source.selectedServiceToolIds,
+    ),
+    serviceTools: normalizeStringArray(
+      source.serviceTools || source.selectedServiceTools,
+    ),
     skillsAndTechnologies: normalizeStringArray(source.skillsAndTechnologies),
     experience: toOptionalString(source.experience || source.experienceYears || source.customFields?.serviceInfo?.experience),
 
@@ -598,12 +606,26 @@ export const getActiveSubcategoryEntry = (draft = {}) => {
 export const deriveDraftSkillsAndTechnologies = (
   draft = {},
   toolOptionsByCategory = {},
+  serviceToolOptions = [],
 ) => {
   const normalizedDraft = normalizeServiceDraft(draft, {
     serviceKey: draft?.serviceKey,
     serviceId: draft?.serviceId,
   });
   const toolNameById = new Map();
+  const serviceToolNameById = new Map(
+    (Array.isArray(serviceToolOptions) ? serviceToolOptions : [])
+      .map((option) => {
+        const toolId = toPositiveInteger(option?.id);
+        const toolName = String(option?.name || option?.label || "").trim();
+        if (!toolId || !toolName) {
+          return null;
+        }
+
+        return [toolId, toolName];
+      })
+      .filter(Boolean),
+  );
 
   Object.values(toolOptionsByCategory || {}).forEach((options) => {
     (Array.isArray(options) ? options : []).forEach((option) => {
@@ -617,6 +639,17 @@ export const deriveDraftSkillsAndTechnologies = (
 
   const derivedSkills = [];
   let hasUnresolvedToolSelection = false;
+
+  normalizedDraft.serviceToolIds.forEach((toolId) => {
+    const toolName = serviceToolNameById.get(toolId);
+    if (toolName) {
+      derivedSkills.push(toolName);
+    } else {
+      hasUnresolvedToolSelection = true;
+    }
+  });
+
+  derivedSkills.push(...normalizedDraft.serviceTools);
 
   normalizedDraft.subcategories.forEach((subcategory) => {
     subcategory.selectedToolIds.forEach((toolId) => {
@@ -681,6 +714,8 @@ export const serializeServiceDraft = ({
     serviceId: toPositiveInteger(normalizedDraft.serviceId ?? serviceId),
     title: toOptionalString(normalizedDraft.title),
     subcategories: normalizeSubcategories(normalizedDraft.subcategories),
+    serviceToolIds: normalizeIntegerArray(normalizedDraft.serviceToolIds),
+    serviceTools: normalizeStringArray(normalizedDraft.serviceTools),
     skillsAndTechnologies: normalizeStringArray(
       normalizedDraft.skillsAndTechnologies,
     ),
@@ -758,8 +793,15 @@ const hasServiceInfoSkillSelection = (normalizedDraft) => {
     normalizedDraft.skillsAndTechnologies.some(
       (value) => String(value || "").trim().length > 0,
     );
+  const hasSelectedServiceTools =
+    (Array.isArray(normalizedDraft?.serviceToolIds) &&
+      normalizedDraft.serviceToolIds.length > 0) ||
+    (Array.isArray(normalizedDraft?.serviceTools) &&
+      normalizedDraft.serviceTools.some(
+        (value) => String(value || "").trim().length > 0,
+      ));
 
-  return hasSubcategorySkillSelection || hasLegacySkills;
+  return hasSubcategorySkillSelection || hasLegacySkills || hasSelectedServiceTools;
 };
 
 const buildServiceInfoValidationErrors = (normalizedDraft, fields = []) => {

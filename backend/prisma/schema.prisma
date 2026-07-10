@@ -675,6 +675,7 @@ model Service {
   currency  String @default("INR")
 
   questions ServiceQuestion[]
+  tools     ServiceTool[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -710,6 +711,20 @@ model ServiceQuestion {
   updatedAt DateTime @updatedAt
 
   @@unique([serviceId, slug])
+}
+
+model ServiceTool {
+  id        Int      @id @default(autoincrement())
+  serviceId String   @map("service_id")
+  name      String
+  sortOrder Int      @default(0) @map("sort_order")
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([serviceId, name])
+  @@index([serviceId, sortOrder])
+  @@map("service_tools")
 }
 
 model MarketplaceFilterService {

@@ -741,6 +741,11 @@ const FreelancerServiceReviewSlide = ({
     [keywordTags, technologyTags],
   );
 
+  const serviceTools = useMemo(
+    () => normalizeStringArray(serviceDraft?.serviceTools),
+    [serviceDraft?.serviceTools],
+  );
+
   const fetchCaseStudyPreview = useCallback(
     async (projectUrl) => {
       const normalizedUrl = normalizeProjectLinkValue(projectUrl);
@@ -1145,7 +1150,7 @@ const FreelancerServiceReviewSlide = ({
                 </div>
 
                 {/* Skills */}
-                <div className="p-5">
+                <div className="border-b border-border p-5">
                   <p className={CARD_LABEL_CLASS}>Skills</p>
                   <div className="mt-3">
                     {skillsBySubCategory.length > 0 ? (
@@ -1164,7 +1169,25 @@ const FreelancerServiceReviewSlide = ({
                       </div>
                     ) : (
                       <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
-                        No tools/skills added.
+                        No skills added.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Service Tools */}
+                <div className="p-5">
+                  <p className={CARD_LABEL_CLASS}>Service Tools</p>
+                  <div className="mt-3">
+                    {serviceTools.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {serviceTools.map((tool) => (
+                          <PreviewTag key={tool} label={tool} variant="compact" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border bg-muted/40 px-3 py-2.5 text-xs text-muted-foreground/60">
+                        No tools added.
                       </div>
                     )}
                   </div>

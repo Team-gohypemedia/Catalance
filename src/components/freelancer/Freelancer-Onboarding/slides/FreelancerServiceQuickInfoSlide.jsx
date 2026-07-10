@@ -21,6 +21,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import { cn } from "@/shared/lib/utils";
@@ -620,6 +633,10 @@ const FreelancerServiceQuickInfoSlide = ({
   const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
   const [isToolsLoading, setIsToolsLoading] = useState(false);
   const [toolFetchError, setToolFetchError] = useState("");
+  const [serviceToolOptions, setServiceToolOptions] = useState([]);
+  const [isServiceToolsLoading, setIsServiceToolsLoading] = useState(false);
+  const [serviceToolFetchError, setServiceToolFetchError] = useState("");
+  const [isToolsOpen, setIsToolsOpen] = useState(false);
   const toolOptionsCacheRef = useRef(new Map());
   const toolFetchRequestIdRef = useRef(0);
 
@@ -701,6 +718,23 @@ const FreelancerServiceQuickInfoSlide = ({
     if (requested && normalizedSubcategories.some((entry) => entry.subCategoryKey === requested)) return requested;
     return normalizedSubcategories[0]?.subCategoryKey || "";
   }, [normalizedSubcategories, serviceDraft?.activeSkillCategory]);
+  const selectedServiceToolIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          normalizeStringArray(
+            Array.isArray(serviceDraft?.serviceToolIds) ? serviceDraft.serviceToolIds : [],
+          )
+            .map((value) => toPositiveInteger(value))
+            .filter(Boolean),
+        ),
+      ),
+    [serviceDraft?.serviceToolIds],
+  );
+  const selectedServiceToolIdSet = useMemo(
+    () => new Set(selectedServiceToolIds),
+    [selectedServiceToolIds],
+  );
 
   /* Validation errors */
   const titleError = String(serviceInfoValidationErrors.title || "").trim();
@@ -836,6 +870,110 @@ const FreelancerServiceQuickInfoSlide = ({
     return () => { abortController.abort(); };
   }, [configuredCategoryOptions, selectedCatalogCategoryIds]);
 
+  useEffect(() => {
+    const resolvedServiceKey = resolveServiceKey(
+      dbServices,
+      currentServiceKey || serviceDraft?.serviceKey,
+    );
+    if (!resolvedServiceKey) {
+      setServiceToolOptions([]);
+      setServiceToolFetchError("");
+      setIsServiceToolsLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const fetchServiceTools = async () => {
+      try {
+        setIsServiceToolsLoading(true);
+        setServiceToolFetchError("");
+        const response = await fetch(
+          `${API_BASE_URL}/ai/services/${encodeURIComponent(resolvedServiceKey)}/tools`,
+        );
+        if (!response.ok) throw new Error("Failed to fetch service tools");
+        const payload = await response.json();
+        const nextOptions = (Array.isArray(payload?.data) ? payload.data : [])
+          .map((entry) => ({
+            id: toPositiveInteger(entry?.id),
+            label: String(entry?.name || entry?.label || "").trim(),
+            name: String(entry?.name || entry?.label || "").trim(),
+          }))
+          .filter((entry) => entry.id && entry.label);
+        if (!cancelled) {
+          setServiceToolOptions(nextOptions);
+        }
+      } catch {
+        if (!cancelled) {
+          setServiceToolOptions([]);
+          setServiceToolFetchError("Unable to load service tools right now.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsServiceToolsLoading(false);
+        }
+      }
+    };
+
+    void fetchServiceTools();
+    return () => { cancelled = true; };
+  }, [currentServiceKey, dbServices, serviceDraft?.serviceKey]);
+
+  const syncDerivedSkills = useCallback(
+    (draft = {}) => ({
+      ...draft,
+      skillsAndTechnologies: deriveDraftSkillsAndTechnologies(
+        draft,
+        toolOptionsByCategory,
+        serviceToolOptions,
+      ),
+    }),
+    [serviceToolOptions, toolOptionsByCategory],
+  );
+
+  useEffect(() => {
+    if (!serviceToolOptions.length || !selectedServiceToolIds.length) {
+      return;
+    }
+
+    const serviceToolLabelById = new Map(
+      serviceToolOptions.map((option) => [option.id, option.label]),
+    );
+    const resolvedToolLabels = normalizeStringArray(
+      selectedServiceToolIds
+        .map((toolId) => serviceToolLabelById.get(toolId))
+        .filter(Boolean),
+    );
+    if (!resolvedToolLabels.length) {
+      return;
+    }
+
+    const currentLabelSignature = buildStringSignature(serviceDraft?.serviceTools);
+    const nextLabelSignature = buildStringSignature(resolvedToolLabels);
+    const currentIdSignature = buildIntegerSignature(serviceDraft?.serviceToolIds);
+    const nextIdSignature = buildIntegerSignature(selectedServiceToolIds);
+    if (
+      currentLabelSignature === nextLabelSignature &&
+      currentIdSignature === nextIdSignature
+    ) {
+      return;
+    }
+
+    onUpdateServiceDraft((draft) =>
+      syncDerivedSkills({
+        ...draft,
+        serviceToolIds: selectedServiceToolIds,
+        serviceTools: resolvedToolLabels,
+      }),
+    );
+  }, [
+    onUpdateServiceDraft,
+    selectedServiceToolIds,
+    serviceDraft?.serviceToolIds,
+    serviceDraft?.serviceTools,
+    serviceToolOptions,
+    syncDerivedSkills,
+  ]);
+
   /* ─── Category / Skill handlers ─── */
   const handleSelectedCategoriesChange = (nextValues) => {
     const normalizedNextValues = normalizeStringArray(nextValues);
@@ -863,7 +1001,7 @@ const FreelancerServiceQuickInfoSlide = ({
           customSkillNames: normalizeStringArray(existingEntry?.customSkillNames),
         };
       });
-      return { ...draft, subcategories: nextSubcategories, activeSkillCategory: nextSubcategories.some((e) => e.subCategoryKey === draft?.activeSkillCategory) ? draft.activeSkillCategory : nextSubcategories[0]?.subCategoryKey || null };
+      return syncDerivedSkills({ ...draft, subcategories: nextSubcategories, activeSkillCategory: nextSubcategories.some((e) => e.subCategoryKey === draft?.activeSkillCategory) ? draft.activeSkillCategory : nextSubcategories[0]?.subCategoryKey || null });
     });
   };
 
@@ -882,7 +1020,7 @@ const FreelancerServiceQuickInfoSlide = ({
     );
 
     if (configuredCategoryOptions.length > 0) {
-      onUpdateServiceDraft((draft) => ({
+      onUpdateServiceDraft((draft) => syncDerivedSkills({
         ...draft,
         subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
           (entry) =>
@@ -898,7 +1036,7 @@ const FreelancerServiceQuickInfoSlide = ({
       return;
     }
 
-    onUpdateServiceDraft((draft) => ({
+    onUpdateServiceDraft((draft) => syncDerivedSkills({
       ...draft,
       subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
         (entry) => {
@@ -917,6 +1055,36 @@ const FreelancerServiceQuickInfoSlide = ({
   };
 
   /* ─── Pricing render helpers ─── */
+  const handleServiceToolToggle = (toolOption) => {
+    const toolId = toPositiveInteger(toolOption?.id);
+    const toolLabel = String(toolOption?.label || toolOption?.name || "").trim();
+    if (!toolId || !toolLabel) {
+      return;
+    }
+
+    onUpdateServiceDraft((draft) => {
+      const currentIds = Array.isArray(draft?.serviceToolIds)
+        ? draft.serviceToolIds.map((value) => toPositiveInteger(value)).filter(Boolean)
+        : [];
+      const hasTool = currentIds.includes(toolId);
+      const nextIds = hasTool
+        ? currentIds.filter((value) => value !== toolId)
+        : [...currentIds, toolId];
+      const serviceToolLabelById = new Map(
+        serviceToolOptions.map((option) => [option.id, option.label]),
+      );
+      const nextLabels = normalizeStringArray(
+        nextIds.map((value) => serviceToolLabelById.get(value)).filter(Boolean),
+      );
+
+      return syncDerivedSkills({
+        ...draft,
+        serviceToolIds: nextIds,
+        serviceTools: nextLabels,
+      });
+    });
+  };
+
   const renderInputField = (field, value, error, onChange, { numeric = false } = {}) => (
     <div className="space-y-0">
       <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
@@ -1064,6 +1232,110 @@ const FreelancerServiceQuickInfoSlide = ({
                       toolFetchError={toolFetchError}
                     />
                     {categoryError && <p className="mt-1 text-xs text-destructive">{categoryError}</p>}
+                  </div>
+                )}
+
+                {(isServiceToolsLoading || serviceToolFetchError || serviceToolOptions.length > 0) && (
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "block")}>
+                        Service Tools
+                        <span className="ml-1 text-muted-foreground/60 font-normal">(Optional)</span>
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Choose the tools you actively use for this service.
+                      </p>
+                    </div>
+
+                    {isServiceToolsLoading ? (
+                      <div className="flex flex-wrap gap-2">
+                        {[1, 2, 3, 4].map((item) => (
+                          <div
+                            key={`service-tool-skeleton-${item}`}
+                            className="h-10 w-28 animate-pulse rounded-full border border-border bg-muted/40"
+                          />
+                        ))}
+                      </div>
+                    ) : serviceToolOptions.length > 0 ? (
+                      <div className="space-y-3">
+                        <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className={cn(
+                                "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
+                                isToolsOpen ? "border-primary/50 ring-1 ring-primary/20" : "border-border"
+                              )}
+                            >
+                              <span className="text-muted-foreground">Search and select tools...</span>
+                              <ChevronDown className="h-4 w-4 opacity-50" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search tools..." />
+                              <CommandList>
+                                <CommandEmpty>No tools found.</CommandEmpty>
+                                <CommandGroup>
+                                  {serviceToolOptions.map((toolOption) => {
+                                    const isSelected = selectedServiceToolIdSet.has(toolOption.id);
+                                    return (
+                                      <CommandItem
+                                        key={toolOption.id}
+                                        value={toolOption.label}
+                                        onSelect={() => {
+                                          handleServiceToolToggle(toolOption);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            isSelected ? "opacity-100 text-primary" : "opacity-0"
+                                          )}
+                                        />
+                                        {toolOption.label}
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+
+                        {/* Selected Pills */}
+                        {selectedServiceToolIds.length > 0 && (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {selectedServiceToolIds.map((toolId) => {
+                              const toolOption = serviceToolOptions.find(opt => opt.id === toolId);
+                              if (!toolOption) return null;
+                              return (
+                                <div
+                                  key={toolId}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                >
+                                  <span>{toolOption.label}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleServiceToolToggle(toolOption);
+                                    }}
+                                    className="ml-1 rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+
+                    {serviceToolFetchError ? (
+                      <p className="text-xs text-destructive">{serviceToolFetchError}</p>
+                    ) : null}
                   </div>
                 )}
 

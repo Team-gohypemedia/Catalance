@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  deriveDraftSkillsAndTechnologies,
   getServiceStepValidationErrors,
   getServiceStepValidationMessage,
   normalizeServiceDraft,
@@ -41,6 +42,38 @@ describe("service details normalization", () => {
     expect(legacyServiceComplexityKey in serializedDetail).toBe(false);
     expect(legacyComplexityKey in serializedDetail).toBe(false);
   });
+
+  it("preserves selected service tools in normalized and serialized drafts", () => {
+    const normalizedDraft = normalizeServiceDraft({
+      serviceKey: "web_development",
+      serviceToolIds: [9, 9, "12"],
+      serviceTools: ["Framer", "framer", "Webflow"],
+    });
+    const serializedDetail = serializeServiceDraft({
+      draft: normalizedDraft,
+    });
+
+    expect(normalizedDraft.serviceToolIds).toEqual([9, 12]);
+    expect(normalizedDraft.serviceTools).toEqual(["Framer", "Webflow"]);
+    expect(serializedDetail.serviceToolIds).toEqual([9, 12]);
+    expect(serializedDetail.serviceTools).toEqual(["Framer", "Webflow"]);
+  });
+
+  it("derives skills from selected service tools", () => {
+    expect(
+      deriveDraftSkillsAndTechnologies(
+        {
+          serviceKey: "web_development",
+          serviceToolIds: [11, 12],
+        },
+        {},
+        [
+          { id: 11, label: "Framer" },
+          { id: 12, label: "Webflow" },
+        ],
+      ),
+    ).toEqual(["Framer", "Webflow"]);
+  });
 });
 
 describe("service step validation", () => {
@@ -80,6 +113,29 @@ describe("service step validation", () => {
     ).toBe("");
   });
 
+  it("accepts service info when service-specific tools satisfy the skill requirement", () => {
+    expect(
+      getServiceStepValidationMessage(
+        {
+          serviceKey: "web_development",
+          title: "Website build",
+          experience: "expert",
+          subcategories: [
+            {
+              subCategoryId: 1,
+              subCategoryKey: "catalog:1",
+              label: "Frontend",
+              selectedToolIds: [],
+            },
+          ],
+          serviceToolIds: [11],
+          serviceTools: ["Framer"],
+        },
+        "serviceInfo",
+      ),
+    ).toBe("");
+  });
+
   it("requires pricing details before continuing pricing", () => {
     expect(getServiceStepValidationMessage({}, "servicePricing")).toBe(
       "Please add a service description.",
@@ -100,7 +156,7 @@ describe("service step validation", () => {
     ).toBe("");
   });
 
-  it("accepts pricing without delivery timeline or starting price", () => {
+  it("requires a starting price when the pricing field is enabled", () => {
     expect(
       getServiceStepValidationMessage(
         {
@@ -111,7 +167,7 @@ describe("service step validation", () => {
         },
         "servicePricing",
       ),
-    ).toBe("");
+    ).toBe("Please enter a starting price.");
   });
 
   it("requires media before continuing visuals", () => {

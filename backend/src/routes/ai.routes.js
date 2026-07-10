@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   chatWithAI,
   getServiceInfo,
+  getServiceTools,
   getAllServices,
   generateProposalMarkdown,
   generateProjectSopJson
@@ -110,6 +111,16 @@ aiRouter.get("/services", async (req, res) => {
   } catch (error) {
     console.error("AI Services Error:", error);
     res.status(500).json({ error: "Failed to fetch services" });
+  }
+});
+
+aiRouter.get("/services/:serviceId/tools", async (req, res) => {
+  try {
+    const tools = await getServiceTools(req.params.serviceId);
+    res.json({ success: true, data: tools });
+  } catch (error) {
+    console.error("AI Service Tools Error:", error);
+    res.status(500).json({ error: "Failed to fetch service tools" });
   }
 });
 

@@ -624,6 +624,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     [
       viewingFreelancer?.skills,
       profileDetails?.skills,
+      matchedServiceDetail?.serviceTools,
       matchedServiceDetail?.skillsAndTechnologies,
       matchedFreelancerProject?.serviceSpecializations,
       matchedFreelancerProject?.activeTechnologies,

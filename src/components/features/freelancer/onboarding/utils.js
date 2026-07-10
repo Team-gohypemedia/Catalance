@@ -16,6 +16,8 @@ export const createServiceDetail = () => ({
     workingLevel: "",
     serviceDescription: "",
     coverImage: "",
+    serviceToolIds: [],
+    serviceTools: [],
     skillsAndTechnologies: [],
     platformLinks: {},
     hasPreviousProjects: "",

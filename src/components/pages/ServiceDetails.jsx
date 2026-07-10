@@ -246,6 +246,7 @@ const normalizeSkillCategories = (service = {}, serviceDetails = {}) => {
 
 const normalizeSkills = (serviceDetails = {}, freelancerProfile = {}) =>
   uniqueText([
+    ...flattenTextValues(serviceDetails.serviceTools),
     ...flattenTextValues(serviceDetails.tools),
     ...flattenTextValues(serviceDetails.techStack),
     ...flattenTextValues(serviceDetails.technologies),

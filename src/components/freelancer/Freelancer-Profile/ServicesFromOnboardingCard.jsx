@@ -72,7 +72,7 @@ const DEFAULT_FIELD_PATHS = {
   subcategorySelectedToolIds: ["selectedToolIds"],
   subcategorySelectedSkills: ["selectedSkills", "skills", "customSkillNames"],
 
-  serviceSkillTags: ["skillsAndTechnologies", "caseStudy.techStack"],
+  serviceSkillTags: ["serviceTools", "skillsAndTechnologies", "caseStudy.techStack"],
   serviceSkillGroups: ["groups", "groupOther"],
 
   caseStudies: ["caseStudies"],

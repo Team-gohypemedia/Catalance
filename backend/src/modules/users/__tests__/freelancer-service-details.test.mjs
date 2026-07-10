@@ -34,6 +34,8 @@ test("buildCanonicalProfileDetails normalizes services, prunes stray detail keys
         web_development: {
           title: "Build conversion-focused websites",
           [legacyServiceComplexityKey]: "Legacy",
+          serviceToolIds: [301, 301],
+          serviceTools: ["Framer", "framer", "Webflow"],
           subcategories: [
             {
               subCategoryId: 11,
@@ -109,8 +111,16 @@ test("buildCanonicalProfileDetails normalizes services, prunes stray detail keys
     ],
   );
   assert.deepEqual(
+    canonical.serviceDetails.web_development.serviceToolIds,
+    [301],
+  );
+  assert.deepEqual(
+    canonical.serviceDetails.web_development.serviceTools,
+    ["Framer", "Webflow"],
+  );
+  assert.deepEqual(
     canonical.serviceDetails.web_development.skillsAndTechnologies,
-    ["React", "Astro", "Sanity", "Legacy React"],
+    ["Framer", "Webflow", "React", "Astro", "Sanity", "Legacy React"],
   );
   assert.equal(
     legacyServiceComplexityKey in canonical.serviceDetails.web_development,

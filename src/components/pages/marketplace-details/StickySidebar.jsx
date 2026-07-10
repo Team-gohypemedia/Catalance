@@ -79,6 +79,7 @@ const getServiceLocationLabel = (serviceDetails = {}, freelancer = {}) => {
 
 const getPositiveKeywords = (serviceDetails = {}, freelancer = {}) => {
   const candidates = [
+    ...asArray(serviceDetails.serviceTools),
     ...asArray(serviceDetails.skillsAndTechnologies),
     ...asArray(serviceDetails.techStack),
     ...asArray(serviceDetails.tools),

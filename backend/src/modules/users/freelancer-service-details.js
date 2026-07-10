@@ -146,12 +146,26 @@ const buildToolRowsByIdMap = (toolRows = []) =>
 
 export const deriveServiceSkillLabels = ({
   subcategories = [],
+  serviceToolIds = [],
+  serviceTools = [],
+  serviceToolRowsById = new Map(),
   toolRowsById = new Map(),
   existingSkillsAndTechnologies = [],
 }) => {
   const normalizedSubcategories = normalizeServiceSubcategories(subcategories);
   const resolvedSkillLabels = [];
   let hasUnresolvedToolSelection = false;
+
+  normalizeIntegerArray(serviceToolIds).forEach((toolId) => {
+    const toolRow = serviceToolRowsById.get(toolId);
+    if (toolRow?.name) {
+      resolvedSkillLabels.push(toolRow.name);
+    } else {
+      hasUnresolvedToolSelection = true;
+    }
+  });
+
+  resolvedSkillLabels.push(...normalizeStringArray(serviceTools));
 
   normalizedSubcategories.forEach((subcategory) => {
     subcategory.selectedToolIds.forEach((toolId) => {
@@ -236,6 +250,12 @@ export const normalizeCanonicalServiceDetail = ({
     source.serviceKey || serviceKey,
   );
   const subcategories = normalizeServiceSubcategories(source.subcategories);
+  const serviceToolIds = normalizeIntegerArray(
+    source.serviceToolIds || source.selectedServiceToolIds,
+  );
+  const serviceTools = normalizeStringArray(
+    source.serviceTools || source.selectedServiceTools,
+  );
   const caseStudies = normalizeServiceCaseStudies(
     source.caseStudies,
     source.caseStudy,
@@ -256,7 +276,12 @@ export const normalizeCanonicalServiceDetail = ({
       toPositiveInteger(serviceIdByKey.get(normalizedServiceKey)),
     title: toOptionalString(source.title),
     subcategories,
+    serviceToolIds,
+    serviceTools,
     skillsAndTechnologies: deriveServiceSkillLabels({
+      serviceToolIds,
+      serviceTools,
+      serviceToolRowsById: new Map(),
       subcategories,
       toolRowsById,
       existingSkillsAndTechnologies: source.skillsAndTechnologies,

@@ -105,7 +105,10 @@ const loadServiceCatalogFromDb = async () => {
       include: {
         questions: {
           orderBy: { order: 'asc' }
-        }
+        },
+        tools: {
+          orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        },
       }
     });
 
@@ -131,6 +134,14 @@ const loadServiceCatalogFromDb = async () => {
       min_budget: s.minBudget, // internal logic might use this
       minBudget: s.minBudget,
       currency: s.currency,
+      tools: Array.isArray(s.tools)
+        ? s.tools.map((tool) => ({
+            id: tool.id,
+            name: tool.name,
+            label: tool.name,
+            sortOrder: tool.sortOrder,
+          }))
+        : [],
       questions: s.questions.map(q => ({
         id: q.slug,
         question: q.text,
@@ -4084,6 +4095,56 @@ const cloneProjectSopTemplate = (value) => {
   }
 };
 
+const normalizeServiceLookupKey = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const normalizeServiceLookupCompact = (value = "") =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "");
+
+const matchesServiceLookupValue = (candidate = "", lookup = "") => {
+  if (!candidate || !lookup) return false;
+  if (candidate === lookup) return true;
+  if (candidate.startsWith(`${lookup}_`) || lookup.startsWith(`${candidate}_`)) {
+    return true;
+  }
+
+  const compactCandidate = normalizeServiceLookupCompact(candidate);
+  const compactLookup = normalizeServiceLookupCompact(lookup);
+  if (!compactCandidate || !compactLookup) return false;
+
+  return (
+    compactCandidate === compactLookup ||
+    compactCandidate.startsWith(compactLookup) ||
+    compactLookup.startsWith(compactCandidate)
+  );
+};
+
+const findServiceCatalogEntry = (services = [], serviceId = "") => {
+  const normalizedLookup = normalizeServiceLookupKey(serviceId);
+  if (!normalizedLookup) return null;
+
+  return (Array.isArray(services) ? services : []).find((service) => {
+    const candidateValues = [
+      service?.id,
+      service?.slug,
+      service?.name,
+      getServiceLabel(service),
+    ];
+
+    return candidateValues.some((value) =>
+      matchesServiceLookupValue(normalizeServiceLookupKey(value), normalizedLookup)
+    );
+  }) || null;
+};
+
 const sanitizeProjectSopText = (value = "") =>
   String(value || "")
     .replace(/\s+/g, " ")
@@ -5342,7 +5403,13 @@ export const chatWithAI = async (
 
 export const getServiceInfo = async (serviceId) => {
   await ensureServicesCatalogLoaded();
-  return servicesData.services.find((service) => service.id === serviceId);
+  return findServiceCatalogEntry(servicesData.services, serviceId);
+};
+
+export const getServiceTools = async (serviceId) => {
+  await ensureServicesCatalogLoaded();
+  const service = findServiceCatalogEntry(servicesData.services, serviceId);
+  return Array.isArray(service?.tools) ? service.tools : [];
 };
 
 export const getAllServices = async (options = {}) => {

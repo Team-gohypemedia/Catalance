@@ -1918,12 +1918,48 @@ export const getProjectDetails = asyncHandler(async (req, res) => {
 
 // --- Service Management ---
 
+const normalizeServiceToolNames = (values = []) => {
+  const source = Array.isArray(values)
+    ? values
+    : String(values || "").split(/[,\n]/);
+  const seen = new Set();
+
+  return source.reduce((accumulator, value) => {
+    const normalizedName = String(
+      typeof value === "string" ? value : value?.name || value?.label || ""
+    ).trim();
+    if (!normalizedName) {
+      return accumulator;
+    }
+
+    const dedupKey = normalizedName.toLowerCase();
+    if (seen.has(dedupKey)) {
+      return accumulator;
+    }
+
+    seen.add(dedupKey);
+    accumulator.push(normalizedName);
+    return accumulator;
+  }, []);
+};
+
 export const getServices = asyncHandler(async (req, res) => {
   const services = await prisma.service.findMany({
     include: {
       _count: {
         select: { questions: true }
-      }
+      },
+      tools: {
+        select: {
+          id: true,
+          name: true,
+          sortOrder: true,
+        },
+        orderBy: [
+          { sortOrder: "asc" },
+          { name: "asc" },
+        ],
+      },
     }
   });
 
@@ -1946,7 +1982,15 @@ export const getServices = asyncHandler(async (req, res) => {
     proposalPrompt: s.proposalPrompt,
     minBudget: s.minBudget,
     currency: s.currency,
-    questionCount: s._count.questions
+    questionCount: s._count.questions,
+    serviceTools: Array.isArray(s.tools)
+      ? s.tools.map((tool) => ({
+          id: tool.id,
+          name: tool.name,
+          label: tool.name,
+          sortOrder: tool.sortOrder,
+        }))
+      : [],
   }));
 
   res.json({ data: formatted });
@@ -1966,13 +2010,16 @@ export const upsertService = asyncHandler(async (req, res) => {
     internalProposalStructure,
     proposalPrompt,
     minBudget,
-    currency
+    currency,
+    serviceTools
   } = req.body; // id here is the SLUG
   if (!id || !name) {
     throw new AppError("Service ID (slug) and Name are required", 400);
   }
 
-  await prisma.service.upsert({
+  const normalizedServiceTools = normalizeServiceToolNames(serviceTools);
+
+  const service = await prisma.service.upsert({
     where: { slug: id },
     update: {
       name,
@@ -2004,6 +2051,20 @@ export const upsertService = asyncHandler(async (req, res) => {
       currency: currency || "INR"
     }
   });
+
+  await prisma.serviceTool.deleteMany({
+    where: { serviceId: service.id },
+  });
+
+  if (normalizedServiceTools.length > 0) {
+    await prisma.serviceTool.createMany({
+      data: normalizedServiceTools.map((toolName, index) => ({
+        serviceId: service.id,
+        name: toolName,
+        sortOrder: index,
+      })),
+    });
+  }
 
   // Bust the cached catalog so /ai/services immediately reflects the change
   const { invalidateServicesCatalogCache } = await import(
