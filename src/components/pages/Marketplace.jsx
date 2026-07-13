@@ -1974,13 +1974,19 @@ const Marketplace = () => {
             </p>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
             {featuredTalent.length ? (
               featuredTalent.map((item) => {
                 const price = formatPrice(
                   item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price,
                   item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange
                 );
+                const itemSkills = Array.from(new Set([
+                  ...(Array.isArray(item?.techStack) ? item.techStack : []),
+                  ...(Array.isArray(item?.serviceDetails?.techStack) ? item.serviceDetails.techStack : []),
+                  ...(Array.isArray(item?.serviceDetails?.skillsAndTechnologies) ? item.serviceDetails.skillsAndTechnologies : []),
+                  ...(Array.isArray(item?.serviceDetails?.serviceSpecializations) ? item.serviceDetails.serviceSpecializations : []),
+                ].filter(Boolean))).slice(0, 3);
 
                 return (
                   <Link
@@ -2015,7 +2021,16 @@ const Marketplace = () => {
                         <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground dark:text-white">
                           {item.service || "Untitled service"}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                        {itemSkills.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-1 min-h-[22px]">
+                            {itemSkills.map(skill => (
+                              <span key={skill} className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
                             <Star className="h-3 w-3 fill-primary text-primary" />
                             {Number(item.rating || 0).toFixed(1)}
@@ -2252,7 +2267,7 @@ const Marketplace = () => {
               <AnimatePresence mode="wait">
                 {loading ? (
                   <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3">
                       {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
                         <Card key={`skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
                           <Skeleton className="h-44 w-full rounded-none" />
@@ -2292,13 +2307,19 @@ const Marketplace = () => {
                   </motion.div>
                 ) : (
                   <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                    <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3">
                       {filteredFreelancerData.map((item) => {
                         const image = item.serviceDetails?.coverImage || item.serviceDetails?.image || null;
                         const rating = Number(item.rating || 0);
                         const hasRating = rating > 0;
                         const delivery = item.serviceDetails?.deliveryTime ? deliveryLabels[item.serviceDetails.deliveryTime] || String(item.serviceDetails.deliveryTime).replace(/_/g, " ") : null;
                         const price = formatPrice(item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price, item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange);
+                        const itemSkills = Array.from(new Set([
+                          ...(Array.isArray(item?.techStack) ? item.techStack : []),
+                          ...(Array.isArray(item?.serviceDetails?.techStack) ? item.serviceDetails.techStack : []),
+                          ...(Array.isArray(item?.serviceDetails?.skillsAndTechnologies) ? item.serviceDetails.skillsAndTechnologies : []),
+                          ...(Array.isArray(item?.serviceDetails?.serviceSpecializations) ? item.serviceDetails.serviceSpecializations : []),
+                        ].filter(Boolean))).slice(0, 3);
                         return (
                           <motion.article
                             key={item.id}
@@ -2394,9 +2415,19 @@ const Marketplace = () => {
                                   </div>
 
                                   {/* Row 2: Service title — always 2 lines height */}
-                                  <p className="mb-3 line-clamp-2 min-h-[40px] text-[13px] leading-[1.5] text-gray-600 dark:text-gray-300">
+                                  <p className="mb-2 line-clamp-2 min-h-[40px] text-[13px] leading-[1.5] text-gray-600 dark:text-gray-300">
                                     {item.service || "Untitled service"}
                                   </p>
+
+                                  {itemSkills.length > 0 && (
+                                    <div className="mb-3 flex flex-wrap gap-1.5 min-h-[20px]">
+                                      {itemSkills.map(skill => (
+                                        <span key={skill} className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10">
+                                          {skill}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
 
                                   {/* Row 3: Rating (left) | Delivery time (right) */}
                                   <div className="mt-auto flex items-end justify-between">
