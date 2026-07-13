@@ -2531,7 +2531,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     const loadLiveProjects = async () => {
       if (!authFetch) return;
       try {
-        const response = await authFetch("/marketplace/projects/live?limit=3", {
+        const response = await authFetch("/marketplace/projects/live?limit=50", {
           suppressToast: true,
           skipLogoutOn401: true,
         });
@@ -3990,8 +3990,18 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     ],
     [metrics, navigate, showPendingPaymentsStat],
   );
+  const userServicesRaw = [
+    ...(Array.isArray(effectiveUser?.freelancerProfile?.services) ? effectiveUser.freelancerProfile.services : []),
+    ...(Array.isArray(effectiveUser?.services) ? effectiveUser.services : []),
+  ];
+  const userServices = Array.from(new Set(userServicesRaw)).map((s) => {
+    if (typeof s === 'string') return s;
+    if (s && typeof s === 'object') return s.name || s.title || s.label || String(s);
+    return String(s || "");
+  }).map((s) => String(s).trim()).filter(Boolean);
 
   const dashboardModel = {
+    userServices,
     sessionUser,
     showSuspensionAlert,
     setShowSuspensionAlert,

@@ -320,6 +320,7 @@ const FreelancerDashboard = () => {
                     ) : (
                       <RecommendedProjects
                         liveProjects={model.liveProjects}
+                        userServices={model.userServices}
                       />
                     )}
 
@@ -335,7 +336,7 @@ const FreelancerDashboard = () => {
 
                     {/* Fill empty space with recommended projects if they already have active/pending projects */}
                     {!model.metricsLoading && (hasRunningProjects || model.pendingProposalRows.length > 0) && (
-                      <RecommendedProjects liveProjects={model.liveProjects} />
+                      <RecommendedProjects liveProjects={model.liveProjects} userServices={model.userServices} />
                     )}
                   </div>
 

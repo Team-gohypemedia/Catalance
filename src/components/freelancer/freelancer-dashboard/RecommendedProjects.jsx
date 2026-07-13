@@ -125,19 +125,85 @@ const RecommendedProjectCard = ({ item }) => {
   );
 };
 
-const RecommendedProjects = ({ liveProjects = [], className = "" }) => {
-  // Use live database projects if they exist, otherwise fall back to mock data
-  const projectsToDisplay = Array.isArray(liveProjects) && liveProjects.length > 0
-    ? liveProjects.slice(0, 3)
-    : MOCK_RECOMMENDED_PROJECTS;
+const RecommendedProjects = ({ liveProjects = [], userServices = [], className = "" }) => {
+  const navigate = useNavigate();
+  const filterByServices = (projects) => {
+    if (!userServices || userServices.length === 0) return projects;
+    
+    return projects.filter(p => {
+       const rawService = p.serviceName || p.service || p.category || "";
+       const pService = String(typeof rawService === 'object' ? (rawService.name || rawService.title || rawService.label) : rawService).toLowerCase().trim();
+       if (!pService) return true;
+       
+       return userServices.some(us => {
+          const usStr = String(us || "").toLowerCase().trim();
+          
+          const normalize = (str) => {
+            return str
+              .replace(/[-_&/]/g, ' ')
+              .replace(/\s+/g, ' ')
+              .replace(/website/g, 'web')
+              .replace(/mobile app/g, 'app')
+              .trim();
+          };
+          
+          const nUs = normalize(usStr);
+          const nP = normalize(pService);
+          
+          return nP.includes(nUs) || nUs.includes(nP) || nP === nUs;
+       });
+    });
+  };
+
+  const validLive = filterByServices(Array.isArray(liveProjects) ? liveProjects : []);
+  const validMocks = filterByServices(MOCK_RECOMMENDED_PROJECTS);
+  
+  const projectsToDisplay = validLive.length > 0
+    ? validLive.slice(0, 3)
+    : validMocks.slice(0, 3);
+
+  if (projectsToDisplay.length === 0) {
+    return (
+      <section className={cn("w-full min-w-0", className)}>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
+            Recommended Projects
+          </h2>
+          <button
+            type="button"
+            onClick={() => navigate("/marketplace")}
+            className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)] transition-colors hover:text-[#ffd54f]"
+          >
+            View All
+          </button>
+        </div>
+        <FreelancerDashboardPanel className="flex min-h-[140px] flex-col items-center justify-center p-6 text-center sm:p-8">
+          <div className="flex size-12 items-center justify-center rounded-full bg-black/[0.05] dark:bg-white/[0.06] text-muted-foreground">
+            <Briefcase className="size-6" />
+          </div>
+          <p className="mt-4 text-sm font-semibold dark:text-white text-[#1C1B1F]">No perfect matches right now</p>
+          <p className="mt-2 max-w-[280px] text-xs text-[#8f8f8f]">
+            We're searching for projects that match your exact services. Check back soon!
+          </p>
+        </FreelancerDashboardPanel>
+      </section>
+    );
+  }
 
   return (
     <section className={cn("w-full min-w-0", className)}>
       {/* Outside Heading */}
-      <div className="mb-6">
+      <div className="mb-6 flex items-center justify-between gap-4">
         <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] dark:text-white text-[#1C1B1F]">
           Recommended Projects
         </h2>
+        <button
+          type="button"
+          onClick={() => navigate("/marketplace")}
+          className="ml-auto shrink-0 text-xs font-bold uppercase tracking-[0.18em] text-[var(--primary)] transition-colors hover:text-[#ffd54f]"
+        >
+          View All
+        </button>
       </div>
 
       {/* Grid container for cards */}
