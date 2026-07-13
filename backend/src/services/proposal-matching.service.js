@@ -219,6 +219,14 @@ const TECHNOLOGY_KEYWORD_PATTERNS = Object.freeze([
   { label: "React Native", pattern: /\breact native\b/i },
   { label: "Firebase", pattern: /\bfirebase\b/i },
   { label: "Supabase", pattern: /\bsupabase\b/i },
+  { label: "CapCut", pattern: /\bcapcut\b/i },
+  { label: "Premiere Pro", pattern: /\bpremiere(?:\s*pro)?\b/i },
+  { label: "After Effects", pattern: /\bafter\s*effects\b/i },
+  { label: "Final Cut Pro", pattern: /\bfinal\s*cut(?:\s*pro)?\b/i },
+  { label: "DaVinci Resolve", pattern: /\bdavinci(?:\s*resolve)?\b/i },
+  { label: "Photoshop", pattern: /\bphotoshop\b/i },
+  { label: "Illustrator", pattern: /\billustrator\b/i },
+  { label: "Figma", pattern: /\bfigma\b/i },
 ]);
 
 const isPlainObject = (value) =>
@@ -389,7 +397,30 @@ const resolveAgencyProposalFlag = (source = {}) => {
   return collectAgencyServiceCandidates(source).length > 1;
 };
 
-const inferTechnologySkills = (...values) => {
+let cachedDynamicTools = null;
+let cachedDynamicToolsTime = 0;
+const DYNAMIC_TOOLS_CACHE_TTL = 1000 * 60 * 5; // 5 mins
+
+export const loadDynamicToolsList = async () => {
+  const now = Date.now();
+  if (cachedDynamicTools && now - cachedDynamicToolsTime < DYNAMIC_TOOLS_CACHE_TTL) {
+    return cachedDynamicTools;
+  }
+  
+  try {
+    const serviceTools = await prisma.serviceTool.findMany({ select: { name: true } });
+    const marketplaceTools = await prisma.marketplaceFilterTool.findMany({ select: { name: true } });
+    const allTools = [...serviceTools, ...marketplaceTools].map(t => t.name);
+    cachedDynamicTools = uniqueItems(allTools);
+    cachedDynamicToolsTime = now;
+    return cachedDynamicTools;
+  } catch (error) {
+    console.error("[Proposal Match] Error loading dynamic tools", error);
+    return [];
+  }
+};
+
+const inferTechnologySkills = (dynamicTools = [], ...values) => {
   const sourceText = values
     .flatMap((value) => collectTextValues(value))
     .join(" ");
@@ -404,6 +435,17 @@ const inferTechnologySkills = (...values) => {
       inferred.push(label);
     }
   });
+
+  if (Array.isArray(dynamicTools)) {
+    dynamicTools.forEach((toolLabel) => {
+      if (!toolLabel || typeof toolLabel !== 'string') return;
+      const escaped = toolLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`\\b${escaped}\\b`, 'i');
+      if (pattern.test(sourceText)) {
+        inferred.push(toolLabel);
+      }
+    });
+  }
 
   return uniqueItems(inferred);
 };
@@ -543,7 +585,8 @@ const getRangeCenter = (range = {}) => {
   return (range.min + range.max) / 2;
 };
 
-export const buildMatchingProfile = (source = {}) => {
+export const buildMatchingProfile = async (source = {}) => {
+  const dynamicTools = await loadDynamicToolsList();
   const matchingSeed = buildProjectMatchingSeed(source) || {};
   const project = isPlainObject(matchingSeed.project) ? matchingSeed.project : {};
   const matchingQuery = isPlainObject(matchingSeed.matchingQuery)
@@ -567,15 +610,19 @@ export const buildMatchingProfile = (source = {}) => {
     ...collectAgencyServiceCandidates(source),
     ...serviceKeys,
   ]);
+  const proposalContext =
+    source?.proposalContext && isPlainObject(source.proposalContext)
+      ? source.proposalContext
+      : source?.proposalJson && isPlainObject(source.proposalJson?.contextSnapshot)
+        ? source.proposalJson.contextSnapshot
+        : project?.proposalJson && isPlainObject(project.proposalJson?.contextSnapshot)
+          ? project.proposalJson.contextSnapshot
+          : undefined;
+
   const isAgencyProposal = resolveAgencyProposalFlag({
     ...source,
     proposalJson: source?.proposalJson,
-    proposalContext:
-      source?.proposalContext && isPlainObject(source.proposalContext)
-        ? source.proposalContext
-        : source?.proposalJson && isPlainObject(source.proposalJson?.contextSnapshot)
-          ? source.proposalJson.contextSnapshot
-          : undefined,
+    proposalContext,
   });
 
   return {
@@ -611,7 +658,14 @@ export const buildMatchingProfile = (source = {}) => {
       ...normalizeList(source?.frontendFramework),
       ...normalizeList(source?.backendTechnology),
       ...normalizeList(source?.databaseType),
+      ...normalizeList(source?.tools),
+      ...normalizeList(source?.serviceTools),
+      ...normalizeList(proposalContext?.techStack),
+      ...normalizeList(proposalContext?.serviceTools),
+      ...normalizeList(proposalContext?.mentionedTools),
+      ...normalizeList(proposalContext?.tools),
       ...inferTechnologySkills(
+        dynamicTools,
         source?.title,
         source?.summary,
         source?.content,
@@ -2094,7 +2148,8 @@ const enrichRankingWithAiInsights = async ({
   aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
   logAiInTerminal = false,
 } = {}) => {
-  const shouldRunAi = includeAiInsights || useAiShortlist;
+  // Disabled Cata AI temporarily per user request
+  const shouldRunAi = false; // includeAiInsights || useAiShortlist;
   if (!shouldRunAi) {
     return ranking;
   }
@@ -2228,7 +2283,7 @@ export const enrichMatchedFreelancersWithAi = async (
         sourceType: "candidate_enrichment",
       },
     },
-    targetProfile: buildTargetProfileFromPayload(proposal),
+    targetProfile: await buildTargetProfileFromPayload(proposal),
     includeAiInsights: true,
     useAiShortlist,
     aiInsightLimit,
@@ -2880,11 +2935,11 @@ export const resolveProposalMatchingSource = async (proposalId) => {
   throw new AppError("Proposal or project not found for matching.", 404);
 };
 
-const buildTargetProfileFromPayload = (proposal = {}) => {
+const buildTargetProfileFromPayload = async (proposal = {}) => {
   const normalizedProposal =
     proposal && typeof proposal === "object" ? proposal : {};
 
-  return buildMatchingProfile({
+  return await buildMatchingProfile({
     ...normalizedProposal,
     title:
       normalizedProposal?.title ||
@@ -2942,7 +2997,7 @@ export const matchFreelancersForProposalPayload = async (
     aiInsightLimit = DEFAULT_AI_INSIGHT_LIMIT,
   } = {},
 ) => {
-  const targetProfile = buildTargetProfileFromPayload(proposal);
+  const targetProfile = await buildTargetProfileFromPayload(proposal);
   const agencyServiceKeys = uniqueItems(
     (Array.isArray(targetProfile?.agencyServiceKeys) ? targetProfile.agencyServiceKeys : [])
       .map((serviceKey) => normalizeServiceSignal(serviceKey))
@@ -3057,7 +3112,7 @@ export const matchFreelancersForProposal = async (
   } = {},
 ) => {
   const resolvedSource = await resolveProposalMatchingSource(proposalId);
-  const targetProfile = buildMatchingProfile({
+  const targetProfile = await buildMatchingProfile({
     ...resolvedSource.source,
     ...overrides,
   });

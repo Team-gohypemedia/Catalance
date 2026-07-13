@@ -2679,6 +2679,7 @@ const PROPOSAL_PLACEHOLDER_REGEX =
 
 const PROPOSAL_ADDITIONAL_FIELD = "Additional Confirmed Inputs";
 const PROPOSAL_MULTI_VALUE_FIELDS = new Set([
+  "Tools",
   "Primary Objectives",
   "Features/Deliverables Included",
   PROPOSAL_ADDITIONAL_FIELD
@@ -2696,6 +2697,14 @@ const PROPOSAL_FIELD_ALIASES = {
     "Website Requirement"
   ],
   "Primary Objectives": ["Primary Objectives", "Objectives"],
+  "Tools": [
+    "Tools",
+    "Tools / Platforms",
+    "Tech Stack",
+    "Technology Stack",
+    "Technologies",
+    "Platforms"
+  ],
   "Features/Deliverables Included": [
     "Features/Deliverables Included",
     "Features Included",
@@ -3849,6 +3858,13 @@ const normalizeProposalMarkdown = ({
   addContextField("Business Name", { value: proposalContext?.companyName });
   addContextField("Service Type", { value: proposalContext?.serviceName || selectedServiceName });
   addContextField("Primary Objectives", { items: proposalContext?.objectives });
+  addContextField("Tools", {
+    items: [...new Set([
+      ...(Array.isArray(proposalContext?.techStack) ? proposalContext.techStack : []),
+      ...(Array.isArray(proposalContext?.serviceTools) ? proposalContext.serviceTools : []),
+      ...(Array.isArray(proposalContext?.mentionedTools) ? proposalContext.mentionedTools : [])
+    ])]
+  });
   addContextField("Features/Deliverables Included", {
     items: [
       ...(Array.isArray(proposalContext?.scope?.features) ? proposalContext.scope.features : []),
@@ -3906,11 +3922,16 @@ const normalizeProposalMarkdown = ({
   const expectedFields = proposalConfiguration.fieldDefinitions.map(
     ({ label }) => label
   );
+  const contextFieldLabels = Array.from(contextFields.keys());
   const knownFieldKeys = new Set(
-    [...expectedFields, PROPOSAL_ADDITIONAL_FIELD]
+    [...expectedFields, ...contextFieldLabels, PROPOSAL_ADDITIONAL_FIELD]
       .flatMap((field) => PROPOSAL_FIELD_ALIASES[field] || [field])
       .map((field) => normalizeProposalFieldKey(field))
   );
+  const contextOnlyFieldLabels = contextFieldLabels.filter((field) => {
+    if (!field || field === PROPOSAL_ADDITIONAL_FIELD) return false;
+    return !expectedFields.includes(field);
+  });
 
   const unknownFieldEntries = Array.from(sectionIndex.values())
     .filter((section) => {
@@ -3922,6 +3943,7 @@ const normalizeProposalMarkdown = ({
 
   const orderedLabels = [
     ...expectedFields,
+    ...contextOnlyFieldLabels,
     ...unknownFieldEntries,
     PROPOSAL_ADDITIONAL_FIELD
   ];

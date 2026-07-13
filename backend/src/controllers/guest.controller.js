@@ -344,7 +344,10 @@ const INTERNAL_AI_CACHE_MAX_ENTRIES = 400;
 const SERVICE_QUESTIONS_INCLUDE = Object.freeze({
     questions: {
         orderBy: { order: "asc" }
-    }
+    },
+    tools: {
+        orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+    },
 });
 const buildGuestSessionCoreSelect = () => ({
     id: true,
@@ -451,6 +454,11 @@ const cloneServiceRecord = (service = null) => {
 
     return {
         ...service,
+        tools: Array.isArray(service.tools)
+            ? service.tools.map((tool) => ({
+                ...tool,
+            }))
+            : [],
         questions: Array.isArray(service.questions)
             ? service.questions.map((question) => ({
                 ...question,
@@ -1658,6 +1666,112 @@ const getServiceScopedMessages = (messages = [], activeServiceStartedAt = "") =>
     });
 
     return filtered.length > 0 ? filtered : messages;
+};
+
+const normalizeServiceToolName = (value = "") =>
+    String(value || "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+const normalizeServiceToolLookupText = (value = "") =>
+    normalizeServiceToolName(value)
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+
+const normalizeServiceToolCompactText = (value = "") =>
+    normalizeServiceToolLookupText(value).replace(/\s+/g, "");
+
+const collectServiceToolSourceTexts = (value) => {
+    if (value === null || value === undefined) return [];
+
+    if (Array.isArray(value)) {
+        return value.flatMap((entry) => collectServiceToolSourceTexts(entry));
+    }
+
+    if (typeof value === "object") {
+        return Object.values(value).flatMap((entry) => collectServiceToolSourceTexts(entry));
+    }
+
+    const normalizedValue = normalizeServiceToolName(value);
+    return normalizedValue ? [normalizedValue] : [];
+};
+
+const hasServiceToolMention = ({
+    sourceText = "",
+    compactSourceText = "",
+    toolName = "",
+} = {}) => {
+    const normalizedToolName = normalizeServiceToolLookupText(toolName);
+    if (!normalizedToolName) return false;
+
+    const paddedSourceText = ` ${String(sourceText || "").trim()} `;
+    if (paddedSourceText.includes(` ${normalizedToolName} `)) {
+        return true;
+    }
+
+    if (
+        normalizedToolName.includes(" ")
+        && paddedSourceText.includes(normalizedToolName)
+    ) {
+        return true;
+    }
+
+    const compactToolName = normalizeServiceToolCompactText(toolName);
+    return compactToolName.length >= 5
+        && String(compactSourceText || "").includes(compactToolName);
+};
+
+const extractMentionedServiceTools = ({
+    service = null,
+    answersPayload = {},
+    messages = [],
+} = {}) => {
+    const serviceToolLabels = Array.isArray(service?.tools)
+        ? Array.from(
+            new Map(
+                service.tools
+                    .map((tool) => normalizeServiceToolName(tool?.label || tool?.name || ""))
+                    .filter(Boolean)
+                    .map((toolLabel) => [toolLabel.toLowerCase(), toolLabel])
+            ).values()
+        )
+        : [];
+
+    if (serviceToolLabels.length === 0) {
+        return [];
+    }
+
+    const sourceTexts = [
+        ...collectServiceToolSourceTexts(answersPayload?.byQuestionText),
+        ...collectServiceToolSourceTexts(answersPayload?.bySlug),
+        ...(Array.isArray(messages) ? messages : []).flatMap((message) => {
+            if (typeof message === "string") {
+                return collectServiceToolSourceTexts(message);
+            }
+
+            if (String(message?.role || "").trim().toLowerCase() !== "user") {
+                return [];
+            }
+
+            return collectServiceToolSourceTexts(message?.content);
+        }),
+    ];
+
+    if (sourceTexts.length === 0) {
+        return [];
+    }
+
+    const normalizedSourceText = normalizeServiceToolLookupText(sourceTexts.join(" "));
+    const compactSourceText = normalizeServiceToolCompactText(sourceTexts.join(" "));
+
+    return serviceToolLabels.filter((toolName) =>
+        hasServiceToolMention({
+            sourceText: normalizedSourceText,
+            compactSourceText,
+            toolName,
+        })
+    );
 };
 
 const getMostRecentMessageContentByRole = (messages = [], role = "") => {
@@ -7213,6 +7327,12 @@ const generateProposalResponseForSession = async ({
         );
     }
 
+    const mentionedServiceTools = extractMentionedServiceTools({
+        service,
+        answersPayload: proposalAnswersPayload,
+        messages: proposalHistory,
+    });
+
     const proposalContext = {
         serviceName: service.name,
         serviceId: service.slug,
@@ -7232,6 +7352,11 @@ const generateProposalResponseForSession = async ({
                 answer: String(answer)
             }))
     };
+    if (mentionedServiceTools.length > 0) {
+        proposalContext.serviceTools = mentionedServiceTools;
+        proposalContext.mentionedTools = mentionedServiceTools;
+        proposalContext.techStack = mentionedServiceTools;
+    }
     const appHints = buildAppProposalHints({
         history: proposalHistory,
         answersByQuestionText: proposalAnswersPayload.byQuestionText
@@ -9913,6 +10038,7 @@ export const __testables = {
     buildQuestionDisplayAnswer,
     stripAdminDirectiveLines,
     stripAllNumberedOptionLines,
+    extractMentionedServiceTools,
     extractNumberedOptionLabelsFromMessage,
     messageUsesExpectedOptionLabels,
     stripQuestionStepLabels,

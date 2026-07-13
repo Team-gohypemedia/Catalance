@@ -1,5 +1,8 @@
 import { asyncHandler } from "../../../utils/async-handler.js";
 import { AppError } from "../../../utils/app-error.js";
+import { v4 as uuidv4 } from "uuid";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { s3Client, BUCKET_NAME, PUBLIC_URL_PREFIX } from "../../../lib/r2.js";
 import {
   getContestById,
   getBadges,
@@ -31,10 +34,38 @@ export const startDaily = asyncHandler(async (req, res) => {
 });
 
 export const submitDaily = asyncHandler(async (req, res) => {
+  const userId = requireUserId(req);
+  const { questionId, idempotencyKey } = req.body;
+  const files = req.files || [];
+
+  const fileUrls = [];
+  for (const file of files) {
+    const fileId = uuidv4();
+    const ext = file.originalname.split('.').pop() || "bin";
+    const key = `freelancers/${userId}/daily-quests/${fileId}.${ext}`;
+    
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+    const prefix = (PUBLIC_URL_PREFIX || "").replace(/\/+$/, "");
+    fileUrls.push({
+      url: prefix ? `${prefix}/${key}` : key,
+      name: file.originalname,
+      size: file.size,
+      type: file.mimetype
+    });
+  }
+
   const data = await submitDailyChallenge({
-    userId: requireUserId(req),
-    answers: req.body.answers,
-    idempotencyKey: req.body.idempotencyKey
+    userId,
+    questionId,
+    fileUrls,
+    idempotencyKey
   });
   res.json({ data });
 });

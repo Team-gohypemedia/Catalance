@@ -5,6 +5,7 @@ import {
   User, 
   Briefcase, 
   IndianRupee, 
+  Cpu,
   FileText, 
   FlaskConical, 
   LayoutGrid, 
@@ -70,6 +71,7 @@ export const ServiceDetailsViewModal = ({
   onEdit 
 }) => {
   const [caseStudiesOpen, setCaseStudiesOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [skillsOpen, setSkillsOpen] = useState(false);
   const [categoriesOpen, setCategoriesOpen] = useState(false);
 
@@ -83,8 +85,8 @@ export const ServiceDetailsViewModal = ({
     serviceDescription,
     metadataItems = [],
     selectedSubcategories = [],
-    subcategorySkillGroups = [],
-    fallbackSkillTags = [],
+    toolTags = [],
+    skillTags = [],
     caseStudies = [],
   } = service;
 
@@ -95,15 +97,9 @@ export const ServiceDetailsViewModal = ({
     (item) => item.label === labels?.startingPriceLabel || item.key === "startingPrice"
   );
 
-  // Collect all unique skill tags from subcategory groups, falling back to fallbackSkillTags
-  const allSkillTags = (() => {
-    const tags = subcategorySkillGroups.flatMap((group) => group.skillTags || []);
-    const unique = [...new Set(tags.length > 0 ? tags : fallbackSkillTags)];
-    return unique;
-  })();
-
   const categoriesCount = selectedSubcategories?.length || 0;
-  const skillsCount = allSkillTags.length;
+  const toolsCount = toolTags.length;
+  const skillsCount = skillTags.length;
   const caseStudiesCount = caseStudies?.length || 0;
 
   return (
@@ -190,15 +186,20 @@ export const ServiceDetailsViewModal = ({
             <div className="h-px w-full bg-border/40 my-4 md:my-6" />
 
             {/* Bottom Stats */}
-            <div className="flex items-center justify-between px-2">
-              <div className="flex flex-col items-center gap-1 w-1/2">
+            <div className="grid grid-cols-3 gap-2 px-2">
+              <div className="flex flex-col items-center gap-1">
                 <span className="text-base md:text-lg font-bold text-muted-foreground/60 leading-none">{categoriesCount}</span>
                 <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">
                   {categoriesCount === 1 ? "Category" : "Categories"}
                 </span>
               </div>
-              <div className="h-8 w-px bg-border/40" />
-              <div className="flex flex-col items-center gap-1 w-1/2">
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-base md:text-lg font-bold text-muted-foreground/60 leading-none">{toolsCount}</span>
+                <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">
+                  {toolsCount === 1 ? "Tool" : "Tools"}
+                </span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
                 <span className="text-base md:text-lg font-bold text-muted-foreground/60 leading-none">{skillsCount}</span>
                 <span className="text-[8px] md:text-[9px] font-bold uppercase tracking-wider text-muted-foreground/60">
                   {skillsCount === 1 ? "Skill" : "Skills"}
@@ -227,7 +228,7 @@ export const ServiceDetailsViewModal = ({
               >
                 <SectionHeader 
                   icon={FlaskConical} 
-                  title={`Service Case Studies (${caseStudiesCount})`} 
+                  title={`${labels?.caseStudiesTitle || "Service Case Studies"} (${caseStudiesCount})`} 
                 />
                 <span className="flex size-7 items-center justify-center rounded-full bg-muted/40 text-muted-foreground md:hidden mb-3">
                   {caseStudiesOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
@@ -240,8 +241,36 @@ export const ServiceDetailsViewModal = ({
                     <OutlinePill key={i}>{cs.title || "Case Study"}</OutlinePill>
                   ))
                 ) : (
-                  <OutlinePill>UI/UX</OutlinePill>
+                  <p className="text-xs text-muted-foreground/60">
+                    {labels?.noCaseStudies || "No case studies added yet."}
+                  </p>
                 )}
+              </div>
+            </section>
+
+            <div className="hidden md:block h-px w-full bg-border/30" />
+
+            {/* TOOLS */}
+            <section className="border-b border-border/30 pb-5 md:border-none md:pb-0">
+              <div 
+                onClick={() => setToolsOpen(!toolsOpen)}
+                className="w-full flex items-center justify-between cursor-pointer md:cursor-default"
+              >
+                <SectionHeader
+                  icon={Cpu}
+                  title={`${labels?.toolsTitle || "Tools"} (${toolsCount})`}
+                />
+                <span className="flex size-7 items-center justify-center rounded-full bg-muted/40 text-muted-foreground md:hidden mb-3">
+                  {toolsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+                </span>
+              </div>
+
+              <div className={`mt-1 ${toolsOpen ? "block" : "hidden md:block"}`}>
+                <CollapsiblePillList
+                  items={toolTags}
+                  emptyMessage={labels?.noTools || "No tools added yet."}
+                  renderPill={(tool, i) => <OutlinePill key={i}>{tool}</OutlinePill>}
+                />
               </div>
             </section>
 
@@ -253,7 +282,10 @@ export const ServiceDetailsViewModal = ({
                 onClick={() => setSkillsOpen(!skillsOpen)}
                 className="w-full flex items-center justify-between cursor-pointer md:cursor-default"
               >
-                <SectionHeader icon={LayoutGrid} title="Deployment Skills" />
+                <SectionHeader
+                  icon={LayoutGrid}
+                  title={`${labels?.skillsTitle || "Skills"} (${skillsCount})`}
+                />
                 <span className="flex size-7 items-center justify-center rounded-full bg-muted/40 text-muted-foreground md:hidden mb-3">
                   {skillsOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                 </span>
@@ -261,8 +293,8 @@ export const ServiceDetailsViewModal = ({
 
               <div className={`mt-1 ${skillsOpen ? "block" : "hidden md:block"}`}>
                 <CollapsiblePillList
-                  items={allSkillTags}
-                  emptyMessage="No skills added yet."
+                  items={skillTags}
+                  emptyMessage={labels?.noSkills || "No skills added yet."}
                   renderPill={(skill, i) => <OutlinePill key={i}>{skill}</OutlinePill>}
                 />
               </div>
@@ -276,7 +308,10 @@ export const ServiceDetailsViewModal = ({
                 onClick={() => setCategoriesOpen(!categoriesOpen)}
                 className="w-full flex items-center justify-between cursor-pointer md:cursor-default"
               >
-                <SectionHeader icon={Layers3} title="Categories" />
+                <SectionHeader
+                  icon={Layers3}
+                  title={labels?.categoriesTitle || "Categories"}
+                />
                 <span className="flex size-7 items-center justify-center rounded-full bg-muted/40 text-muted-foreground md:hidden mb-3">
                   {categoriesOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
                 </span>
@@ -285,7 +320,7 @@ export const ServiceDetailsViewModal = ({
               <div className={`mt-1 ${categoriesOpen ? "block" : "hidden md:block"}`}>
                 <CollapsiblePillList
                   items={selectedSubcategories}
-                  emptyMessage="No categories added yet."
+                  emptyMessage={labels?.noCategories || "No categories selected yet."}
                   renderPill={(cat, i) => <OutlinePill key={i}>{cat.label || cat}</OutlinePill>}
                 />
               </div>

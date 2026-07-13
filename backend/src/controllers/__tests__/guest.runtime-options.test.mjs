@@ -18,6 +18,7 @@ const {
   buildSessionStartPrefill,
   buildSupplementalBudgetExtractions,
   buildQuestionDisplayAnswer,
+  extractMentionedServiceTools,
   stripAdminDirectiveLines,
   rewriteSinceLeadInSentences,
   stripAllNumberedOptionLines,
@@ -97,6 +98,30 @@ test("persists canonical bySlug answers and readable byQuestionText answers", ()
   assert.equal(
     payload.uiState.runtimeOptionsByQuestionSlug.frontend_framework[0].label,
     "Fast Next.js build"
+  );
+});
+
+test("extracts only mentioned admin-managed service tools from user chat context", () => {
+  assert.deepEqual(
+    extractMentionedServiceTools({
+      service: {
+        tools: [
+          { id: 1, name: "Framer" },
+          { id: 2, name: "Webflow" },
+          { id: 3, name: "Shopify" },
+        ],
+      },
+      answersPayload: {
+        byQuestionText: {
+          "What tools do you prefer?": "Framer and Webflow",
+        },
+      },
+      messages: [
+        { role: "assistant", content: "Do you prefer Framer, Webflow, or Shopify?" },
+        { role: "user", content: "We are deciding between Framer and Webflow for now." },
+      ],
+    }),
+    ["Framer", "Webflow"],
   );
 });
 

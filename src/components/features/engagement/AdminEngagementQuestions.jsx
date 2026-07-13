@@ -328,14 +328,6 @@ const AdminEngagementQuestions = () => {
     setDialogOpen(true);
   };
 
-  const setOptionText = (index, text) => {
-    setForm((previous) => ({
-      ...previous,
-      options: previous.options.map((option, optionIndex) =>
-        optionIndex === index ? { ...option, text } : option,
-      ),
-    }));
-  };
 
   const handleSave = async () => {
     if (!authFetch) return;
@@ -1282,44 +1274,7 @@ const AdminEngagementQuestions = () => {
                 </div>
               </div>
 
-              <div className="grid gap-3">
-                <Label>Options</Label>
-                {form.options.map((option, index) => (
-                  <div key={option.id} className="grid gap-2 sm:grid-cols-[56px_1fr]">
-                    <Input value={option.id} disabled />
-                    <Input
-                      value={option.text}
-                      onChange={(event) => setOptionText(index, event.target.value)}
-                      placeholder={`Option ${option.id}`}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-[180px_1fr]">
-                <div className="grid gap-2">
-                  <Label>Correct option</Label>
-                  <Select
-                    value={form.correctOptionId}
-                    onValueChange={(value) =>
-                      setForm((previous) => ({
-                        ...previous,
-                        correctOptionId: value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {form.options.map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
-                          {option.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid gap-4">
                 <div className="grid gap-2">
                   <Label>Status</Label>
                   <Select

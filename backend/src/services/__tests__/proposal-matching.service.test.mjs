@@ -652,6 +652,54 @@ test("service-aligned skill matches outrank weak completed-project signals", () 
   assert.ok((ranked.results[0].matchedSkills || []).length > 0);
 });
 
+test("proposal tool mentions become freelancer skill matches", () => {
+  const targetProfile = buildTargetProfileFromPayload({
+    title: "Framer launch page",
+    serviceKey: "web-development",
+    serviceType: "Web Development",
+    budget: 60000,
+    proposalContext: {
+      serviceTools: ["Framer", "Webflow"],
+      techStack: ["Framer", "Webflow"],
+    },
+    proposalContent: `
+Service Type: Web Development
+Project Overview: Build a conversion-focused launch page.
+Launch Timeline: 4 weeks
+Budget: INR 60,000
+    `,
+  });
+
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-tools-fit",
+      fullName: "Tool Fit",
+      services: ["web-development"],
+      profileDetails: {
+        serviceDetails: {
+          "web-development": {
+            startingPrice: "50000",
+            skillsAndTechnologies: ["Framer", "Webflow"],
+            deliverables: ["Landing page"],
+          },
+        },
+      },
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects: [],
+    activeProjectCounts: new Map(),
+  });
+
+  assert.equal(ranked.results.length, 1);
+  assert.equal(ranked.results[0].id, "freelancer-tools-fit");
+  assert.ok(ranked.results[0].matchedSkills.includes("Framer"));
+  assert.ok(ranked.results[0].matchedSkills.includes("Webflow"));
+});
+
 test("missing rating does not outrank equally matched rated freelancer", () => {
   const targetProfile = createTargetProfile();
   const freelancers = [

@@ -27,10 +27,12 @@ const DEFAULT_UI_LABELS = {
   serviceSingular: "service",
   servicePlural: "services",
   categoriesTitle: "Categories",
+  toolsTitle: "Tools",
   skillsTitle: "Skills",
   caseStudiesTitle: "Service Case Studies",
   emptyValue: "Not selected",
   noCategories: "No categories selected yet.",
+  noTools: "No tools added yet.",
   noSkills: "No skills added yet.",
   noCaseStudies: "No case studies added yet.",
   noServices: "No service data from onboarding yet.",
@@ -72,7 +74,8 @@ const DEFAULT_FIELD_PATHS = {
   subcategorySelectedToolIds: ["selectedToolIds"],
   subcategorySelectedSkills: ["selectedSkills", "skills", "customSkillNames"],
 
-  serviceSkillTags: ["serviceTools", "skillsAndTechnologies", "caseStudy.techStack"],
+  serviceToolTags: ["serviceTools", "caseStudy.techStack"],
+  serviceSkillTags: ["skillsAndTechnologies"],
   serviceSkillGroups: ["groups", "groupOther"],
 
   caseStudies: ["caseStudies"],
@@ -194,6 +197,16 @@ const collectObjectTags = (value = {}) => {
       .map((item) => item.trim())
       .filter(Boolean);
   });
+};
+
+const excludeStringArray = (values = [], excludedValues = []) => {
+  const excludedKeys = new Set(
+    normalizeStringArray(excludedValues).map((value) => value.toLowerCase())
+  );
+
+  return normalizeStringArray(values).filter(
+    (value) => !excludedKeys.has(String(value).toLowerCase())
+  );
 };
 
 const getMappedLabel = (value, labelMap = {}) => {
@@ -477,6 +490,7 @@ const ServiceDetailArticle = ({
     serviceDescription,
     metadataItems,
     selectedSubcategories,
+    toolTags = [],
     hasServiceProfileContent,
   } = cardData;
 
@@ -488,6 +502,8 @@ const ServiceDetailArticle = ({
   );
 
   const categoriesCount = selectedSubcategories?.length || 0;
+  const visibleToolTags = toolTags.slice(0, 4);
+  const remainingToolCount = Math.max(toolTags.length - visibleToolTags.length, 0);
 
   return (
     <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-[15px] border border-border/50 p-4 transition-all duration-300 hover:shadow-md sm:p-5">
@@ -539,6 +555,35 @@ const ServiceDetailArticle = ({
       ) : (
         <div className="mb-6 h-10" />
       )}
+
+      <div className="mb-6">
+        <span className="mb-2 block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          {labels.toolsTitle || "Tools"}
+        </span>
+
+        {visibleToolTags.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {visibleToolTags.map((tool) => (
+              <span
+                key={`${serviceKey}-tool-${tool}`}
+                className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary"
+              >
+                {tool}
+              </span>
+            ))}
+
+            {remainingToolCount > 0 ? (
+              <span className="inline-flex items-center rounded-full border border-border/60 bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                +{remainingToolCount} more
+              </span>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground/70">
+            {labels.noTools || "No tools added yet."}
+          </p>
+        )}
+      </div>
 
       <div className="mt-auto mb-6 flex items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-3">
@@ -980,7 +1025,11 @@ const ServicesFromOnboardingCard = ({
           subcategoryOptions.map((option) => [option.id, option.label])
         );
 
-        const serviceSkillTags =
+        const serviceToolTags = normalizeTags(
+          getArrayValuesFromPaths(serviceDetail, paths.serviceToolTags)
+        );
+
+        const rawServiceSkillTags =
           typeof resolveServiceSkills === "function"
             ? normalizeTags(resolveServiceSkills(serviceDetail, entry, helpers))
             : normalizeTags([
@@ -992,6 +1041,11 @@ const ServicesFromOnboardingCard = ({
                   ? collectServiceSpecializations(serviceDetail, entry)
                   : []),
               ]);
+
+        const serviceSkillTags = excludeStringArray(
+          rawServiceSkillTags,
+          serviceToolTags
+        );
 
         const selectedSubcategoryItems = ensureArray(subcategories)
           .map((subcategory, subcategoryIndex) => {
@@ -1022,17 +1076,24 @@ const ServicesFromOnboardingCard = ({
                 .filter(Boolean)
             );
 
-            const savedSkillTags = normalizeTags([
-              ...selectedToolTags,
-              ...getArrayValuesFromPaths(subcategory, paths.subcategorySelectedSkills),
-            ]);
+            const selectedSkillTags = excludeStringArray(
+              normalizeTags(
+                getArrayValuesFromPaths(subcategory, paths.subcategorySelectedSkills)
+              ),
+              selectedToolTags
+            );
 
-            const skillTags = savedSkillTags.length ? savedSkillTags : serviceSkillTags;
+            const toolTags = selectedToolTags.length ? selectedToolTags : serviceToolTags;
+            const skillTags = selectedSkillTags.length
+              ? selectedSkillTags
+              : serviceSkillTags;
 
             return {
               key,
               label,
               subcategoryId,
+              toolTags,
+              toolCount: toolTags.length,
               skillTags,
               skillCount: skillTags.length,
             };
@@ -1048,20 +1109,35 @@ const ServicesFromOnboardingCard = ({
                 }`,
                 label,
                 subcategoryId: null,
+                toolTags: serviceToolTags,
+                toolCount: serviceToolTags.length,
                 skillTags: serviceSkillTags,
                 skillCount: serviceSkillTags.length,
               }));
 
-        const subcategorySkillGroups = [
+        const subcategoryGroups = [
           ...selectedSubcategoryItems,
           ...fallbackSubcategoryItems,
         ];
 
-        const selectedSubcategories = subcategorySkillGroups.map((subcategory) => ({
+        const selectedSubcategories = subcategoryGroups.map((subcategory) => ({
           key: subcategory.key,
           label: subcategory.label,
+          toolCount: subcategory.toolCount,
           skillCount: subcategory.skillCount,
         }));
+
+        const toolTags = normalizeTags([
+          ...serviceToolTags,
+          ...subcategoryGroups.flatMap((subcategory) => subcategory.toolTags || []),
+        ]);
+        const skillTags = excludeStringArray(
+          normalizeTags([
+            ...serviceSkillTags,
+            ...subcategoryGroups.flatMap((subcategory) => subcategory.skillTags || []),
+          ]),
+          toolTags
+        );
 
         const caseStudies =
           typeof resolveCaseStudies === "function"
@@ -1104,7 +1180,8 @@ const ServicesFromOnboardingCard = ({
             serviceDescription ||
             serviceImage ||
             selectedSubcategories.length ||
-            serviceSkillTags.length ||
+            toolTags.length ||
+            skillTags.length ||
             caseStudies.length
         );
 
@@ -1116,8 +1193,8 @@ const ServicesFromOnboardingCard = ({
           serviceDescription,
           metadataItems,
           selectedSubcategories,
-          subcategorySkillGroups,
-          fallbackSkillTags: serviceSkillTags,
+          toolTags,
+          skillTags,
           caseStudies,
           hasServiceProfileContent,
         };

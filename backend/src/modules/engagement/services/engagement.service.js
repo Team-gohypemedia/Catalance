@@ -2609,7 +2609,8 @@ export const startDailyChallenge = async (userId) => {
 
 export const submitDailyChallenge = async ({
   userId,
-  answers,
+  questionId,
+  fileUrls,
   idempotencyKey
 }) => {
   ensureEnabled();
@@ -2654,11 +2655,15 @@ export const submitDailyChallenge = async ({
         }
 
         const profile = await ensureProfile(userId, tx);
-        const answerDetails = buildAnswerDetails({ questions, answers, dayKey });
-        const correctCount = answerDetails.filter((answer) => answer.isCorrect).length;
-        const questionCount = answerDetails.length;
-        const accuracy =
-          questionCount > 0 ? Math.round((correctCount / questionCount) * 100) : 0;
+        const answerDetails = [{
+          questionId: questionId || (questions[0] ? questions[0].id : "unknown"),
+          selectedOptionId: "task-based-file-upload",
+          isCorrect: true,
+          files: fileUrls
+        }];
+        const correctCount = questions.length;
+        const questionCount = questions.length;
+        const accuracy = 100;
         const streak = calculateStreak({ profile, dayKey });
         const rewards = calculateRewards({
           correctCount,
@@ -2831,25 +2836,13 @@ const validateQuestionPayload = (payload = {}) => {
     throw new AppError("Question text is required.", 400);
   }
 
-  if (explanation.length < 10) {
-    throw new AppError("A practical explanation is required.", 400);
-  }
-
-  if (options.length < 2) {
-    throw new AppError("At least two answer options are required.", 400);
-  }
-
   const normalizedOptions = options.map((option, index) => ({
     id: normalizeText(option?.id) || String.fromCharCode(65 + index),
     text: normalizeText(option?.text)
   }));
 
-  if (normalizedOptions.some((option) => !option.text)) {
+  if (normalizedOptions.length > 0 && normalizedOptions.some((option) => !option.text)) {
     throw new AppError("Every answer option needs text.", 400);
-  }
-
-  if (!normalizedOptions.some((option) => option.id === correctOptionId)) {
-    throw new AppError("Correct option must match one available option.", 400);
   }
 
   const type = normalizeQuestionType(payload.type);

@@ -18,6 +18,12 @@ import {
   saveGrowthQuestServiceSchema,
   submitDailyChallengeSchema
 } from "../validators/engagement.validators.js";
+import multer from "multer";
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 }
+});
 
 export const freelancerEngagementRouter = Router();
 
@@ -47,6 +53,7 @@ freelancerEngagementRouter.post(
 );
 freelancerEngagementRouter.post(
   "/daily/submit",
+  upload.array("files", 10),
   validateResource(submitDailyChallengeSchema),
   submitDaily
 );

@@ -22,9 +22,7 @@ export const DIFFICULTY_OPTIONS = [
 ];
 
 export const TYPE_OPTIONS = [
-  { value: "MCQ", label: "MCQ" },
-  { value: "TRUE_FALSE", label: "True / false" },
-  { value: "SCENARIO_MCQ", label: "Scenario MCQ" },
+  { value: "TASK", label: "Task Upload" },
 ];
 
 export const DAILY_SET_SIZE = 5;
@@ -48,17 +46,12 @@ export const toLinkArray = (value) =>
 
 export const emptyForm = {
   questionText: "",
-  type: "MCQ",
+  type: "TASK",
   category: "CLIENT_COMMUNICATION",
   skillTag: "client_readiness",
   difficulty: "BEGINNER",
-  options: [
-    { id: "A", text: "" },
-    { id: "B", text: "" },
-    { id: "C", text: "" },
-    { id: "D", text: "" },
-  ],
-  correctOptionId: "A",
+  options: [],
+  correctOptionId: "",
   explanation: "",
   status: "PENDING_APPROVAL",
 };

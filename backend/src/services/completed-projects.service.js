@@ -469,7 +469,9 @@ export const buildProjectMatchingSeed = (project = {}) => {
       proposalJson: project?.proposalJson,
       proposalContent: project?.proposalContent,
       proposalContext:
-        project?.proposalJson && isPlainObject(project.proposalJson.contextSnapshot)
+        project?.proposalContext && isPlainObject(project.proposalContext)
+          ? project.proposalContext
+          : project?.proposalJson && isPlainObject(project.proposalJson.contextSnapshot)
           ? project.proposalJson.contextSnapshot
           : undefined,
     }) || null;

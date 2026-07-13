@@ -288,6 +288,17 @@ const buildCompactProposalForCataAi = (proposal = {}) => {
             .filter(Boolean),
         }
       : {}),
+    ...(toCompactTextList(
+      [context?.techStack, context?.serviceTools, context?.mentionedTools, context?.tools],
+      { maxItems: 8 },
+    ).length > 0
+      ? {
+          techStack: toCompactTextList(
+            [context?.techStack, context?.serviceTools, context?.mentionedTools, context?.tools],
+            { maxItems: 8 },
+          ),
+        }
+      : {}),
   };
 
   const compactProposal = {
@@ -328,6 +339,10 @@ const buildCompactProposalForCataAi = (proposal = {}) => {
       proposal?.frontendFramework,
       proposal?.backendTechnology,
       proposal?.databaseType,
+      context?.techStack,
+      context?.serviceTools,
+      context?.mentionedTools,
+      context?.tools,
     ]),
     projectStack: toCompactTextList([
       proposal?.projectStack,
@@ -335,6 +350,10 @@ const buildCompactProposalForCataAi = (proposal = {}) => {
       proposal?.frontendFramework,
       proposal?.backendTechnology,
       proposal?.databaseType,
+      context?.techStack,
+      context?.serviceTools,
+      context?.mentionedTools,
+      context?.tools,
     ]),
     frontendFramework: toCompactTextList([proposal?.frontendFramework, context?.frontendFramework], {
       maxItems: 4,

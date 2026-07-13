@@ -5,6 +5,11 @@ const PROPOSAL_FIELD_DEFINITIONS = [
   { key: "projectOverview", labels: ["Project Overview", "Overview", "Summary"], type: "text" },
   { key: "primaryObjectives", labels: ["Primary Objectives", "Objectives", "Goals"], type: "list" },
   {
+    key: "techStack",
+    labels: ["Tools", "Tools / Platforms", "Tech Stack", "Technology Stack", "Technologies"],
+    type: "list",
+  },
+  {
     key: "featuresDeliverables",
     labels: ["Features/Deliverables Included", "Features", "Deliverables", "Scope"],
     type: "list",
@@ -300,6 +305,7 @@ const PROPOSAL_CONTEXT_FIELD_ALIASES = {
   targetLocations: ["targetLocations"],
   seoGoals: ["seoGoals"],
   primaryObjectives: ["primaryObjectives"],
+  techStack: ["techStack", "projectStack", "serviceTools", "mentionedTools", "tools"],
   featuresDeliverables: ["featuresDeliverables", "deliverables"],
   appType: ["appType"],
   appFeatures: ["appFeatures"],
@@ -1085,6 +1091,7 @@ export const buildProjectFreelancerMatchingSeed = (payload = {}) => {
 
   const requiredSkills = uniqueItems([
     ...normalizeMatchingList(getSectionItems(techStackSection)),
+    ...normalizeMatchingList(extractedFields.techStack),
     ...normalizeMatchingList(extractedFields.frontendFramework),
     ...normalizeMatchingList(extractedFields.backendTechnology),
     ...normalizeMatchingList(extractedFields.databaseType),

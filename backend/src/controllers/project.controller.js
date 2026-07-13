@@ -416,6 +416,10 @@ const buildProjectProposalData = (input = {}, { fallback = null, preserveFallbac
     proposalData.proposalJson = fallback.proposalJson;
   }
 
+  // Remove fields that are parsed for proposal context but do not exist on the Project model
+  delete proposalData.techStack;
+  delete proposalData.platformRequirements;
+
   return proposalData;
 };
 

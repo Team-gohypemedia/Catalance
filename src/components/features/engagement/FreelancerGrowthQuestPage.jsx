@@ -29,6 +29,7 @@ import ProcessSummaryCard from "./ProcessSummaryCard";
 import StreakCalendar from "./StreakCalendar";
 import GrowthQuestInfoModal from "./growth-quest/GrowthQuestInfoModal";
 import GrowthQuestQuizView from "./growth-quest/GrowthQuestQuizView";
+import GrowthQuestTaskView from "./growth-quest/GrowthQuestTaskView";
 import GrowthQuestResultView from "./growth-quest/GrowthQuestResultView";
 import GrowthQuestWeeklyRankingPanel from "./growth-quest/GrowthQuestWeeklyRankingPanel";
 import "./FreelancerGrowthQuestPage.css";
@@ -43,7 +44,7 @@ const LABEL_CLASS = "growth-quest-label";
 const LABELS = ["A", "B", "C", "D", "E"];
 
 const HOW_IT_WORKS = [
-  { title: "1. Start today's practice", desc: "Answer 5 common questions plus 1 personalized question in one short practice quiz." },
+  { title: "1. Start today's practice", desc: "Complete 1 Task-based question in one short practice session." },
   { title: "2. One scored attempt", desc: "Your daily streak, XP, and coins are locked after one completed quest each day." },
   { title: "3. Track improvement", desc: "Earn XP, coins, improve weak topics, and check your weekly rank." },
 ];
@@ -335,7 +336,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
           </div>
           <h2 className="growth-quest-hero__title">Daily Growth Quest</h2>
           <p className="growth-quest-hero__description">
-            Answer 5 common questions plus 1 personalized question daily. Earn XP, coins, improve weak topics,
+            Answer 1 Task-based question daily. Earn XP, coins, improve weak topics,
             and track your weekly rank.
           </p>
         </div>
@@ -380,7 +381,7 @@ const DashboardView = ({ dashboard, onStartQuest, loading, error }) => {
               </>
             ) : (
               <>
-                Start Today&apos;s 6 Questions
+                Start Today&apos;s Task
                 
               </>
             )}
@@ -851,11 +852,7 @@ const GrowthQuestLiveDashboard = ({
     rewards: `+${session.coinsAwarded} coins / +${session.xpAwarded} XP`,
     score: `${session.accuracy}% accuracy`,
   }));
-  const commonPreviewQuestions = previewQuestions.filter(
-    (question) => question?.questionVariant !== "personalized",
-  );
-  const personalizedPreviewQuestion =
-    previewQuestions.find((question) => question?.questionVariant === "personalized") || null;
+  const taskPreviewQuestion = previewQuestions.length > 0 ? previewQuestions[0] : null;
   const serviceSelectionRequired = Boolean(dashboard?.serviceSelection?.required);
   const serviceOptions = Array.isArray(dashboard?.serviceSelection?.options) &&
     dashboard.serviceSelection.options.length
@@ -1179,7 +1176,7 @@ const GrowthQuestLiveDashboard = ({
                       letterSpacing: "-0.02em",
                     }}
                   >
-                    5 Common Questions + 1 Personalized Question
+                    1 Task-based Question
                   </h4>
                   <p
                     style={{
@@ -1190,8 +1187,8 @@ const GrowthQuestLiveDashboard = ({
                       color: "rgba(170,185,215,0.68)",
                     }}
                   >
-                    Today&apos;s practice is prepared for your freelancer profile. The first five questions follow your
-                    service domain, and the last question targets your weak area.
+                    Today&apos;s practice is prepared for your freelancer profile. The task follows your
+                    service domain, or targets your weak area.
                   </p>
                 </div>
 
@@ -1221,185 +1218,85 @@ const GrowthQuestLiveDashboard = ({
                 </button>
               </div>
 
-              <div className="growth-quest-practice-preview">
+              <div className="growth-quest-practice-preview" style={{ gridTemplateColumns: "1fr" }}>
                 <div className="growth-quest-practice-preview__list">
                   {loadingPreview && !done ? (
-                    Array.from({ length: 5 }).map((_, index) => (
+                    <div
+                      style={{
+                        borderRadius: "16px",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "rgba(255,255,255,0.03)",
+                        padding: "1rem 1.1rem",
+                      }}
+                    >
                       <div
-                        key={`preview-skeleton-${index}`}
                         style={{
-                          borderRadius: "16px",
-                          border: "1px solid rgba(255,255,255,0.06)",
-                          background: "rgba(255,255,255,0.03)",
-                          padding: "1rem 1.1rem",
+                          width: "5rem",
+                          height: "0.75rem",
+                          borderRadius: "999px",
+                          background: "rgba(255,255,255,0.08)",
+                          marginBottom: "0.85rem",
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "0.9rem",
+                          borderRadius: "999px",
+                          background: "rgba(255,255,255,0.06)",
+                          marginBottom: "0.5rem",
+                        }}
+                      />
+                      <div
+                        style={{
+                          width: "72%",
+                          height: "0.9rem",
+                          borderRadius: "999px",
+                          background: "rgba(255,255,255,0.06)",
+                        }}
+                      />
+                    </div>
+                  ) : taskPreviewQuestion ? (
+                    <article
+                      style={{
+                        borderRadius: "18px",
+                        border: "1px solid rgba(255,255,255,0.06)",
+                        background: "rgba(255,255,255,0.03)",
+                        padding: "1rem 1.1rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.75rem",
+                          marginBottom: "0.85rem",
                         }}
                       >
-                        <div
-                          style={{
-                            width: "5rem",
-                            height: "0.75rem",
-                            borderRadius: "999px",
-                            background: "rgba(255,255,255,0.08)",
-                            marginBottom: "0.85rem",
-                          }}
-                        />
-                        <div
-                          style={{
-                            width: "100%",
-                            height: "0.9rem",
-                            borderRadius: "999px",
-                            background: "rgba(255,255,255,0.06)",
-                            marginBottom: "0.5rem",
-                          }}
-                        />
-                        <div
-                          style={{
-                            width: "72%",
-                            height: "0.9rem",
-                            borderRadius: "999px",
-                            background: "rgba(255,255,255,0.06)",
-                          }}
-                        />
+                        <span className="growth-quest-chip growth-quest-chip--violet">
+                          Today's Task
+                        </span>
                       </div>
-                    ))
-                  ) : commonPreviewQuestions.length > 0 ? (
-                    commonPreviewQuestions.map((question, index) => (
-                      <article
-                        key={question.id}
+                      <p
                         style={{
-                          borderRadius: "18px",
-                          border: "1px solid rgba(255,255,255,0.06)",
-                          background: "rgba(255,255,255,0.03)",
-                          padding: "1rem 1.1rem",
+                          fontSize: "0.93rem",
+                          lineHeight: 1.65,
+                          color: "rgba(235,240,255,0.92)",
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "0.75rem",
-                            marginBottom: "0.85rem",
-                          }}
-                        >
-                          <span className="growth-quest-chip growth-quest-chip--ghost">
-                            Q{index + 1}
-                          </span>
-                        </div>
-                        <p
-                          style={{
-                            fontSize: "0.93rem",
-                            lineHeight: 1.65,
-                            color: "rgba(235,240,255,0.92)",
-                          }}
-                        >
-                          {question.questionText}
-                        </p>
-                      </article>
-                    ))
+                        {taskPreviewQuestion.questionText}
+                      </p>
+                    </article>
                   ) : (
                     <div className="growth-quest-subpanel" style={{ padding: "1rem 1.1rem" }}>
                       <p style={{ fontSize: "0.92rem", color: "rgba(170,185,215,0.72)" }}>
                         {done
-                          ? "Today’s questions are already completed. Come back after reset for a new AI-generated set."
-                          : "Today’s question preview will appear here when the daily set is ready."}
+                          ? "Today’s task is already completed. Come back after reset for a new AI-generated task."
+                          : "Today’s task preview will appear here when the daily set is ready."}
                       </p>
                     </div>
                   )}
                 </div>
-
-                <aside className="growth-quest-practice-preview__side">
-                  <article
-                    style={{
-                      borderRadius: "20px",
-                      border: "1px solid rgba(124,58,237,0.22)",
-                      background: "linear-gradient(135deg,rgba(40,22,84,0.55),rgba(12,14,34,0.96))",
-                      padding: "1.1rem",
-                    }}
-                  >
-                    <span className="growth-quest-chip growth-quest-chip--violet">
-                      Personalized
-                    </span>
-                    <h5
-                      style={{
-                        marginTop: "0.85rem",
-                        fontSize: "1.15rem",
-                        fontWeight: 800,
-                        color: "#fff",
-                      }}
-                    >
-                      Your weak-area question
-                    </h5>
-                    <div
-                      style={{
-                        marginTop: "1rem",
-                        borderRadius: "16px",
-                        border: "1px solid rgba(255,255,255,0.08)",
-                        background: "rgba(255,255,255,0.04)",
-                        padding: "0.95rem",
-                      }}
-                    >
-                      <p
-                        style={{
-                          fontSize: "0.9rem",
-                          lineHeight: 1.65,
-                          color: "rgba(245,245,255,0.94)",
-                        }}
-                      >
-                        {personalizedPreviewQuestion?.questionText ||
-                          (done
-                            ? "Today’s personalized question has already been completed."
-                            : "Your personalized question will appear here once today’s set is loaded.")}
-                      </p>
-                    </div>
-                  </article>
-
-                  <div className="growth-quest-subpanel" style={{ padding: "1rem 1.1rem" }}>
-                    <p className={LABEL_CLASS}>Today&apos;s Practice Status</p>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: "0.75rem",
-                        marginTop: "0.85rem",
-                        fontSize: "0.88rem",
-                        color: "rgba(180,190,210,0.7)",
-                      }}
-                    >
-                      <span>Questions ready</span>
-                      <strong style={{ color: "#fff" }}>
-                        {previewQuestions.length || (done ? 6 : 0)}/6
-                      </strong>
-                    </div>
-                    <div className="growth-quest-progress" style={{ marginTop: "0.55rem" }}>
-                      <span
-                        style={{
-                          width: `${((previewQuestions.length || (done ? 6 : 0)) / 6) * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-                        gap: "0.75rem",
-                        marginTop: "1rem",
-                      }}
-                    >
-                      <div>
-                        <p className={LABEL_CLASS}>Common</p>
-                        <strong style={{ display: "block", marginTop: "0.35rem", fontSize: "1.2rem" }}>
-                          {commonPreviewQuestions.length || (done ? 5 : 0)}
-                        </strong>
-                      </div>
-                      <div>
-                        <p className={LABEL_CLASS}>Personal</p>
-                        <strong style={{ display: "block", marginTop: "0.35rem", fontSize: "1.2rem" }}>
-                          {personalizedPreviewQuestion || done ? 1 : 0}
-                        </strong>
-                      </div>
-                    </div>
-                  </div>
-                </aside>
               </div>
                 </>
               )}
@@ -1952,6 +1849,7 @@ const GrowthQuestLiveDashboard = ({
 };
 
 const QuizView = GrowthQuestQuizView;
+const TaskView = GrowthQuestTaskView;
 const ResultView = GrowthQuestResultView;
 
 const FreelancerGrowthQuestPage = () => {
@@ -1969,6 +1867,7 @@ const FreelancerGrowthQuestPage = () => {
   const [savingServiceSelection, setSavingServiceSelection] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [selectedFiles, setSelectedFiles] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [revealedQuestions, setRevealedQuestions] = useState({});
@@ -2018,6 +1917,7 @@ const FreelancerGrowthQuestPage = () => {
     } catch {
       // Ignore storage errors.
     }
+    setSelectedFiles([]);
   }, [progressKey]);
 
   const loadDashboard = useCallback(async () => {
@@ -2155,6 +2055,7 @@ const FreelancerGrowthQuestPage = () => {
         setIdempotencyKey(makeKey());
         setSelectedAnswers({});
         setRevealedQuestions({});
+        setSelectedFiles([]);
         setActiveIndex(0);
         setView("quiz");
       }
@@ -2174,7 +2075,7 @@ const FreelancerGrowthQuestPage = () => {
     [questions]
   );
   const canSubmit =
-    questions.length > 0 && questions.every((question) => selectedAnswers[question.id]);
+    questions.length > 0 && selectedFiles.length > 0;
 
   useEffect(() => {
     if (view !== "quiz" || questions.length === 0) return;
@@ -2234,15 +2135,18 @@ const FreelancerGrowthQuestPage = () => {
     setError("");
 
     try {
+      const formData = new FormData();
+      formData.append("idempotencyKey", idempotencyKey);
+      if (questions.length > 0) {
+        formData.append("questionId", questions[0].id);
+      }
+      if (selectedFiles.length > 0) {
+        selectedFiles.forEach((file) => formData.append("files", file));
+      }
+
       const response = await authFetch("/engagement/daily/submit", {
         method: "POST",
-        body: JSON.stringify({
-          idempotencyKey,
-          answers: questions.map((question) => ({
-            questionId: question.id,
-            selectedOptionId: selectedAnswers[question.id],
-          })),
-        }),
+        body: formData,
       });
       const payload = await response.json().catch(() => null);
 
@@ -2324,14 +2228,10 @@ const FreelancerGrowthQuestPage = () => {
               <Loader2 className="size-7 animate-spin text-primary" />
             </div>
           ) : (
-            <QuizView
-              questions={questions}
-              activeIndex={activeIndex}
-              setActiveIndex={setActiveIndex}
-              selectedAnswers={selectedAnswers}
-              handleSelectAnswer={handleSelectAnswer}
-              revealedQuestions={revealedQuestions}
-              handleRevealAnswer={handleRevealAnswer}
+            <TaskView
+              question={questions[0]}
+              selectedFiles={selectedFiles}
+              onFilesSelect={setSelectedFiles}
               onSubmit={handleSubmit}
               submitting={submitting}
               canSubmit={canSubmit}

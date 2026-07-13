@@ -78,6 +78,35 @@ Budget: 20000
   assert.doesNotMatch(normalized, /^Overview:/m);
 });
 
+test("injects tech stack from proposal context when the draft omits tool mentions", () => {
+  const normalized = normalizeProposalMarkdown({
+    markdown: `
+Client Name: Neha
+Business Name: Studio North
+Service Type: Web Development
+Project Overview: Build a modern landing experience for a design-led brand.
+Primary Objectives:
+- Launch quickly
+Features/Deliverables Included:
+- Landing page design
+Launch Timeline: 4 weeks
+Budget: INR 60,000
+    `,
+    proposalContext: {
+      clientName: "Neha",
+      companyName: "Studio North",
+      serviceName: "Web Development",
+      serviceTools: ["Framer", "Webflow"],
+      techStack: ["Framer", "Webflow"],
+    },
+    selectedServiceName: "Web Development",
+  });
+
+  assert.match(normalized, /^Tech Stack:$/m);
+  assert.match(normalized, /^- Framer$/m);
+  assert.match(normalized, /^- Webflow$/m);
+});
+
 test("keeps confirmed structured budget and timeline over conflicting draft values", () => {
   const normalized = normalizeProposalMarkdown({
     markdown: `

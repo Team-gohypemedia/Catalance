@@ -15,14 +15,30 @@ import Tag from "lucide-react/dist/esm/icons/tag";
 import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
 import Lock from "lucide-react/dist/esm/icons/lock";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import {
   MAX_ONBOARDING_CASE_STUDIES,
+  deriveDraftSkillsAndTechnologies,
+  normalizeStringArray,
   isServiceVisualsUploadValid,
   getPricingUnitOptions,
+  resolveServiceKey,
 } from "../../Freelancer-Onboarding/service-details";
 
 import {
@@ -238,6 +254,10 @@ const AddEditServiceWizard = ({
   const [isCategoriesLoading, setIsCategoriesLoading] = useState(false);
   const [toolOptionsByCategory, setToolOptionsByCategory] = useState({});
   const [isToolsLoading, setIsToolsLoading] = useState(false);
+  const [serviceToolOptions, setServiceToolOptions] = useState([]);
+  const [isServiceToolsLoading, setIsServiceToolsLoading] = useState(false);
+  const [serviceToolFetchError, setServiceToolFetchError] = useState("");
+  const [isServiceToolsOpen, setIsServiceToolsOpen] = useState(false);
 
   const serviceKey = serviceProfileForm.serviceKey;
   const [marketplaceServices, setMarketplaceServices] = useState([]);
@@ -301,6 +321,15 @@ const AddEditServiceWizard = ({
     return service?.id || null;
   }, [serviceKey, servicesCatalog, marketplaceServices, serviceProfileForm?.serviceId]);
 
+  const resolvedServiceToolKey = useMemo(
+    () =>
+      resolveServiceKey(
+        [...(Array.isArray(marketplaceServices) ? marketplaceServices : []), ...(Array.isArray(servicesCatalog) ? servicesCatalog : [])],
+        serviceKey,
+      ),
+    [marketplaceServices, serviceKey, servicesCatalog],
+  );
+
   const selectedSubcategories = useMemo(
     () =>
       Array.isArray(serviceProfileForm.subcategories)
@@ -338,6 +367,25 @@ const AddEditServiceWizard = ({
 
   const activeSkillCategoryId =
     serviceProfileForm.activeSkillCategory || selectedCategoryKeys[0] || null;
+
+  const selectedServiceToolIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (Array.isArray(serviceProfileForm.serviceToolIds)
+            ? serviceProfileForm.serviceToolIds
+            : [])
+            .map((value) => toPositiveInteger(value))
+            .filter(Boolean),
+        ),
+      ),
+    [serviceProfileForm.serviceToolIds],
+  );
+
+  const selectedServiceToolIdSet = useMemo(
+    () => new Set(selectedServiceToolIds),
+    [selectedServiceToolIds],
+  );
 
   // Fetch Sub-Categories
   useEffect(() => {
@@ -435,6 +483,69 @@ const AddEditServiceWizard = ({
     return id ? (toolOptionsByCategory[String(id)] || []) : [];
   }, [activeSubcategory, toolOptionsByCategory]);
 
+  useEffect(() => {
+    if (!resolvedServiceToolKey) {
+      setServiceToolOptions([]);
+      setServiceToolFetchError("");
+      setIsServiceToolsLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const fetchServiceTools = async () => {
+      try {
+        setIsServiceToolsLoading(true);
+        setServiceToolFetchError("");
+        const response = await fetch(
+          `${API_BASE_URL}/ai/services/${encodeURIComponent(resolvedServiceToolKey)}/tools`,
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch service tools");
+        }
+
+        const payload = await response.json();
+        const nextOptions = (Array.isArray(payload?.data) ? payload.data : [])
+          .map((entry) => ({
+            id: toPositiveInteger(entry?.id),
+            label: String(entry?.name || entry?.label || "").trim(),
+            name: String(entry?.name || entry?.label || "").trim(),
+          }))
+          .filter((entry) => entry.id && entry.label);
+
+        if (!cancelled) {
+          setServiceToolOptions(nextOptions);
+        }
+      } catch {
+        if (!cancelled) {
+          setServiceToolOptions([]);
+          setServiceToolFetchError("Unable to load service tools right now.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsServiceToolsLoading(false);
+        }
+      }
+    };
+
+    void fetchServiceTools();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedServiceToolKey]);
+
+  const syncDerivedSkills = useCallback(
+    (draft = {}) => ({
+      ...draft,
+      skillsAndTechnologies: deriveDraftSkillsAndTechnologies(
+        draft,
+        toolOptionsByCategory,
+        serviceToolOptions,
+      ),
+    }),
+    [serviceToolOptions, toolOptionsByCategory],
+  );
+
   const caseStudies = useMemo(
     () => normalizeWizardCaseStudies(serviceProfileForm),
     [serviceProfileForm.caseStudies, serviceProfileForm.caseStudy]
@@ -447,33 +558,74 @@ const AddEditServiceWizard = ({
   );
   const activeCaseStudy = caseStudies[activeCaseStudyIndex] || caseStudies[0];
 
-  // Derive flat skills array for validation/persistence
+  // Keep the flat skills list in sync with selected category skills and service tools.
   useEffect(() => {
-    const toolNameById = new Map();
-    Object.values(toolOptionsByCategory).forEach(options => {
-      (options || []).forEach(o => toolNameById.set(o.id, o.name));
-    });
+    const derivedSkills = deriveDraftSkillsAndTechnologies(
+      serviceProfileForm,
+      toolOptionsByCategory,
+      serviceToolOptions,
+    );
+    const currentSkillsSignature = buildStringSignature(serviceProfileForm.skillsAndTechnologies);
+    const nextSkillsSignature = buildStringSignature(derivedSkills);
 
-    const derived = [];
-    selectedSubcategories.forEach(sub => {
-      (sub.selectedToolIds || []).forEach(id => {
-        const name = toolNameById.get(id);
-        if (name) derived.push(name);
-      });
-      derived.push(...(sub.customSkillNames || []));
-    });
-
-    // Only update if different to avoid infinite loop
-    const current = (serviceProfileForm.skillsAndTechnologies || []).join('|');
-    const next = [...new Set(derived)].join('|');
-    
-    if (current !== next) {
-      setServiceProfileForm(prev => ({
+    if (currentSkillsSignature !== nextSkillsSignature) {
+      setServiceProfileForm((prev) => ({
         ...prev,
-        skillsAndTechnologies: [...new Set(derived)]
+        skillsAndTechnologies: derivedSkills,
       }));
     }
-  }, [selectedSubcategories, toolOptionsByCategory]);
+  }, [
+    serviceProfileForm,
+    serviceToolOptions,
+    setServiceProfileForm,
+    toolOptionsByCategory,
+  ]);
+
+  useEffect(() => {
+    if (!serviceToolOptions.length || !selectedServiceToolIds.length) {
+      return;
+    }
+
+    const serviceToolLabelById = new Map(
+      serviceToolOptions.map((option) => [option.id, option.label]),
+    );
+    const resolvedToolLabels = normalizeStringArray(
+      selectedServiceToolIds
+        .map((toolId) => serviceToolLabelById.get(toolId))
+        .filter(Boolean),
+    );
+
+    if (!resolvedToolLabels.length) {
+      return;
+    }
+
+    const currentLabelSignature = buildStringSignature(serviceProfileForm.serviceTools);
+    const nextLabelSignature = buildStringSignature(resolvedToolLabels);
+    const currentIdSignature = buildIntegerSignature(serviceProfileForm.serviceToolIds);
+    const nextIdSignature = buildIntegerSignature(selectedServiceToolIds);
+
+    if (
+      currentLabelSignature === nextLabelSignature &&
+      currentIdSignature === nextIdSignature
+    ) {
+      return;
+    }
+
+    setServiceProfileForm((prev) =>
+      syncDerivedSkills({
+        ...prev,
+        serviceToolIds: selectedServiceToolIds,
+        serviceTools: resolvedToolLabels,
+      }),
+    );
+  }, [
+    selectedServiceToolIds,
+    serviceProfileForm.serviceToolIds,
+    serviceProfileForm.serviceTools,
+    serviceToolOptions,
+    setServiceProfileForm,
+    syncDerivedSkills,
+  ]);
 
   // Fetch Niches
   useEffect(() => {
@@ -714,33 +866,71 @@ const AddEditServiceWizard = ({
         });
 
         return {
-          ...prev,
-          subcategories: nextSubcategories,
-          activeSkillCategory: nextSubcategories.some(
-            (subcategory) => subcategory.subCategoryKey === prev.activeSkillCategory
-          )
-            ? prev.activeSkillCategory
-            : nextSubcategories[0]?.subCategoryKey || null,
+          ...syncDerivedSkills({
+            ...prev,
+            subcategories: nextSubcategories,
+            activeSkillCategory: nextSubcategories.some(
+              (subcategory) => subcategory.subCategoryKey === prev.activeSkillCategory
+            )
+              ? prev.activeSkillCategory
+              : nextSubcategories[0]?.subCategoryKey || null,
+          }),
         };
       });
     },
-    [allCategoryOptions, setServiceProfileForm]
+    [allCategoryOptions, setServiceProfileForm, syncDerivedSkills]
   );
 
   const handleSubcategorySkillChange = useCallback(
     (subcategoryKey, field, values) => {
-      setServiceProfileForm((prev) => ({
-        ...prev,
-        subcategories: (Array.isArray(prev.subcategories) ? prev.subcategories : []).map(
-          (subcategory) =>
-            subcategory.subCategoryKey === subcategoryKey
-              ? { ...subcategory, [field]: values }
-              : subcategory
-        ),
-      }));
+      setServiceProfileForm((prev) =>
+        syncDerivedSkills({
+          ...prev,
+          subcategories: (Array.isArray(prev.subcategories) ? prev.subcategories : []).map(
+            (subcategory) =>
+              subcategory.subCategoryKey === subcategoryKey
+                ? { ...subcategory, [field]: values }
+                : subcategory
+          ),
+        })
+      );
     },
-    [setServiceProfileForm]
+    [setServiceProfileForm, syncDerivedSkills]
   );
+
+  const handleServiceToolToggle = useCallback(
+    (toolOption) => {
+      const toolId = toPositiveInteger(toolOption?.id);
+      const toolLabel = String(toolOption?.label || toolOption?.name || "").trim();
+      if (!toolId || !toolLabel) {
+        return;
+      }
+
+      setServiceProfileForm((prev) => {
+        const currentIds = Array.isArray(prev?.serviceToolIds)
+          ? prev.serviceToolIds.map((value) => toPositiveInteger(value)).filter(Boolean)
+          : [];
+        const hasTool = currentIds.includes(toolId);
+        const nextIds = hasTool
+          ? currentIds.filter((value) => value !== toolId)
+          : [...currentIds, toolId];
+        const serviceToolLabelById = new Map(
+          serviceToolOptions.map((option) => [option.id, option.label]),
+        );
+        const nextLabels = normalizeStringArray(
+          nextIds.map((value) => serviceToolLabelById.get(value)).filter(Boolean),
+        );
+
+        return syncDerivedSkills({
+          ...prev,
+          serviceToolIds: nextIds,
+          serviceTools: nextLabels,
+        });
+      });
+    },
+    [serviceToolOptions, setServiceProfileForm, syncDerivedSkills],
+  );
+
   const updateCaseStudy = useCallback((field, value) => {
     setServiceProfileForm((prev) => {
       const normalizedCaseStudies = normalizeWizardCaseStudies(prev);
@@ -897,6 +1087,130 @@ const AddEditServiceWizard = ({
                     onSkillChange={handleSubcategorySkillChange}
                   />
                 </div>
+
+                {(isServiceToolsLoading || serviceToolFetchError || serviceToolOptions.length > 0) && (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
+                        Service Tools
+                        <span className="ml-1 text-muted-foreground/60 font-normal">
+                          (Optional)
+                        </span>
+                      </label>
+                      <p className="text-xs text-muted-foreground">
+                        Choose the tools you actively use for this service.
+                      </p>
+                    </div>
+
+                    {isServiceToolsLoading ? (
+                      <div className="flex flex-wrap gap-2">
+                        {[1, 2, 3, 4].map((item) => (
+                          <div
+                            key={`service-tool-skeleton-${item}`}
+                            className="h-10 w-28 animate-pulse rounded-full border border-border bg-muted/40"
+                          />
+                        ))}
+                      </div>
+                    ) : serviceToolOptions.length > 0 ? (
+                      <div className="space-y-3">
+                        <Popover
+                          open={isServiceToolsOpen}
+                          onOpenChange={setIsServiceToolsOpen}
+                        >
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className={cn(
+                                "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
+                                isServiceToolsOpen
+                                  ? "border-primary/50 ring-1 ring-primary/20"
+                                  : "border-border"
+                              )}
+                            >
+                              <span className="text-muted-foreground">
+                                Search and select tools...
+                              </span>
+                              <ChevronDown className="h-4 w-4 opacity-50" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-[--radix-popover-trigger-width] p-0"
+                            align="start"
+                          >
+                            <Command>
+                              <CommandInput placeholder="Search tools..." />
+                              <CommandList>
+                                <CommandEmpty>No tools found.</CommandEmpty>
+                                <CommandGroup>
+                                  {serviceToolOptions.map((toolOption) => {
+                                    const isSelected =
+                                      selectedServiceToolIdSet.has(toolOption.id);
+                                    return (
+                                      <CommandItem
+                                        key={toolOption.id}
+                                        value={toolOption.label}
+                                        onSelect={() => {
+                                          handleServiceToolToggle(toolOption);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            "mr-2 h-4 w-4",
+                                            isSelected
+                                              ? "opacity-100 text-primary"
+                                              : "opacity-0"
+                                          )}
+                                        />
+                                        {toolOption.label}
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+
+                        {selectedServiceToolIds.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {selectedServiceToolIds.map((toolId) => {
+                              const toolOption = serviceToolOptions.find(
+                                (option) => option.id === toolId
+                              );
+                              if (!toolOption) return null;
+
+                              return (
+                                <div
+                                  key={toolId}
+                                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                >
+                                  <span>{toolOption.label}</span>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      handleServiceToolToggle(toolOption);
+                                    }}
+                                    className="ml-1 rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {serviceToolFetchError ? (
+                      <p className="text-xs text-destructive">
+                        {serviceToolFetchError}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
+
                 <div className="space-y-2.5">
                   <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Service Description
@@ -1164,6 +1478,20 @@ const toPositiveInteger = (value) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
+
+const buildIntegerSignature = (values = []) =>
+  (Array.isArray(values) ? values : [])
+    .map((value) => toPositiveInteger(value))
+    .filter(Boolean)
+    .sort((a, b) => a - b)
+    .join("|");
+
+const buildStringSignature = (values = []) =>
+  (Array.isArray(values) ? values : [])
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean)
+    .sort()
+    .join("|");
 
 // --- SUB-COMPONENTS FROM ONBOARDING ---
 
@@ -2151,7 +2479,7 @@ const CategorySkillBrowser = ({
               ) : null}
               {searchResults.skills.length > 0 ? (
                 <div>
-                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-foreground">Skills</p>
+                  <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-foreground">Tools</p>
                   {searchResults.skills.map(({ tool, categoryKey, categoryLabel }) => (
                     <button
                       key={`${categoryKey}-${tool.id}`}

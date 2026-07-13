@@ -29,6 +29,9 @@ Frontend Framework: Next.js
 Backend Technology: Node.js
 Database: PostgreSQL
 Hosting: Vercel
+Tech Stack:
+- Framer
+- Webflow
 Page Count: 8 pages
   `;
 
@@ -60,6 +63,7 @@ Page Count: 8 pages
   assert.equal(result.backendTechnology, "Node.js");
   assert.equal(result.databaseType, "PostgreSQL");
   assert.equal(result.hosting, "Vercel");
+  assert.deepEqual(result.techStack, ["Framer", "Webflow"]);
   assert.equal(result.pageCount, "8 pages");
   assert.equal(result.serviceKey, "web-development");
   assert.match(result.proposalContent, /Client Name: Ravindra/);
@@ -413,4 +417,30 @@ Page Count: 8 pages
   assert.ok(result.fitProfile.requiredSkills.includes("Vercel"));
   assert.ok(result.fitProfile.deliverables.includes("Admin dashboard"));
   assert.ok(result.screening.mustHaveQuestions.length > 0);
+});
+
+test("buildProjectFreelancerMatchingSeed carries service tool mentions from proposal context", () => {
+  const result = buildProjectFreelancerMatchingSeed({
+    title: "Studio North launch",
+    serviceKey: "web-development",
+    serviceType: "Web Development",
+    proposalContext: {
+      serviceTools: ["Framer", "Webflow"],
+      techStack: ["Framer", "Webflow"],
+      serviceName: "Web Development",
+    },
+    proposalContent: `
+Client Name: Neha
+Business Name: Studio North
+Service Type: Web Development
+Project Overview: Build a launch-ready marketing site.
+Launch Timeline: 4 weeks
+Budget: INR 60,000
+    `,
+  });
+
+  assert.ok(result.fitProfile.requiredSkills.includes("Framer"));
+  assert.ok(result.fitProfile.requiredSkills.includes("Webflow"));
+  assert.ok(result.matchingQuery.techStack.includes("Framer"));
+  assert.ok(result.matchingQuery.techStack.includes("Webflow"));
 });

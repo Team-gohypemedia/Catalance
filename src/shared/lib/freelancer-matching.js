@@ -765,6 +765,9 @@ function extractTechnologies({
     ...flattenValues(proposal?.proposalContext?.required_tech_stack),
     ...flattenValues(proposal?.proposalContext?.techStack),
     ...flattenValues(proposal?.proposalContext?.tech_stack),
+    ...flattenValues(proposal?.proposalContext?.serviceTools),
+    ...flattenValues(proposal?.proposalContext?.mentionedTools),
+    ...flattenValues(proposal?.proposalContext?.tools),
     ...flattenValues(proposal?.proposalContext?.skills),
   ];
   const appHintCandidates =
