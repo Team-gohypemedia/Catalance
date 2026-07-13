@@ -552,6 +552,7 @@ export const enrichConversationRecord = (
   const nextConversation = {
     ...conversation,
     projectId: conversation.projectId || conversation.id || null,
+    requestId: conversation.requestId || conversation.id || null,
     conversationId: conversation.conversationId || null,
     clientName: conversation.clientName || currentClientName,
     name: getFirstNonEmptyText(
@@ -603,6 +604,7 @@ export const enrichConversationRecord = (
 
 export const enrichRequestRecord = (request = {}) => ({
   ...request,
+  requestId: request.requestId || request.id || null,
   searchText: buildRequestSearchText(request),
 });
 

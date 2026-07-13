@@ -370,6 +370,30 @@ const buildRecentActivities = ({
         };
       }
 
+      if (
+        type === "marketplace_request_accepted" ||
+        (type === "marketplace_request" &&
+          String(notification?.data?.requestStatus || "").toLowerCase() === "accepted")
+      ) {
+        return {
+          id: notification?.id || `notification-marketplace-accepted-${index}`,
+          iconKey: "message",
+          tone: "amber",
+          title: notification?.title || "Inquiry accepted",
+          subtitle:
+            notification?.message ||
+            "Your marketplace inquiry was accepted. Open messages to continue the conversation.",
+          timeLabel: formatDashboardRelativeTime(createdAt),
+          sortValue: new Date(createdAt || 0).getTime() || 0,
+          onClick: () =>
+            navigate(
+              notification?.data?.route ||
+                notification?.data?.redirectTo ||
+                "/client/messages",
+            ),
+        };
+      }
+
       if (type === "proposal") {
         const proposalStatus = String(notification?.data?.status || "").toUpperCase();
 
@@ -926,3 +950,4 @@ export const ClientDashboardDataProvider = ({ children }) => {
     </ClientDashboardDataContext.Provider>
   );
 };
+

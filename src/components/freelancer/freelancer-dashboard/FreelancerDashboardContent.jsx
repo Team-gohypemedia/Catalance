@@ -59,6 +59,14 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { toast } from "sonner";
+import {
+  createMarketplaceChatRequest,
+  readMarketplaceChatRequests,
+  acceptMarketplaceChatRequest,
+  declineMarketplaceChatRequest,
+  MARKETPLACE_CHAT_UPDATED_EVENT,
+} from "@/shared/lib/marketplace-chat-requests";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const buildFreelancerProjectDestination = (projectId = "") => {
   const normalizedProjectId = String(projectId || "").trim();
@@ -151,6 +159,67 @@ const resolveFreelancerNotificationDestination = (notification) => {
 };
 
 // ========== Phase Building Helper Functions (from ClientProjects) ==========
+const getMarketplaceRequestKey = (request = {}) => {
+  const requestId = String(request?.requestId || request?.id || "").trim();
+  if (requestId) {
+    return requestId;
+  }
+
+  return [
+    request?.clientId,
+    request?.freelancerId,
+    request?.serviceId,
+    request?.createdAt,
+  ]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join("|");
+};
+
+const getRequestSortValue = (request = {}) => {
+  const updatedAt = new Date(request?.updatedAt || request?.createdAt || 0).getTime();
+  return Number.isFinite(updatedAt) ? updatedAt : 0;
+};
+
+const mapMarketplaceRequestNotification = (notification = {}) => {
+  const data = notification?.data || {};
+
+  return {
+    id: data.requestId || data.id || notification.id,
+    requestId: data.requestId || data.id || notification.id,
+    status: String(data.requestStatus || "pending").toLowerCase(),
+    createdAt:
+      notification.createdAt ||
+      data.createdAt ||
+      notification.updatedAt ||
+      new Date().toISOString(),
+    updatedAt:
+      notification.updatedAt ||
+      notification.createdAt ||
+      data.updatedAt ||
+      new Date().toISOString(),
+    clientId: data.clientId || null,
+    clientName: data.clientName || "Client",
+    clientAvatar: data.clientAvatar || "",
+    clientBusinessName: data.clientBusinessName || "",
+    freelancerId: data.freelancerId || null,
+    freelancerName: data.freelancerName || "Freelancer",
+    freelancerAvatar: data.freelancerAvatar || "",
+    serviceId: data.serviceId || null,
+    serviceTitle: data.serviceTitle || "Marketplace Request",
+    serviceType: data.serviceType || data.serviceTitle || "Marketplace Request",
+    requestMessage: data.requestMessage || notification.message || "",
+    previewText: data.previewText || notification.message || "",
+    requestSource: data.requestSource || "marketplace",
+    requestedFreelancerId: data.freelancerId || null,
+    requestedFreelancerName: data.freelancerName || "Freelancer",
+    requestedFreelancerUserId: data.freelancerId || null,
+    memberNames: [data.clientName, data.freelancerName].filter(Boolean),
+    audience: String(data.audience || data.recipientRole || notification.audience || "")
+      .trim()
+      .toLowerCase(),
+  };
+};
 const toTaskIdArray = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item || "").trim()).filter(Boolean);
@@ -2011,7 +2080,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => {
         <div className="relative mb-5 flex h-[110px] w-full items-center justify-center">
           {/* Background Glow */}
           <div className="absolute size-20 rounded-full bg-primary/5 blur-md" />
-          
+
           {/* Main Icon Container */}
           <div className="relative flex size-16 items-center justify-center rounded-[20px] bg-primary/10 border border-primary/25 text-primary shadow-sm">
             <item.Icon className="size-8" strokeWidth={2} />
@@ -2033,7 +2102,7 @@ const FreelancerProjectRedirectCard = ({ item, className }) => {
         <h3 className="text-[20px] font-bold tracking-[-0.03em] text-[#1C1B1F] dark:text-white sm:text-[1.35rem]">
           {item.title}
         </h3>
-        
+
         <p className="mt-2.5 max-w-[260px] text-[0.82rem] leading-relaxed text-muted-foreground sm:text-xs">
           {item.description}
         </p>
@@ -2111,15 +2180,111 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   });
   const navigate = useNavigate();
   const location = useLocation();
-  const { notifications, unreadCount, markAsRead, markAllAsRead } =
+  const { notifications, unreadCount, markAsRead, markAllAsRead, refreshNotifications } =
     useNotifications();
 
+  const handleMarketplaceRequestDecision = useCallback(
+    async (request, decision) => {
+      const requestId = String(request?.requestId || request?.id || "").trim();
+      if (!requestId || !authFetch) {
+        return;
+      }
+
+      const normalizedDecision = String(decision || "").trim().toLowerCase();
+      if (!["accepted", "declined"].includes(normalizedDecision)) {
+        return;
+      }
+
+      setRequestActionId(requestId);
+      try {
+        const response = await authFetch(
+          `/notifications/marketplace-request/${encodeURIComponent(requestId)}/status`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: normalizedDecision }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to update request status (status ${response.status})`);
+        }
+
+        if (normalizedDecision === "accepted") {
+          createMarketplaceChatRequest({
+            ...request,
+            id: requestId,
+            requestId: requestId,
+            status: "accepted",
+            requestStatus: "accepted",
+            requestSource: "marketplace",
+            previewText: request.requestMessage || request.previewText || "",
+            updatedAt: new Date().toISOString(),
+          });
+
+          const acceptedRequest = acceptMarketplaceChatRequest(requestId);
+          if (acceptedRequest) {
+            toast.success("Inquiry accepted. Opening chat...");
+            await refreshNotifications?.();
+            navigate(`/freelancer/messages?requestId=${encodeURIComponent(requestId)}`);
+            return;
+          }
+        } else {
+          const declinedRequest = declineMarketplaceChatRequest(requestId);
+          if (declinedRequest) {
+            toast.success("Request declined.");
+          }
+        }
+
+        await refreshNotifications?.();
+      } catch (error) {
+        console.error("Failed to update marketplace request status:", error);
+        toast.error("Unable to update this request right now.");
+      } finally {
+        setRequestActionId(null);
+      }
+    },
+    [authFetch, navigate, refreshNotifications],
+  );
   const handleNotificationClick = useCallback((notification) => {
     markAsRead(notification.id);
     navigate(resolveFreelancerNotificationDestination(notification));
   }, [markAsRead, navigate]);
 
   const effectiveUser = user ?? sessionUser;
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [requestActionId, setRequestActionId] = useState(null);
+
+  useEffect(() => {
+    const marketplaceRequests = new Map();
+
+    (Array.isArray(notifications) ? notifications : [])
+      .filter((notification) => String(notification?.type || "").toLowerCase() === "marketplace_request")
+      .map(mapMarketplaceRequestNotification)
+      .filter((request) => request.status === "pending")
+      .filter((request) => {
+        if (request.audience === "client" || request.audience === "freelancer") {
+          return request.audience === "freelancer";
+        }
+
+        return true;
+      })
+      .forEach((request) => {
+        const key = getMarketplaceRequestKey(request);
+        if (!key) return;
+
+        const existing = marketplaceRequests.get(key);
+        if (!existing || getRequestSortValue(request) >= getRequestSortValue(existing)) {
+          marketplaceRequests.set(key, request);
+        }
+      });
+
+    setPendingRequests(
+      Array.from(marketplaceRequests.values()).sort(
+        (left, right) => getRequestSortValue(right) - getRequestSortValue(left),
+      ),
+    );
+  }, [notifications]);
   const primaryRole = String(effectiveUser?.role || "").toUpperCase();
   const additionalRoles = Array.isArray(effectiveUser?.roles)
     ? effectiveUser.roles.map((role) => String(role).toUpperCase())
@@ -2881,7 +3046,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           project?.owner?.fullName ||
           project?.owner?.name ||
           "Client";
-        
+
         // Build full phase structure with steps using the same logic as client dashboard
         const basePhases = buildProjectPhases(project);
         const sop = project?.customSop || getSopFromTitle(
@@ -2931,7 +3096,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           subLabel: "Current phase",
           steps: [],
         };
-        
+
         const deadline = project?.deadline
           ? new Date(project.deadline).toLocaleDateString("en-US", {
               month: "short",
@@ -3719,11 +3884,11 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     const handleWheel = (e) => {
       const isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY);
       const delta = isHorizontal ? e.deltaX : e.deltaY;
-      
+
       if (Math.abs(delta) > 5) {
         const canScrollNext = runningProjectsCarouselApi.canScrollNext();
         const canScrollPrev = runningProjectsCarouselApi.canScrollPrev();
-        
+
         // Always prevent default on horizontal trackpad swipes to block browser back/forward gestures
         if (isHorizontal) {
           e.preventDefault();
@@ -3731,7 +3896,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           // For vertical mouse wheel, only block page scroll if the carousel can slide
           e.preventDefault();
         }
-        
+
         if ((delta > 0 && canScrollNext) || (delta < 0 && canScrollPrev)) {
           const now = Date.now();
           if (now - lastScrollTime > 250) {
@@ -3906,6 +4071,7 @@ export const DashboardContent = ({ _roleOverride, children }) => {
     payoutMethodConnected,
     engagementDetails,
     liveProjects,
+    pendingRequests,
   };
 
   if (typeof children === "function") {
@@ -3982,6 +4148,69 @@ export const DashboardContent = ({ _roleOverride, children }) => {
               </div>
             </div>
           ) : null}
+
+          {/* Pending Client Inquiries */}
+          {pendingRequests.length > 0 && (
+            <section className="w-full mt-2 mb-2">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-[#1C1B1F] dark:text-white">
+                    Pending Client Inquiries
+                  </h2>
+                  <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                    <span className="absolute inset-0 rounded-full bg-[#f59e0b]/10" />
+                    <span className="absolute inset-0 rounded-full bg-[#f59e0b]/20 animate-ping" />
+                    <span className="relative block size-[6px] rounded-full bg-[#f59e0b]" />
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {pendingRequests.map((req) => (
+                  <div key={req.id} className="flex flex-col justify-between rounded-3xl border border-black/5 bg-[#FDF7F0] dark:bg-[#18130d] dark:border-white/5 p-5 shadow-sm hover:shadow-md transition-all">
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={req.clientAvatar} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                            {String(req.clientName || "C").charAt(0).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h4 className="font-bold text-sm text-foreground">{req.clientName}</h4>
+                          <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                            {req.serviceTitle || "Service Inquiry"}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 mb-4 leading-relaxed italic bg-white/60 dark:bg-black/40 p-3 rounded-xl border border-black/5 dark:border-white/5">
+                        "{req.requestMessage}"
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        type="button"
+                        className="h-10 rounded-full bg-primary hover:bg-primary/90 text-xs font-semibold text-primary-foreground gap-1.5 shadow-sm"
+                        disabled={requestActionId === req.id}
+                        onClick={() => handleMarketplaceRequestDecision(req, "accepted")}
+                      >
+                        {requestActionId === req.id ? "Working..." : "Accept Inquiry & Chat"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 rounded-full border border-destructive/30 bg-transparent text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/30 dark:text-destructive"
+                        disabled={requestActionId === req.id}
+                        onClick={() => handleMarketplaceRequestDecision(req, "declined")}
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           {metricsLoading ? (
             <FreelancerActiveProjectsSkeleton />
@@ -4105,6 +4334,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
             )}
           </section>
           )}
+
+
 
           <section className="grid items-start grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
             <div className="space-y-5">
@@ -4795,3 +5026,13 @@ export const ClientDashboard = () => {
 };
 
 export default FreelancerDashboard;
+
+
+
+
+
+
+
+
+
+

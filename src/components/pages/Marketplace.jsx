@@ -320,6 +320,15 @@ const getInitials = (name = "") =>
     .map((part) => part[0]?.toUpperCase())
     .join("") || "C";
 
+const isValidImageUrl = (url) => {
+  if (!url || typeof url !== "string") return false;
+  const clean = url.trim();
+  if (clean.startsWith("**") || clean.includes(" ") || (!clean.startsWith("http") && !clean.startsWith("/") && !clean.startsWith("data:"))) {
+    return false;
+  }
+  return true;
+};
+
 const getGradient = (seed = "") => {
   const gradients = [
     "from-sky-400/35 via-cyan-300/20 to-slate-900/85",
@@ -940,6 +949,34 @@ const Marketplace = () => {
 
   const [page, setPage] = useState(initialSearchState.page);
   const [data, setData] = useState([]);
+  const [selectedSkill, setSelectedSkill] = useState(null);
+
+  useEffect(() => {
+    setSelectedSkill(null);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [category]);
+
+  const availableSkills = useMemo(() => {
+    return extractTechOptionsFromData(data);
+  }, [data]);
+
+  const filteredFreelancerData = useMemo(() => {
+    if (!selectedSkill) return data;
+    return data.filter((item) => {
+      const skills = [
+        ...(Array.isArray(item?.techStack) ? item.techStack : []),
+        ...(Array.isArray(item?.serviceDetails?.techStack) ? item.serviceDetails.techStack : []),
+        ...(Array.isArray(item?.serviceDetails?.skillsAndTechnologies)
+          ? item.serviceDetails.skillsAndTechnologies
+          : []),
+        ...(Array.isArray(item?.serviceDetails?.serviceSpecializations)
+          ? item.serviceDetails.serviceSpecializations
+          : []),
+      ].map((s) => normalizeKey(String(s || "").trim()));
+      
+      return skills.includes(normalizeKey(selectedSkill));
+    });
+  }, [data, selectedSkill]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1552,7 +1589,10 @@ const Marketplace = () => {
 
   const handleCategorySelect = (nextCategory) => {
     const resolvedCategory = nextCategory === category ? "all" : nextCategory;
-    navigate(buildMarketplaceHref(resolvedCategory), { replace: false });
+    const path = resolvedCategory !== "all" 
+      ? `/marketplace/${encodeURIComponent(normalizeKey(resolvedCategory))}`
+      : "/marketplace";
+    navigate(path, { replace: false });
   };
 
   const handleSubCategorySelect = (nextValue) => {
@@ -1824,9 +1864,10 @@ const Marketplace = () => {
   );
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className={cn("relative min-h-screen bg-background text-foreground", category !== "all" && "pt-28")}>
       {/* Full Screen Hero Section */}
-      <section className="relative flex w-full flex-col items-center justify-start overflow-hidden bg-background pt-24 pb-0">
+      {category === "all" && (
+        <section className="relative flex w-full flex-col items-center justify-start overflow-hidden bg-background pt-24 pb-0">
 
 
         {/* Sparkles Background */}
@@ -1913,6 +1954,7 @@ const Marketplace = () => {
           </div>
         </div>
       </section>
+      )}
 
 
       {/* ── Freelancer / Project results — appear right after carousel ── */}
@@ -2141,7 +2183,7 @@ const Marketplace = () => {
                   </h3>
                   {!loading && !projectLoading && (
                     <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-[12px] font-bold text-primary hover:bg-primary/20">
-                      {(isProjectsView ? projectTotal : total)} result{(isProjectsView ? projectTotal : total) === 1 ? "" : "s"}
+                      {(isProjectsView ? projectTotal : (selectedSkill ? filteredFreelancerData.length : total))} result{(isProjectsView ? projectTotal : (selectedSkill ? filteredFreelancerData.length : total)) === 1 ? "" : "s"}
                     </Badge>
                   )}
                 </div>
@@ -2161,6 +2203,30 @@ const Marketplace = () => {
                 </button>
               )}
             </div>
+
+            {/* Skills / Tech Filter Chips */}
+            {category !== "all" && !isProjectsView && availableSkills.length > 0 && (
+              <div className="mb-8 flex flex-wrap gap-2.5 items-center">
+                {availableSkills.map((opt) => {
+                  const isActive = selectedSkill === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setSelectedSkill(isActive ? null : opt.value)}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-4.5 py-2 text-[13px] font-bold transition-all duration-200 border",
+                        isActive
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-slate-200 bg-white/60 text-slate-600 hover:border-primary/30 hover:text-primary dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-white"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Subcategory row - Commented out as requested */}
             {/* {category !== "all" && category !== "crm_erp" && (
@@ -2199,7 +2265,7 @@ const Marketplace = () => {
                       ))}
                     </div>
                   </motion.div>
-                ) : data.length === 0 ? (
+                ) : filteredFreelancerData.length === 0 ? (
                   <motion.div
                     key="empty"
                     initial={{ opacity: 0, scale: 0.98 }}
@@ -2227,7 +2293,7 @@ const Marketplace = () => {
                 ) : (
                   <motion.div key="grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                     <div className="grid gap-5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-                      {data.map((item) => {
+                      {filteredFreelancerData.map((item) => {
                         const image = item.serviceDetails?.coverImage || item.serviceDetails?.image || null;
                         const rating = Number(item.rating || 0);
                         const hasRating = rating > 0;
@@ -2250,10 +2316,50 @@ const Marketplace = () => {
 
                                 {/* ── IMAGE ── */}
                                 <div className="relative h-48 w-full shrink-0 overflow-hidden bg-gray-100 dark:bg-white/[0.02]">
-                                  {image
-                                    ? <img src={image} alt={item.service || "Service"} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                                    : <div className={cn("absolute inset-0 bg-gradient-to-br", getGradient(item.serviceKey || item.id))} />
-                                  }
+                                  {(() => {
+                                    const hasValidImage = isValidImageUrl(image);
+                                    const fallbackTitle = item.serviceDetails?.title || item.service || "Professional Service";
+                                    return (
+                                      <>
+                                        <div
+                                          className={cn(
+                                            "image-fallback-placeholder absolute inset-0 bg-gradient-to-br flex flex-col items-center justify-center p-6 text-center select-none",
+                                            getGradient(item.serviceKey || item.id)
+                                          )}
+                                          style={{ display: hasValidImage ? "none" : "flex" }}
+                                        >
+                                          <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
+                                          <div className="relative z-10 mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-white border border-white/20 shadow-md backdrop-blur-md">
+                                            <span className="text-[14px] font-bold tracking-tight">
+                                              {String(fallbackTitle || "").slice(0, 2).toUpperCase()}
+                                            </span>
+                                          </div>
+                                          <p className="relative z-10 text-[13px] font-bold leading-snug text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] line-clamp-2">
+                                            {fallbackTitle}
+                                          </p>
+                                        </div>
+                                        {hasValidImage && (
+                                          <img
+                                            src={image}
+                                            alt={fallbackTitle}
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            onError={(e) => {
+                                              e.currentTarget.style.display = "none";
+                                              const parent = e.currentTarget.parentElement;
+                                              if (parent) {
+                                                const fallbackDiv = parent.querySelector(".image-fallback-placeholder");
+                                                if (fallbackDiv) {
+                                                  fallbackDiv.style.display = "flex";
+                                                }
+                                              }
+                                            }}
+                                          />
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                   {/* Heart button — always visible top-right */}
                                   <button
                                     type="button"
@@ -2402,52 +2508,13 @@ const Marketplace = () => {
             </AnimatePresence>
           ) : null}
 
-                     {((shouldRenderFreelancerResults && !loading) || (isProjectsView && !projectLoading)) && activeTotalPages > 1 && (
-              <div className="mt-6 flex flex-col gap-4 rounded-[30px] border border-black/5 bg-white/50 px-5 py-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Page <span className="font-semibold text-foreground dark:text-white">{page}</span> of{" "}
-                  <span className="font-semibold text-foreground dark:text-white">{activeTotalPages}</span>
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-black/5 bg-white/50 text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.08]" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}>
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  {Array.from({ length: activeTotalPages }, (_, index) => index + 1)
-                    .filter((pageNumber) => {
-                      if (activeTotalPages <= 7) return true;
-                      if (pageNumber === 1 || pageNumber === activeTotalPages) return true;
-                      if (Math.abs(pageNumber - page) <= 1) return true;
-                      return false;
-                    })
-                    .reduce((acc, pageNumber, index, array) => {
-                      if (index > 0 && pageNumber - array[index - 1] > 1) acc.push("ellipsis");
-                      acc.push(pageNumber);
-                      return acc;
-                    }, [])
-                    .map((item, index) => {
-                      if (item === "ellipsis") return <span key={`ellipsis-${index}`} className="px-1 text-slate-500">…</span>;
-                      const pageNumber = item;
-                      const isCurrentPage = pageNumber === page;
-                      return (
-                        <div key={pageNumber} className="contents">
-                          <Button type="button" variant={isCurrentPage ? "default" : "outline"} size="icon" className={cn("h-11 w-11 rounded-full", isCurrentPage ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90" : "border-black/5 bg-white/50 text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.08]")} onClick={() => setPage(pageNumber)}>
-                            {pageNumber}
-                          </Button>
-                        </div>
-                      );
-                    })}
-                  <Button type="button" variant="outline" size="icon" className="h-11 w-11 rounded-full border-black/5 bg-white/50 text-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white hover:bg-black/[0.03] dark:hover:bg-white/[0.08]" disabled={page >= activeTotalPages} onClick={() => setPage((current) => Math.min(activeTotalPages, current + 1))}>
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* ── Static Sections: projects showcase, why-catalance, FAQ, CTA ── */}
-      <div className="relative z-20 mx-auto mt-4 flex w-full max-w-[1280px] flex-col gap-8 px-4 pb-16 sm:gap-10 sm:px-6 lg:px-8">
+      {category === "all" && (
+        <div className="relative z-20 mx-auto mt-4 flex w-full max-w-[1280px] flex-col gap-8 px-4 pb-16 sm:gap-10 sm:px-6 lg:px-8">
         {/* Process Video Section */}
         <div className="w-full">
           <ProcessVideo />
@@ -2977,6 +3044,7 @@ const Marketplace = () => {
           </div>
         </section>
       </div>
+      )}
 
       <Dialog
         open={Boolean(selectedProjectDetail)}

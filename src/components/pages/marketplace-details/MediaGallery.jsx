@@ -5,9 +5,31 @@ import { cn } from "@/shared/lib/utils";
 const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-500/30 to-indigo-900/60", categoryLabel = "" }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [imageErrors, setImageErrors] = useState({});
+    const [touchStartX, setTouchStartX] = useState(null);
+    const [touchEndX, setTouchEndX] = useState(null);
 
     const nextImage = () => setCurrentIndex((prev) => (prev + 1) % images.length);
     const prevImage = () => setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+
+    const handleTouchStart = (e) => {
+        setTouchStartX(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchMove = (e) => {
+        setTouchEndX(e.targetTouches[0].clientX);
+    };
+
+    const handleTouchEnd = () => {
+        if (!touchStartX || !touchEndX) return;
+        const diff = touchStartX - touchEndX;
+        if (diff > 50) {
+            nextImage();
+        } else if (diff < -50) {
+            prevImage();
+        }
+        setTouchStartX(null);
+        setTouchEndX(null);
+    };
 
     const hasError = imageErrors[currentIndex];
 
@@ -15,7 +37,7 @@ const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-
     if (!images || images.length === 0) {
         return (
             <div className={cn(
-                "w-full aspect-video rounded-3xl flex flex-col items-center justify-center border border-border/30 relative overflow-hidden",
+                "w-full aspect-video rounded-xl flex flex-col items-center justify-center border border-border/30 relative overflow-hidden",
                 "bg-gradient-to-br",
                 categoryGradient
             )}>
@@ -38,13 +60,18 @@ const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-
     return (
         <div className="space-y-3">
             {/* Main Image */}
-            <div className="relative w-full aspect-video rounded-3xl overflow-hidden bg-muted group shadow-lg shadow-black/10">
+            <div 
+                className="relative w-full aspect-video rounded-xl overflow-hidden bg-muted group border border-slate-200 dark:border-white/10"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
                 <img
                     key={currentIndex}
                     src={images[currentIndex]}
                     alt={`${serviceName} - ${currentIndex + 1}`}
                     className={cn(
-                        "w-full h-full object-cover transition-all duration-500 ease-in-out group-hover:scale-[1.02]",
+                        "w-full h-full object-contain transition-all duration-500 ease-in-out group-hover:scale-[1.02]",
                         hasError && "hidden"
                     )}
                     loading="lazy"
@@ -63,8 +90,7 @@ const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-
                     </div>
                 )}
 
-                {/* Bottom gradient overlay */}
-                <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/30 to-transparent pointer-events-none" />
+
 
                 {/* Image counter */}
                 {images.length > 1 && (
@@ -119,8 +145,8 @@ const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-
                             className={cn(
                                 "relative shrink-0 w-24 h-16 rounded-xl overflow-hidden border-2 transition-all duration-200 snap-start focus:outline-none",
                                 idx === currentIndex
-                                    ? "border-primary ring-2 ring-primary/30 opacity-100 scale-[1.02]"
-                                    : "border-transparent opacity-50 hover:opacity-80 hover:border-border/40"
+                                    ? "border-primary opacity-100"
+                                    : "border-slate-200 dark:border-white/10 opacity-50 hover:opacity-80"
                             )}
                             aria-label={`Thumbnail ${idx + 1}`}
                         >
@@ -132,7 +158,7 @@ const MediaGallery = ({ images = [], serviceName, categoryGradient = "from-blue-
                                 <img
                                     src={img}
                                     alt=""
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                     onError={() => setImageErrors(prev => ({ ...prev, [idx]: true }))}
                                 />
                             )}

@@ -824,7 +824,6 @@ const useConversationSession = ({
           return false;
         }
 
-        setMessages((previous) => [...previous, nextMessage]);
         patchConversation(activeConversationKeyRef.current, {
           previewText: getMessagePreview(nextMessage),
           lastActivity: getTimestampValue(nextMessage.createdAt) || Date.now(),

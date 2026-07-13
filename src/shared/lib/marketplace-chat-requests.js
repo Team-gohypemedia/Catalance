@@ -45,11 +45,53 @@ const normalizeIdentifier = (...values) => {
   return rawValue ? String(rawValue).trim() : null;
 };
 
+const getMarketplaceConversationKeyAliases = (request = {}) => {
+  const aliases = [
+    request.conversationKey,
+    request.serviceKey,
+    request.requestId,
+    request.id,
+  ]
+    .map((value) => String(value || '').trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(aliases));
+};
+
+const normalizeMarketplaceMessageList = (messages = []) => {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return [];
+  }
+
+  const dedupedMessages = [];
+  const seenMessageKeys = new Set();
+
+  for (const message of messages) {
+    if (!message) {
+      continue;
+    }
+
+    const messageKey = String(
+      message.id ||
+        `${message.conversationId || ""}:${message.createdAt || ""}:${message.content || ""}:${message.senderId || ""}`,
+    );
+
+    if (seenMessageKeys.has(messageKey)) {
+      continue;
+    }
+
+    seenMessageKeys.add(messageKey);
+    dedupedMessages.push(message);
+  }
+
+  return dedupedMessages;
+};
+
 const buildId = (prefix = "marketplace") =>
   `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
 const normalizeRequestRecord = (request = {}) => {
-  const requestId = getFirstNonEmptyText(request.id, buildId("request"));
+  const requestId = getFirstNonEmptyText(request.requestId, request.id, buildId("request"));
   const createdAt = getFirstNonEmptyText(request.createdAt, new Date().toISOString());
   const updatedAt = getFirstNonEmptyText(request.updatedAt, createdAt);
   const clientName = getFirstNonEmptyText(
@@ -105,6 +147,7 @@ const normalizeRequestRecord = (request = {}) => {
 
   return {
     id: requestId,
+    requestId,
     status: getFirstNonEmptyText(request.status, "pending"),
     createdAt,
     updatedAt,
@@ -129,12 +172,24 @@ const normalizeRequestRecord = (request = {}) => {
       request.clientCompanyName,
     ),
     freelancerId,
+    freelancerUserId: normalizeIdentifier(
+      request.freelancerUserId,
+      request.freelancerId,
+    ),
     requestedFreelancerId: normalizeIdentifier(
       request.requestedFreelancerId,
       request.freelancerId,
     ),
     freelancerName,
+    requestedFreelancerName: getFirstNonEmptyText(
+      request.requestedFreelancerName,
+      request.freelancerName,
+    ),
     freelancerAvatar: getFirstNonEmptyText(request.freelancerAvatar),
+    requestedFreelancerUserId: normalizeIdentifier(
+      request.requestedFreelancerUserId,
+      request.freelancerUserId,
+    ),
     memberNames,
   };
 };
@@ -194,12 +249,19 @@ const writeMarketplaceChatMessagesMap = (messagesMap = {}) => {
     return {};
   }
 
+  const normalizedMessagesMap = Object.fromEntries(
+    Object.entries(messagesMap || {}).map(([key, value]) => [
+      key,
+      normalizeMarketplaceMessageList(Array.isArray(value) ? value : []),
+    ]),
+  );
+
   window.localStorage.setItem(
     REQUEST_MESSAGES_STORAGE_KEY,
-    JSON.stringify(messagesMap),
+    JSON.stringify(normalizedMessagesMap),
   );
   dispatchMarketplaceChatUpdated();
-  return messagesMap;
+  return normalizedMessagesMap;
 };
 
 const getMarketplaceConversationMessages = (conversationKey = "") => {
@@ -207,18 +269,61 @@ const getMarketplaceConversationMessages = (conversationKey = "") => {
     return [];
   }
 
+  const canonicalKey = String(conversationKey).trim();
   const messagesMap = readMarketplaceChatMessagesMap();
-  const messages = messagesMap[conversationKey];
+  const messages = normalizeMarketplaceMessageList(messagesMap[canonicalKey]);
 
-  return Array.isArray(messages) ? messages : [];
+  if (Array.isArray(messages) && messages.length > 0) {
+    return messages;
+  }
+
+  const fallbackRequest = readMarketplaceChatRequests().find((request) =>
+    getMarketplaceConversationKeyAliases(request).includes(canonicalKey),
+  );
+
+  if (!fallbackRequest) {
+    return [];
+  }
+
+  return [
+    {
+      id: `${fallbackRequest.id}:request`,
+      conversationId: fallbackRequest.conversationKey,
+      content: fallbackRequest.requestMessage || fallbackRequest.previewText || "",
+      senderId: fallbackRequest.clientId,
+      senderRole: "CLIENT",
+      senderName: fallbackRequest.clientName,
+      requestId: fallbackRequest.requestId,
+      createdAt: fallbackRequest.createdAt,
+    },
+  ].filter((message) => String(message.content || "").trim());
 };
 
+const resolveMarketplaceConversationMessages = (request = {}) => {
+  const messagesMap = readMarketplaceChatMessagesMap();
+  const aliases = getMarketplaceConversationKeyAliases(request);
+
+  for (const alias of aliases) {
+    const messages = messagesMap[alias];
+    if (Array.isArray(messages) && messages.length > 0) {
+      return {
+        messages,
+        primaryKey: alias,
+      };
+    }
+  }
+
+  return {
+    messages: [],
+    primaryKey: aliases[0] || null,
+  };
+};
 const upsertMarketplaceRequest = (request = {}) => {
   const normalizedRequest = normalizeRequestRecord(request);
   const requests = readMarketplaceChatRequests();
   const nextRequests = [
     normalizedRequest,
-    ...requests.filter((item) => String(item.id) !== String(normalizedRequest.id)),
+    ...requests.filter((item) => String(item.requestId || item.id) !== String(normalizedRequest.requestId || normalizedRequest.id)),
   ];
 
   writeMarketplaceChatRequests(nextRequests);
@@ -254,7 +359,7 @@ const createMarketplaceChatRequest = (request = {}) => {
 
   return upsertMarketplaceRequest({
     ...request,
-    id: request.id || buildId("request"),
+    id: request.requestId || request.id || buildId("request"),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });
@@ -262,29 +367,61 @@ const createMarketplaceChatRequest = (request = {}) => {
 
 const removeMarketplaceChatRequest = (requestId) => {
   const requests = readMarketplaceChatRequests();
-  const targetRequest = requests.find((request) => String(request.id) === String(requestId));
+  const targetRequest = requests.find((request) => String(request.requestId || request.id) === String(requestId));
 
   if (!targetRequest) {
     return false;
   }
 
   writeMarketplaceChatRequests(
-    requests.filter((request) => String(request.id) !== String(requestId)),
+    requests.filter((request) => String(request.requestId || request.id) !== String(requestId)),
   );
 
   const messagesMap = readMarketplaceChatMessagesMap();
-  if (targetRequest.conversationKey && messagesMap[targetRequest.conversationKey]) {
-    delete messagesMap[targetRequest.conversationKey];
-    writeMarketplaceChatMessagesMap(messagesMap);
+  const nextMessagesMap = { ...messagesMap };
+  for (const key of getMarketplaceConversationKeyAliases(targetRequest)) {
+    if (nextMessagesMap[key]) {
+      delete nextMessagesMap[key];
+    }
   }
+  writeMarketplaceChatMessagesMap(nextMessagesMap);
 
   return true;
+};
+
+const setMarketplaceChatRequestStatus = (requestId, status) => {
+  const requests = readMarketplaceChatRequests();
+  const targetRequest = requests.find((request) => String(request.requestId || request.id) === String(requestId));
+
+  if (!targetRequest) {
+    return null;
+  }
+
+  const normalizedStatus = getComparableText(status) || "pending";
+  const updatedRequest = normalizeRequestRecord({
+    ...targetRequest,
+    status: normalizedStatus,
+    updatedAt: new Date().toISOString(),
+  });
+
+  if (normalizedStatus === "accepted") {
+    seedMarketplaceConversation(updatedRequest);
+  }
+
+  writeMarketplaceChatRequests(
+    requests.map((request) =>
+      String(request.requestId || request.id) === String(requestId) ? updatedRequest : request,
+    ),
+  );
+
+  return updatedRequest;
 };
 
 const seedMarketplaceConversation = (request = {}) => {
   const normalizedRequest = normalizeRequestRecord(request);
   const messagesMap = readMarketplaceChatMessagesMap();
-  const existingMessages = messagesMap[normalizedRequest.conversationKey];
+  const { messages: existingMessages, primaryKey } =
+    resolveMarketplaceConversationMessages(normalizedRequest);
 
   if (Array.isArray(existingMessages) && existingMessages.length > 0) {
     return existingMessages;
@@ -298,41 +435,31 @@ const seedMarketplaceConversation = (request = {}) => {
       senderId: normalizedRequest.clientId,
       senderRole: "CLIENT",
       senderName: normalizedRequest.clientName,
-      requestId: normalizedRequest.id,
+      requestId: normalizedRequest.requestId,
       createdAt: normalizedRequest.createdAt,
     },
   ];
+  const normalizedSeededMessages = normalizeMarketplaceMessageList(seededMessages);
 
-  writeMarketplaceChatMessagesMap({
-    ...messagesMap,
-    [normalizedRequest.conversationKey]: seededMessages,
-  });
+  const nextMessagesMap = { ...messagesMap };
+  for (const key of getMarketplaceConversationKeyAliases(normalizedRequest)) {
+    nextMessagesMap[key] = normalizedSeededMessages;
+  }
+  if (primaryKey && !nextMessagesMap[primaryKey]) {
+    nextMessagesMap[primaryKey] = normalizedSeededMessages;
+  }
 
-  return seededMessages;
+  writeMarketplaceChatMessagesMap(nextMessagesMap);
+
+  return normalizedSeededMessages;
 };
 
 const acceptMarketplaceChatRequest = (requestId) => {
-  const requests = readMarketplaceChatRequests();
-  const targetRequest = requests.find((request) => String(request.id) === String(requestId));
+  return setMarketplaceChatRequestStatus(requestId, "accepted");
+};
 
-  if (!targetRequest) {
-    return null;
-  }
-
-  const acceptedRequest = normalizeRequestRecord({
-    ...targetRequest,
-    status: "accepted",
-    updatedAt: new Date().toISOString(),
-  });
-
-  seedMarketplaceConversation(acceptedRequest);
-  writeMarketplaceChatRequests(
-    requests.map((request) =>
-      String(request.id) === String(requestId) ? acceptedRequest : request,
-    ),
-  );
-
-  return acceptedRequest;
+const declineMarketplaceChatRequest = (requestId) => {
+  return setMarketplaceChatRequestStatus(requestId, "declined");
 };
 
 const appendMarketplaceConversationMessage = ({
@@ -365,18 +492,46 @@ const appendMarketplaceConversationMessage = ({
   };
 
   const messagesMap = readMarketplaceChatMessagesMap();
-  const existingMessages = Array.isArray(messagesMap[conversationKey])
-    ? messagesMap[conversationKey]
-    : [];
+  const relatedKeys = Array.from(
+    new Set([
+      String(conversationKey).trim(),
+      ...readMarketplaceChatRequests()
+        .filter((request) =>
+          getMarketplaceConversationKeyAliases(request).includes(
+            String(conversationKey).trim(),
+          ),
+        )
+        .flatMap((request) => getMarketplaceConversationKeyAliases(request)),
+    ]),
+  );
 
-  writeMarketplaceChatMessagesMap({
-    ...messagesMap,
-    [conversationKey]: [...existingMessages, nextMessage],
-  });
+  const existingMessages =
+    relatedKeys
+      .map((key) =>
+        Array.isArray(messagesMap[key]) && messagesMap[key].length > 0
+          ? messagesMap[key]
+          : null,
+      )
+      .find(Boolean) || [];
+
+  const nextMessages = normalizeMarketplaceMessageList([
+    ...existingMessages,
+    nextMessage,
+  ]);
+  const nextMessagesMap = { ...messagesMap };
+  for (const key of relatedKeys) {
+    if (key) {
+      nextMessagesMap[key] = nextMessages;
+    }
+  }
+
+  writeMarketplaceChatMessagesMap(nextMessagesMap);
 
   const requests = readMarketplaceChatRequests();
   const updatedRequests = requests.map((request) =>
-    request.conversationKey === conversationKey
+    getMarketplaceConversationKeyAliases(request).includes(
+      String(conversationKey).trim(),
+    )
       ? normalizeRequestRecord({
           ...request,
           status: request.status === "pending" ? "accepted" : request.status,
@@ -409,7 +564,7 @@ const buildMarketplaceConversationFromRequest = (
 
   return {
     id: normalizedRequest.id,
-    requestId: normalizedRequest.id,
+    requestId: normalizedRequest.requestId,
     serviceKey: normalizedRequest.conversationKey,
     conversationId: null,
     clientId: normalizedRequest.clientId,
@@ -445,7 +600,11 @@ export {
   buildMarketplaceConversationFromRequest,
   createMarketplaceChatRequest,
   getMarketplaceConversationMessages,
+  declineMarketplaceChatRequest,
   readMarketplaceChatRequests,
   removeMarketplaceChatRequest,
+  setMarketplaceChatRequestStatus,
   writeMarketplaceChatRequests,
 };
+
+

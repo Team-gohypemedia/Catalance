@@ -18,6 +18,48 @@ const normalizeComparableText = (value = "") =>
 const normalizeIdentifier = (value = "") =>
   String(value || "").trim().toLowerCase();
 
+const mapMarketplaceNotificationRequest = (notification = {}) => {
+  const data = notification?.data || {};
+  const statusSource =
+    notification?.type === "marketplace_request_accepted"
+      ? "accepted"
+      : data.requestStatus || "pending";
+
+  return {
+    id: data.requestId || notification.id,
+    requestId: data.requestId || notification.id,
+    status: String(statusSource || "pending").trim().toLowerCase(),
+    createdAt:
+      notification.createdAt ||
+      data.createdAt ||
+      notification.updatedAt ||
+      new Date().toISOString(),
+    updatedAt:
+      notification.updatedAt ||
+      notification.createdAt ||
+      data.updatedAt ||
+      new Date().toISOString(),
+    clientId: data.clientId || null,
+    clientName: data.clientName || "Client",
+    clientAvatar: data.clientAvatar || "",
+    clientBusinessName: data.clientBusinessName || "",
+    freelancerId: data.freelancerId || null,
+    freelancerName: data.freelancerName || "Freelancer",
+    freelancerAvatar: data.freelancerAvatar || "",
+    serviceId: data.serviceId || null,
+    serviceTitle: data.serviceTitle || "Marketplace Request",
+    serviceType: data.serviceType || data.serviceTitle || "Marketplace Request",
+    requestMessage: data.requestMessage || notification.message || "",
+    previewText: data.previewText || notification.message || "",
+    requestSource: data.requestSource || "marketplace",
+    requestedFreelancerId: data.freelancerId || null,
+    requestedFreelancerName: data.freelancerName || "Freelancer",
+    audience: String(data.audience || data.recipientRole || notification.audience || "")
+      .trim()
+      .toLowerCase(),
+  };
+};
+
 const useClientMessagesBootstrap = ({
   authFetch,
   token,
@@ -26,6 +68,8 @@ const useClientMessagesBootstrap = ({
   currentUserId,
   currentClientName,
   requestedProjectId,
+  requestedRequestId,
+  notifications = [],
 } = {}) => {
   const [remoteConversations, setRemoteConversations] = useState([]);
   const [marketplaceConversations, setMarketplaceConversations] = useState([]);
@@ -38,7 +82,16 @@ const useClientMessagesBootstrap = ({
   const syncMarketplaceRequests = useCallback(() => {
     const currentClientId = normalizeIdentifier(currentUserId);
     const currentClientLabel = normalizeComparableText(currentClientName);
-    const allRequests = readMarketplaceChatRequests();
+    const storageRequests = readMarketplaceChatRequests();
+    const notificationRequests = (Array.isArray(notifications) ? notifications : [])
+      .filter((notification) => {
+        const type = String(notification?.type || "").toLowerCase();
+        return type === "marketplace_request" || type === "marketplace_request_accepted";
+      })
+      .map(mapMarketplaceNotificationRequest);
+
+    const allRequests = [...storageRequests, ...notificationRequests];
+
     const matchesClient = (request) => {
       const requestClientId = normalizeIdentifier(request?.clientId || request?.requestedById);
       if (requestClientId && currentClientId) {
@@ -46,38 +99,58 @@ const useClientMessagesBootstrap = ({
       }
 
       if (!requestClientId && currentClientLabel) {
-        return normalizeComparableText(request?.clientName || request?.requestedByName || "") === currentClientLabel;
+        return normalizeComparableText(
+          request?.clientName || request?.requestedByName || "",
+        ) === currentClientLabel;
       }
 
       return false;
     };
 
-    const nextPendingRequests = allRequests
-      .filter(
-        (request) =>
-          request.status === "pending" &&
-          matchesClient(request),
-      )
-      .map((request) => enrichRequestRecord(request));
-    const acceptedRequestConversations = allRequests
-      .filter(
-        (request) =>
-          request.status === "accepted" &&
-          matchesClient(request),
-      )
-      .map((request) =>
-        enrichConversationRecord(
+    const nextPendingRequests = new Map();
+    const nextAcceptedConversations = new Map();
+
+    allRequests
+      .filter((request) => ["pending", "accepted"].includes(String(request.status || "").toLowerCase()))
+      .filter(matchesClient)
+      .forEach((request) => {
+        const requestId = String(request.requestId || request.id || "").trim();
+        const status = String(request.status || "pending").trim().toLowerCase();
+        const key = requestId ? `${requestId}|${status}` : `${request.clientId}|${request.freelancerId}|${request.serviceId}|${status}`;
+
+        if (status === "pending") {
+          const existing = nextPendingRequests.get(key);
+          if (!existing || new Date(request.updatedAt || request.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+            nextPendingRequests.set(key, enrichRequestRecord(request));
+          }
+          return;
+        }
+
+        const conversation = enrichConversationRecord(
           {
             ...buildMarketplaceConversationFromRequest(request, "client"),
             isMarketplaceRequestChat: true,
           },
           currentClientName,
-        ),
-      );
+        );
 
-    setPendingRequests(nextPendingRequests);
-    setMarketplaceConversations(sortConversations(acceptedRequestConversations));
-  }, [currentClientName, currentUserId]);
+        const existingConversation = nextAcceptedConversations.get(key);
+        if (!existingConversation || conversation.lastActivity >= existingConversation.lastActivity) {
+          nextAcceptedConversations.set(key, conversation);
+        }
+      });
+
+    setPendingRequests(
+      Array.from(nextPendingRequests.values()).sort(
+        (left, right) =>
+          new Date(right.updatedAt || right.createdAt || 0).getTime() -
+          new Date(left.updatedAt || left.createdAt || 0).getTime(),
+      ),
+    );
+    setMarketplaceConversations(
+      sortConversations(Array.from(nextAcceptedConversations.values())),
+    );
+  }, [currentClientName, currentUserId, notifications]);
 
   useEffect(() => {
     syncMarketplaceRequests();
@@ -208,13 +281,34 @@ const useClientMessagesBootstrap = ({
       return;
     }
 
-    if (
-      selectedConversationKey &&
-      conversations.some(
+    const selectedConversation = selectedConversationKey
+      ? conversations.find(
+          (conversation) =>
+            getConversationKey(conversation) === selectedConversationKey,
+        )
+      : null;
+
+    if (requestedRequestId) {
+      const requestedConversation = conversations.find(
         (conversation) =>
-          getConversationKey(conversation) === selectedConversationKey,
-      )
-    ) {
+          String(conversation.requestId || conversation.id) ===
+          String(requestedRequestId),
+      );
+
+      if (requestedConversation) {
+        if (
+          getConversationKey(requestedConversation) !== selectedConversationKey
+        ) {
+          setSelectedConversationKey(getConversationKey(requestedConversation));
+        }
+      } else {
+        setSelectedConversationKey(null);
+      }
+
+      return;
+    }
+
+    if (selectedConversation) {
       return;
     }
 
@@ -232,7 +326,7 @@ const useClientMessagesBootstrap = ({
     }
 
     setSelectedConversationKey(getConversationKey(conversations[0]));
-  }, [conversations, requestedProjectId, selectedConversationKey]);
+  }, [conversations, requestedProjectId, requestedRequestId, selectedConversationKey]);
 
   const activeConversation = useMemo(
     () =>
@@ -292,3 +386,15 @@ const useClientMessagesBootstrap = ({
 };
 
 export default useClientMessagesBootstrap;
+
+
+
+
+
+
+
+
+
+
+
+

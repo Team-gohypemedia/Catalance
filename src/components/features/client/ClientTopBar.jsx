@@ -39,6 +39,20 @@ export const ClientTopBar = ({ label, title }) => {
   const handleNotificationClick = (notification) => {
     markAsRead(notification.id);
 
+    const explicitDestination = String(
+      notification?.data?.route ||
+        notification?.data?.redirectTo ||
+        notification?.data?.href ||
+        notification?.data?.url ||
+        notification?.data?.path ||
+        "",
+    ).trim();
+
+    if (explicitDestination) {
+      navigate(explicitDestination);
+      return;
+    }
+
     if (notification.type === "chat" && notification.data) {
       const service = notification.data.service || "";
       const parts = service.split(":");
@@ -93,3 +107,4 @@ export const ClientTopBar = ({ label, title }) => {
 };
 
 export default ClientTopBar;
+

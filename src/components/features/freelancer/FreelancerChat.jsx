@@ -42,6 +42,7 @@ import { extractLabeledLineValue } from "@/shared/lib/labeled-fields";
 import {
   MARKETPLACE_CHAT_UPDATED_EVENT,
   acceptMarketplaceChatRequest,
+  declineMarketplaceChatRequest,
   appendMarketplaceConversationMessage,
   buildMarketplaceConversationFromRequest,
   getMarketplaceConversationMessages,
@@ -49,6 +50,7 @@ import {
   removeMarketplaceChatRequest,
 } from "@/shared/lib/marketplace-chat-requests";
 import { resolveUserDisplayName } from "@/shared/lib/user-display";
+import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 
 const SERVICE_LABEL = "Project Chat";
@@ -614,25 +616,70 @@ const ChatArea = ({
   const conversationMembers = getConversationMemberLabel(conversation, currentUser);
   const conversationAvatarLabel = conversationTitle || "Project chat";
 
-  const visibleMessages = useMemo(() => {
-    const query = deferredMessageSearch.trim().toLowerCase();
-
-    if (!query) {
-      return messages;
+  const normalizeChatMessages = useCallback((items = []) => {
+    if (!Array.isArray(items) || items.length === 0) {
+      return [];
     }
 
-    return messages.filter((message) => {
-      const haystack = [
-        message?.content,
-        message?.attachment?.name,
-        message?.senderName,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+    const dedupedMessages = [];
+    const seenMessageKeys = new Set();
 
-      return haystack.includes(query);
-    });
+    for (const message of items) {
+      if (!message) {
+        continue;
+      }
+
+      const messageKey = String(
+        message?.id ||
+          `${message?.conversationId || ""}:${message?.createdAt || ""}:${message?.content || ""}:${message?.senderId || ""}`,
+      );
+
+      if (seenMessageKeys.has(messageKey)) {
+        continue;
+      }
+
+      seenMessageKeys.add(messageKey);
+      dedupedMessages.push(message);
+    }
+
+    return dedupedMessages;
+  }, []);
+
+  const visibleMessages = useMemo(() => {
+    const query = deferredMessageSearch.trim().toLowerCase();
+    const filteredMessages = !query
+      ? messages
+      : messages.filter((message) => {
+          const haystack = [
+            message?.content,
+            message?.attachment?.name,
+            message?.senderName,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+          return haystack.includes(query);
+        });
+
+    const dedupedMessages = [];
+    const seenMessageKeys = new Set();
+
+    for (const message of filteredMessages) {
+      const messageKey = String(
+        message?.id ||
+          `${message?.conversationId || ""}:${message?.createdAt || ""}:${message?.content || ""}`,
+      );
+
+      if (seenMessageKeys.has(messageKey)) {
+        continue;
+      }
+
+      seenMessageKeys.add(messageKey);
+      dedupedMessages.push(message);
+    }
+
+    return dedupedMessages;
   }, [deferredMessageSearch, messages]);
 
   useEffect(() => {
@@ -1328,7 +1375,7 @@ const ChatArea = ({
 
 const FreelancerChatContent = () => {
   const { user, authFetch, token } = useAuth();
-  const { socket: notificationSocket } = useNotifications();
+  const { socket: notificationSocket, refreshNotifications } = useNotifications();
   const [searchParams] = useSearchParams();
   const currentFreelancerName = useMemo(() => getDisplayName(user), [user]);
   const [conversationId, setConversationId] = useState(null);
@@ -1436,7 +1483,7 @@ const FreelancerChatContent = () => {
       const payload = await response.json().catch(() => null);
       const nextMessages =
         payload?.data?.messages || payload?.messages || [];
-      setMessages(nextMessages);
+      setMessages(normalizeChatMessages(nextMessages));
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     } finally {
@@ -1497,7 +1544,14 @@ const FreelancerChatContent = () => {
 
   useEffect(() => {
     syncMarketplaceRequests();
+  }, [syncMarketplaceRequests]);
 
+  const selectedConversationRef = useRef(selectedConversation);
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
+
+  useEffect(() => {
     if (typeof window === "undefined") {
       return undefined;
     }
@@ -1505,10 +1559,11 @@ const FreelancerChatContent = () => {
     const handleMarketplaceChatUpdated = () => {
       syncMarketplaceRequests();
 
-      if (selectedConversation?.isMarketplaceRequestChat) {
+      const currentSelection = selectedConversationRef.current;
+      if (currentSelection?.isMarketplaceRequestChat) {
         setMessages(
           getMarketplaceConversationMessages(
-            selectedConversation.serviceKey || selectedConversation.id,
+            currentSelection.serviceKey || currentSelection.id,
           ),
         );
       }
@@ -1524,7 +1579,7 @@ const FreelancerChatContent = () => {
       );
       window.removeEventListener("storage", handleMarketplaceChatUpdated);
     };
-  }, [selectedConversation, syncMarketplaceRequests]);
+  }, [syncMarketplaceRequests]);
 
   useEffect(() => {
     if (!pendingRequests.length) {
@@ -1623,31 +1678,69 @@ const FreelancerChatContent = () => {
 
         const finalList = sortConversations(uniq);
         if (!cancelled) {
-          setConversations((previous) =>
-            sortConversations([
-              ...previous.filter((conversation) => conversation.isMarketplaceRequestChat),
+          setConversations((previous) => {
+            const marketplaceConversations = previous.filter(
+              (conversation) => conversation.isMarketplaceRequestChat,
+            );
+            const nextConversations = sortConversations([
+              ...marketplaceConversations,
               ...finalList,
-            ]),
-          );
-          // If we have conversations, select the first one by default.
-          // Otherwise, select null so we show the "empty state".
-          if (finalList.length > 0) {
-            const paramProjectId = searchParams.get("projectId");
-            let target = null;
-            
-            if (paramProjectId) {
-                target = finalList.find(c => String(c.id) === String(paramProjectId));
-            }
-            
-            if (!target) {
-              if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-                target = finalList[0];
+            ]);
+
+            // If we have conversations, select the requested thread first.
+            // Otherwise, select null so we show the "empty state".
+            if (finalList.length > 0) {
+              const paramProjectId = searchParams.get("projectId");
+              const paramRequestId = searchParams.get("requestId");
+              const currentSelectedKey = getConversationKey(selectedConversation);
+              let target = null;
+
+              if (paramRequestId) {
+                target = nextConversations.find(
+                  (conversation) =>
+                    String(conversation.id) === String(paramRequestId) ||
+                    String(conversation.requestId || "") === String(paramRequestId),
+                );
+
+                if (!target && currentSelectedKey) {
+                  const selectedConversationRecord = nextConversations.find(
+                    (conversation) => getConversationKey(conversation) === currentSelectedKey,
+                  );
+
+                  if (
+                    selectedConversationRecord &&
+                    String(selectedConversationRecord.requestId || selectedConversationRecord.id) ===
+                      String(paramRequestId)
+                  ) {
+                    target = selectedConversationRecord;
+                  }
+                }
+
+                if (!target) {
+                  setSelectedConversation(null);
+                  return nextConversations;
+                }
               }
+
+              if (!target && !paramRequestId && paramProjectId) {
+                target = finalList.find((c) => String(c.id) === String(paramProjectId));
+              }
+
+              if (!target && !paramRequestId) {
+                if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+                  target = finalList[0];
+                }
+              }
+
+              if (target) {
+                setSelectedConversation(target);
+              }
+            } else if (!selectedConversation?.isMarketplaceRequestChat) {
+              setSelectedConversation(null);
             }
-            setSelectedConversation(target);
-          } else if (!selectedConversation?.isMarketplaceRequestChat) {
-            setSelectedConversation(null);
-          }
+
+            return nextConversations;
+          });
         }
       } catch (error) {
         console.error("Failed to load conversations:", error);
@@ -1768,7 +1861,7 @@ const FreelancerChatContent = () => {
       const sorted = [...history].sort(
         (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       );
-      setMessages(sorted);
+      setMessages(normalizeChatMessages(sorted));
       setMessagesLoading(false);
     });
 
@@ -1781,7 +1874,7 @@ const FreelancerChatContent = () => {
             msg.content !== message?.content ||
             msg.role !== message?.role
         );
-        return [...filtered, message];
+        return normalizeChatMessages([...filtered, message]);
       });
       
       // Move this conversation to the top (like WhatsApp)
@@ -2000,7 +2093,7 @@ const FreelancerChatContent = () => {
         return;
       }
 
-      setMessages((previous) => [...previous, nextMessage]);
+      setMessages((previous) => normalizeChatMessages([...previous, nextMessage]));
       setMessageInput("");
       setConversations((previous) =>
         updateConversationDetails(previous, selectedConversationKey, {
@@ -2084,19 +2177,43 @@ const FreelancerChatContent = () => {
     emitTyping();
   };
 
-  const handleAcceptRequest = useCallback(() => {
-    if (!selectedRequest) {
+  const handleAcceptRequest = useCallback(async () => {
+    if (!selectedRequest || !authFetch) {
       return;
     }
 
-    setRequestAction(`accept:${selectedRequest.id}`);
+    setRequestAction(`accept:${requestId}`);
 
     try {
       if (selectedConversationKey) {
         drafts.current[selectedConversationKey] = messageInput;
       }
 
-      const acceptedRequest = acceptMarketplaceChatRequest(selectedRequest.id);
+      const response = await authFetch(
+        `/notifications/marketplace-request/${encodeURIComponent(requestId)}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "accepted" }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to accept request (status ${response.status})`);
+      }
+
+      createMarketplaceChatRequest({
+        ...selectedRequest,
+        id: requestId,
+        requestId: requestId,
+        status: "accepted",
+        requestStatus: "accepted",
+        requestSource: selectedRequest.requestSource || "marketplace",
+        previewText: selectedRequest.requestMessage || selectedRequest.previewText || "",
+        updatedAt: new Date().toISOString(),
+      });
+
+      const acceptedRequest = acceptMarketplaceChatRequest(requestId);
       if (!acceptedRequest) {
         return;
       }
@@ -2109,7 +2226,7 @@ const FreelancerChatContent = () => {
       setActiveTab("messages");
       setSelectedConversation(acceptedConversation);
       setMessageInput(drafts.current[acceptedConversation.serviceKey] || "");
-      setMessages(getMarketplaceConversationMessages(acceptedConversation.serviceKey));
+      setMessages(normalizeChatMessages(getMarketplaceConversationMessages(acceptedConversation.serviceKey)));
       setConversations((previous) =>
         sortConversations([
           acceptedConversation,
@@ -2119,28 +2236,54 @@ const FreelancerChatContent = () => {
           ),
         ]),
       );
+      await refreshNotifications?.();
+    } catch (error) {
+      console.error("Failed to accept marketplace request:", error);
+      toast.error("Unable to accept this request right now.");
     } finally {
       setRequestAction(null);
     }
-  }, [messageInput, selectedConversationKey, selectedRequest]);
+  }, [authFetch, messageInput, refreshNotifications, selectedConversationKey, selectedRequest]);
 
-  const handleRejectRequest = useCallback(() => {
-    if (!selectedRequest) {
+  const handleRejectRequest = useCallback(async () => {
+    if (!selectedRequest || !authFetch) {
       return;
     }
 
-    setRequestAction(`reject:${selectedRequest.id}`);
+    const requestId = String(selectedRequest?.requestId || selectedRequest?.id || "").trim();
+    if (!requestId) {
+      return;
+    }
+
+    setRequestAction('reject:' + requestId);
 
     try {
-      removeMarketplaceChatRequest(selectedRequest.id);
-      setSelectedRequestId((current) =>
-        String(current) === String(selectedRequest.id) ? null : current,
+      const response = await authFetch(
+        `/notifications/marketplace-request/${encodeURIComponent(requestId)}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "declined" }),
+        },
       );
+
+      if (!response.ok) {
+        throw new Error(`Failed to decline request (status ${response.status})`);
+      }
+
+      removeMarketplaceChatRequest(requestId);
+      setSelectedRequestId((current) =>
+        String(current) === String(requestId) ? null : current,
+      );
+      toast.success("Request declined.");
+      await refreshNotifications?.();
+    } catch (error) {
+      console.error("Failed to reject marketplace request:", error);
+      toast.error("Unable to decline this request right now.");
     } finally {
       setRequestAction(null);
     }
-  }, [selectedRequest]);
-
+  }, [authFetch, refreshNotifications, selectedRequest]);
   const activeMessages = useMemo(() => messages, [messages]);
   const filteredConversations = useMemo(() => {
     const query = deferredConversationSearch.trim().toLowerCase();
@@ -2433,4 +2576,14 @@ const FreelancerChatContent = () => {
 const FreelancerChat = () => <FreelancerChatContent />;
 
 export default FreelancerChat;
+
+
+
+
+
+
+
+
+
+
 

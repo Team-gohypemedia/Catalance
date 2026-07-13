@@ -109,16 +109,71 @@ const ChatArea = React.memo(function ChatArea({
 
   const visibleMessages = useMemo(() => {
     const query = deferredMessageSearch.trim().toLowerCase();
-    if (!query) return messages;
+    const filteredMessages = !query
+      ? messages
+      : messages.filter((message) =>
+          [message?.content, message?.attachment?.name, message?.senderName]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(query),
+        );
 
-    return messages.filter((message) =>
-      [message?.content, message?.attachment?.name, message?.senderName]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [deferredMessageSearch, messages]);
+    const dedupedMessages = [];
+    const seenMessageKeys = new Set();
+    for (const message of filteredMessages) {
+      const messageKey = String(
+        message?.id || `${message?.conversationId || ""}:${message?.createdAt || ""}:${message?.content || ""}`,
+      );
+      if (seenMessageKeys.has(messageKey)) {
+        continue;
+      }
+      seenMessageKeys.add(messageKey);
+      dedupedMessages.push(message);
+    }
+
+    if (
+      dedupedMessages.length > 0 ||
+      query ||
+      !conversation?.isMarketplaceRequestChat
+    ) {
+      return dedupedMessages;
+    }
+
+    const fallbackContent =
+      conversation?.previewText || conversation?.requestMessage || "";
+
+    if (!String(fallbackContent || "").trim()) {
+      return filteredMessages;
+    }
+
+    return [
+      {
+        id: String(conversationKey || "marketplace") + ":seeded-request",
+        conversationId: conversationKey || conversation?.conversationId || null,
+        content: fallbackContent,
+        senderId: currentUser?.id || conversation?.clientId || null,
+        senderRole: "CLIENT",
+        senderName:
+          currentUser?.fullName ||
+          currentUser?.name ||
+          currentUser?.displayName ||
+          conversation?.clientName ||
+          conversationTitle,
+        createdAt: conversation?.createdAt || new Date().toISOString(),
+      },
+    ];
+  }, [
+    conversation,
+    conversationKey,
+    conversationTitle,
+    currentUser?.displayName,
+    currentUser?.fullName,
+    currentUser?.id,
+    currentUser?.name,
+    deferredMessageSearch,
+    messages,
+  ]);
 
   useEffect(() => {
     setMessageInput(drafts?.getDraft?.(conversationKey) || "");

@@ -24,6 +24,7 @@ import {
   requestNotificationPermission,
   onForegroundMessage,
 } from "@/shared/lib/firebase";
+import { MARKETPLACE_CHAT_UPDATED_EVENT } from "@/shared/lib/marketplace-chat-requests";
 
 const NotificationContext = createContext(null);
 NotificationContext.displayName = "NotificationContext";
@@ -179,6 +180,17 @@ const inferNotificationAudience = (notification, currentUserId) => {
     return "client";
   }
 
+  if (type === "marketplace_request_accepted") {
+    return "client";
+  }
+
+  if (type === "marketplace_request") {
+    const marketplaceStatus = String(notification?.data?.requestStatus || "").trim().toLowerCase();
+    if (marketplaceStatus === "accepted") {
+      return "client";
+    }
+  }
+
   return null;
 };
 
@@ -196,6 +208,79 @@ const notificationMatchesAudience = (notification, audience, currentUserId) => {
   return resolvedAudience === audience;
 };
 
+const resolveNotificationDestination = (notification, activeAudience = null) => {
+  const explicitDestination = String(
+    notification?.data?.route ||
+      notification?.data?.redirectTo ||
+      notification?.data?.href ||
+      notification?.data?.url ||
+      notification?.data?.path ||
+      "",
+  ).trim();
+
+  if (explicitDestination) {
+    return explicitDestination;
+  }
+
+  const type = String(notification?.type || "")
+    .trim()
+    .toLowerCase();
+  const projectId = String(
+    notification?.data?.projectId || notification?.data?.syncedProjectId || "",
+  ).trim();
+
+  if (type === "chat") {
+    const service = String(notification?.data?.service || "");
+    const parts = service.split(":");
+    let chatProjectId = projectId;
+
+    if (!chatProjectId && parts.length >= 4 && parts[0] === "CHAT") {
+      chatProjectId = parts[1];
+    }
+
+    return chatProjectId
+      ? `/${activeAudience || "client"}/messages?projectId=${encodeURIComponent(chatProjectId)}`
+      : `/${activeAudience || "client"}/messages`;
+  }
+
+  if (
+    type === "proposal" ||
+    type === "proposal_followup" ||
+    type === "budget_suggestion" ||
+    type === "proposal_expired"
+  ) {
+    if (String(notification?.data?.status || "").trim().toUpperCase() === "ACCEPTED" && projectId) {
+      return `/${activeAudience || "client"}/project/${encodeURIComponent(projectId)}`;
+    }
+
+    return activeAudience === "freelancer"
+      ? "/freelancer/proposals"
+      : projectId
+        ? `/client/proposal?projectId=${encodeURIComponent(projectId)}`
+        : "/client/proposal";
+  }
+
+  if (
+    type === "marketplace_request_accepted" ||
+    (type === "marketplace_request" &&
+      String(notification?.data?.requestStatus || "").trim().toLowerCase() === "accepted")
+  ) {
+    return `/${activeAudience || "client"}/messages`;
+  }
+
+  if (
+    type === "task_completed" ||
+    type === "task_verified" ||
+    type === "task_unverified" ||
+    type === "freelancer_change_resolved"
+  ) {
+    return projectId
+      ? `/${activeAudience || "client"}/project/${encodeURIComponent(projectId)}`
+      : `/${activeAudience || "client"}/project`;
+  }
+
+  return `/${activeAudience || "client"}`;
+};
 export const NotificationProvider = ({ children }) => {
   const auth = useOptionalAuth();
   const user = auth?.user ?? null;
@@ -249,27 +334,7 @@ export const NotificationProvider = ({ children }) => {
     });
 
     if (newNotification.type !== "system") {
-      const notifType = String(newNotification.type || "").trim().toLowerCase();
-      const notifProjectId = newNotification.data?.projectId || newNotification.data?.syncedProjectId;
-      
-      let destinationUrl = "";
-      if (notifType === "chat") {
-        const chatProjectId = notifProjectId || (newNotification.data?.service?.split(":")[1]);
-        destinationUrl = `/${activeAudience || "client"}/messages${chatProjectId ? `?projectId=${chatProjectId}` : ""}`;
-      } else if (
-        notifType === "proposal" ||
-        notifType === "proposal_followup" ||
-        notifType === "budget_suggestion" ||
-        notifType === "proposal_expired"
-      ) {
-        if (activeAudience === "freelancer") {
-          destinationUrl = `/freelancer/proposals`;
-        } else {
-          destinationUrl = notifProjectId ? `/client/proposal?projectId=${notifProjectId}` : `/client/proposal`;
-        }
-      } else {
-        destinationUrl = `/${activeAudience || "client"}/project${notifProjectId ? `/${notifProjectId}` : ""}`;
-      }
+      const destinationUrl = resolveNotificationDestination(newNotification, activeAudience);
 
       toast(newNotification.title, {
         id: newNotification.id,
@@ -473,33 +538,47 @@ export const NotificationProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch initial notifications
-  useEffect(() => {
-    // Wait for auth to finish loading before fetching notifications
-    // This prevents 401 errors when the token is being verified
+  const refreshNotifications = useCallback(async () => {
+    // Wait for auth to finish loading before fetching notifications.
+    // This prevents 401 errors when the token is being verified.
     if (isOnboardingPath || !isAuthenticated || isLoading) return;
 
-    const fetchNotifications = async () => {
-      try {
-        const data = await apiClient("/notifications");
-
-        setNotifications(data.notifications || []);
-      } catch (error) {
-        // Silently ignore 401 errors - user is not authenticated or session expired
-        if (
-          error.message?.includes("401") ||
-          error.message?.includes("expired") ||
-          error.message?.includes("Invalid")
-        ) {
-          return;
-        }
-        console.error("[Notification] Failed to fetch notifications:", error);
+    try {
+      const data = await apiClient("/notifications");
+      setNotifications(data.notifications || []);
+    } catch (error) {
+      // Silently ignore 401 errors - user is not authenticated or session expired
+      if (
+        error.message?.includes("401") ||
+        error.message?.includes("expired") ||
+        error.message?.includes("Invalid")
+      ) {
+        return;
       }
-    };
-
-    fetchNotifications();
+      console.error("[Notification] Failed to fetch notifications:", error);
+    }
   }, [isAuthenticated, isLoading, isOnboardingPath]);
 
+  // Fetch initial notifications
+  useEffect(() => {
+    refreshNotifications();
+  }, [refreshNotifications]);
+
+  useEffect(() => {
+    if (!isAuthenticated || isLoading || isOnboardingPath) {
+      return undefined;
+    }
+
+    const handleMarketplaceChatUpdated = () => {
+      refreshNotifications();
+    };
+
+    window.addEventListener(MARKETPLACE_CHAT_UPDATED_EVENT, handleMarketplaceChatUpdated);
+
+    return () => {
+      window.removeEventListener(MARKETPLACE_CHAT_UPDATED_EVENT, handleMarketplaceChatUpdated);
+    };
+  }, [isAuthenticated, isLoading, isOnboardingPath, refreshNotifications]);
   // Connect to socket.io for real-time notifications
   useEffect(() => {
     if (
@@ -626,6 +705,7 @@ export const NotificationProvider = ({ children }) => {
       markChatAsRead,
       markProposalsAsRead,
       clearAll,
+      refreshNotifications,
       requestPushPermission,
     }),
     [
@@ -645,6 +725,7 @@ export const NotificationProvider = ({ children }) => {
       markChatAsRead,
       markProposalsAsRead,
       clearAll,
+      refreshNotifications,
       requestPushPermission,
     ],
   );
@@ -672,6 +753,7 @@ export const useNotifications = () => {
       markAllAsRead: () => {},
       removeNotification: () => {},
       clearNotifications: () => {},
+      refreshNotifications: () => {},
       socket: null,
       loading: false,
     };
@@ -681,4 +763,9 @@ export const useNotifications = () => {
 };
 
 export { NotificationContext };
+
+
+
+
+
 

@@ -6,10 +6,15 @@ import FreelancerWorkspaceHeader from "@/components/features/freelancer/Freelanc
 import FreelancerOnboardingWelcomeModal from "@/components/features/freelancer/FreelancerOnboardingWelcomeModal.jsx";
 import { DashboardContent as FreelancerDashboardContent } from "@/components/freelancer/freelancer-dashboard/FreelancerDashboardContent.jsx";
 import { useAuth } from "@/shared/context/AuthContext";
+import { useNotifications } from "@/shared/context/NotificationContext";
 import {
   FREELANCER_ONBOARDING_PATH,
   requiresFreelancerOnboarding,
 } from "@/shared/lib/dashboard-preference";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { createMarketplaceChatRequest, acceptMarketplaceChatRequest, declineMarketplaceChatRequest } from "@/shared/lib/marketplace-chat-requests";
 import {
   ActiveChats,
   ActiveProjects,
@@ -35,8 +40,10 @@ import {
 
 const FreelancerDashboard = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, authFetch } = useAuth();
+  const { refreshNotifications } = useNotifications();
   const [isWelcomeDismissed] = React.useState(false);
+  const [requestActionId, setRequestActionId] = React.useState(null);
   const shouldShowOnboardingWelcome = requiresFreelancerOnboarding(user) && !isWelcomeDismissed;
 
   useEffect(() => {
@@ -63,6 +70,69 @@ const FreelancerDashboard = () => {
       documentElement.style.overflow = previousHtmlOverflow;
     };
   }, [shouldShowOnboardingWelcome]);
+  const handleMarketplaceRequestDecision = React.useCallback(
+    async (request, decision) => {
+      const requestId = String(request?.requestId || request?.id || "").trim();
+      if (!requestId || !authFetch) {
+        return;
+      }
+
+      const normalizedDecision = String(decision || "").trim().toLowerCase();
+      if (!["accepted", "declined"].includes(normalizedDecision)) {
+        return;
+      }
+
+      setRequestActionId(requestId);
+      try {
+        const response = await authFetch(
+          `/notifications/marketplace-request/${encodeURIComponent(requestId)}/status`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: normalizedDecision }),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to update request status (status ${response.status})`);
+        }
+
+        if (normalizedDecision === "accepted") {
+          createMarketplaceChatRequest({
+            ...request,
+            id: requestId,
+            requestId: requestId,
+            status: "accepted",
+            requestStatus: "accepted",
+            requestSource: "marketplace",
+            previewText: request.requestMessage || request.previewText || "",
+            updatedAt: new Date().toISOString(),
+          });
+
+          const acceptedRequest = acceptMarketplaceChatRequest(requestId);
+          if (acceptedRequest) {
+            toast.success("Inquiry accepted. Opening chat...");
+            await refreshNotifications?.();
+            navigate(`/freelancer/messages?requestId=${encodeURIComponent(requestId)}`);
+            return;
+          }
+        } else {
+          const declinedRequest = declineMarketplaceChatRequest(requestId);
+          if (declinedRequest) {
+            toast.success("Request declined.");
+          }
+        }
+
+        await refreshNotifications?.();
+      } catch (error) {
+        console.error("Failed to update marketplace request status:", error);
+        toast.error("Unable to update this request right now.");
+      } finally {
+        setRequestActionId(null);
+      }
+    },
+    [authFetch, navigate, refreshNotifications],
+  );
 
   return (
     <FreelancerDashboardContent>
@@ -102,6 +172,69 @@ const FreelancerDashboard = () => {
                   firstName={model.hero.firstName}
                   dateLabel={model.hero.dateLabel}
                 />
+
+                {/* Pending Client Inquiries */}
+                {model.pendingRequests && model.pendingRequests.length > 0 && (
+                  <section className="w-full mt-2 mb-2">
+                    <div className="mb-4 flex items-center justify-between gap-4">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-[#1C1B1F] dark:text-white">
+                          Pending Client Inquiries
+                        </h2>
+                        <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                          <span className="absolute inset-0 rounded-full bg-[#f59e0b]/10" />
+                          <span className="absolute inset-0 rounded-full bg-[#f59e0b]/20 animate-ping" />
+                          <span className="relative block size-[6px] rounded-full bg-[#f59e0b]" />
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                      {model.pendingRequests.map((req) => (
+                        <div key={req.id} className="flex flex-col justify-between rounded-3xl border border-black/5 bg-[#FDF7F0] dark:bg-[#18130d] dark:border-white/5 p-5 shadow-sm hover:shadow-md transition-all">
+                          <div>
+                            <div className="flex items-center gap-3 mb-3">
+                              <Avatar className="h-10 w-10">
+                                <AvatarImage src={req.clientAvatar} />
+                                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                  {String(req.clientName || "C").charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <h4 className="font-bold text-sm text-foreground">{req.clientName}</h4>
+                                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                                  {req.serviceTitle || "Service Inquiry"}
+                                </p>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-3 mb-4 leading-relaxed italic bg-white/60 dark:bg-black/40 p-3 rounded-xl border border-black/5 dark:border-white/5">
+                              "{req.requestMessage}"
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <Button
+                              type="button"
+                              className="h-10 rounded-full bg-primary hover:bg-primary/90 text-xs font-semibold text-primary-foreground gap-1.5 shadow-sm"
+                              disabled={requestActionId === req.id}
+                              onClick={() => handleMarketplaceRequestDecision(req, "accepted")}
+                            >
+                              {requestActionId === req.id ? "Working..." : "Accept Inquiry & Chat"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-10 rounded-full border border-destructive/30 bg-transparent text-xs font-semibold text-destructive hover:bg-destructive/10 hover:text-destructive dark:border-destructive/30 dark:text-destructive"
+                              disabled={requestActionId === req.id}
+                              onClick={() => handleMarketplaceRequestDecision(req, "declined")}
+                            >
+                              Decline
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
 
                 {!model.metricsLoading && !hasRunningProjects && model.pendingProposalRows.length === 0 && (
                   <FreelancerWelcomeHub
@@ -295,3 +428,10 @@ const FreelancerDashboard = () => {
 };
 
 export default FreelancerDashboard;
+
+
+
+
+
+
+

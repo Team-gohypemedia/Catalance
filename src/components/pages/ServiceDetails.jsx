@@ -22,7 +22,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import MediaGallery from "./marketplace-details/MediaGallery";
-import StickySidebar from "./marketplace-details/StickySidebar";
+import StickySidebar from "./marketplace-details/StickySidebarLive";
+import { readMarketplaceChatRequests } from "@/shared/lib/marketplace-chat-requests";
 import cataLogo from "@/assets/logos/logo.svg";
 
 const asObject = (value) =>
@@ -322,7 +323,7 @@ const ServiceDetails = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   const [service, setService] = useState(null);
   const [reviews, setReviews] = useState([]);
@@ -550,6 +551,17 @@ const ServiceDetails = () => {
     [reviews, normalized?.rating, normalized?.reviewCount]
   );
 
+  const hasExistingRequest = useMemo(() => {
+    if (!user?.id || !normalized?.freelancer?.id || !service?.id) return false;
+    const requests = readMarketplaceChatRequests();
+    return requests.some(
+      (req) =>
+        String(req.clientId) === String(user.id) &&
+        String(req.freelancerId) === String(normalized.freelancer.id) &&
+        String(req.serviceId) === String(service.id)
+    );
+  }, [user?.id, normalized?.freelancer?.id, service?.id]);
+
   const featuredReview = reviews[0] || null;
   const freelancerInitial = normalized?.freelancer?.name?.charAt(0).toUpperCase() || "F";
 
@@ -741,8 +753,9 @@ const ServiceDetails = () => {
                     type="button"
                     className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                     onClick={() => setChatModalOpen(true)}
+                    disabled={hasExistingRequest}
                   >
-                    Contact Me
+                    {hasExistingRequest ? "Request Sent" : "Contact Me"}
                   </Button>
                 </div>
 
@@ -1137,3 +1150,4 @@ const ServiceDetails = () => {
 };
 
 export default ServiceDetails;
+

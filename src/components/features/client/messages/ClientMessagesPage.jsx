@@ -19,7 +19,7 @@ import { getConversationKey, getDisplayName, getInitials } from "./utils";
 const ClientMessagesPage = () => {
   const { user, authFetch, token, isAuthenticated, isLoading: authLoading } =
     useAuth();
-  const { socket: notificationSocket, unreadCount } = useNotifications();
+  const { socket: notificationSocket, unreadCount, notifications = [] } = useNotifications();
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("messages");
@@ -29,6 +29,11 @@ const ClientMessagesPage = () => {
   const currentClientName = getDisplayName(user);
   const requestedProjectId = useMemo(
     () => searchParams.get("projectId"),
+    [searchParams],
+  );
+
+  const requestedRequestId = useMemo(
+    () => searchParams.get("requestId"),
     [searchParams],
   );
 
@@ -53,6 +58,8 @@ const ClientMessagesPage = () => {
     currentUserId,
     currentClientName,
     requestedProjectId,
+    requestedRequestId,
+    notifications,
   });
 
   const isMobileMessagesDetailOpen =
@@ -336,3 +343,7 @@ const ClientMessagesPage = () => {
 };
 
 export default ClientMessagesPage;
+
+
+
+
