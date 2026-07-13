@@ -332,6 +332,11 @@ const FreelancerDashboard = () => {
                         className="flex-1"
                       />
                     )}
+
+                    {/* Fill empty space with recommended projects if they already have active/pending projects */}
+                    {!model.metricsLoading && (hasRunningProjects || model.pendingProposalRows.length > 0) && (
+                      <RecommendedProjects liveProjects={model.liveProjects} />
+                    )}
                   </div>
 
                   <div className="flex h-full flex-col gap-5 self-stretch">

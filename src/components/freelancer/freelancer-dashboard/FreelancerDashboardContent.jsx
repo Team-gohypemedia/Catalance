@@ -67,6 +67,7 @@ import {
   MARKETPLACE_CHAT_UPDATED_EVENT,
 } from "@/shared/lib/marketplace-chat-requests";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import RecommendedProjects from "./RecommendedProjects.jsx";
 
 const buildFreelancerProjectDestination = (projectId = "") => {
   const normalizedProjectId = String(projectId || "").trim();
