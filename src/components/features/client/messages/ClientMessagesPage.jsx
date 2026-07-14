@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientPageHeader from "@/components/features/client/ClientPageHeader";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
@@ -19,7 +20,7 @@ import { getConversationKey, getDisplayName, getInitials } from "./utils";
 const ClientMessagesPage = () => {
   const { user, authFetch, token, isAuthenticated, isLoading: authLoading } =
     useAuth();
-  const { socket: notificationSocket, unreadCount, notifications = [] } = useNotifications();
+  const { socket: notificationSocket, unreadCount, allNotifications = [] } = useNotifications();
   const [searchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState("messages");
@@ -59,7 +60,7 @@ const ClientMessagesPage = () => {
     currentClientName,
     requestedProjectId,
     requestedRequestId,
-    notifications,
+    notifications: allNotifications,
   });
 
   const isMobileMessagesDetailOpen =
@@ -94,7 +95,7 @@ const ClientMessagesPage = () => {
   const handleConversationSelect = useCallback(
     (conversation) => {
       const nextKey = getConversationKey(conversation);
-      if (!conversation?.chatUnlocked || !nextKey) {
+      if (!nextKey) {
         return;
       }
 
@@ -228,6 +229,17 @@ const ClientMessagesPage = () => {
       );
     }
 
+    if (loading) {
+      return (
+        <div className="flex h-full min-h-0 items-center justify-center bg-card px-6 py-12 md:py-16">
+          <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
+            <Loader2 className="size-6 animate-spin text-primary" />
+            <span>Loading chat...</span>
+          </div>
+        </div>
+      );
+    }
+
     if (!activeConversation) {
       return renderEmptyConversationState();
     }
@@ -324,7 +336,7 @@ const ClientMessagesPage = () => {
                 {isMobileDetailOpen ? renderActiveDetail() : renderSidebar()}
               </div>
             ) : (
-              <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-border dark:border-white/[0.05] bg-card md:h-[680px] lg:h-[720px] lg:flex-row">
+              <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-border dark:border-white/[0.05] bg-card h-[calc(100dvh-14.5rem)] min-h-[500px] lg:h-[calc(100vh-13.5rem)] lg:min-h-[680px] lg:flex-row">
                 {renderSidebar()}
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col">
                   {renderActiveDetail()}

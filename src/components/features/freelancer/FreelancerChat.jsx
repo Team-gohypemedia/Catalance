@@ -48,6 +48,8 @@ import {
   getMarketplaceConversationMessages,
   readMarketplaceChatRequests,
   removeMarketplaceChatRequest,
+  createMarketplaceChatRequest,
+  mapMarketplaceNotificationRequest,
 } from "@/shared/lib/marketplace-chat-requests";
 import { resolveUserDisplayName } from "@/shared/lib/user-display";
 import { toast } from "sonner";
@@ -65,7 +67,7 @@ const formatTime = (value) => {
 };
 
 const getConversationKey = (conversation) =>
-  conversation?.serviceKey || conversation?.id || null;
+  conversation?.id || conversation?.serviceKey || null;
 
 const sortConversations = (list = []) =>
   [...list].sort((left, right) => (right.lastActivity || 0) - (left.lastActivity || 0));
@@ -92,6 +94,35 @@ const formatConversationTimestamp = (value) => {
   if (isYesterday(date)) return "YESTERDAY";
 
   return format(date, "MMM dd").toUpperCase();
+};
+
+const normalizeChatMessages = (items = []) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
+  }
+
+  const dedupedMessages = [];
+  const seenMessageKeys = new Set();
+
+  for (const message of items) {
+    if (!message) {
+      continue;
+    }
+
+    const messageKey = String(
+      message?.id ||
+        `${message?.conversationId || ""}:${message?.createdAt || ""}:${message?.content || ""}:${message?.senderId || ""}`,
+    );
+
+    if (seenMessageKeys.has(messageKey)) {
+      continue;
+    }
+
+    seenMessageKeys.add(messageKey);
+    dedupedMessages.push(message);
+  }
+
+  return dedupedMessages;
 };
 
 const formatDayDivider = (value) => {
@@ -616,34 +647,7 @@ const ChatArea = ({
   const conversationMembers = getConversationMemberLabel(conversation, currentUser);
   const conversationAvatarLabel = conversationTitle || "Project chat";
 
-  const normalizeChatMessages = useCallback((items = []) => {
-    if (!Array.isArray(items) || items.length === 0) {
-      return [];
-    }
 
-    const dedupedMessages = [];
-    const seenMessageKeys = new Set();
-
-    for (const message of items) {
-      if (!message) {
-        continue;
-      }
-
-      const messageKey = String(
-        message?.id ||
-          `${message?.conversationId || ""}:${message?.createdAt || ""}:${message?.content || ""}:${message?.senderId || ""}`,
-      );
-
-      if (seenMessageKeys.has(messageKey)) {
-        continue;
-      }
-
-      seenMessageKeys.add(messageKey);
-      dedupedMessages.push(message);
-    }
-
-    return dedupedMessages;
-  }, []);
 
   const visibleMessages = useMemo(() => {
     const query = deferredMessageSearch.trim().toLowerCase();
@@ -958,7 +962,6 @@ const ChatArea = ({
             <p className="truncate text-[1.15rem] font-semibold tracking-[-0.3px] text-foreground">
               {conversationTitle}
             </p>
-            <p className="truncate text-[13px] text-foreground/80">{conversationMembers}</p>
             <p className={cn("truncate text-xs font-medium uppercase tracking-[0.16em]", online ? "text-[var(--primary)]" : "text-muted-foreground")}>
               {online ? `${conversationSubtitle} • Online` : conversationSubtitle}
             </p>
@@ -1375,7 +1378,7 @@ const ChatArea = ({
 
 const FreelancerChatContent = () => {
   const { user, authFetch, token } = useAuth();
-  const { socket: notificationSocket, refreshNotifications } = useNotifications();
+  const { socket: notificationSocket, refreshNotifications, allNotifications = [] } = useNotifications();
   const [searchParams] = useSearchParams();
   const currentFreelancerName = useMemo(() => getDisplayName(user), [user]);
   const [conversationId, setConversationId] = useState(null);
@@ -1417,7 +1420,20 @@ const FreelancerChatContent = () => {
   const syncMarketplaceRequests = useCallback(() => {
     const currentUserId = normalizeIdentifier(user?.id || user?.sub || user?.userId);
     const currentFreelancerLabel = normalizeComparableText(resolveUserDisplayName(user, ""));
-    const allRequests = readMarketplaceChatRequests();
+    const storageRequests = readMarketplaceChatRequests();
+    
+    const notificationRequests = (Array.isArray(allNotifications) ? allNotifications : [])
+      .filter((notification) => {
+        const type = String(notification?.type || "").toLowerCase();
+        return type === "marketplace_request" || type === "marketplace_request_accepted";
+      })
+      .map(mapMarketplaceNotificationRequest);
+
+    const rawAllRequests = [...storageRequests, ...notificationRequests];
+    const allRequests = rawAllRequests.filter(
+      (request, index, self) =>
+        index === self.findIndex((r) => String(r.requestId || r.id) === String(request.requestId || request.id))
+    );
     const matchesFreelancer = (request) => {
       const requestFreelancerId = normalizeIdentifier(
         request?.freelancerId || request?.requestedFreelancerId,
@@ -1453,15 +1469,25 @@ const FreelancerChatContent = () => {
     setPendingRequests(nextPendingRequests);
     setConversations((previous) => {
       const nonMarketplaceConversations = previous.filter(
-        (conversation) => !conversation.isMarketplaceRequestChat,
+        (conversation) => !(conversation.serviceKey && conversation.serviceKey.startsWith("MARKETPLACE_REQUEST:"))
       );
+
+      const dedupedMarketplace = acceptedRequestConversations.filter(mc => {
+         const isDuplicate = nonMarketplaceConversations.some(pc => {
+            const sameClient = String(pc.clientId) === String(mc.clientId);
+            const sameService = String(pc.projectTitle || pc.serviceType || pc.label || "").toLowerCase() === 
+                                String(mc.serviceTitle || mc.title || mc.serviceType || mc.label || "").toLowerCase();
+            return sameClient && sameService;
+         });
+         return !isDuplicate;
+      });
 
       return sortConversations([
         ...nonMarketplaceConversations,
-        ...acceptedRequestConversations,
+        ...dedupedMarketplace,
       ]);
     });
-  }, [user?.email, user?.fullName, user?.id, user?.name, user?.sub, user?.userId]);
+  }, [user?.email, user?.fullName, user?.id, user?.name, user?.sub, user?.userId, allNotifications]);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -1483,7 +1509,52 @@ const FreelancerChatContent = () => {
       const payload = await response.json().catch(() => null);
       const nextMessages =
         payload?.data?.messages || payload?.messages || [];
-      setMessages(normalizeChatMessages(nextMessages));
+      const normalized = normalizeChatMessages(nextMessages);
+      
+      let finalMessages = normalized;
+      const conversationKey = selectedConversationKeyRef.current;
+      if (conversationKey && conversationKey.startsWith("MARKETPLACE_REQUEST:")) {
+        const localMessages = normalizeChatMessages(getMarketplaceConversationMessages(conversationKey));
+        const existingIds = new Set(normalized.map(m => String(m.id)));
+        const missingLocal = localMessages.filter(m => !existingIds.has(String(m.id)));
+        finalMessages = [...missingLocal, ...normalized].sort(
+          (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+        );
+      }
+      if (finalMessages.length > 0) {
+        const lastMsg = finalMessages[finalMessages.length - 1];
+        if (lastMsg && lastMsg.createdAt) {
+          const lastActivityTime = new Date(lastMsg.createdAt).getTime();
+          setConversations((prev) => {
+            const updated = prev.map((conv) => {
+              if (getConversationKey(conv) === selectedConversationKeyRef.current) {
+                // Only update if the new time is strictly greater (or it's the first time)
+                if (!conv.lastActivity || lastActivityTime > conv.lastActivity) {
+                  return { ...conv, lastActivity: lastActivityTime };
+                }
+              }
+              return conv;
+            });
+            // We can sort if we want, but usually fetching messages doesn't change order if it's already selected
+            // But let's sort just in case
+            return sortConversations(updated);
+          });
+        }
+      }
+
+      // Only update state if messages actually changed to avoid re-render flicker
+      setMessages((prev) => {
+        // Skip update if the message count and last message ID match (common poll case)
+        if (
+          prev.length === finalMessages.length &&
+          prev.length > 0 &&
+          prev[prev.length - 1]?.id === finalMessages[finalMessages.length - 1]?.id &&
+          !prev.some((m) => m.pending)
+        ) {
+          return prev;
+        }
+        return finalMessages;
+      });
     } catch (error) {
       console.error("Failed to fetch messages:", error);
     } finally {
@@ -1517,30 +1588,26 @@ const FreelancerChatContent = () => {
     pollRef.current = setInterval(fetchMessages, 5000);
   }, [fetchMessages, stopPolling]);
 
-  // Reset state when switching conversation to avoid cross-chat bleed.
+  // Track the active conversation by key so metadata-only updates
+  // (e.g. lastActivity bump on send) don't wipe and reload messages.
+  const selectedConversationKeyRef = useRef(null);
+
   useEffect(() => {
+    const currentKey = getConversationKey(selectedConversation);
+    if (currentKey === selectedConversationKeyRef.current) {
+      // Same conversation – nothing to reset.
+      return;
+    }
+    selectedConversationKeyRef.current = currentKey;
     setConversationId(null);
     if (!selectedConversation) {
       setMessages([]);
       setMessagesLoading(false);
       return;
     }
-    if (selectedConversation.isMarketplaceRequestChat) {
-      setMessages(
-        getMarketplaceConversationMessages(selectedConversation.serviceKey || selectedConversation.id),
-      );
-      setMessagesLoading(false);
-    } else {
-      setMessages([]);
-      setMessagesLoading(true);
-    }
-    setTypingUsers([]);
-    setOnline(false);
-  }, [
-    selectedConversation?.id,
-    selectedConversation?.isMarketplaceRequestChat,
-    selectedConversation?.serviceKey,
-  ]);
+    setMessages([]);
+    setMessagesLoading(true);
+  }, [selectedConversationKey, selectedConversation]);
 
   useEffect(() => {
     syncMarketplaceRequests();
@@ -1558,15 +1625,6 @@ const FreelancerChatContent = () => {
 
     const handleMarketplaceChatUpdated = () => {
       syncMarketplaceRequests();
-
-      const currentSelection = selectedConversationRef.current;
-      if (currentSelection?.isMarketplaceRequestChat) {
-        setMessages(
-          getMarketplaceConversationMessages(
-            currentSelection.serviceKey || currentSelection.id,
-          ),
-        );
-      }
     };
 
     window.addEventListener(MARKETPLACE_CHAT_UPDATED_EVENT, handleMarketplaceChatUpdated);
@@ -1615,16 +1673,19 @@ const FreelancerChatContent = () => {
       return;
     }
 
-    if (matchedConversation !== selectedConversation) {
-      setSelectedConversation(matchedConversation);
-    }
+    // Only update if the conversation key actually changed.
+    // Metadata-only changes (e.g. lastActivity) should NOT reset
+    // the selected conversation and trigger a full message reload.
   }, [activeTab, conversations, selectedConversation]);
 
   // Load clients that have sent proposals/own projects for this freelancer
   useEffect(() => {
     let cancelled = false;
     const loadConversations = async () => {
-      if (!authFetch) return;
+      if (!authFetch) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
       try {
         const response = await authFetch("/proposals?as=freelancer");
         const payload = await response.json().catch(() => null);
@@ -1680,16 +1741,26 @@ const FreelancerChatContent = () => {
         if (!cancelled) {
           setConversations((previous) => {
             const marketplaceConversations = previous.filter(
-              (conversation) => conversation.isMarketplaceRequestChat,
+              (c) => c.serviceKey && c.serviceKey.startsWith("MARKETPLACE_REQUEST:")
             );
-            const nextConversations = sortConversations([
-              ...marketplaceConversations,
-              ...finalList,
-            ]);
+            
+            // Deduplicate: If a real project chat already exists for this client and service, 
+            // hide the temporary marketplace request conversation.
+            const dedupedMarketplace = marketplaceConversations.filter(mc => {
+               const isDuplicate = finalList.some(pc => {
+                  const sameClient = String(pc.clientId) === String(mc.clientId);
+                  const sameService = String(pc.projectTitle || pc.serviceType || pc.label || "").toLowerCase() === 
+                                      String(mc.serviceTitle || mc.title || mc.serviceType || mc.label || "").toLowerCase();
+                  return sameClient && sameService;
+               });
+               return !isDuplicate;
+            });
+
+            const nextConversations = sortConversations([...finalList, ...dedupedMarketplace]);
 
             // If we have conversations, select the requested thread first.
             // Otherwise, select null so we show the "empty state".
-            if (finalList.length > 0) {
+            if (nextConversations.length > 0) {
               const paramProjectId = searchParams.get("projectId");
               const paramRequestId = searchParams.get("requestId");
               const currentSelectedKey = getConversationKey(selectedConversation);
@@ -1723,19 +1794,19 @@ const FreelancerChatContent = () => {
               }
 
               if (!target && !paramRequestId && paramProjectId) {
-                target = finalList.find((c) => String(c.id) === String(paramProjectId));
+                target = nextConversations.find((c) => String(c.id) === String(paramProjectId));
               }
 
               if (!target && !paramRequestId) {
                 if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-                  target = finalList[0];
+                  target = nextConversations[0];
                 }
               }
 
               if (target) {
                 setSelectedConversation(target);
               }
-            } else if (!selectedConversation?.isMarketplaceRequestChat) {
+            } else {
               setSelectedConversation(null);
             }
 
@@ -1744,9 +1815,14 @@ const FreelancerChatContent = () => {
         }
       } catch (error) {
         console.error("Failed to load conversations:", error);
-        setConversations((previous) =>
-          previous.filter((conversation) => conversation.isMarketplaceRequestChat),
-        );
+        // Preserve marketplace conversations on error — only clear project-based ones
+        if (!cancelled) {
+          setConversations((previous) =>
+            previous.filter(
+              (c) => c.serviceKey && c.serviceKey.startsWith("MARKETPLACE_REQUEST:")
+            )
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -1755,10 +1831,10 @@ const FreelancerChatContent = () => {
     return () => {
       cancelled = true;
     };
-  }, [authFetch, searchParams, selectedConversation?.isMarketplaceRequestChat, user?.id]);
+  }, [authFetch, searchParams, user?.id]);
 
   useEffect(() => {
-    if (!selectedConversation || selectedConversation.isMarketplaceRequestChat) return;
+    if (!selectedConversation) return;
     let cancelled = false;
 
     const ensureConversation = async () => {
@@ -1813,7 +1889,7 @@ const FreelancerChatContent = () => {
   }, [authFetch, selectedConversation, token]);
 
   useEffect(() => {
-    if (!conversationId || !selectedConversation || selectedConversation.isMarketplaceRequestChat) {
+    if (!conversationId || !selectedConversation) {
       return undefined;
     }
 
@@ -1861,12 +1937,12 @@ const FreelancerChatContent = () => {
       const sorted = [...history].sort(
         (a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
       );
-      setMessages(normalizeChatMessages(sorted));
+      setMessages(sorted);
       setMessagesLoading(false);
     });
 
     socket.on("chat:message", (message) => {
-      setSending(message?.role !== "assistant");
+      setSending(false);
       setMessages((prev) => {
         const filtered = prev.filter(
           (msg) =>
@@ -1874,13 +1950,13 @@ const FreelancerChatContent = () => {
             msg.content !== message?.content ||
             msg.role !== message?.role
         );
-        return normalizeChatMessages([...filtered, message]);
+        return [...filtered, message];
       });
       
       // Move this conversation to the top (like WhatsApp)
       setConversations((prev) => {
         const updated = prev.map((conv) => {
-          if ((conv.serviceKey || conv.id) === (selectedConversation?.serviceKey || selectedConversation?.id)) {
+          if (getConversationKey(conv) === selectedConversationKeyRef.current) {
             return { ...conv, lastActivity: Date.now() };
           }
           return conv;
@@ -1951,13 +2027,13 @@ const FreelancerChatContent = () => {
          setConversations((prev) => {
            console.log("[FreelancerChat] Updating conversations for service:", service, "Sender:", senderId);
            const updated = prev.map(c => {
-             // Match strictly by serviceKey to avoid duplicates across multiple projects with same client
-             const isMatch = (c.serviceKey && c.serviceKey === service);
+             const cKey = getConversationKey(c);
+             const isMatch = (cKey && cKey === service) || (c.serviceKey && c.serviceKey === service);
              
              if (isMatch) {
-               console.log("[FreelancerChat] Matched conversation:", c.name);
+               console.log("[FreelancerChat] Matched conversation:", c.name || c.title || cKey);
                // Check if this conversation is currently selected
-               const isSelected = (c.serviceKey || c.id) === (selectedConversation?.serviceKey || selectedConversation?.id);
+               const isSelected = cKey === selectedConversationKeyRef.current;
                return { 
                  ...c, 
                  lastActivity: Date.now(),
@@ -2032,7 +2108,7 @@ const FreelancerChatContent = () => {
   };
 
   const handleClearChat = useCallback(async () => {
-    if (!conversationId || selectedConversation?.isMarketplaceRequestChat) return;
+    if (!conversationId) return;
 
     const confirmed = window.confirm(
       "Clear all messages in this conversation? This cannot be undone.",
@@ -2071,48 +2147,23 @@ const FreelancerChatContent = () => {
     } finally {
       setClearingChat(false);
     }
-  }, [authFetch, conversationId, selectedConversation?.isMarketplaceRequestChat, selectedConversationKey]);
+  }, [authFetch, conversationId, selectedConversationKey]);
 
   const handleSendMessage = (attachment = null) => {
     const trimmedMessage = messageInput.trim();
 
     if (!trimmedMessage && !attachment) return;
 
-    if (selectedConversation?.isMarketplaceRequestChat) {
-      const nextMessage = appendMarketplaceConversationMessage({
-        conversationKey:
-          selectedConversation.serviceKey || selectedConversation.id || "",
-        content: trimmedMessage,
-        attachment,
-        senderId: user?.id || null,
-        senderRole: "FREELANCER",
-        senderName: currentFreelancerName,
-      });
-
-      if (!nextMessage) {
-        return;
-      }
-
-      setMessages((previous) => normalizeChatMessages([...previous, nextMessage]));
-      setMessageInput("");
-      setConversations((previous) =>
-        updateConversationDetails(previous, selectedConversationKey, {
-          previewText: getMessagePreview(nextMessage),
-          lastActivity: new Date(nextMessage.createdAt).getTime() || Date.now(),
-          unreadCount: 0,
-        }),
-      );
-      return;
-    }
 
     const payload = {
       content: trimmedMessage,
       service: selectedConversation?.serviceKey || selectedConversation?.label || SERVICE_LABEL,
       senderId: user?.id || null,
-      senderRole: user?.role || "GUEST",
+      senderRole: "FREELANCER",
       senderName: currentFreelancerName,
       skipAssistant: true,
-      attachment: attachment || undefined
+      attachment: attachment || undefined,
+      conversationId
     };
 
     setMessages((prev) => [
@@ -2125,7 +2176,7 @@ const FreelancerChatContent = () => {
     // Move this conversation to the top immediately when sending (like WhatsApp)
     setConversations((prev) => {
       const updated = prev.map((conv) => {
-        if ((conv.serviceKey || conv.id) === (selectedConversation?.serviceKey || selectedConversation?.id)) {
+        if (getConversationKey(conv) === selectedConversationKeyRef.current) {
           return { ...conv, lastActivity: Date.now() };
         }
         return conv;
@@ -2179,6 +2230,11 @@ const FreelancerChatContent = () => {
 
   const handleAcceptRequest = useCallback(async () => {
     if (!selectedRequest || !authFetch) {
+      return;
+    }
+
+    const requestId = String(selectedRequest?.requestId || selectedRequest?.id || "").trim();
+    if (!requestId) {
       return;
     }
 
@@ -2522,7 +2578,14 @@ const FreelancerChatContent = () => {
                 "min-h-0 min-w-0 flex-1 flex-col",
                 (selectedConversationKey || selectedRequestId) ? "flex" : "hidden lg:flex"
               )}>
-                {activeTab === "requests" ? (
+                {loading ? (
+                  <div className="flex h-full min-h-0 items-center justify-center bg-card px-6 py-12 md:py-16">
+                    <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">
+                      <Loader2 className="size-6 animate-spin text-primary" />
+                      <span>Loading chat...</span>
+                    </div>
+                  </div>
+                ) : activeTab === "requests" ? (
                   <RequestDetailsPanel
                     request={activeRequest}
                     onAccept={handleAcceptRequest}
@@ -2544,7 +2607,7 @@ const FreelancerChatContent = () => {
                     currentUser={user}
                     typingUsers={typingUsers.map((u) => u.name)}
                     online={online}
-                    onClearChat={selectedConversation?.isMarketplaceRequestChat ? undefined : handleClearChat}
+                    onClearChat={handleClearChat}
                     isClearingChat={clearingChat}
                     loading={messagesLoading}
                     onBack={() => setSelectedConversation(null)}

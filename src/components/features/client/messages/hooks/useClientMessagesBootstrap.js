@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   MARKETPLACE_CHAT_UPDATED_EVENT,
   buildMarketplaceConversationFromRequest,
   readMarketplaceChatRequests,
+  mapMarketplaceNotificationRequest,
 } from "@/shared/lib/marketplace-chat-requests";
 import {
   enrichConversationRecord,
@@ -17,48 +18,6 @@ const normalizeComparableText = (value = "") =>
 
 const normalizeIdentifier = (value = "") =>
   String(value || "").trim().toLowerCase();
-
-const mapMarketplaceNotificationRequest = (notification = {}) => {
-  const data = notification?.data || {};
-  const statusSource =
-    notification?.type === "marketplace_request_accepted"
-      ? "accepted"
-      : data.requestStatus || "pending";
-
-  return {
-    id: data.requestId || notification.id,
-    requestId: data.requestId || notification.id,
-    status: String(statusSource || "pending").trim().toLowerCase(),
-    createdAt:
-      notification.createdAt ||
-      data.createdAt ||
-      notification.updatedAt ||
-      new Date().toISOString(),
-    updatedAt:
-      notification.updatedAt ||
-      notification.createdAt ||
-      data.updatedAt ||
-      new Date().toISOString(),
-    clientId: data.clientId || null,
-    clientName: data.clientName || "Client",
-    clientAvatar: data.clientAvatar || "",
-    clientBusinessName: data.clientBusinessName || "",
-    freelancerId: data.freelancerId || null,
-    freelancerName: data.freelancerName || "Freelancer",
-    freelancerAvatar: data.freelancerAvatar || "",
-    serviceId: data.serviceId || null,
-    serviceTitle: data.serviceTitle || "Marketplace Request",
-    serviceType: data.serviceType || data.serviceTitle || "Marketplace Request",
-    requestMessage: data.requestMessage || notification.message || "",
-    previewText: data.previewText || notification.message || "",
-    requestSource: data.requestSource || "marketplace",
-    requestedFreelancerId: data.freelancerId || null,
-    requestedFreelancerName: data.freelancerName || "Freelancer",
-    audience: String(data.audience || data.recipientRole || notification.audience || "")
-      .trim()
-      .toLowerCase(),
-  };
-};
 
 const useClientMessagesBootstrap = ({
   authFetch,
@@ -78,6 +37,9 @@ const useClientMessagesBootstrap = ({
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [hasLockedAcceptedProjects, setHasLockedAcceptedProjects] = useState(false);
+
+  const appliedRequestedIdRef = useRef(null);
+  const appliedRequestedProjectIdRef = useRef(null);
 
   const syncMarketplaceRequests = useCallback(() => {
     const currentClientId = normalizeIdentifier(currentUserId);
@@ -289,23 +251,26 @@ const useClientMessagesBootstrap = ({
       : null;
 
     if (requestedRequestId) {
-      const requestedConversation = conversations.find(
-        (conversation) =>
-          String(conversation.requestId || conversation.id) ===
-          String(requestedRequestId),
-      );
+      if (appliedRequestedIdRef.current !== requestedRequestId) {
+        const requestedConversation = conversations.find(
+          (conversation) =>
+            String(conversation.requestId || conversation.id) ===
+            String(requestedRequestId),
+        );
 
-      if (requestedConversation) {
-        if (
-          getConversationKey(requestedConversation) !== selectedConversationKey
-        ) {
-          setSelectedConversationKey(getConversationKey(requestedConversation));
+        if (requestedConversation) {
+          appliedRequestedIdRef.current = requestedRequestId;
+          if (
+            getConversationKey(requestedConversation) !== selectedConversationKey
+          ) {
+            setSelectedConversationKey(getConversationKey(requestedConversation));
+          }
+        } else if (conversations.length > 0) {
+          // If not found yet, don't mark as applied in case it loads later
+          // setSelectedConversationKey(null); // Remove this to prevent unselecting
         }
-      } else {
-        setSelectedConversationKey(null);
+        return;
       }
-
-      return;
     }
 
     if (selectedConversation) {
@@ -313,14 +278,21 @@ const useClientMessagesBootstrap = ({
     }
 
     if (requestedProjectId) {
-      const requestedConversation = conversations.find(
-        (conversation) =>
-          String(conversation.projectId || conversation.id) ===
-          String(requestedProjectId),
-      );
+      if (appliedRequestedProjectIdRef.current !== requestedProjectId) {
+        const requestedConversation = conversations.find(
+          (conversation) =>
+            String(conversation.projectId || conversation.id) ===
+            String(requestedProjectId),
+        );
 
-      if (requestedConversation) {
-        setSelectedConversationKey(getConversationKey(requestedConversation));
+        if (requestedConversation) {
+          appliedRequestedProjectIdRef.current = requestedProjectId;
+          if (
+            getConversationKey(requestedConversation) !== selectedConversationKey
+          ) {
+            setSelectedConversationKey(getConversationKey(requestedConversation));
+          }
+        }
         return;
       }
     }

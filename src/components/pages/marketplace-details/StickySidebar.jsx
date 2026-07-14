@@ -232,17 +232,19 @@ const StickySidebar = ({
     .trim()
     .toLowerCase();
   const hasExistingRequest = ["pending", "accepted"].includes(currentRequestStatus);
-  const requestButtonLabel = currentRequestStatus === "accepted"
-    ? "Send Again"
-    : currentRequestStatus === "declined"
-      ? "Resend Request"
-      : hasExistingRequest
-        ? "Request Sent"
-        : `Continue (${priceValue})`;
   const isOwnService = useMemo(() => {
     if (!clientId || !freelancerId) return false;
     return String(clientId) === String(freelancerId);
   }, [clientId, freelancerId]);
+  const requestButtonLabel = isOwnService
+    ? "Your Service"
+    : currentRequestStatus === "accepted"
+      ? "Send Again"
+      : currentRequestStatus === "declined"
+        ? "Resend Request"
+        : hasExistingRequest
+          ? "Request Sent"
+          : `Continue (${priceValue})`;
   const experienceLevel = useMemo(
     () => getExperienceLabel(serviceDetails, freelancer),
     [serviceDetails, freelancer]
@@ -364,7 +366,7 @@ const StickySidebar = ({
           <Button
             className="h-11 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             onClick={handleCTAClick}
-            disabled={currentRequestStatus === "pending"}
+            disabled={isOwnService || currentRequestStatus === "pending"}
           >
             {requestButtonLabel}
           </Button>

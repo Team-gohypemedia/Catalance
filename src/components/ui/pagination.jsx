@@ -45,14 +45,20 @@ function PaginationLink({
   ...props
 }) {
   return (
-    <a
+    <button
+      type="button"
       aria-current={isActive ? "page" : undefined}
       data-slot="pagination-link"
       data-active={isActive}
-      className={cn(buttonVariants({
-        variant: isActive ? "outline" : "ghost",
-        size,
-      }), className)}
+      className={cn(
+        "inline-flex items-center justify-center whitespace-nowrap rounded-md text-[13px] font-semibold transition-colors focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+        size === "default" ? "h-9 px-4 py-2" : "",
+        size === "icon" ? "h-8 w-8" : "",
+        isActive 
+          ? "border border-primary bg-primary/5 text-foreground hover:bg-primary/10" 
+          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+        className
+      )}
       {...props} />
   );
 }
@@ -65,10 +71,10 @@ function PaginationPrevious({
     <PaginationLink
       aria-label="Go to previous page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pl-2.5", className)}
+      className={cn("gap-1 pl-2.5 pr-4 text-muted-foreground hover:bg-transparent hover:text-foreground", className)}
       {...props}>
-      <ChevronLeftIcon />
-      <span className="hidden sm:block">Previous</span>
+      <ChevronLeftIcon className="h-4 w-4" />
+      <span>Previous</span>
     </PaginationLink>
   );
 }
@@ -81,13 +87,15 @@ function PaginationNext({
     <PaginationLink
       aria-label="Go to next page"
       size="default"
-      className={cn("gap-1 px-2.5 sm:pr-2.5", className)}
+      className={cn("gap-1 pl-4 pr-2.5 text-muted-foreground hover:bg-transparent hover:text-foreground", className)}
       {...props}>
-      <span className="hidden sm:block">Next</span>
-      <ChevronRightIcon />
+      <span>Next</span>
+      <ChevronRightIcon className="h-4 w-4" />
     </PaginationLink>
   );
 }
+
+
 
 function PaginationEllipsis({
   className,

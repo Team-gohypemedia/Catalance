@@ -22,6 +22,48 @@ const safeParse = (rawValue, fallbackValue) => {
 
 const getComparableText = (value = "") => String(value || "").trim().toLowerCase();
 
+export const mapMarketplaceNotificationRequest = (notification = {}) => {
+  const data = notification?.data || {};
+  const statusSource =
+    notification?.type === "marketplace_request_accepted"
+      ? "accepted"
+      : data.requestStatus || "pending";
+
+  return {
+    id: data.requestId || notification.id,
+    requestId: data.requestId || notification.id,
+    status: String(statusSource || "pending").trim().toLowerCase(),
+    createdAt:
+      notification.createdAt ||
+      data.createdAt ||
+      notification.updatedAt ||
+      new Date().toISOString(),
+    updatedAt:
+      notification.updatedAt ||
+      notification.createdAt ||
+      data.updatedAt ||
+      new Date().toISOString(),
+    clientId: data.clientId || null,
+    clientName: data.clientName || "Client",
+    clientAvatar: data.clientAvatar || "",
+    clientBusinessName: data.clientBusinessName || "",
+    freelancerId: data.freelancerId || null,
+    freelancerName: data.freelancerName || "Freelancer",
+    freelancerAvatar: data.freelancerAvatar || "",
+    serviceId: data.serviceId || null,
+    serviceTitle: data.serviceTitle || "Marketplace Request",
+    serviceType: data.serviceType || data.serviceTitle || "Marketplace Request",
+    requestMessage: data.requestMessage || notification.message || "",
+    previewText: data.previewText || notification.message || "",
+    requestSource: data.requestSource || "marketplace",
+    requestedFreelancerId: data.freelancerId || null,
+    requestedFreelancerName: data.freelancerName || "Freelancer",
+    audience: String(data.audience || data.recipientRole || notification.audience || "")
+      .trim()
+      .toLowerCase(),
+  };
+};
+
 const getTimeValue = (value) => {
   if (!value) return 0;
 
@@ -341,7 +383,6 @@ const createMarketplaceChatRequest = (request = {}) => {
   );
   const existingRequest = requests.find(
     (item) =>
-      item.status === "pending" &&
       normalizeIdentifier(item.clientId, item.requestedById) === normalizedClientId &&
       normalizeIdentifier(item.freelancerId, item.requestedFreelancerId) === normalizedFreelancerId &&
       getComparableText(item.serviceId || item.serviceTitle) === serviceSignature,
@@ -573,9 +614,9 @@ const buildMarketplaceConversationFromRequest = (
     clientName: normalizedRequest.clientName,
     freelancerName: normalizedRequest.freelancerName,
     avatar,
-    businessName: normalizedRequest.serviceTitle,
+    businessName: otherPartyName,
     label: normalizedRequest.label,
-    projectTitle: normalizedRequest.serviceTitle,
+    projectTitle: "",
     projectServiceLabel: normalizedRequest.serviceType,
     serviceType: normalizedRequest.serviceType,
     previewText: normalizedRequest.previewText,

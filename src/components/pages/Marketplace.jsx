@@ -37,6 +37,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { Sparkles as SparklesBackground } from "@/components/ui/sparkles";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
 import SubcategorySection from "@/components/pages/marketplace-browse/SubcategorySection";
 import ServiceCategoryCarousel from "@/components/ui/service-category-carousel";
 import { Input } from "@/components/ui/input";
@@ -961,8 +970,20 @@ const Marketplace = () => {
   }, [data]);
 
   const filteredFreelancerData = useMemo(() => {
-    if (!selectedSkill) return data;
-    return data.filter((item) => {
+    let result = data;
+    
+    // Always filter out the user's own services if they are logged in
+    const currentUserId = user?.id || user?.userId;
+    if (currentUserId) {
+      result = result.filter(item => {
+        const itemFreelancerId = item.freelancerId || item.freelancer?.id || item.freelancer?.userId;
+        return String(itemFreelancerId) !== String(currentUserId);
+      });
+    }
+
+    if (!selectedSkill) return result;
+    
+    return result.filter((item) => {
       const skills = [
         ...(Array.isArray(item?.techStack) ? item.techStack : []),
         ...(Array.isArray(item?.serviceDetails?.techStack) ? item.serviceDetails.techStack : []),
@@ -976,7 +997,7 @@ const Marketplace = () => {
       
       return skills.includes(normalizeKey(selectedSkill));
     });
-  }, [data, selectedSkill]);
+  }, [data, selectedSkill, user]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -2538,6 +2559,64 @@ const Marketplace = () => {
               )}
             </AnimatePresence>
           ) : null}
+          
+            {/* Pagination Controls */}
+            {activeTotalPages > 1 && (
+              <div className="mt-12 flex justify-center pb-8">
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setPage(p => Math.max(1, p - 1))}
+                        className={cn(page <= 1 && "pointer-events-none opacity-50 cursor-not-allowed")}
+                        aria-disabled={page <= 1}
+                      />
+                    </PaginationItem>
+                    
+                    {Array.from({ length: activeTotalPages }).map((_, i) => {
+                      const pageNum = i + 1;
+                      if (
+                        pageNum === 1 ||
+                        pageNum === activeTotalPages ||
+                        (pageNum >= page - 1 && pageNum <= page + 1)
+                      ) {
+                        return (
+                          <PaginationItem key={pageNum}>
+                            <PaginationLink
+                              isActive={page === pageNum}
+                              onClick={() => {
+                                setPage(pageNum);
+                                document.getElementById("specialists-section")?.scrollIntoView({ behavior: "smooth" });
+                              }}
+                            >
+                              {pageNum}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      }
+                      
+                      if (pageNum === page - 2 || pageNum === page + 2) {
+                        return (
+                          <PaginationItem key={pageNum}>
+                            <PaginationEllipsis />
+                          </PaginationItem>
+                        );
+                      }
+                      
+                      return null;
+                    })}
+
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setPage(p => Math.min(activeTotalPages, p + 1))}
+                        className={cn(page >= activeTotalPages && "pointer-events-none opacity-50 cursor-not-allowed")}
+                        aria-disabled={page >= activeTotalPages}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
 
           </motion.div>
         )}

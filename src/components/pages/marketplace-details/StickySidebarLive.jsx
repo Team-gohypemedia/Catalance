@@ -184,14 +184,26 @@ const StickySidebar = ({
   const serverRequestStatus = useMemo(() => {
     if (!clientId || !freelancerId) return "";
     const notification = (Array.isArray(notifications) ? notifications : []).find((item) => {
-      if (String(item?.type || "") !== "marketplace_request") return false;
+      const type = String(item?.type || "");
+      if (
+        type !== "marketplace_request" &&
+        type !== "marketplace_request_accepted" &&
+        type !== "marketplace_request_declined"
+      ) {
+        return false;
+      }
       const data = item?.data || {};
       return (
         String(data.clientId || "") === String(clientId) &&
         String(data.freelancerId || "") === String(freelancerId) &&
-        String(data.serviceId || "") === String(service?.id)
+        String(data.serviceId || "") === String(service?.id || "")
       );
     });
+
+    if (!notification) return "";
+    
+    if (notification.type === "marketplace_request_accepted") return "accepted";
+    if (notification.type === "marketplace_request_declined") return "declined";
 
     return String(notification?.data?.requestStatus || notification?.status || "")
       .trim()
@@ -210,7 +222,7 @@ const StickySidebar = ({
         (req) =>
           String(req.clientId) === String(clientId) &&
           String(req.freelancerId) === String(freelancerId) &&
-          String(req.serviceId) === String(service?.id)
+          String(req.serviceId || "") === String(service?.id || "")
       );
       setRequestState(matched || null);
     };
@@ -231,17 +243,19 @@ const StickySidebar = ({
     .trim()
     .toLowerCase();
   const hasExistingRequest = ["pending", "accepted"].includes(currentRequestStatus);
-  const requestButtonLabel = currentRequestStatus === "accepted"
-    ? "Send Again"
-    : currentRequestStatus === "declined"
-      ? "Resend Request"
-      : hasExistingRequest
-        ? "Request Sent"
-        : `Continue (${priceValue})`;
   const isOwnService = useMemo(() => {
     if (!clientId || !freelancerId) return false;
     return String(clientId) === String(freelancerId);
   }, [clientId, freelancerId]);
+  const requestButtonLabel = isOwnService
+    ? "Your Service"
+    : currentRequestStatus === "accepted"
+      ? "Inquiry Accepted - Go to Chat"
+      : currentRequestStatus === "declined"
+        ? "Send Again"
+        : hasExistingRequest
+          ? "Request Sent"
+          : `Continue (${priceValue})`;
   const experienceLevel = useMemo(
     () => getExperienceLabel(serviceDetails, freelancer),
     [serviceDetails, freelancer]
@@ -261,6 +275,18 @@ const StickySidebar = ({
       setIsOpen(true);
       return;
     }
+    
+    if (currentRequestStatus === "accepted") {
+      const chatRequestId = requestState?.requestId || requestState?.id;
+      
+      if (chatRequestId) {
+        window.location.href = `/client/messages?requestId=${encodeURIComponent(chatRequestId)}`;
+      } else {
+        window.location.href = `/client/messages`;
+      }
+      return;
+    }
+
     setShowAuthPrompt(false);
     setIsOpen(true);
   };
@@ -326,7 +352,6 @@ const StickySidebar = ({
           requestSource: "marketplace",
           status: "pending",
         });
-        setRequestSent(true);
       }
 
       handleModalClose(false);
@@ -363,7 +388,7 @@ const StickySidebar = ({
           <Button
             className="h-11 w-full rounded-full bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             onClick={handleCTAClick}
-            disabled={currentRequestStatus === "pending"}
+            disabled={isOwnService || currentRequestStatus === "pending"}
           >
             {requestButtonLabel}
           </Button>

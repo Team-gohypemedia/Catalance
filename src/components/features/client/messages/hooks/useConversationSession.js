@@ -82,14 +82,11 @@ const useConversationSession = ({
             getTimestampValue(lastMessage.createdAt) || Date.now(),
           unreadCount: 0,
           messageCount: normalizedMessages.length,
-          lastMessage,
         });
       } else if (options.clearMeta) {
         patchConversation(conversationKey, {
-          previewText: "No messages yet",
           unreadCount: 0,
           messageCount: 0,
-          lastMessage: null,
         });
       }
     },
@@ -507,16 +504,6 @@ const useConversationSession = ({
       return undefined;
     }
 
-    if (activeConversation.isMarketplaceRequestChat) {
-      setActiveConversationId(null);
-      setLoadingMessages(false);
-      setMessages(
-        getMarketplaceConversationMessages(
-          activeConversation.serviceKey || activeConversation.id,
-        ),
-      );
-      return undefined;
-    }
 
     if (!activeConversation.chatUnlocked) {
       setActiveConversationId(null);
@@ -599,42 +586,10 @@ const useConversationSession = ({
     });
   }, [activeConversationId, currentUser?.id, socket]);
 
-  useEffect(() => {
-    if (!activeConversation?.isMarketplaceRequestChat) {
-      return undefined;
-    }
-
-    const syncMessages = () => {
-      setMessages(
-        getMarketplaceConversationMessages(
-          activeConversation.serviceKey || activeConversation.id,
-        ),
-      );
-    };
-
-    syncMessages();
-
-    if (typeof window === "undefined") {
-      return undefined;
-    }
-
-    window.addEventListener(MARKETPLACE_CHAT_UPDATED_EVENT, syncMessages);
-    window.addEventListener("storage", syncMessages);
-
-    return () => {
-      window.removeEventListener(MARKETPLACE_CHAT_UPDATED_EVENT, syncMessages);
-      window.removeEventListener("storage", syncMessages);
-    };
-  }, [
-    activeConversation?.id,
-    activeConversation?.isMarketplaceRequestChat,
-    activeConversation?.serviceKey,
-  ]);
 
   useEffect(() => {
     if (
       !activeConversation ||
-      activeConversation.isMarketplaceRequestChat ||
       !activeConversation.chatUnlocked ||
       !activeConversationId
     ) {
@@ -754,8 +709,7 @@ const useConversationSession = ({
   const handleClearChat = useCallback(async () => {
     if (
       !activeConversationId ||
-      !authFetch ||
-      activeConversation?.isMarketplaceRequestChat
+      !authFetch
     ) {
       return;
     }
@@ -795,7 +749,6 @@ const useConversationSession = ({
       setClearingChat(false);
     }
   }, [
-    activeConversation?.isMarketplaceRequestChat,
     activeConversationId,
     applyMessagesForConversation,
     authFetch,
@@ -809,28 +762,6 @@ const useConversationSession = ({
         return false;
       }
 
-      if (activeConversation?.isMarketplaceRequestChat) {
-        const nextMessage = appendMarketplaceConversationMessage({
-          conversationKey:
-            activeConversation.serviceKey || activeConversation.id || "",
-          content: trimmedMessage,
-          attachment,
-          senderId: currentUser?.id || null,
-          senderRole: "CLIENT",
-          senderName: headerDisplayName,
-        });
-
-        if (!nextMessage) {
-          return false;
-        }
-
-        patchConversation(activeConversationKeyRef.current, {
-          previewText: getMessagePreview(nextMessage),
-          lastActivity: getTimestampValue(nextMessage.createdAt) || Date.now(),
-          unreadCount: 0,
-        });
-        return true;
-      }
 
       if (!activeConversationId) {
         return false;
@@ -844,7 +775,7 @@ const useConversationSession = ({
           activeConversation?.label ||
           SERVICE_LABEL,
         senderId: currentUser?.id || null,
-        senderRole: currentUser?.role || "CLIENT",
+        senderRole: "CLIENT",
         senderName: getDisplayName(currentUser),
         skipAssistant: true,
         attachment: attachment || undefined,
@@ -938,8 +869,7 @@ const useConversationSession = ({
     if (
       !socket.isConnected ||
       !activeConversationId ||
-      !activeConversation?.chatUnlocked ||
-      activeConversation?.isMarketplaceRequestChat
+      !activeConversation?.chatUnlocked
     ) {
       return;
     }
@@ -965,8 +895,6 @@ const useConversationSession = ({
       });
     }, 1500);
   }, [
-    activeConversation?.chatUnlocked,
-    activeConversation?.isMarketplaceRequestChat,
     activeConversationId,
     currentUser,
     socket,

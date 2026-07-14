@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { prisma } from "../lib/prisma.js";
 import { sendNotificationToUser } from "../lib/notification-util.js";
+import { sendSocketNotification } from "../lib/socket-manager.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 
@@ -132,21 +133,46 @@ export const createMarketplaceRequestNotifications = asyncHandler(async (req, re
       };
 
       const revivedNotifications = await prisma.$transaction(
-        existingRequestNotifications.map((notification) =>
-          prisma.notification.update({
+        existingRequestNotifications.map((notification) => {
+          const notifData = notification.data || {};
+          const isClientNotif = notification.userId === clientId;
+          
+          const specificRevivedRequest = {
+            ...revivedRequest,
+            audience: notifData.audience || (isClientNotif ? "client" : "freelancer"),
+            recipientRole: notifData.recipientRole || (isClientNotif ? "client" : "freelancer"),
+          };
+          
+          return prisma.notification.update({
             where: { id: notification.id },
             data: {
               read: false,
-              title:
-                notification.userId === clientId
-                  ? `Request sent to ${revivedRequest.freelancerName}`
-                  : `New request from ${revivedRequest.clientName}`,
+              title: isClientNotif
+                ? `Request sent to ${revivedRequest.freelancerName}`
+                : `New request from ${revivedRequest.clientName}`,
               message: normalizedMessage,
-              data: revivedRequest,
+              data: specificRevivedRequest,
             },
-          }),
-        ),
+          });
+        }),
       );
+
+      for (const notification of revivedNotifications) {
+        sendSocketNotification(notification.userId, notification);
+      }
+
+      // Clean up the old declined notification so it doesn't conflict
+      const allClientNotifications = await prisma.notification.findMany({
+        where: { userId: clientId, type: "marketplace_request_declined" },
+      });
+      const declinedToDelete = allClientNotifications.filter(
+        (n) => n.data?.requestId === requestId
+      );
+      if (declinedToDelete.length > 0) {
+        await prisma.notification.deleteMany({
+          where: { id: { in: declinedToDelete.map((n) => n.id) } },
+        });
+      }
 
       return res.status(200).json({
         status: "success",
@@ -167,21 +193,33 @@ export const createMarketplaceRequestNotifications = asyncHandler(async (req, re
       };
 
       const resentNotifications = await prisma.$transaction(
-        existingRequestNotifications.map((notification) =>
-          prisma.notification.update({
+        existingRequestNotifications.map((notification) => {
+          const notifData = notification.data || {};
+          const isClientNotif = notification.userId === clientId;
+
+          const specificResentRequest = {
+            ...resentRequest,
+            audience: notifData.audience || (isClientNotif ? "client" : "freelancer"),
+            recipientRole: notifData.recipientRole || (isClientNotif ? "client" : "freelancer"),
+          };
+          
+          return prisma.notification.update({
             where: { id: notification.id },
             data: {
               read: false,
-              title:
-                notification.userId === clientId
-                  ? `Request sent to ${resentRequest.freelancerName}`
-                  : `New request from ${resentRequest.clientName}`,
+              title: isClientNotif
+                ? `Request sent to ${resentRequest.freelancerName}`
+                : `New request from ${resentRequest.clientName}`,
               message: normalizedMessage,
-              data: resentRequest,
+              data: specificResentRequest,
             },
-          }),
-        ),
+          });
+        }),
       );
+
+      for (const notification of resentNotifications) {
+        sendSocketNotification(notification.userId, notification);
+      }
 
       return res.status(200).json({
         status: "success",
@@ -198,7 +236,7 @@ export const createMarketplaceRequestNotifications = asyncHandler(async (req, re
       status: "success",
       data: {
         requestId,
-        request,
+        request: existingRequestNotification.data,
         duplicate: true,
       },
     });
@@ -299,7 +337,7 @@ export const updateMarketplaceRequestStatus = asyncHandler(async (req, res) => {
     (notification) => String(notification.userId || "") === String(userId),
   );
 
-  const notificationsToUpdate = targetNotifications.length > 0 ? targetNotifications : matchedNotifications;
+  const notificationsToUpdate = matchedNotifications;
 
   const updatedNotifications = await prisma.$transaction(
     notificationsToUpdate.map((notification) =>
@@ -341,6 +379,43 @@ export const updateMarketplaceRequestStatus = asyncHandler(async (req, res) => {
             requestStatus: "accepted",
             route: `/client/messages?requestId=${encodeURIComponent(requestId)}`,
             redirectTo: `/client/messages?requestId=${encodeURIComponent(requestId)}`,
+            recipientRole: "client",
+            audience: "client",
+            clientId: sourceData.clientId || recipientId,
+            clientName: sourceData.clientName || recipientName,
+            freelancerName,
+            serviceTitle,
+            updatedAt,
+          },
+        },
+        false,
+      );
+    }
+  } else if (status === "declined") {
+    const sourceData = matchedNotifications[0]?.data || {};
+    const recipientId = String(sourceData.clientId || "").trim();
+    const recipientName = String(sourceData.clientName || "Client").trim() || "Client";
+    const freelancerName =
+      String(sourceData.freelancerName || matchedNotifications[0]?.title || "Freelancer").trim() ||
+      "Freelancer";
+    const serviceTitle =
+      String(sourceData.serviceTitle || sourceData.serviceType || "Marketplace Request").trim() ||
+      "Marketplace Request";
+
+    if (recipientId && String(recipientId) !== String(userId)) {
+      await sendNotificationToUser(
+        recipientId,
+        {
+          type: "marketplace_request_declined",
+          title: "Inquiry declined",
+          message: `${freelancerName} declined your inquiry for "${serviceTitle}".`,
+          audience: "client",
+          data: {
+            ...sourceData,
+            requestId,
+            requestStatus: "declined",
+            route: `/client/dashboard`,
+            redirectTo: `/client/dashboard`,
             recipientRole: "client",
             audience: "client",
             clientId: sourceData.clientId || recipientId,
@@ -411,6 +486,38 @@ export const markByTypeAsRead = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ status: "success" });
+});
+
+export const deleteMarketplaceRequest = asyncHandler(async (req, res) => {
+  const userId = req.user.sub;
+  const requestId = String(req.params.requestId || "").trim();
+
+  if (!requestId) {
+    throw new AppError("requestId is required", 400);
+  }
+
+  const allNotifications = await prisma.notification.findMany({
+    where: {
+      type: {
+        in: ["marketplace_request", "marketplace_request_accepted", "marketplace_request_declined"],
+      },
+      userId,
+    },
+  });
+
+  const notificationsToDelete = allNotifications.filter((n) => {
+    return String(n.data?.requestId || n.data?.id || "").trim() === requestId;
+  });
+
+  if (notificationsToDelete.length > 0) {
+    await prisma.notification.deleteMany({
+      where: {
+        id: { in: notificationsToDelete.map((n) => n.id) },
+      },
+    });
+  }
+
+  res.status(200).json({ status: "success", deletedCount: notificationsToDelete.length });
 });
 
 

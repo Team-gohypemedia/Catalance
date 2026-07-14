@@ -30,7 +30,7 @@ export const filterAssistantMessages = (list = []) =>
   list.filter((message) => message?.role !== "assistant");
 
 export const getConversationKey = (conversation) =>
-  conversation?.serviceKey || conversation?.id || null;
+  conversation?.id || conversation?.serviceKey || null;
 
 export const getTimestampValue = (value) => {
   if (!value) return 0;
@@ -615,17 +615,45 @@ export const sortMessagesByCreatedAt = (messages = []) =>
   );
 
 export const dedupeMessages = (messages = []) => {
-  const byIdentity = new Map();
+  const byId = new Map();
+  const bySignature = new Map();
 
   for (const message of messages) {
-    const key =
-      message?.id ||
-      `${message?.conversationId || ""}:${message?.createdAt || ""}:${getMessageSignature(message)}`;
-
-    byIdentity.set(key, message);
+    if (message?.id) {
+      byId.set(String(message.id), message);
+    } else {
+      const sigKey = `${message?.conversationId || ""}:${message?.senderRole || ""}:${getMessageSignature(message)}`;
+      
+      // If we don't have an ID, store it by signature if not already present
+      if (!bySignature.has(sigKey)) {
+        bySignature.set(sigKey, message);
+      }
+    }
   }
 
-  return Array.from(byIdentity.values());
+  // Now, merge them. If a signature-only message matches an ID message's signature and is within 60s, discard it.
+  const finalMessages = Array.from(byId.values());
+
+  for (const [sigKey, sigMessage] of bySignature.entries()) {
+    const hasMatchInIdMessages = finalMessages.some((idMessage) => {
+      const idSigKey = `${idMessage?.conversationId || ""}:${idMessage?.senderRole || ""}:${getMessageSignature(idMessage)}`;
+      if (idSigKey !== sigKey) return false;
+      
+      // Check time proximity (within 60 seconds)
+      const t1 = new Date(idMessage.createdAt).getTime();
+      const t2 = new Date(sigMessage.createdAt).getTime();
+      if (!isNaN(t1) && !isNaN(t2) && Math.abs(t1 - t2) < 60000) {
+        return true;
+      }
+      return false;
+    });
+
+    if (!hasMatchInIdMessages) {
+      finalMessages.push(sigMessage);
+    }
+  }
+
+  return finalMessages;
 };
 
 export const mergeMessageCollections = (

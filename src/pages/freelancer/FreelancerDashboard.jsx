@@ -201,8 +201,8 @@ const FreelancerDashboard = () => {
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <h4 className="font-bold text-sm text-foreground">{req.clientName}</h4>
-                                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wide">
+                                <h4 className="font-bold text-sm text-foreground capitalize">{req.clientName}</h4>
+                                <p className="text-[12px] text-muted-foreground font-medium line-clamp-1" title={req.serviceTitle}>
                                   {req.serviceTitle || "Service Inquiry"}
                                 </p>
                               </div>

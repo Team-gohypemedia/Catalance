@@ -7,6 +7,7 @@ import {
   markAsRead,
   markByTypeAsRead,
   updateMarketplaceRequestStatus,
+  deleteMarketplaceRequest,
 } from "../controllers/notification.controller.js";
 
 const router = Router();
@@ -16,6 +17,7 @@ router.use(requireAuth);
 router.route("/").get(getNotifications);
 
 router.route("/marketplace-request").post(createMarketplaceRequestNotifications);
+router.route("/marketplace-request/:requestId").delete(deleteMarketplaceRequest);
 router.route("/marketplace-request/:requestId/status").patch(updateMarketplaceRequestStatus);
 
 router.route("/read-all").patch(markAllAsRead);

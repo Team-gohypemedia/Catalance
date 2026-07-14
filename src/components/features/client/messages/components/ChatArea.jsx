@@ -39,6 +39,7 @@ import {
   formatDayDivider,
   formatFileSize,
   formatTime,
+  getConversationDisplaySubtitle,
   getConversationDisplayTitle,
   getConversationKey,
   getConversationMemberLabel,
@@ -102,7 +103,7 @@ const ChatArea = React.memo(function ChatArea({
   const deferredMessageSearch = useDeferredValue(messageSearch);
 
   const conversationTitle = getConversationDisplayTitle(conversation);
-  const conversationMembers = getConversationMemberLabel(
+  const conversationSubtitle = getConversationDisplaySubtitle(
     conversation,
     currentUser,
   );
@@ -152,14 +153,9 @@ const ChatArea = React.memo(function ChatArea({
         id: String(conversationKey || "marketplace") + ":seeded-request",
         conversationId: conversationKey || conversation?.conversationId || null,
         content: fallbackContent,
-        senderId: currentUser?.id || conversation?.clientId || null,
+        senderId: conversation?.clientId || null,
         senderRole: "CLIENT",
-        senderName:
-          currentUser?.fullName ||
-          currentUser?.name ||
-          currentUser?.displayName ||
-          conversation?.clientName ||
-          conversationTitle,
+        senderName: conversation?.clientName || conversationTitle,
         createdAt: conversation?.createdAt || new Date().toISOString(),
       },
     ];
@@ -507,7 +503,7 @@ const ChatArea = React.memo(function ChatArea({
               {conversationTitle}
             </p>
             <p className="truncate text-[13px] text-muted-foreground">
-              {conversationMembers}
+              {conversationSubtitle || "Project chat"}
             </p>
           </div>
         </div>
@@ -648,16 +644,61 @@ const ChatArea = React.memo(function ChatArea({
                         </div>
                       </div>
                     ) : (
-                      <div className={cn("rounded-[14px] border px-3 py-2 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]", ownsMessage ? "border-black/10 bg-primary text-primary-foreground" : "border-border bg-muted text-foreground dark:border-white/[0.06] dark:bg-[#1d1d1d] dark:text-[#f1f5f9]")}>
-                        {message.attachment ? renderAttachmentBlock(message, ownsMessage) : null}
-                        {message.content ? (
-                          <p className="mt-2 whitespace-pre-wrap text-[0.96rem] leading-6" style={{ overflowWrap: "break-word", wordBreak: "break-word" }}>
-                            {message.content}
-                          </p>
+                      <div className="flex max-w-full flex-col gap-3">
+                        {message.attachment ? (
+                          <div className={cn(
+                            "w-fit max-w-full overflow-hidden rounded-[14px] p-1.5 shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]",
+                            ownsMessage
+                              ? "rounded-br-none bg-primary text-primary-foreground"
+                              : "rounded-bl-none border border-border bg-muted dark:border-white/[0.06] dark:bg-[#1d1d1d]",
+                          )}>
+                            {renderAttachmentBlock(message, ownsMessage)}
+                            {message.content ? (
+                              <div className={cn(
+                                "flex items-end gap-2 px-1 pb-0 pt-1.5",
+                                message.content ? "justify-between" : "justify-end",
+                              )}>
+                                <p
+                                  className={cn(
+                                    "min-w-0 flex-1 whitespace-pre-wrap text-[0.96rem] leading-6",
+                                    ownsMessage ? "text-primary-foreground" : "text-foreground dark:text-[#f1f5f9]",
+                                  )}
+                                  style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+                                >
+                                  {message.content}
+                                </p>
+                                {renderStatus(message, ownsMessage, "inline")}
+                              </div>
+                            ) : (
+                              <div className="flex justify-end px-1 pt-1">
+                                {renderStatus(message, ownsMessage, "inline")}
+                              </div>
+                            )}
+                          </div>
                         ) : null}
-                        <div className="mt-2 flex justify-end">
-                          {renderStatus(message, ownsMessage)}
-                        </div>
+
+                        {message.content && !message.attachment ? (
+                          <div
+                            className={cn(
+                              "w-fit max-w-full shadow-[0_18px_45px_-38px_rgba(0,0,0,0.8)]",
+                              ownsMessage
+                                ? "min-w-[96px] rounded-[12px] rounded-br-none bg-primary px-2.5 py-2 text-primary-foreground"
+                                : "min-w-[96px] rounded-[12px] rounded-bl-none border border-border bg-muted px-2.5 py-2 text-foreground dark:border-white/[0.06] dark:bg-[#1d1d1d] dark:text-[#f1f5f9]",
+                            )}
+                          >
+                            <div className="flex max-w-full items-end gap-2">
+                              <p
+                                className="min-w-0 whitespace-pre-wrap text-[0.96rem] leading-5.5"
+                                style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+                              >
+                                {message.content}
+                              </p>
+                              <div className="shrink-0 self-end">
+                                {renderStatus(message, ownsMessage, "inline")}
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>

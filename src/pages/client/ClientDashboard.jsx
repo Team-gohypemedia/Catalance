@@ -24,7 +24,7 @@ const getMarketplaceRequestKey = (request = {}) => {
   const requestType = String(request?.type || request?.requestSource || "").trim().toLowerCase();
 
   if (requestId) {
-    return [requestId, requestStatus || requestType || "unknown"].join("|");
+    return requestId;
   }
 
   return [
@@ -32,8 +32,6 @@ const getMarketplaceRequestKey = (request = {}) => {
     request?.freelancerId,
     request?.serviceId,
     request?.createdAt,
-    requestStatus,
-    requestType,
   ]
     .map((value) => String(value || "").trim())
     .filter(Boolean)
@@ -83,18 +81,61 @@ const mapMarketplaceRequestNotification = (notification = {}) => {
 };
 const ClientDashboardContent = () => {
   const dashboardData = useOptionalClientDashboardData();
-  const { user } = useAuth();
-  const { notifications = [] } = useNotifications();
+  const { user, authFetch } = useAuth();
+  const { notifications = [], refreshNotifications } = useNotifications();
   const navigate = useNavigate();
   const [sentRequests, setSentRequests] = useState([]);
+  const [resendingId, setResendingId] = useState(null);
+
+  const handleResend = async (req) => {
+    if (!authFetch) return;
+    setResendingId(req.id);
+    try {
+      const response = await authFetch("/notifications/marketplace-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          freelancerId: req.freelancerId || req.requestedFreelancerId,
+          serviceId: req.serviceId,
+          requestMessage: req.requestMessage,
+        }),
+      });
+      if (response.ok) {
+        await refreshNotifications?.();
+      }
+    } catch (err) {
+      console.error("Failed to resend request", err);
+    } finally {
+      setResendingId(null);
+    }
+  };
+
+  const [deletingId, setDeletingId] = useState(null);
+
+  const handleDelete = async (req) => {
+    if (!authFetch) return;
+    setDeletingId(req.id);
+    try {
+      const response = await authFetch(`/notifications/marketplace-request/${encodeURIComponent(req.id)}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        await refreshNotifications?.();
+      }
+    } catch (err) {
+      console.error("Failed to delete request", err);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   useEffect(() => {
     const nextSentRequests = new Map();
 
     (Array.isArray(notifications) ? notifications : [])
-      .filter((notification) => ["marketplace_request", "marketplace_request_accepted"].includes(String(notification?.type || "").toLowerCase()))
+      .filter((notification) => ["marketplace_request", "marketplace_request_accepted", "marketplace_request_declined"].includes(String(notification?.type || "").toLowerCase()))
       .map(mapMarketplaceRequestNotification)
-      .filter((request) => ["pending", "accepted"].includes(request.status))
+      .filter((request) => ["pending", "accepted", "declined"].includes(request.status))
       .filter((request) => {
         if (request.audience === "client" || request.audience === "freelancer") {
           return request.audience === "client";
@@ -175,10 +216,12 @@ const ClientDashboardContent = () => {
                         className={
                           req.status === "accepted"
                             ? "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 border-none rounded-full px-3 py-1 text-[11px] font-bold"
+                            : req.status === "declined"
+                            ? "bg-red-500/10 text-red-600 hover:bg-red-500/20 border-none rounded-full px-3 py-1 text-[11px] font-bold"
                             : "bg-[#f59e0b]/10 text-[#f59e0b] hover:bg-[#f59e0b]/20 border-none rounded-full px-3 py-1 text-[11px] font-bold"
                         }
                       >
-                        {req.status === "accepted" ? "Inquiry Accepted" : "Pending Approval"}
+                        {req.status === "accepted" ? "Inquiry Accepted" : req.status === "declined" ? "Inquiry Declined" : "Pending Approval"}
                       </Badge>
                     </div>
                     {req.status === "accepted" ? (
@@ -189,7 +232,37 @@ const ClientDashboardContent = () => {
                       >
                         Go to Chat
                       </button>
-                    ) : null}
+                    ) : req.status === "declined" ? (
+                      <div className="flex gap-2 mt-4">
+                        <button
+                          type="button"
+                          onClick={() => handleResend(req)}
+                          disabled={resendingId === req.id || deletingId === req.id}
+                          className="flex-1 inline-flex items-center justify-center rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          {resendingId === req.id ? "Sending..." : "Send Again"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(req)}
+                          disabled={resendingId === req.id || deletingId === req.id}
+                          className="flex-1 inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 px-4 py-2 text-sm font-semibold transition hover:bg-red-100 disabled:opacity-50 dark:border-red-900/50 dark:bg-red-900/20 dark:hover:bg-red-900/40"
+                        >
+                          {deletingId === req.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex justify-end mt-4">
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(req)}
+                          disabled={deletingId === req.id}
+                          className="inline-flex items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600 px-4 py-2 text-sm font-semibold transition hover:bg-red-100 disabled:opacity-50 dark:border-red-900/50 dark:bg-red-900/20 dark:hover:bg-red-900/40"
+                        >
+                          {deletingId === req.id ? "Canceling..." : "Cancel Inquiry"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

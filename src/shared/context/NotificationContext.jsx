@@ -623,9 +623,23 @@ export const NotificationProvider = ({ children }) => {
       addNotification(notification);
     });
 
-    // NOTE: chat:message listener REMOVED from here - chat messages are handled by Chat components
-    // and notifications for new messages come via Firebase Push Notifications
-
+    newSocket.on("chat:message", (message) => {
+      if (!message || (message.senderId && String(message.senderId) === String(user?.id))) {
+        return;
+      }
+      
+      addNotification({
+        id: `chat-${message.id || Date.now()}`,
+        type: "chat",
+        title: "New Message",
+        message: `${message.senderName || "Someone"}: ${message.content || "Sent an attachment"}`,
+        data: {
+          projectId: message.conversationId,
+          service: message.service || message.serviceKey || "",
+          audience: message.senderRole === "CLIENT" ? "freelancer" : "client",
+        }
+      });
+    });
     newSocket.on("connect_error", (error) => {
       console.error("[Notification] Connection error:", error.message);
     });

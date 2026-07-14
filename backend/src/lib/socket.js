@@ -159,12 +159,10 @@ export const initSocket = (server) => {
             take: 100,
           });
 
-          if (history.length) {
-            socket.emit(
-              "chat:history",
-              history.map((message) => serializeChatMessage(message)),
-            );
-          }
+          socket.emit(
+            "chat:history",
+            history.map((message) => serializeChatMessage(message)),
+          );
         }
       } catch (error) {
         console.error("chat:join failed", error);
