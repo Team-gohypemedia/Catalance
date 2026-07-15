@@ -477,6 +477,7 @@ const mapLiveProjectCardPayload = (project = {}) => {
     proposalStatus: proposal?.status || null,
     proposalId: proposal?.id || null,
     ownerId: project.ownerId || null,
+    proposalsCount: project?._count?.proposals || 0,
   };
 };
 
@@ -2313,6 +2314,9 @@ export const getMarketplaceLiveProjects = asyncHandler(async (req, res) => {
         },
         orderBy: { createdAt: "desc" },
         take: 1,
+      },
+      _count: {
+        select: { proposals: true },
       },
     },
     orderBy: { createdAt: "desc" },
