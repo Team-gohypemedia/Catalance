@@ -5,7 +5,8 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Cloud, Code2,
   Database, Eye, Heart, LayoutGrid, LineChart, MessageSquare,
   Plus, RefreshCcw, Rocket, Search, Send, Settings, SlidersHorizontal,
-  Sparkles, Star, Users, Workflow, X, Monitor, UserCheck, Globe, Bookmark, MapPin
+  Sparkles, Star, Users, Workflow, X, Monitor, UserCheck, Globe, Bookmark, MapPin,
+  Video, PenTool, Smartphone, Palette
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -490,6 +491,18 @@ const formatProjectDate = (value) => {
   });
 };
 
+const ServiceIcon = ({ serviceName, className, strokeWidth = 2 }) => {
+  const name = String(serviceName).toLowerCase();
+  if (name.includes("video")) return <Video className={className} strokeWidth={strokeWidth} />;
+  if (name.includes("creative") || name.includes("design") || name.includes("graphics")) return <Palette className={className} strokeWidth={strokeWidth} />;
+  if (name.includes("web") || name.includes("software") || name.includes("development") || name.includes("app")) return <Code2 className={className} strokeWidth={strokeWidth} />;
+  if (name.includes("marketing") || name.includes("seo") || name.includes("growth")) return <LineChart className={className} strokeWidth={strokeWidth} />;
+  if (name.includes("writing") || name.includes("content")) return <PenTool className={className} strokeWidth={strokeWidth} />;
+  if (name.includes("data") || name.includes("ai") || name.includes("agent")) return <Bot className={className} strokeWidth={strokeWidth} />;
+  if (name.includes("support") || name.includes("customer")) return <Users className={className} strokeWidth={strokeWidth} />;
+  return <Globe className={className} strokeWidth={strokeWidth} />;
+};
+
 const MarketplaceProjectCard = ({ item, onViewDetails }) => {
   const timeline = String(item?.timeline || item?.duration || "").trim();
   const clientLabel = String(item?.clientName || item?.companyName || "").trim();
@@ -499,7 +512,7 @@ const MarketplaceProjectCard = ({ item, onViewDetails }) => {
   
   // Ensure visual parity with the design by falling back to mock data if missing
   const skills = item?.skills?.length ? item.skills.slice(0, 3) : ["WordPress", "Responsive", "CMS"];
-  const proposals = item?.proposalsCount || 12;
+  const proposals = item?.proposalsCount ?? item?._count?.proposals ?? 0;
   const location = item?.location || "Mumbai, India";
 
   return (
@@ -511,7 +524,7 @@ const MarketplaceProjectCard = ({ item, onViewDetails }) => {
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="flex size-10 items-center justify-center rounded-[10px] bg-orange-50 dark:bg-[#FACC15]/10 dark:text-[#FACC15]">
-                  <Globe className="size-5 text-primary" strokeWidth={2} />
+                  <ServiceIcon serviceName={serviceName} className="size-5 text-primary" strokeWidth={2} />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-primary dark:text-[#FACC15]">
@@ -556,7 +569,7 @@ const MarketplaceProjectCard = ({ item, onViewDetails }) => {
                 </div>
                 <div className="flex flex-col items-end text-right">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
-                    Proposals
+                    Applied
                   </span>
                   <span className="text-[15px] font-extrabold text-slate-900 dark:text-slate-100 truncate">
                     {proposals}
@@ -908,6 +921,7 @@ const Marketplace = () => {
 
   const [favorites, setFavorites] = useState({});
   const { currentDashboard } = useDashboardSwitcher();
+  const isOpportunityView = location.pathname.startsWith("/opportunity") || currentDashboard === "freelancer";
   
   const [activeMarketplaceView, setActiveMarketplaceView] = useState(
     currentDashboard === "freelancer" ? "projects" : "freelancers"
@@ -2223,11 +2237,11 @@ const Marketplace = () => {
             <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div className="space-y-1.5">
                 <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
-                  {isProjectsView ? "Live Projects" : "Specialists"}
+                  {isProjectsView ? (isOpportunityView ? "Live Proposals" : "Live Projects") : "Specialists"}
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="text-3xl font-bold tracking-tight text-foreground dark:text-white sm:text-4xl">
-                    {activeBrowseService?.label || activeService?.label || "All Services"}
+                    {activeBrowseService?.label || activeService?.label || (isOpportunityView && isProjectsView ? "All Proposals" : "All Services")}
                   </h3>
                   {!loading && !projectLoading && (
                     <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-[12px] font-bold text-primary hover:bg-primary/20">
@@ -2760,10 +2774,10 @@ const Marketplace = () => {
 
         <section className="relative overflow-hidden bg-[#F9F5EE] dark:bg-background min-h-[500px] w-full rounded-[10px] mb-12">
           <div className="relative z-10 flex flex-col items-center pt-24 text-center px-4 pointer-events-none">
-            <Badge className="rounded-md bg-primary/90 dark:bg-primary/90 px-6 py-2.5 text-sm md:text-base font-bold uppercase tracking-[0.2em] !text-primary-foreground shadow-sm border border-primary/20">
+            <Badge variant="outline" className="rounded-full bg-primary/10 dark:bg-primary/10 px-6 py-2.5 text-sm md:text-base font-bold uppercase tracking-[0.2em] text-primary dark:text-primary shadow-none border border-primary/20">
               SERVICES WE SERVE
             </Badge>
-            <h2 className="mt-6 max-w-4xl text-4xl sm:text-5xl md:text-[56px] font-medium tracking-tight text-[#2B2B2B] dark:text-white leading-[1.15]">
+            <h2 className="mt-6 max-w-4xl text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight text-[#2B2B2B] dark:text-white leading-[1.15]">
               Service-Specific Expertise to<br />Drive Your Success
             </h2>
           </div>
