@@ -82,6 +82,7 @@
     "lucide-react": "^0.553.0",
     "maath": "^0.10.8",
     "mammoth": "^1.11.0",
+    "matter-js": "^0.20.0",
     "media-chrome": "^4.17.2",
     "motion": "^12.27.5",
     "nanoid": "^5.1.6",
