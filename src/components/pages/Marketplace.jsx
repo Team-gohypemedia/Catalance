@@ -5,7 +5,7 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Clock, Cloud, Code2,
   Database, Eye, Heart, LayoutGrid, LineChart, MessageSquare,
   Plus, RefreshCcw, Rocket, Search, Send, Settings, SlidersHorizontal,
-  Sparkles, Star, Users, Workflow, X
+  Sparkles, Star, Users, Workflow, X, Monitor, UserCheck, Globe, Bookmark, MapPin
 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -64,6 +64,50 @@ import { ContainerScroll } from "@/components/ui/container-scroll-animation";
 import { AnimatedHeroText } from "@/components/ui/animated-hero";
 import ProcessVideo from "@/components/sections/marketplace/ProcessVideo";
 import { useTheme } from "@/components/providers/theme-provider";
+import Gravity, { MatterBody } from "@/components/fancy/physics/gravity";
+import img1 from "@/assets/img1.png";
+import img2 from "@/assets/img2.png";
+import img3 from "@/assets/img3.png";
+import img4 from "@/assets/img4.png";
+
+const hireWithConfidenceTabs = [
+  {
+    id: "verified",
+    label: "Verified Professionals",
+    icon: Briefcase,
+    title: "For anyone handling long workdays, shifting priorities, and tight deadlines.",
+    stat: "87%",
+    statLabel: "Weekly consistency",
+    image: img1,
+  },
+  {
+    id: "secure",
+    label: "Secure Payments",
+    icon: UserCheck,
+    title: "For people balancing classes, projects, and long study sessions.",
+    stat: "14",
+    statLabel: "Sessions logged each week",
+    image: img2,
+  },
+  {
+    id: "delivery",
+    label: "On-Time Delivery",
+    icon: Monitor,
+    title: "Focus blocks, breaks, and shutdown routines help keep momentum.",
+    stat: "40",
+    statLabel: "Sessions completed monthly",
+    image: img3,
+  },
+  {
+    id: "support",
+    label: "24/7 Support",
+    icon: Users,
+    title: "For people juggling work, family routines, and personal goals.",
+    stat: "12",
+    statLabel: "Routines completed weekly",
+    image: img4,
+  }
+];
 
 const FALLBACK_CATEGORIES = [
   ["Website Development", "web_development", Code2, "Products and storefronts"],
@@ -446,130 +490,105 @@ const formatProjectDate = (value) => {
   });
 };
 
-const MarketplaceProjectCard = ({ item, onViewDetails, onAcceptProject }) => {
-  const [overviewExpanded, setOverviewExpanded] = useState(false);
+const MarketplaceProjectCard = ({ item, onViewDetails }) => {
   const timeline = String(item?.timeline || item?.duration || "").trim();
   const clientLabel = String(item?.clientName || item?.companyName || "").trim();
   const summary = String(item?.summary || item?.description || "").trim();
-  const cta = resolveProjectCardCta(item);
   const dateStr = formatProjectDate(item?.postedAt || item?.createdAt);
   const serviceName = item?.serviceName || "General service";
+  
+  // Ensure visual parity with the design by falling back to mock data if missing
+  const skills = item?.skills?.length ? item.skills.slice(0, 3) : ["WordPress", "Responsive", "CMS"];
+  const proposals = item?.proposalsCount || 12;
+  const location = item?.location || "Mumbai, India";
 
   return (
     <motion.article key={item.id} className="h-full">
-      <Card className="group h-full overflow-hidden rounded-[20px] border border-border bg-card p-6 shadow-[0_4px_24px_rgba(0,0,0,0.04)] transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.08)] flex flex-col">
+      <Card className="group h-full min-h-[400px] overflow-hidden rounded-[12px] border border-slate-200 dark:border-white/10 bg-white dark:bg-card p-5 sm:p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-md flex flex-col">
         <CardContent className="p-0 flex-1 flex flex-col">
           <div className="w-full min-w-0 flex-1 flex flex-col">
-            {/* Top: Status + Date */}
-            <div className="flex items-center justify-between">
-              {item?.proposalStatus === "REJECTED" ? (
-                <div className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
-                  Rejected
+            {/* Top Row: Service & Date */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="flex size-10 items-center justify-center rounded-[10px] bg-orange-50 dark:bg-[#FACC15]/10 dark:text-[#FACC15]">
+                  <Globe className="size-5 text-primary" strokeWidth={2} />
                 </div>
-              ) : (
-                <div className="inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
-                  {item?.hasSubmittedProposal ? "Applied" : "Open"}
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-primary dark:text-[#FACC15]">
+                    {serviceName}
+                  </span>
+                  {/* Status tag to maintain functionality */}
+                  {item?.proposalStatus === "REJECTED" ? (
+                    <span className="text-[10px] font-bold !text-red-500 dark:!text-red-400">Rejected</span>
+                  ) : item?.hasSubmittedProposal ? (
+                    <span className="text-[12px] font-bold !text-[#22c55e] dark:!text-[#4ade80]">Applied</span>
+                  ) : null}
                 </div>
-              )}
-              <span className="text-[11px] font-medium text-muted-foreground whitespace-nowrap">
-                {dateStr}
-              </span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="text-[11px] font-medium">{dateStr || "Posted 2h ago"}</span>
+              </div>
             </div>
 
             {/* Title */}
-            <h3 title={item.title || "Untitled project"} className="mt-4 truncate text-xl font-bold tracking-tight text-foreground">
-              {item.title || "Untitled project"}
+            <h3 title={item.title || "Build a Responsive Business Website"} className="mt-1 truncate text-[17px] sm:text-[19px] font-bold tracking-tight text-slate-900 dark:text-slate-100">
+              {item.title || "Build a Responsive Business Website"}
             </h3>
 
-            {/* Service Type */}
-            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Briefcase className="size-3.5 text-muted-foreground/70 shrink-0" />
-              <span className="truncate">Service: {serviceName}</span>
-            </div>
+            {/* Summary */}
+            <p className="mt-2.5 text-[14px] text-slate-500 dark:text-slate-400 line-clamp-6 sm:line-clamp-4 leading-relaxed">
+              {summary || "I need a modern, fast and responsive website for my business with CMS integration."}
+            </p>
 
-            {/* Collapsible Project Overview */}
-            {summary && (
-              <div className="mt-4 border border-border/60 bg-background rounded-xl overflow-hidden">
-                <div
-                  onClick={() => setOverviewExpanded(!overviewExpanded)}
-                  className="flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-muted/30 transition-colors"
-                >
-                  <span className="text-xs font-semibold text-foreground">Project Overview</span>
-                  {overviewExpanded ? (
-                    <ChevronUp className="size-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="size-4 text-muted-foreground" />
-                  )}
+            <div className="mt-auto flex flex-col">
+              {/* Divider */}
+              <div className="my-5 h-[1px] w-full bg-slate-100 dark:bg-white/10" />
+
+              {/* Budget & Proposals */}
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                    Budget
+                  </span>
+                  <span className="text-[15px] font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                    {formatProjectBudget(item)}
+                  </span>
                 </div>
-                {overviewExpanded && (
-                  <div className="border-t border-border/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground bg-muted/10">
-                    {summary}
+                <div className="flex flex-col items-end text-right">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1">
+                    Proposals
+                  </span>
+                  <span className="text-[15px] font-extrabold text-slate-900 dark:text-slate-100 truncate">
+                    {proposals}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bottom Row: Client & Action */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-white/10 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                      {clientLabel ? clientLabel.charAt(0).toUpperCase() : "R"}
+                    </div>
+                    <span className="truncate text-[13px] font-bold text-slate-900 dark:text-slate-100">
+                      {clientLabel || "Rahul Sharma"}
+                    </span>
+                    <BadgeCheck className="size-3.5 text-[#F97316] dark:text-primary shrink-0" />
                   </div>
-                )}
-              </div>
-            )}
+                </div>
 
-            {/* Budget + Timeline Boxes */}
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#F8F9FA] dark:bg-muted/10 py-3.5 text-center">
-                <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/85 leading-none">Budget</span>
-                <span className="text-[17px] font-extrabold text-foreground truncate max-w-full px-2 mt-1.5">{formatProjectBudget(item)}</span>
-              </div>
-              <div className="flex flex-col items-center justify-center gap-1 rounded-xl bg-[#F8F9FA] dark:bg-muted/10 py-3.5 text-center">
-                <span className="text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/85 leading-none">Timeline</span>
-                <span className="text-[17px] font-extrabold text-foreground truncate max-w-full px-2 mt-1.5">{timeline || "Not set"}</span>
-              </div>
-            </div>
-
-            {/* Client */}
-            {clientLabel ? (
-              <div className="mt-4 rounded-[14px] border border-border/70 bg-background/35 p-3">
-                <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground mb-1">Client</p>
-                <p className="text-sm font-medium text-foreground">{clientLabel}</p>
-              </div>
-            ) : null}
-
-            {/* Action Buttons */}
-            <div className="mt-5 w-full">
-              {item?.hasSubmittedProposal ? (
+              {/* Action Buttons */}
+              <div className="flex shrink-0">
                 <button
                   type="button"
                   onClick={() => onViewDetails?.(item)}
-                  className="w-full flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors border border-transparent cursor-pointer"
+                  className="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-primary bg-transparent px-4 text-[12px] font-bold text-primary dark:text-primary dark:border-primary transition-colors hover:bg-[#F97316]/5 dark:hover:bg-[#F97316]/10"
                 >
-                  <Eye className="size-4 text-muted-foreground" />
-                  <span>View Details</span>
+                  View Details <ArrowRight className="size-3.5 text-primary dark:text-primary" strokeWidth={2.5} />
                 </button>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 w-full">
-                  <button
-                    type="button"
-                    onClick={() => onViewDetails?.(item)}
-                    className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[#F8F9FA] dark:bg-white/[0.06] hover:bg-muted/80 dark:hover:bg-white/[0.1] text-xs font-bold text-foreground transition-colors border border-transparent cursor-pointer"
-                  >
-                    <Eye className="size-4 text-muted-foreground" />
-                    <span>View Details</span>
-                  </button>
-                  {cta.to ? (
-                    <Link
-                      to={cta.to}
-                      className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold !text-white transition-colors"
-                    >
-                      <Send className="size-3.5 !text-white" />
-                      <span className="!text-white">{cta.label}</span>
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => onAcceptProject?.(item)}
-                      className="flex-1 flex h-11 items-center justify-center gap-2 rounded-xl bg-[var(--primary)] hover:bg-primary/80 text-xs font-bold !text-white transition-colors cursor-pointer"
-                    >
-                      <Check className="size-4 !text-white" />
-                      <span className="!text-white">{cta.label}</span>
-                    </button>
-                  )}
-                </div>
-              )}
+              </div>
+            </div>
             </div>
           </div>
         </CardContent>
@@ -869,6 +888,7 @@ const Marketplace = () => {
   const initialSearchStateRef = useRef(readMarketplaceSearchState());
   const initialSearchState = initialSearchStateRef.current;
   const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [activeHireTab, setActiveHireTab] = useState("verified");
 
   useEffect(() => {
     document.documentElement.classList.add("marketplace-page");
@@ -1916,8 +1936,8 @@ const Marketplace = () => {
         {/* Hero Section + Full Carousel */}
         <div className="relative z-10 w-full pt-12 pb-8">
           <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-            <div className="relative z-10 mb-32 flex flex-col items-center gap-7 px-4 text-center">
-              <h1 className="w-full max-w-[900px] text-[32px] font-medium tracking-tight text-white sm:text-[48px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
+            <div className="relative z-10 mb-12 sm:mb-32 flex flex-col items-center gap-7 px-4 text-center">
+              <h1 className="w-full max-w-[900px] text-[36px] font-medium tracking-tight text-slate-900 dark:text-white sm:text-[48px] md:text-[64px] lg:text-[76px] lg:leading-[1.05]">
                 <AnimatedHeroText 
                   staticText="Hire experts for" 
                   titles={["your next big idea", "professional solutions", "Achieving Results"]}
@@ -1925,7 +1945,7 @@ const Marketplace = () => {
                   titleClassName="font-serif italic font-light text-primary text-[0.9em]"
                 />
               </h1>
-              <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-[#c9c9c9]">
+              <p className="mx-auto max-w-xl text-[17px] leading-relaxed text-slate-600 dark:text-[#c9c9c9]">
                 Explore verified services, compare talent<br className="hidden sm:block" />fast, curated shortlist clarity.
               </p>
               <div className="mt-3 flex flex-col items-center gap-4 sm:flex-row">
@@ -1939,17 +1959,9 @@ const Marketplace = () => {
             </div>
 
             <div id="marketplace-results" className="space-y-6">
-              {/* Header row with Title and Search/Filters */}
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between px-2 sm:px-5">
-                <div>
-                  <h2 className="text-2xl font-semibold tracking-[-0.04em] text-slate-900 dark:text-white">
-                    Professional Services
-                  </h2>
-                </div>
-              </div>
-
               {/* Carousel of Cards */}
               <ServiceCategoryCarousel
+                title="Professional Services"
                 services={visibleBrowseServices}
                 loading={(filterServicesLoading || browseLoading) && visibleBrowseServices.length === 0}
                 onSelectService={handleCategorySelect}
@@ -2498,14 +2510,6 @@ const Marketplace = () => {
             <AnimatePresence mode="wait">
               {projectLoading ? (
                 <motion.div key="projects-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--primary)]">
-                      Live projects
-                    </p>
-                    <h3 className="text-2xl font-bold tracking-tight text-foreground dark:text-white">
-                      Client project listings
-                    </h3>
-                  </div>
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {Array.from({ length: MARKETPLACE_PAGE_SIZE }).map((_, index) => (
                       <Card key={`project-skeleton-${index}`} className={cn(glassCardClass, "overflow-hidden rounded-[28px]")}>
@@ -2536,20 +2540,6 @@ const Marketplace = () => {
                 </motion.div>
               ) : (
                 <motion.div key="projects-grid" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--primary)]">
-                      Live projects
-                    </p>
-                    <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">
-                      Client project listings
-                    </h3>
-                    <p className="text-sm text-slate-400">
-                      {projectTotal} result{projectTotal === 1 ? "" : "s"}
-                      {activeBrowseService?.label || activeService?.label
-                        ? ` in ${activeBrowseService?.label || activeService?.label}.`
-                        : "."}
-                    </p>
-                  </div>
                   <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {projectData.map((item) => (
                       <MarketplaceProjectCard key={item.id} item={item} onViewDetails={setSelectedProjectDetail} onAcceptProject={setAcceptProjectConfirm} />
@@ -2630,411 +2620,80 @@ const Marketplace = () => {
           <ProcessVideo />
         </div>
 
-        <div className="flex flex-col gap-8 pb-6">
-          {/*
-          <section className="space-y-5">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                  Top Rated Freelancers
-                </p>
-                <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
-                  Compare trusted specialists fast
-                </h2>
-              </div>
-              <p className="max-w-xl text-sm leading-7 text-muted-foreground dark:text-slate-400">
-                Ratings, pricing, and service fit are visible up front so clients can shortlist in minutes.
-              </p>
-            </div>
-
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
-              {featuredTalent.length ? (
-                featuredTalent.map((item) => {
-                  const price = formatPrice(
-                    item.serviceDetails?.startingPrice || item.serviceDetails?.minBudget || item.serviceDetails?.price,
-                    item.serviceDetails?.averageProjectPriceRange || item.serviceDetails?.priceRange
-                  );
-
-                  return (
-                    <Link
-                      key={`featured-how-${item.id}`}
-                      to={`/marketplace/service/${item.id}`}
-                      state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
-                      className="block h-full"
-                    >
-                      <Card className="h-full rounded-[28px] border border-border bg-card shadow-sm transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg dark:border-white/10 dark:bg-white/[0.04]">
-                        <CardContent className="flex h-full flex-col gap-4 p-5">
-                          <div className="flex items-center gap-3">
-                            {item.freelancer?.avatar ? (
-                              <img
-                                src={item.freelancer.avatar}
-                                alt={item.freelancer.fullName || "Freelancer"}
-                                className="h-11 w-11 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-sm font-bold text-foreground dark:bg-white/[0.06] dark:text-white">
-                                {getInitials(item.freelancer?.fullName)}
-                              </div>
-                            )}
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-foreground dark:text-white">
-                                {item.freelancer?.fullName || "Anonymous"}
-                              </p>
-                              <p className="text-xs text-muted-foreground dark:text-slate-400">
-                                {item.serviceDetails?.categoryLabel || item.service || "Marketplace service"}
-                              </p>
-                            </div>
-                          </div>
-                          <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground dark:text-white">
-                            {item.service || "Untitled service"}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-2 text-xs">
-                            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
-                              <Star className="h-3 w-3 fill-primary text-primary" />
-                              {Number(item.rating || 0).toFixed(1)}
-                            </span>
-                            <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
-                              {item.reviewCount || 0} reviews
-                            </span>
-                          </div>
-                          <div className="mt-auto flex items-center justify-between border-t border-border pt-3 dark:border-white/10">
-                            <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                                Starting Price
-                              </p>
-                              <p className="mt-1 text-lg font-semibold text-foreground dark:text-white">
-                                {price}
-                              </p>
-                            </div>
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                              View
-                              
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  );
-                })
-              ) : (
-                <Card className="rounded-[28px] border border-dashed border-border bg-card/70 p-6 text-sm text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-400 md:col-span-2 xl:col-span-4">
-                  Top-rated freelancer cards will appear here after the marketplace results load.
-                </Card>
-              )}
-            </div>
-          </section>
-          */}
-
-          {/*
-          <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-            <Card className="rounded-[30px] border border-border bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-              <CardContent className="space-y-5 p-6">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
-                      New Talent
-                    </p>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
-                      Fresh profiles worth checking
-                    </h2>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="rounded-full text-xs font-semibold text-primary hover:bg-primary/10 hover:text-primary"
-                    onClick={() => scrollToSection("marketplace-results")}
-                  >
-                    Explore all
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {newTalent.length ? (
-                    newTalent.map((item) => (
-                      <Link
-                        key={`new-how-${item.id}`}
-                        to={`/marketplace/service/${item.id}`}
-                        state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
-                        className="flex items-center justify-between gap-4 rounded-[22px] border border-border bg-muted/30 px-4 py-3 transition hover:border-primary/35 hover:bg-muted/50 dark:border-white/8 dark:bg-white/[0.03]"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-foreground dark:text-white">
-                            {item.freelancer?.fullName || "Anonymous"}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground dark:text-slate-400">
-                            {item.service || "Marketplace service"}
-                          </p>
-                        </div>
-                        <span className="shrink-0 text-xs font-semibold text-primary">
-                          View profile
-                        </span>
-                      </Link>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground dark:text-slate-400">
-                      New-talent suggestions will appear here after results load.
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <section id="open-projects" className="space-y-5">
-              <div className="flex flex-col gap-2">
-                <Badge className="w-fit rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
-                  Recent Opportunities
-                </Badge>
-                <h2 className="text-2xl font-semibold tracking-[-0.04em] text-foreground dark:text-white">
-                  Latest projects in demand
-                </h2>
-                <p className="text-sm leading-7 text-muted-foreground dark:text-slate-400">
-                  Opportunities stay visible in discovery instead of being buried behind a separate tab.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                {openProjectsShowcase.items.slice(0, 3).map((project) => (
-                  <Card key={`showcase-how-${project.id}`} className="rounded-[26px] border border-border bg-card shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
-                    <CardContent className="space-y-4 p-5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-foreground dark:border-white/12 dark:bg-white/[0.03] dark:text-slate-200">
-                          {project.serviceName}
-                        </Badge>
-                        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300">
-                          <Clock className="h-3 w-3" />
-                          {project.timeline}
-                        </span>
-                      </div>
-                      <h3 className="text-base font-semibold leading-6 text-foreground dark:text-white">
-                        {project.title}
-                      </h3>
-                      <p className="line-clamp-3 text-xs leading-6 text-muted-foreground dark:text-slate-400">
-                        {project.summary}
-                      </p>
-                      <div className="flex items-end justify-between border-t border-border pt-3 dark:border-white/10">
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                            Budget
-                          </p>
-                          <p className="mt-1 text-lg font-semibold text-foreground dark:text-white">
-                            {project.budgetLabel}
-                          </p>
-                        </div>
-                        <Link
-                          to={project.ctaTo}
-                          className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:bg-primary/90"
-                        >
-                          {project.ctaLabel}
-                          
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          </section>
-          */}
-        </div>
-
-        <section id="why-catalance" className="relative space-y-10 py-6">
+        {/* Hire with Confidence Section */}
+        <section className="relative space-y-8 lg:space-y-10 pt-2 pb-12 lg:py-12">
           {/* Section Header */}
           <div className="space-y-4 text-center">
-            <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
-              Why Catalance
+            <Badge className="rounded-full border border-border bg-card shadow-sm px-4 py-1.5 text-[11px] font-bold text-foreground dark:bg-white/[0.03] dark:text-white">
+              Hire with Confidence
             </Badge>
-            <h2 className="text-4xl font-bold tracking-tight text-foreground dark:text-white sm:text-6xl">
-              That’s Why You’ll Love <br />
-              <span className="italic font-medium text-primary">
-                Working With Us
-              </span>
+            <h2 className="text-4xl font-weight-[500] tracking-tight text-foreground dark:text-white sm:text-5xl lg:text-[56px] leading-[1.1]">
+              The Right Freelancer<br />
+              for Every Business Goal
             </h2>
-            <p className="mx-auto max-w-2xl text-lg font-medium leading-relaxed text-muted-foreground">
-              With top-tier specialists, daily updates, and unlimited revisions, we make the 
-              service experience fast, flexible, and frustration-free.
-            </p>
           </div>
 
-          {/* Bento Grid */}
-          <div className="grid gap-6 lg:grid-cols-12 lg:grid-rows-2">
-            {/* Column 1: Specialists Grid */}
-            <div className="lg:col-span-4 lg:row-span-2">
-              <Card className="group relative h-full overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
-                <CardContent className="flex h-full flex-col p-8">
-                  <div className="mb-8 space-y-3">
-                    <h3 className="text-2xl font-bold text-foreground dark:text-white">Specialists Who Get It</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      You'll work with experienced experts who make things simple, smooth, and always focused on results.
-                    </p>
-                  </div>
-                  
-                  {/* Avatar Grid: 3x3 Pattern */}
-                  <div className="mt-auto grid grid-cols-3 gap-3">
-                    {/* Row 1 */}
-                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
-                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
-                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-1" alt="" className="h-full w-full object-cover" />
-                    </div>
-                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
-                    
-                    {/* Row 2 */}
-                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
-                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-2" alt="" className="h-full w-full object-cover" />
-                    </div>
-                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
-                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
-                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-3" alt="" className="h-full w-full object-cover" />
-                    </div>
-
-                    {/* Row 3 */}
-                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
-                    <div className="aspect-square overflow-hidden rounded-2xl border border-border bg-white dark:border-white/10 dark:bg-transparent">
-                      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=specialist-4" alt="" className="h-full w-full object-cover" />
-                    </div>
-                    <div className="aspect-square rounded-2xl bg-zinc-200/50 dark:bg-white/[0.03]" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Column 2: Metrics (Stacked) */}
-            <div className="space-y-6 lg:col-span-4 lg:row-span-2">
-              {/* Delivery Card */}
-              <Card className="group relative overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
-                <CardContent className="p-8">
-                  <div className="relative mb-8 flex flex-col items-center">
-                    <div className="relative z-10 flex gap-2">
-                      <div className="h-8 w-8 rounded-full border border-border bg-zinc-100 p-1 dark:border-white/10 dark:bg-white/[0.05]">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=s1" alt="" className="h-full w-full" />
-                      </div>
-                      <div className="h-8 w-8 rounded-full border border-border bg-zinc-100 p-1 dark:border-white/10 dark:bg-white/[0.05]">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=s2" alt="" className="h-full w-full" />
-                      </div>
-                      <div className="h-8 w-8 rounded-full border border-border bg-zinc-100 p-1 dark:border-white/10 dark:bg-white/[0.05]">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=s3" alt="" className="h-full w-full" />
-                      </div>
-                    </div>
-                    <div className="absolute top-4 h-12 w-24 border-x border-b border-primary/20 rounded-b-3xl" />
-                    <div className="mt-10">
-                      <Badge className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-bold text-primary">
-                        + Daily Progress
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="text-2xl font-bold text-foreground dark:text-white">24-Hour Delivery</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      We start fast and deliver your first results in just a day. No delays, no chasing.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Revisions Card */}
-              <Card className="group relative overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
-                <CardContent className="p-8">
-                  <div className="relative mb-12 flex h-24 items-center justify-center">
-                    {/* Complex Decorative Line (SVG) */}
-                    <svg className="absolute inset-0 h-full w-full opacity-30" preserveAspectRatio="none" viewBox="0 0 100 100">
-                      <path 
-                        d="M 5,0 L 5,20 L 25,20 L 25,50 L 75,50 L 75,20 L 95,20 L 95,80" 
-                        fill="none" 
-                        stroke="currentColor" 
-                        strokeWidth="0.5"
-                        className="text-primary"
-                      />
-                    </svg>
-                    
-                    <Badge className="relative z-10 rounded-full border border-primary/30 bg-card px-6 py-2.5 text-[14px] font-bold text-foreground shadow-2xl dark:bg-[#0d0d0d] dark:text-white">
-                      Request, Anytime
-                    </Badge>
-                  </div>
-                  <div className="space-y-3">
-                    <h3 className="text-2xl font-bold text-foreground dark:text-white">Unlimited Revisions</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      Need changes? Just say it — We'll keep tweaking until you're truly happy.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Column 3: Transparency/Tasks */}
-            <div className="lg:col-span-4 lg:row-span-2">
-              <Card className="group relative h-full overflow-hidden rounded-[32px] border border-border bg-card shadow-lg transition-all hover:border-primary/30 dark:border-white/10 dark:bg-white/[0.03]">
-                <CardContent className="flex h-full flex-col p-8">
-                  <div className="mb-8 space-y-3">
-                    <h3 className="text-2xl font-bold text-foreground dark:text-white">Full Transparency</h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      Track every task, every step. See every update. We keep you in the loop at all times.
-                    </p>
-                  </div>
-
-                  {/* Task Mockup */}
-                  <div className="mt-auto space-y-4 rounded-3xl border border-border bg-muted/40 p-6 dark:border-white/10 dark:bg-white/[0.04]">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                         <span className="text-[14px] font-bold text-foreground dark:text-white">Tasks</span>
-                         <span className="text-[14px] font-bold text-muted-foreground">/</span>
-                         <span className="text-[14px] font-bold text-muted-foreground">Catalance</span>
-                      </div>
-                      <Settings className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="space-y-4 pt-2">
-                      {[
-                        { label: "Project Kickoff", status: "Completed", color: "bg-emerald-500", icon: BriefcaseBusiness },
-                        { label: "Wireframes", status: "Completed", color: "bg-emerald-500", icon: LayoutGrid },
-                        { label: "UI Design", status: "In Progress", color: "bg-amber-500", icon: Sparkles },
-                        { label: "Framer Development", status: "Pending", color: "bg-rose-500", icon: Code2 },
-                      ].map((task, i) => (
-                        <div key={i} className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <task.icon className="h-4.5 w-4.5 text-foreground dark:text-white" />
-                            <span className="text-[14px] font-bold text-foreground/90 dark:text-white/90">{task.label}</span>
-                          </div>
-                          <Badge variant="outline" className="flex items-center gap-2 rounded-full border-border bg-card/50 px-2.5 py-0.5 text-[10px] font-bold dark:border-white/10">
-                             <span className="relative flex h-2 w-2">
-                               <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-75", task.color)} />
-                               <span className={cn("relative inline-flex h-2 w-2 rounded-full", task.color)} />
-                             </span>
-                             {task.status}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 pt-2 text-[13px] font-bold text-muted-foreground/60 transition-colors hover:text-primary">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted/50 dark:bg-white/[0.05]">
-                        <Plus className="h-3.5 w-3.5" />
-                      </div>
-                      Add New Task
-                    </div>
-                    
-                    <div className="flex justify-center pt-2">
-                      <span className="text-[12px] font-bold tracking-tight text-muted-foreground opacity-70">catalance®</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          {/* Interactive Tabs */}
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-center sm:gap-3 px-4 sm:px-0 w-full max-w-md mx-auto sm:max-w-none">
+            {hireWithConfidenceTabs.map((tab) => {
+              const isActive = activeHireTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveHireTab(tab.id)}
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl px-2 sm:px-5 py-2.5 sm:py-3 text-[11px] sm:text-sm font-semibold transition-all duration-300 shadow-sm w-full sm:w-auto",
+                    isActive
+                      ? "bg-primary !text-white dark:!text-primary-foreground border border-transparent scale-[1.02] sm:scale-105"
+                      : "bg-card text-muted-foreground border border-border hover:bg-muted/50 dark:bg-white/[0.03] dark:border-white/10 dark:hover:bg-white/[0.05]"
+                  )}
+                >
+                  <tab.icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0", isActive && "!text-white dark:!text-primary-foreground")} />
+                  <span className={cn("truncate", isActive && "keep-white")}>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Large CTA Button */}
-          <div className="flex justify-center pt-8">
-            <Button
-              size="lg"
-              className="group relative h-16 overflow-hidden rounded-full bg-primary px-10 text-lg font-bold text-white shadow-xl transition-all hover:scale-105 hover:shadow-primary/20"
-              style={{ color: "#fff" }}
-              onClick={() => navigate("/contact")}
-            >
-              <span className="relative z-10 mr-4 keep-white" style={{ color: "#fff" }}>Book a 15-min call</span>
-              <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white text-primary transition-all duration-300 group-hover:-rotate-45 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 keep-white">
+          {/* Dynamic Image & Overlay Card */}
+          <div className="relative mx-auto mt-8 aspect-video w-full max-w-4xl overflow-hidden rounded-[32px] border border-border shadow-2xl dark:border-white/10">
+            {hireWithConfidenceTabs.map((tab) => (
+              <div
+                key={`img-${tab.id}`}
+                className={cn(
+                  "absolute inset-0 transition-opacity duration-500 ease-in-out",
+                  activeHireTab === tab.id ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
+                )}
+              >
+                <img
+                  src={tab.image}
+                  alt={tab.label}
+                  className="h-full w-full object-cover"
+                />
                 
+                {/* Glassmorphic Overlay Card (Hidden on mobile to prevent blocking) */}
+                <div className="absolute bottom-6 right-6 hidden sm:block max-w-[390px] rounded-[10px] bg-black/40 p-6 backdrop-blur-md shadow-2xl">
+                  <p className="text-[15px] font-medium leading-relaxed !text-white">
+                    {tab.title}
+                  </p>
+                  <div className="mt-6 flex items-end gap-2.5">
+                    <span className="text-4xl font-bold tracking-tight !text-white leading-none">
+                      {tab.stat}
+                    </span>
+                    <span 
+                      className={cn(
+                        "text-[13px] font-semibold !text-white/90 mb-1 transition-all duration-700 delay-100 ease-out transform",
+                        activeHireTab === tab.id ? "translate-x-0 opacity-100" : "translate-x-8 opacity-0"
+                      )}
+                    >
+                      {tab.statLabel}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </Button>
+            ))}
           </div>
         </section>
-
-
 
         <section className="grid gap-8 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-10 lg:items-start">
           <div className="space-y-6 lg:sticky lg:top-24">
@@ -3043,12 +2702,12 @@ const Marketplace = () => {
               FAQ
             </Badge>
             <div className="space-y-4">
-              <h2 className="text-4xl font-semibold tracking-[-0.03em] text-foreground dark:text-white sm:text-5xl">
+              <h2 className="text-4xl font-semibold leading-tight tracking-[-0.03em] text-foreground dark:text-white sm:text-5xl">
                 Frequently
                 <br />
                 <span className="text-muted-foreground dark:text-slate-400">Asked Questions</span>
               </h2>
-              <p className="max-w-md text-base leading-8 text-muted-foreground dark:text-slate-400">
+              <p className="max-w-md text-base leading-relaxed sm:leading-8 text-muted-foreground dark:text-slate-400">
                 The marketplace is meant to reduce uncertainty early. These are the signals most teams look for before moving deeper into a service.
               </p>
             </div>
@@ -3060,7 +2719,7 @@ const Marketplace = () => {
                 <div
                   key={question}
                   className={cn(
-                    "rounded-[24px] border transition-all duration-300",
+                    "rounded-[20px] sm:rounded-[24px] border transition-all duration-300",
                     isOpen
                       ? "border-primary/30 bg-card shadow-lg dark:border-white/15 dark:bg-black/45"
                       : "border-border bg-card/40 hover:border-primary/20 hover:bg-card/60 dark:border-white/10 dark:bg-black/20"
@@ -3068,11 +2727,11 @@ const Marketplace = () => {
                 >
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-4 px-7 py-6 text-left"
+                    className="flex w-full items-center justify-between gap-4 px-5 py-5 sm:px-7 sm:py-6 text-left"
                     onClick={() => toggleFaqItem(question)}
                     aria-expanded={isOpen}
                   >
-                    <span className="text-xl font-medium leading-tight text-foreground dark:text-white">{question}</span>
+                    <span className="text-[17px] sm:text-xl font-medium leading-tight sm:leading-tight text-foreground dark:text-white">{question}</span>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center text-foreground dark:text-white/90">
                       {isOpen ? <X className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                     </span>
@@ -3087,8 +2746,8 @@ const Marketplace = () => {
                         transition={{ duration: 0.26, ease: [0.22, 1, 0.36, 1] }}
                         className="overflow-hidden"
                       >
-                        <div className="px-7 pb-7">
-                          <p className="max-w-3xl text-[18px] leading-8 text-muted-foreground dark:text-slate-400">{answer}</p>
+                        <div className="px-5 pb-5 sm:px-7 sm:pb-7">
+                          <p className="max-w-3xl text-[15px] sm:text-[18px] leading-relaxed sm:leading-8 text-muted-foreground dark:text-slate-400">{answer}</p>
                         </div>
                       </motion.div>
                     )}
@@ -3099,59 +2758,41 @@ const Marketplace = () => {
           </div>
         </section>
 
-        <section className="relative overflow-hidden rounded-[48px] border border-border bg-card shadow-2xl backdrop-blur-3xl dark:border-white/10 dark:bg-white/[0.04]">
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute right-[-10%] bottom-[-40%] h-96 w-96 rounded-full bg-primary/20 blur-[120px]" />
-            <div className="absolute left-[22%] top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-primary/10 blur-[100px]" />
+        <section className="relative overflow-hidden bg-[#F9F5EE] dark:bg-background min-h-[500px] w-full rounded-[10px] mb-12">
+          <div className="relative z-10 flex flex-col items-center pt-24 text-center px-4 pointer-events-none">
+            <Badge className="rounded-md bg-primary/90 dark:bg-primary/90 px-6 py-2.5 text-sm md:text-base font-bold uppercase tracking-[0.2em] !text-primary-foreground shadow-sm border border-primary/20">
+              SERVICES WE SERVE
+            </Badge>
+            <h2 className="mt-6 max-w-4xl text-4xl sm:text-5xl md:text-[56px] font-medium tracking-tight text-[#2B2B2B] dark:text-white leading-[1.15]">
+              Service-Specific Expertise to<br />Drive Your Success
+            </h2>
           </div>
-          
-          <div className="relative grid gap-12 px-8 py-16 lg:grid-cols-2 lg:items-center lg:px-16">
-            <div className="space-y-8">
-              <div className="space-y-4">
-                <Badge className="rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                  Get Started
-                </Badge>
-                <h2 className="text-[28px] sm:text-4xl md:text-5xl font-bold tracking-[-0.04em] text-foreground dark:text-white leading-[1.15] lg:leading-[1.1]">
-                  Need a marketplace that feels fast for buyers and credible for specialists?
-                </h2>
-                <p className="text-lg leading-relaxed text-muted-foreground dark:text-white/70">
-                  Start by browsing service lanes or join as a freelancer and publish your offer into a more structured buying flow.
-                </p>
-              </div>
 
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <Button
-                  size="lg"
-                  className="h-16 rounded-full bg-primary px-10 text-lg font-bold !text-white shadow-xl transition-all hover:scale-105 hover:bg-primary/90"
-                  onClick={() => scrollToSection("marketplace-results")}
-                >
-                  Explore services
-                </Button>
-                <Button
-                  asChild
-                  variant="outline"
-                  size="lg"
-                  className="h-16 rounded-full border-primary/25 bg-primary/10 px-10 text-lg font-bold text-primary transition-all hover:scale-105 hover:bg-primary/20"
-                >
-                  <Link to="/signup?role=freelancer">Join as freelancer</Link>
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex justify-center lg:justify-end">
-              <AnimatedCard className="w-full max-w-[420px] scale-100 lg:scale-110">
-                <CardVisual>
-                  <Visual3 mainColor={isDarkMode ? "#F9D949" : "#D9692A"} secondaryColor={isDarkMode ? "#ffffff" : "#F9D949"} />
-                </CardVisual>
-                <CardBody>
-                  <CardTitle>Catalance Efficiency</CardTitle>
-                  <CardDescription>
-                    Real-time project tracking and performance metrics.
-                  </CardDescription>
-                </CardBody>
-              </AnimatedCard>
-            </div>
-          </div>
+          <Gravity gravity={{ x: 0, y: 1 }} grabCursor={true} className="absolute inset-0 z-20 pointer-events-auto">
+            {[
+              { text: "Web Development", color: "bg-[#3B66FF] keep-white text-white", x: "15%", y: "15%", angle: 12 },
+              { text: "Graphics Design", color: "bg-[#71C7A5] keep-white text-white", x: "30%", y: "25%", angle: -10 },
+              { text: "UI/UX Design", color: "bg-[#F8CC72] keep-white text-white", x: "45%", y: "10%", angle: 5 },
+              { text: "Customer Support", color: "bg-[#679CE0] keep-white text-white", x: "60%", y: "30%", angle: -8 },
+              { text: "Content & Writing", color: "bg-[#FF6A39] keep-white text-white", x: "35%", y: "10%", angle: 20 },
+              { text: "SEO", color: "bg-[#FCA17B] keep-white text-white", x: "55%", y: "20%", angle: -15 },
+              { text: "Software Development", color: "bg-[#3B54D5] keep-white text-white", x: "75%", y: "15%", angle: 18 },
+              { text: "Voice Agent", color: "bg-[#FFA8AF] keep-white text-white", x: "85%", y: "30%", angle: -5 },
+            ].map((service, idx) => (
+              <MatterBody
+                key={idx}
+                x={service.x}
+                y={service.y}
+                angle={service.angle}
+                isDraggable={true}
+                matterBodyOptions={{ friction: 0.1, restitution: 0.3, density: 0.001 }}
+              >
+                <div className={cn("px-5 py-2.5 sm:px-10 sm:py-5 rounded-[40px] text-sm sm:text-xl font-medium shadow-md cursor-grab active:cursor-grabbing", service.color)}>
+                  {service.text}
+                </div>
+              </MatterBody>
+            ))}
+          </Gravity>
         </section>
       </div>
       )}
@@ -3162,7 +2803,7 @@ const Marketplace = () => {
           if (!open) setSelectedProjectDetail(null);
         }}
       >
-        <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[840px] rounded-[32px] border border-border bg-card p-0 shadow-2xl sm:w-[840px] overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[840px] rounded-[12px] border border-border bg-card p-0 shadow-2xl sm:w-[840px] overflow-hidden flex flex-col max-h-[90vh]">
           {selectedProjectDetail && (
             <>
               {/* Header */}

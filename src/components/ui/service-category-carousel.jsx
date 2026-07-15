@@ -127,16 +127,8 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
           }}
         />
 
-        {/* Top: step number + icon */}
-        <div className="relative z-10 flex w-full items-start justify-between">
-          <span
-            className={cn(
-              "font-mono text-[11px] font-bold tracking-[0.25em]",
-              isActive ? "text-primary" : "text-slate-400 dark:text-slate-600"
-            )}
-          >
-            {String(index).padStart(2, "0")}
-          </span>
+        {/* Top: icon */}
+        <div className="relative z-10 flex w-full items-start justify-end">
           <div
             className={cn(
               "flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-200",
@@ -158,8 +150,8 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
           />
         </div>
 
-        {/* Bottom: label + badge */}
-        <div className="relative z-10 w-full space-y-3 text-center">
+        {/* Bottom: label */}
+        <div className="relative z-10 w-full text-center">
           <h3
             className={cn(
               "text-[16px] font-bold leading-snug tracking-tight text-center text-foreground dark:text-white",
@@ -168,17 +160,6 @@ const ServiceCarouselCard = ({ service, index, isActive, onSelect }) => {
           >
             {service.label}
           </h3>
-
-          {isActive ? (
-            <span className="mx-auto inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-4 py-1.5 text-[11px] font-semibold text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-              Active filter
-            </span>
-          ) : (
-            <span className="mx-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-4 py-1.5 text-[11px] font-medium text-slate-600 dark:border-white/8 dark:bg-white/[0.03] dark:text-slate-400 group-hover:border-primary/30 group-hover:text-primary dark:group-hover:bg-white/10 dark:group-hover:text-white transition-all duration-200">
-              Tap to filter &rarr;
-            </span>
-          )}
         </div>
 
         {/* Corner check for active */}

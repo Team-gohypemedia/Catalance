@@ -562,9 +562,9 @@ html.ai-demo-page:not(.dark) li {
 
 
 /* ── All spans ── */
-html.home-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
-html.onboarding-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]),
-html.marketplace-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]) {
+html.home-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]):not([class*="text-green"]):not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-\\[\\#22c55e\\]"]):not([class*="text-\\[\\#4ade80\\]"]),
+html.onboarding-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]):not([class*="text-green"]):not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-\\[\\#22c55e\\]"]):not([class*="text-\\[\\#4ade80\\]"]),
+html.marketplace-page:not(.dark) main span:not(.keep-white):not([class*="text-primary"]):not([class*="bg-primary"]):not([class*="fill-primary"]):not([class*="text-green"]):not([class*="text-red"]):not([class*="text-destructive"]):not([class*="text-\\[\\#22c55e\\]"]):not([class*="text-\\[\\#4ade80\\]"]) {
   color: #1C1B1F !important;
 }
 

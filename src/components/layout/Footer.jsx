@@ -113,6 +113,9 @@ const Footer = () => {
             <div className="flex flex-col gap-5">
               <h3 className="text-sm font-semibold text-foreground">Platform</h3>
               <nav className="flex flex-col gap-3">
+                <Link to="/marketplace" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+                  Marketplace
+                </Link>
                 <button 
                   type="button"
                   onClick={() => toast.info("Coming soon!")}

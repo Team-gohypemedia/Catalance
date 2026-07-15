@@ -23,7 +23,7 @@ import { cn } from "@/shared/lib/utils";
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
-  // { label: "Opportunity", key: "marketplace", to: "/marketplace" },
+  { label: "Opportunity", key: "opportunity", to: "/opportunity" },
   { label: "Service", key: "service", to: "/service" },
   { label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" },
   { label: "Contact", key: "contact", to: "/contact" },
@@ -49,6 +49,8 @@ const getInitials = (value = "") => {
 
   return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 };
+
+
 
 const BrandMark = () => (
   <div className="flex items-center gap-2">
@@ -278,7 +280,7 @@ const FreelancerWorkspaceHeader = ({
   profileTo: _profileTo = "/freelancer/profile",
   onPrimaryAction,
   primaryActionLabel = "Opportunity",
-  primaryActionTo = "/freelancer/growth-quest",
+  primaryActionTo = "/opportunity",
   notifications = [],
   unreadCount = 0,
   markAllAsRead,
