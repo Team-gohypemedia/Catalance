@@ -89,6 +89,7 @@
     "next-themes": "^0.4.6",
     "ogl": "^1.0.11",
     "pdfjs-dist": "^5.4.530",
+    "poly-decomp": "^0.3.0",
     "postprocessing": "^6.38.0",
     "prop-types": "^15.8.1",
     "radix-ui": "^1.4.3",
