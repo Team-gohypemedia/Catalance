@@ -56,8 +56,28 @@ const INSTALLMENT_DEFINITIONS_V2 = Object.freeze([
 ]);
 
 export const normalizeProjectAmount = (value) => {
-  const parsed = Number(value || 0);
-  if (!Number.isFinite(parsed)) return 0;
+  if (value === undefined || value === null) {
+    return 0;
+  }
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+  }
+
+  const raw = String(value)
+    .trim()
+    .replace(/,/g, "")
+    .match(/-?\d+(?:\.\d+)?/);
+
+  if (!raw) {
+    return 0;
+  }
+
+  const parsed = Number(raw[0]);
+  if (!Number.isFinite(parsed)) {
+    return 0;
+  }
+
   return Math.max(0, Math.round(parsed));
 };
 
@@ -217,3 +237,4 @@ export const attachProjectPaymentPlan = (project) => ({
   ...project,
   paymentPlan: resolveProjectPaymentPlan(project),
 });
+
