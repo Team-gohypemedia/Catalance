@@ -52,6 +52,41 @@ import {
 
 const PdfAttachmentPreview = lazy(() => import("./PdfAttachmentPreview"));
 
+const PREVIEWABLE_IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "avif",
+  "svg",
+]);
+
+const getFileExtension = (value = "") => {
+  const match = String(value).toLowerCase().match(/\.([a-z0-9]+)(?:[?#].*)?$/);
+  return match?.[1] || "";
+};
+
+const isTiffFile = (file) => {
+  const mimeType = String(file?.type || "").toLowerCase();
+  const extension = getFileExtension(file?.name || file?.url || "");
+  return mimeType.includes("image/tiff") || extension === "tif" || extension === "tiff";
+};
+
+const isPreviewableImageFile = (file) => {
+  if (!file) return false;
+
+  const mimeType = String(file.type || "").toLowerCase();
+  const extension = getFileExtension(file.name || file.url || "");
+
+  if (isTiffFile(file)) {
+    return false;
+  }
+
+  return mimeType.startsWith("image/") || PREVIEWABLE_IMAGE_EXTENSIONS.has(extension);
+};
+
 const ChatIconButton = React.forwardRef(({ className, children, ...props }, ref) => (
   <button
     ref={ref}
@@ -181,6 +216,22 @@ const ChatArea = React.memo(function ChatArea({
       fileInputRef.current.value = "";
     }
   }, [conversationKey, drafts]);
+  useEffect(() => {
+    if (!selectedFile) {
+      setFilePreview(null);
+      return undefined;
+    }
+
+    if (!isPreviewableImageFile(selectedFile)) {
+      setFilePreview(null);
+      return undefined;
+    }
+
+    const objectUrl = URL.createObjectURL(selectedFile);
+    setFilePreview(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedFile]);
 
   useEffect(() => {
     if (showMessageSearch) {
@@ -278,15 +329,9 @@ const ChatArea = React.memo(function ChatArea({
   ]);
 
   const isImageAttachment = useCallback(
-    (attachment) =>
-      Boolean(
-        attachment?.url &&
-          (attachment.type?.startsWith("image/") ||
-            attachment.url?.match(/\.(jpg|jpeg|png|gif|webp)$/i)),
-      ),
+    (attachment) => Boolean(attachment?.url && isPreviewableImageFile(attachment)),
     [],
   );
-
   const isPdfAttachment = useCallback(
     (attachment) =>
       Boolean(
@@ -310,14 +355,6 @@ const ChatArea = React.memo(function ChatArea({
 
       setSelectedFile(file);
 
-      if (file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = (loadEvent) =>
-          setFilePreview(loadEvent.target?.result || null);
-        reader.readAsDataURL(file);
-      } else {
-        setFilePreview(null);
-      }
     },
     [chatUnlocked],
   );
@@ -380,6 +417,37 @@ const ChatArea = React.memo(function ChatArea({
         );
       }
 
+      if (isTiffFile(attachment)) {
+        return (
+          <div className="group relative max-w-[180px] overflow-hidden rounded-[10px] p-0">
+            <a href={attachment.url} target="_blank" rel="noopener noreferrer" className="block">
+              <div className="flex items-center gap-2 rounded-[8px] bg-white px-2 py-2 text-left">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[8px] font-bold tracking-[0.16em] text-white">
+                  TIF
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[11px] font-semibold leading-4 text-slate-900">
+                    TIFF file
+                  </p>
+                  <p className="truncate text-[10px] leading-4 text-slate-600">
+                    {attachment.name || "Preview unavailable"}
+                  </p>
+                </div>
+              </div>
+            </a>
+            {ownsMessage && onDeleteAttachment ? (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="absolute right-1.5 top-1.5 flex size-5 items-center justify-center rounded-full bg-black/65 text-white opacity-0 transition group-hover:opacity-100"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            ) : null}
+          </div>
+        );
+      }
+
       if (isPdfAttachment(attachment)) {
         return (
           <div className="group relative max-w-[340px] overflow-hidden rounded-[12px] border border-border bg-muted/50 dark:border-white/[0.06] dark:bg-[#1d1d1d] p-1.5">
@@ -411,7 +479,7 @@ const ChatArea = React.memo(function ChatArea({
                 <p className="truncate text-sm font-semibold text-foreground dark:text-[#f8fafc]">
                   {attachment.name || "PDF attachment"}
                 </p>
-                <p className="text-xs text-muted-foreground dark:text-[#9ba3af]">
+                <p className="text-xs text-muted-foreground dark:text-[#cbd5e1]">
                   {["PDF", formatFileSize(attachment.size)].filter(Boolean).join(" • ")}
                 </p>
               </div>
@@ -459,6 +527,7 @@ const ChatArea = React.memo(function ChatArea({
     },
     [isImageAttachment, isPdfAttachment, onDeleteAttachment],
   );
+  const selectedFileIsTiff = selectedFile ? isTiffFile(selectedFile) : false;
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-card">
@@ -564,7 +633,7 @@ const ChatArea = React.memo(function ChatArea({
       >
         {loadingMessages ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center py-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/95 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur dark:border-white/[0.06] dark:bg-[#1a1a1a]/95 dark:text-[#9ba3af]">
+            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/95 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur dark:border-white/[0.06] dark:bg-[#1a1a1a]/95 dark:text-[#cbd5e1]">
               <Loader2 className="size-3.5 animate-spin" />
               Loading conversation...
             </div>
@@ -771,12 +840,18 @@ const ChatArea = React.memo(function ChatArea({
               <img src={filePreview} alt="Preview" className="size-14 rounded-2xl object-cover" />
             ) : (
               <div className="flex size-14 items-center justify-center rounded-2xl bg-muted text-[var(--primary)] dark:bg-white/[0.04]">
-                <Paperclip className="size-5" />
+                {selectedFileIsTiff ? (
+                  <span className="text-[10px] font-bold tracking-[0.18em]">TIF</span>
+                ) : (
+                  <Paperclip className="size-5" />
+                )}
               </div>
             )}
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-foreground dark:text-white">{selectedFile.name}</p>
-              <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p>
+              <p className="text-xs text-muted-foreground">
+                {selectedFileIsTiff ? "TIFF preview unavailable in browser" : formatFileSize(selectedFile.size)}
+              </p>
             </div>
             <button
               type="button"
@@ -793,7 +868,7 @@ const ChatArea = React.memo(function ChatArea({
             type="file"
             className="hidden"
             onChange={handleFileSelect}
-            accept="image/*,.pdf,.doc,.docx,.txt,.zip"
+            accept="image/*,.tif,.tiff,.pdf,.doc,.docx,.txt,.zip"
           />
           <Popover open={emojiPickerOpen} onOpenChange={setEmojiPickerOpen}>
             <PopoverTrigger asChild>
@@ -904,3 +979,11 @@ const ChatArea = React.memo(function ChatArea({
 });
 
 export default ChatArea;
+
+
+
+
+
+
+
+

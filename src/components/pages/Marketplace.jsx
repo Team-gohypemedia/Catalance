@@ -1047,6 +1047,11 @@ const Marketplace = () => {
   const handleConfirmAcceptProject = async () => {
     if (!acceptProjectConfirm) return;
     const projectId = acceptProjectConfirm.id;
+    if (selectedProjectDetail?.hasSubmittedProposal) {
+      toast.error("You have already applied for this marketplace project.");
+      setAcceptProjectConfirm(null);
+      return;
+    }
     try {
       setProjectLoading(true);
       

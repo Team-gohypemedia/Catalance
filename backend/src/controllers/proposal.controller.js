@@ -881,8 +881,8 @@ export const deleteProposal = asyncHandler(async (req, res) => {
   const proposal = await prisma.proposal.findUnique({
     where: { id: proposalId },
     include: {
-      project: { select: { ownerId: true } }
-    }
+      project: { select: { ownerId: true, title: true } },
+    },
   });
 
   if (!proposal) {
@@ -899,6 +899,28 @@ export const deleteProposal = asyncHandler(async (req, res) => {
   await prisma.proposal.delete({
     where: { id: proposalId }
   });
+
+  if (isOwner && proposal.freelancerId) {
+    try {
+      await sendNotificationToUser(proposal.freelancerId, {
+        audience: "freelancer",
+        type: "proposal",
+        title: "Proposal Rejected",
+        message: `Your proposal for "${proposal.project?.title || "this project"}" was rejected by the client.`,
+        data: {
+          projectId: proposal.projectId || null,
+          proposalId: proposal.id,
+          status: "REJECTED",
+        },
+      });
+    } catch (notificationError) {
+      console.error("Failed to notify freelancer about rejected proposal:", {
+        proposalId,
+        freelancerId: proposal.freelancerId,
+        error: notificationError,
+      });
+    }
+  }
 
   res.json({ data: { deleted: true } });
 });

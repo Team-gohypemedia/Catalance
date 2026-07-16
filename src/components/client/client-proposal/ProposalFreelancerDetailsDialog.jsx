@@ -1,6 +1,6 @@
 import React, { memo } from "react";
-import Loader from "@/components/common/Loader";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -161,7 +161,7 @@ const FreelancerDetailCard = memo(({
             >
               {isUnsending ? (
                 <>
-                  <Loader className="mr-2 h-3.5 w-3.5 border-white" />
+                  <Loader2 className="mr-2 size-3.5 animate-spin" aria-hidden="true" />
                   Unsending...
                 </>
               ) : (

@@ -1206,6 +1206,18 @@ export const ClientProposalDataProvider = ({ children }) => {
         return;
       }
 
+      const confirmed = await showConfirm(
+        "Reject Proposal",
+        `Are you sure you want to reject the proposal for ${invitee.name || "this freelancer"}? They will be notified.`,
+        "Reject",
+        "Cancel",
+        true,
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
       setUnsendingProposalId(invitee.proposalId);
 
       try {
@@ -1224,7 +1236,7 @@ export const ClientProposalDataProvider = ({ children }) => {
         }
 
         setFreelancerDetailsProposal(null);
-        toast.success(`Proposal unsent from ${invitee.name || "freelancer"}.`);
+        toast.success(`Proposal rejected for ${invitee.name || "freelancer"}.`);
         await fetchProposals();
       } catch (error) {
         console.error("Failed to unsend proposal:", error);
