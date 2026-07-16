@@ -66,7 +66,7 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
     return null;
   }
 
-  const totalAmount = normalizeProjectAmount(acceptedProposal.amount || project?.budget || 0);
+  const totalAmount = resolveProjectAmount(project, acceptedProposal);
   if (totalAmount <= 0) {
     if (requireAcceptedProposal) {
       throw new AppError("Invalid project amount for payout", 400);
@@ -188,3 +188,4 @@ export const attachProjectPayoutPlan = (project) => ({
   ...project,
   payoutPlan: resolveProjectPayoutPlan(project),
 });
+

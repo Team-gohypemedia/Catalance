@@ -81,6 +81,36 @@ export const normalizeProjectAmount = (value) => {
   return Math.max(0, Math.round(parsed));
 };
 
+export const resolveProjectAmount = (project = {}, acceptedProposal = null) =>
+  [
+    acceptedProposal?.amount,
+    acceptedProposal?.budget,
+    acceptedProposal?.proposalBudget,
+    acceptedProposal?.projectBudget,
+    acceptedProposal?.totalAmount,
+    acceptedProposal?.proposalContext?.budget,
+    acceptedProposal?.proposalContext?.proposalBudget,
+    acceptedProposal?.proposalContext?.projectBudget,
+    project?.budget,
+    project?.budgetTotal,
+    project?.totalAmount,
+    project?.amount,
+    project?.budgetSummary,
+    project?.proposalJson?.amount,
+    project?.proposalJson?.budget,
+    project?.proposalJson?.proposalBudget,
+    project?.proposalJson?.projectBudget,
+    project?.proposalJson?.totalAmount,
+    project?.proposalJson?.budgetSummary,
+  ].reduce((resolvedAmount, candidate) => {
+    if (resolvedAmount > 0) {
+      return resolvedAmount;
+    }
+
+    const normalizedAmount = normalizeProjectAmount(candidate);
+    return normalizedAmount > 0 ? normalizedAmount : 0;
+  }, 0);
+
 const toTaskIdArray = (value) => {
   if (Array.isArray(value)) {
     return value.map((item) => String(item || "").trim()).filter(Boolean);
@@ -167,7 +197,7 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
     return null;
   }
 
-  const totalAmount = normalizeProjectAmount(acceptedProposal.amount || project?.budget || 0);
+  const totalAmount = resolveProjectAmount(project, acceptedProposal);
   if (totalAmount <= 0) {
     if (requireAcceptedProposal) {
       throw new AppError("Invalid project amount for payment", 400);
@@ -237,4 +267,5 @@ export const attachProjectPaymentPlan = (project) => ({
   ...project,
   paymentPlan: resolveProjectPaymentPlan(project),
 });
+
 
