@@ -57,7 +57,15 @@ const formatDelivery = (serviceDetails = {}) => {
 };
 
 const getExperienceLabel = (serviceDetails = {}, freelancer = {}) => {
-  const token = normalizeText(serviceDetails.workingLevel || serviceDetails.experienceYears || "").toLowerCase();
+  const token = normalizeText(
+    serviceDetails.experienceLevel || 
+    serviceDetails.workingLevel || 
+    freelancer?.freelancerProfile?.experienceLevel ||
+    freelancer?.freelancerProfile?.workingLevel ||
+    freelancer?.experienceLevel ||
+    serviceDetails.experienceYears || 
+    ""
+  ).toLowerCase();
   if (EXPERIENCE_LEVEL_LABELS[token]) return EXPERIENCE_LEVEL_LABELS[token];
 
   const years = Number(

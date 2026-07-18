@@ -773,7 +773,6 @@ const extractTechOptionsFromData = (items = []) => {
       if (b[1] !== a[1]) return b[1] - a[1];
       return String(labelsByKey.get(a[0]) || "").localeCompare(String(labelsByKey.get(b[0]) || ""));
     })
-    .slice(0, 12)
     .map(([key]) => {
       const label = labelsByKey.get(key) || formatTokenLabel(key);
       return { value: label, label };
@@ -850,8 +849,8 @@ const readMarketplaceSearchState = () => {
     return {
       q: "",
       category: "all",
-      selectedSubCategoryId: null,
-      selectedToolId: null,
+      selectedSubCategoryIds: [],
+      selectedToolIds: [],
       selectedBuildModes: [],
       minBudget: "",
       maxBudget: "",
@@ -873,8 +872,8 @@ const readMarketplaceSearchState = () => {
       readMarketplaceCategoryFromPath() ||
       normalizeKey(getValue("category")) ||
       "all",
-    selectedSubCategoryId: parsePositiveInteger(params.get("subCategoryId")),
-    selectedToolId: parsePositiveInteger(params.get("toolId")),
+    selectedSubCategoryIds: (params.get("subCategoryId") || "").split(",").map(parsePositiveInteger).filter(Boolean),
+    selectedToolIds: (params.get("toolId") || "").split(",").map(parsePositiveInteger).filter(Boolean),
     selectedBuildModes: getValue("buildMode")
       .split(",")
       .map((entry) => entry.trim())
@@ -941,10 +940,10 @@ const Marketplace = () => {
   const [toolOptions, setToolOptions] = useState([]);
   const [toolsLoading, setToolsLoading] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
-  const [selectedSubCategoryId, setSelectedSubCategoryId] = useState(
-    initialSearchState.selectedSubCategoryId
+  const [selectedSubCategoryIds, setSelectedSubCategoryIds] = useState(
+    initialSearchState.selectedSubCategoryIds
   );
-  const [selectedToolId, setSelectedToolId] = useState(initialSearchState.selectedToolId);
+  const [selectedToolIds, setSelectedToolIds] = useState(initialSearchState.selectedToolIds);
   const [selectedBuildModes, setSelectedBuildModes] = useState(
     initialSearchState.selectedBuildModes
   );
@@ -992,46 +991,20 @@ const Marketplace = () => {
 
   const [page, setPage] = useState(initialSearchState.page);
   const [data, setData] = useState([]);
-  const [selectedSkill, setSelectedSkill] = useState(null);
 
   useEffect(() => {
-    setSelectedSkill(null);
     window.scrollTo({ top: 0, behavior: "instant" });
   }, [category]);
 
-  const availableSkills = useMemo(() => {
-    return extractTechOptionsFromData(data);
-  }, [data]);
+  const availableSkills = [];
 
   const filteredFreelancerData = useMemo(() => {
     let result = data;
     
-    // Always filter out the user's own services if they are logged in
-    const currentUserId = user?.id || user?.userId;
-    if (currentUserId) {
-      result = result.filter(item => {
-        const itemFreelancerId = item.freelancerId || item.freelancer?.id || item.freelancer?.userId;
-        return String(itemFreelancerId) !== String(currentUserId);
-      });
-    }
+    // User requested to show all cards including their own, so we no longer filter them out here.
 
-    if (!selectedSkill) return result;
-    
-    return result.filter((item) => {
-      const skills = [
-        ...(Array.isArray(item?.techStack) ? item.techStack : []),
-        ...(Array.isArray(item?.serviceDetails?.techStack) ? item.serviceDetails.techStack : []),
-        ...(Array.isArray(item?.serviceDetails?.skillsAndTechnologies)
-          ? item.serviceDetails.skillsAndTechnologies
-          : []),
-        ...(Array.isArray(item?.serviceDetails?.serviceSpecializations)
-          ? item.serviceDetails.serviceSpecializations
-          : []),
-      ].map((s) => normalizeKey(String(s || "").trim()));
-      
-      return skills.includes(normalizeKey(selectedSkill));
-    });
-  }, [data, selectedSkill, user]);
+    return result;
+  }, [data, user]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -1113,8 +1086,8 @@ const Marketplace = () => {
   useEffect(() => {
     if (normalizedCategorySlug === category) return;
     setCategory(normalizedCategorySlug);
-    setSelectedSubCategoryId(null);
-    setSelectedToolId(null);
+    setSelectedSubCategoryIds([]);
+    setSelectedToolIds([]);
   }, [category, normalizedCategorySlug]);
 
   const sessionUser = useMemo(() => user ?? getSession()?.user ?? null, [user]);
@@ -1304,18 +1277,7 @@ const Marketplace = () => {
     const hasCategoryChanged = previousCategoryRef.current !== category;
     previousCategoryRef.current = category;
 
-    if (category === "all") {
-      setSelectedServiceId(null);
-      setSelectedSubCategoryId(null);
-      setSelectedToolId(null);
-      setSubCategoryOptions([]);
-      setToolOptions([]);
-      setSubCategoriesLoading(false);
-      setToolsLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
+
 
     const selectedService =
       filterServices.find(
@@ -1330,24 +1292,18 @@ const Marketplace = () => {
 
     setSelectedServiceId(nextServiceId);
     if (hasCategoryChanged) {
-      setSelectedSubCategoryId(null);
-      setSelectedToolId(null);
+      setSelectedSubCategoryIds([]);
+      setSelectedToolIds([]);
       setToolOptions([]);
-    }
-
-    if (!nextServiceId) {
-      setSubCategoryOptions([]);
-      setSubCategoriesLoading(false);
-      return () => {
-        cancelled = true;
-      };
     }
 
     const fetchSubCategories = async () => {
       setSubCategoriesLoading(true);
       try {
-        const query = new URLSearchParams({ serviceId: String(nextServiceId) });
-        const res = await fetch(`${API_BASE_URL}/marketplace/filters/sub-categories?${query.toString()}`);
+        const query = new URLSearchParams();
+        if (nextServiceId) query.append("serviceId", String(nextServiceId));
+        const url = query.toString() ? `${API_BASE_URL}/marketplace/filters/sub-categories?${query.toString()}` : `${API_BASE_URL}/marketplace/filters/sub-categories`;
+        const res = await fetch(url);
         if (!res.ok) throw new Error("Failed to fetch sub-categories");
         const json = await res.json();
         if (cancelled) return;
@@ -1370,20 +1326,18 @@ const Marketplace = () => {
   useEffect(() => {
     let cancelled = false;
 
-    if (!selectedSubCategoryId) {
-      setSelectedToolId(null);
-      setToolOptions([]);
-      setToolsLoading(false);
-      return () => {
-        cancelled = true;
-      };
-    }
-
+    // Fetch all tools for the current service, regardless of selected subcategories
     const fetchTools = async () => {
       setToolsLoading(true);
       try {
-        const query = new URLSearchParams({ subCategoryId: String(selectedSubCategoryId) });
-        const res = await fetch(`${API_BASE_URL}/marketplace/filters/tools?${query.toString()}`);
+        const query = new URLSearchParams();
+        if (selectedServiceId) {
+          query.append("serviceId", String(selectedServiceId));
+        }
+
+        const url = query.toString() ? `${API_BASE_URL}/marketplace/filters/tools?${query.toString()}` : `${API_BASE_URL}/marketplace/filters/tools`;
+        
+        const res = await fetch(url);
         if (!res.ok) throw new Error("Failed to fetch tools");
         const json = await res.json();
         if (cancelled) return;
@@ -1401,7 +1355,7 @@ const Marketplace = () => {
     return () => {
       cancelled = true;
     };
-  }, [selectedSubCategoryId]);
+  }, [selectedServiceId]);
 
   const toggleFavorite = (event, item) => {
     event.preventDefault();
@@ -1457,8 +1411,8 @@ const Marketplace = () => {
       const query = new URLSearchParams({ q: debouncedQ, sort, page: String(page), limit: String(MARKETPLACE_PAGE_SIZE) });
       if (category !== "all") query.append("category", category);
       if (selectedServiceId) query.append("serviceId", String(selectedServiceId));
-      if (selectedSubCategoryId) query.append("subCategoryId", String(selectedSubCategoryId));
-      if (selectedToolId) query.append("toolId", String(selectedToolId));
+      if (selectedSubCategoryIds.length > 0) query.append("subCategoryId", selectedSubCategoryIds.join(","));
+      if (selectedToolIds.length > 0) query.append("toolId", selectedToolIds.join(","));
       if (selectedBuildModes.length) query.append("buildMode", selectedBuildModes.join(","));
       if (debouncedMin) query.append("minBudget", debouncedMin);
       if (debouncedMax) query.append("maxBudget", debouncedMax);
@@ -1482,7 +1436,7 @@ const Marketplace = () => {
         setLoading(false);
       }
     }
-  }, [activeMarketplaceView, category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryId, selectedToolId, shouldShowResults, sort]);
+  }, [activeMarketplaceView, category, debouncedMax, debouncedMin, debouncedQ, duration, page, rating, selectedBuildModes, selectedServiceId, selectedSubCategoryIds, selectedToolIds, shouldShowResults, sort]);
 
   const fetchProjectResults = useCallback(async () => {
     const requestId = projectRequestIdRef.current + 1;
@@ -1517,8 +1471,8 @@ const Marketplace = () => {
       });
       if (category !== "all") query.append("category", category);
       if (selectedServiceId) query.append("serviceId", String(selectedServiceId));
-      if (selectedSubCategoryId) query.append("subCategoryId", String(selectedSubCategoryId));
-      if (selectedToolId) query.append("toolId", String(selectedToolId));
+      if (selectedSubCategoryIds.length > 0) query.append("subCategoryId", selectedSubCategoryIds.join(","));
+      if (selectedToolIds.length > 0) query.append("toolId", selectedToolIds.join(","));
       if (debouncedMin) query.append("minBudget", debouncedMin);
       if (debouncedMax) query.append("maxBudget", debouncedMax);
 
@@ -1564,7 +1518,7 @@ const Marketplace = () => {
         setProjectLoading(false);
       }
     }
-  }, [activeMarketplaceView, authFetch, canViewProjectsMarketplace, category, debouncedMax, debouncedMin, debouncedQ, page, selectedServiceId, selectedSubCategoryId, selectedToolId]);
+  }, [activeMarketplaceView, authFetch, canViewProjectsMarketplace, category, debouncedMax, debouncedMin, debouncedQ, page, selectedServiceId, selectedSubCategoryIds, selectedToolIds]);
 
   useEffect(() => {
     if (!didInitializePageResetRef.current) {
@@ -1582,8 +1536,8 @@ const Marketplace = () => {
     rating,
     selectedBuildModes,
     selectedServiceId,
-    selectedSubCategoryId,
-    selectedToolId,
+    selectedSubCategoryIds,
+    selectedToolIds,
     sort,
   ]);
   useEffect(() => void fetchResults(), [fetchResults]);
@@ -1593,8 +1547,8 @@ const Marketplace = () => {
     const params = new URLSearchParams();
     const normalizedQuery = String(q || "").trim();
     if (normalizedQuery) params.set("q", normalizedQuery);
-    if (selectedSubCategoryId) params.set("subCategoryId", String(selectedSubCategoryId));
-    if (selectedToolId) params.set("toolId", String(selectedToolId));
+    if (selectedSubCategoryIds.length > 0) params.set("subCategoryId", selectedSubCategoryIds.join(","));
+    if (selectedToolIds.length > 0) params.set("toolId", selectedToolIds.join(","));
     if (selectedBuildModes.length > 0) params.set("buildMode", selectedBuildModes.join(","));
     if (minBudget) params.set("minBudget", String(minBudget).trim());
     if (maxBudget) params.set("maxBudget", String(maxBudget).trim());
@@ -1613,8 +1567,8 @@ const Marketplace = () => {
     q,
     rating,
     selectedBuildModes,
-    selectedSubCategoryId,
-    selectedToolId,
+    selectedSubCategoryIds,
+    selectedToolIds,
     sort,
   ]);
 
@@ -1632,19 +1586,19 @@ const Marketplace = () => {
 
   const resetFilters = () => {
     setQ("");
-    setCategory("all");
     setSelectedBuildModes([]);
-    setSelectedServiceId(null);
-    setSelectedSubCategoryId(null);
-    setSelectedToolId(null);
-    setSubCategoryOptions([]);
-    setToolOptions([]);
+    setSelectedSubCategoryIds([]);
+    setSelectedToolIds([]);
     setMinBudget("");
     setMaxBudget("");
     setDuration("");
     setRating("");
     setSort("newest");
-    navigate("/marketplace", { replace: true });
+    
+    const path = category && category !== "all" 
+      ? `/marketplace/${encodeURIComponent(normalizeKey(category))}`
+      : "/marketplace";
+    navigate(path, { replace: true });
   };
 
   const handleCategorySelect = (nextCategory) => {
@@ -1660,7 +1614,7 @@ const Marketplace = () => {
       if (current === nextValue) return null;
       return nextValue;
     });
-    setSelectedToolId(null);
+    setSelectedToolIds([]);
   };
 
   const handleToolSelect = (nextValue) => {
@@ -2073,15 +2027,6 @@ const Marketplace = () => {
                         <h3 className="line-clamp-2 text-base font-semibold leading-6 text-foreground dark:text-white">
                           {item.service || "Untitled service"}
                         </h3>
-                        {itemSkills.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-1 min-h-[22px]">
-                            {itemSkills.map(skill => (
-                              <span key={skill} className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10">
-                                {skill}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                         <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 dark:border-white/10 dark:bg-white/[0.03]">
                             <Star className="h-3 w-3 fill-primary text-primary" />
@@ -2250,48 +2195,91 @@ const Marketplace = () => {
                   </h3>
                   {!loading && !projectLoading && (
                     <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-[12px] font-bold text-primary hover:bg-primary/20">
-                      {(isProjectsView ? projectTotal : (selectedSkill ? filteredFreelancerData.length : total))} result{(isProjectsView ? projectTotal : (selectedSkill ? filteredFreelancerData.length : total)) === 1 ? "" : "s"}
+                      {(isProjectsView ? projectTotal : total)} result{(isProjectsView ? projectTotal : total) === 1 ? "" : "s"}
                     </Badge>
                   )}
                 </div>
               </div>
-              {category !== "all" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSubCategoryId(null);
-                    setSelectedToolId(null);
-                    navigate(buildMarketplaceHref("all"), { replace: false });
-                  }}
-                  className="group inline-flex items-center gap-2.5 rounded-full border border-primary/10 bg-white/60 px-5 py-2.5 text-[13px] font-bold text-muted-foreground shadow-sm backdrop-blur-md transition-all hover:border-primary/40 hover:bg-white hover:text-primary dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]"
-                >
-                  <X className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" />
-                  Clear filter
-                </button>
-              )}
+
             </div>
 
-            {/* Skills / Tech Filter Chips */}
-            {category !== "all" && !isProjectsView && availableSkills.length > 0 && (
-              <div className="mb-8 flex flex-wrap gap-2.5 items-center">
-                {availableSkills.map((opt) => {
-                  const isActive = selectedSkill === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setSelectedSkill(isActive ? null : opt.value)}
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-4.5 py-2 text-[13px] font-bold transition-all duration-200 border",
-                        isActive
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-slate-200 bg-white/60 text-slate-600 hover:border-primary/30 hover:text-primary dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-white"
+            {!isProjectsView && (subCategoryOptions.length > 0 || toolOptions.length > 0) && (
+              <div className="mb-8 flex flex-col gap-4">
+                {subCategoryOptions.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5">Categories</h4>
+                    <div className="flex overflow-x-auto flex-nowrap md:flex-wrap gap-2.5 items-center pb-2 md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      {subCategoryOptions.map((opt) => {
+                        const isActive = selectedSubCategoryIds.includes(opt.id);
+                        return (
+                          <button
+                            key={`category_${opt.id}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedSubCategoryIds(isActive ? selectedSubCategoryIds.filter(id => id !== opt.id) : [...selectedSubCategoryIds, opt.id]);
+                            }}
+                            className={cn(
+                              "inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-full px-4.5 py-2 text-[13px] font-bold transition-all duration-200 border",
+                              isActive
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-slate-200 bg-white/60 text-slate-600 hover:border-primary/30 hover:text-primary dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-white"
+                            )}
+                          >
+                            {opt.label || opt.name}
+                          </button>
+                        );
+                      })}
+                      {selectedSubCategoryIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSubCategoryIds([])}
+                          className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-slate-400 hover:text-primary dark:hover:text-white transition-all duration-200"
+                        >
+                          <X className="h-3 w-3" />
+                          Clear Categories
+                        </button>
                       )}
-                    >
-                      {opt.label}
-                    </button>
-                  );
-                })}
+                    </div>
+                  </div>
+                )}
+
+                {toolOptions.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2.5">Tools</h4>
+                    <div className="flex overflow-x-auto flex-nowrap md:flex-wrap gap-2.5 items-center pb-2 md:pb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                      {toolOptions.map((opt) => {
+                        const isActive = selectedToolIds.includes(opt.id);
+                        return (
+                          <button
+                            key={`tool_${opt.id}`}
+                            type="button"
+                            onClick={() => {
+                              setSelectedToolIds(isActive ? selectedToolIds.filter(id => id !== opt.id) : [...selectedToolIds, opt.id]);
+                            }}
+                            className={cn(
+                              "inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-full px-4.5 py-2 text-[13px] font-bold transition-all duration-200 border",
+                              isActive
+                                ? "border-primary bg-primary/10 text-primary"
+                                : "border-slate-200 bg-white/60 text-slate-600 hover:border-primary/30 hover:text-primary dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:text-white"
+                            )}
+                          >
+                            {opt.label || opt.name}
+                          </button>
+                        );
+                      })}
+                      {selectedToolIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedToolIds([])}
+                          className="inline-flex shrink-0 whitespace-nowrap items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold text-slate-400 hover:text-primary dark:hover:text-white transition-all duration-200"
+                        >
+                          <X className="h-3 w-3" />
+                          Clear Tools
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -2302,8 +2290,8 @@ const Marketplace = () => {
                   service={activeBrowseService || activeService}
                   subCategories={subCategoryOptions}
                   tools={toolOptions}
-                  selectedSubCategoryId={selectedSubCategoryId}
-                  selectedToolId={selectedToolId}
+                  selectedSubCategoryIds={selectedSubCategoryIds}
+                  selectedToolIds={selectedToolIds}
                   onSelectSubCategory={handleSubCategorySelect}
                   onSelectTool={handleToolSelect}
                   subCategoriesLoading={subCategoriesLoading}
@@ -2385,10 +2373,10 @@ const Marketplace = () => {
                               state={{ marketplaceReturnTo: `${location.pathname}${location.search}` }}
                               className="block h-full"
                             >
-                              <Card className="group relative flex h-full flex-col overflow-hidden rounded-[16px] border border-gray-200 bg-white shadow-[0_1px_12px_rgba(0,0,0,0.07)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_28px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-white/[0.04] dark:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.5)]">
+                              <Card className="group relative flex h-full flex-col rounded-[16px] border border-gray-100 bg-white p-2.5 shadow-[0_2px_15px_-3px_rgba(0,0,0,0.05),0_10px_20px_-2px_rgba(0,0,0,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] dark:border-white/10 dark:bg-white/[0.04]">
 
                                 {/* ── IMAGE ── */}
-                                <div className="relative h-48 w-full shrink-0 overflow-hidden bg-gray-100 dark:bg-white/[0.02]">
+                                <div className="relative h-[200px] w-full shrink-0 overflow-hidden rounded-[12px] bg-gray-100 dark:bg-white/[0.02]">
                                   {(() => {
                                     const hasValidImage = isValidImageUrl(image);
                                     const fallbackTitle = item.serviceDetails?.title || item.service || "Professional Service";
@@ -2438,7 +2426,7 @@ const Marketplace = () => {
                                     type="button"
                                     onClick={(event) => { event.preventDefault(); if (canUseClientWishlist) toggleFavorite(event, item); }}
                                     aria-label={favorites[item.id] ? "Remove from favorites" : "Add to favorites"}
-                                    className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow transition hover:bg-white dark:bg-zinc-800/90 dark:hover:bg-zinc-700"
+                                    className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm transition hover:bg-gray-50 dark:bg-zinc-800/90 dark:hover:bg-zinc-700"
                                   >
                                     <Heart className={cn("h-4 w-4", favorites[item.id] && canUseClientWishlist ? "fill-rose-500 text-rose-500" : "text-gray-400 dark:text-zinc-400")} />
                                   </button>
@@ -2452,64 +2440,81 @@ const Marketplace = () => {
                                 </div>
 
                                 {/* ── BODY ── */}
-                                <CardContent className="flex flex-1 flex-col p-4 pt-3.5">
+                                <CardContent className="flex flex-1 flex-col p-2.5 pt-4">
 
                                   {/* Row 1: Avatar + Name */}
-                                  <div className="mb-2 flex items-center gap-2">
-                                    {item.freelancer?.avatar
-                                      ? <img src={item.freelancer.avatar} alt={item.freelancer.fullName || "Freelancer"} loading="lazy" decoding="async" className="h-8 w-8 shrink-0 rounded-full object-cover" />
-                                      : <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-white">{getInitials(item.freelancer?.fullName)}</div>
-                                    }
-                                    <div className="flex min-w-0 items-center gap-1">
-                                      <span className="truncate text-[13.5px] font-bold text-gray-900 dark:text-white">{item.freelancer?.fullName || "Anonymous"}</span>
-                                      {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-3.5 w-3.5 shrink-0 fill-primary text-white keep-white verified-badge-custom" />}
+                                  <div className="mb-3 flex items-center gap-2">
+                                    {item.freelancer?.avatar ? (
+                                      <div className="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 overflow-hidden">
+                                        <div className="avatar-fallback absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-slate-700" style={{ display: 'none' }}>
+                                          {getInitials(item.freelancer?.fullName)}
+                                        </div>
+                                        <img
+                                          src={item.freelancer.avatar}
+                                          alt={item.freelancer.fullName || "Freelancer"}
+                                          loading="lazy"
+                                          decoding="async"
+                                          className="relative z-10 h-full w-full object-cover"
+                                          onError={(e) => {
+                                            e.currentTarget.style.display = "none";
+                                            const parent = e.currentTarget.parentElement;
+                                            if (parent) {
+                                              const fallback = parent.querySelector(".avatar-fallback");
+                                              if (fallback) fallback.style.display = "flex";
+                                            }
+                                          }}
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-700 border border-slate-200">
+                                        {getInitials(item.freelancer?.fullName)}
+                                      </div>
+                                    )}
+                                    <div className="flex min-w-0 items-center gap-1.5">
+                                      <span className="truncate text-[14px] font-medium text-slate-800 dark:text-white">{item.freelancer?.fullName || "Anonymous"}</span>
+                                      {parseBooleanFlag(item.freelancer?.isVerified) && <BadgeCheck className="h-4 w-4 shrink-0 fill-[#F97316] text-white keep-white verified-badge-custom" />}
                                     </div>
                                   </div>
 
                                   {/* Row 2: Service title — always 2 lines height */}
-                                  <p className="mb-2 line-clamp-2 min-h-[40px] text-[13px] leading-[1.5] text-gray-600 dark:text-gray-300">
+                                  <h3 className="mb-3 line-clamp-2 min-h-[44px] text-[16px] font-bold leading-snug text-slate-900 dark:text-white">
                                     {item.service || "Untitled service"}
-                                  </p>
+                                  </h3>
 
-                                  {itemSkills.length > 0 && (
-                                    <div className="mb-3 flex flex-wrap gap-1.5 min-h-[20px]">
-                                      {itemSkills.map(skill => (
-                                        <span key={skill} className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200 dark:bg-white/5 dark:text-gray-300 dark:border-white/10">
-                                          {skill}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  )}
+
 
                                   {/* Row 3: Rating (left) | Delivery time (right) */}
-                                  <div className="mt-auto flex items-end justify-between">
+                                  <div className="mt-auto flex items-center justify-between pb-3">
                                     {/* Star rating */}
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1.5">
                                       {hasRating ? (
                                         <>
-                                          <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-                                          <span className="text-[12.5px] font-bold text-gray-800 dark:text-gray-200">{rating.toFixed(1)}</span>
-                                          <span className="text-[11.5px] text-gray-400 dark:text-gray-500">({item.reviewCount || 0})</span>
+                                          <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                                          <span className="text-[13px] font-bold text-slate-800 dark:text-gray-200">{rating.toFixed(1)}</span>
+                                          <span className="text-[12px] text-slate-500 dark:text-gray-400">({item.reviewCount || 0})</span>
                                         </>
                                       ) : (
-                                        <span className="text-[11px] text-gray-300 dark:text-gray-500">No reviews yet</span>
+                                        <>
+                                          <Star className="h-4 w-4 text-slate-400" strokeWidth={1.5} />
+                                          <span className="text-[13px] text-slate-500 dark:text-gray-400">No reviews yet</span>
+                                        </>
                                       )}
                                     </div>
                                     {/* Delivery time */}
-                                    <div className="flex items-center gap-1.5 text-[11.5px] text-gray-400 dark:text-gray-500">
-                                      <Clock className="h-3.5 w-3.5" />
+                                    <div className="flex items-center gap-1.5 text-[13px] text-slate-500 dark:text-gray-400">
+                                      <Clock className="h-4 w-4 text-slate-400" strokeWidth={1.5} />
                                       {delivery || "Flexible"}
                                     </div>
                                   </div>
 
                                   {/* Row 4: STARTING AT + price (left) | View button (right) */}
-                                  <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
+                                  <div className="flex items-center justify-between border-t border-gray-100 pt-3 dark:border-white/10">
                                     <div>
-                                      <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Starting at</p>
-                                      <p className="text-[18px] font-extrabold leading-none text-gray-900 dark:text-white">{price}</p>
+                                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-gray-400 mb-0.5">Starting at</p>
+                                      <p className="text-[18px] font-extrabold text-slate-900 dark:text-white">{price}</p>
                                     </div>
-                                    <span className="inline-flex items-center rounded-full bg-primary px-5 py-2 text-[13px] font-bold text-primary-foreground shadow-sm transition group-hover:bg-primary/90">
-                                      View
+                                    <span className="inline-flex items-center rounded-md bg-primary dark:bg-primary px-4 py-2 text-[13px] font-semibold !text-white dark:!text-black shadow-sm transition hover:bg-primary/90">
+                                      View Service
                                     </span>
                                   </div>
 

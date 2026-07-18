@@ -2634,14 +2634,88 @@ export const getMarketplaceFilterSubCategories = asyncHandler(async (req, res) =
 });
 
 export const getMarketplaceFilterTools = asyncHandler(async (req, res) => {
-  const subCategoryId = parseOptionalInteger(req.query?.subCategoryId);
+  const subCategoryIdsStr = req.query?.subCategoryId;
+  const serviceId = parseOptionalInteger(req.query?.serviceId);
 
-  if (subCategoryId === null) {
+  let whereClause = {};
+
+  if (serviceId) {
+    // Check if the admin has configured tools for this service
+    const filterService = await prisma.marketplaceFilterService.findUnique({ where: { id: serviceId } });
+    let hasAdminTools = true;
+    if (filterService) {
+      // Find matching Service by name (flexible match because 'SEO' != 'SEO / GMB')
+      const dbService = await prisma.service.findFirst({ 
+        where: { 
+          name: { contains: filterService.name.split('/')[0].trim() }
+        } 
+      });
+      if (dbService) {
+        const { getServiceTools } = await import('../services/ai.service.js');
+        const adminTools = await getServiceTools(dbService.slug);
+        if (!adminTools || adminTools.length === 0) {
+          hasAdminTools = false;
+        } else {
+          // The user explicitly wants to show the tools exactly as they are configured in the Admin Dashboard.
+          const adminToolNames = adminTools.map(t => typeof t === 'string' ? t : (t?.name || t?.label || ''));
+          const existingFilterTools = await prisma.marketplaceFilterTool.findMany({
+            where: {
+              subCategory: { serviceId: serviceId },
+              name: { in: adminToolNames }
+            }
+          });
+
+          const finalTools = adminTools.map((adminTool, index) => {
+            const name = typeof adminTool === 'string' ? adminTool : (adminTool?.name || adminTool?.label || '');
+            const existing = existingFilterTools.find(t => t.name.toLowerCase() === name.toLowerCase());
+            if (existing) {
+              return existing; // Use the real DB record so filtering works correctly
+            } else {
+              return {
+                id: 900000 + index, // Fake high ID to prevent clashing with other valid tools
+                name: name,
+                subCategoryId: 0
+              };
+            }
+          });
+          
+          return res.json({ data: finalTools });
+        }
+      } else {
+        hasAdminTools = false; // No matching service, assume no tools
+      }
+    }
+    
+    if (!hasAdminTools) {
+      return res.json({ data: [] });
+    }
+  }
+
+  if (subCategoryIdsStr) {
+    const ids = subCategoryIdsStr
+      .split(',')
+      .map(id => parseInt(id.trim(), 10))
+      .filter(id => !isNaN(id));
+
+    if (ids.length > 0) {
+      whereClause = { subCategoryId: { in: ids } };
+    } else {
+      return res.json({ data: [] });
+    }
+  } else if (serviceId) {
+    whereClause = {
+      subCategory: {
+        serviceId: serviceId
+      }
+    };
+  } else {
+    // If neither is provided, either return all or empty. 
+    // We'll return empty to avoid fetching too many tools if no context is given.
     return res.json({ data: [] });
   }
 
   const tools = await prisma.marketplaceFilterTool.findMany({
-    where: { subCategoryId },
+    where: whereClause,
     select: {
       id: true,
       subCategoryId: true,

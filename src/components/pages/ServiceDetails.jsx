@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   BadgeCheck,
@@ -15,10 +15,25 @@ import {
   Check,
   X,
   Users,
+  ExternalLink,
 } from "lucide-react";
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
 import MediaGallery from "./marketplace-details/MediaGallery";
@@ -146,6 +161,15 @@ const formatDeliveryLabel = (value) => {
   return normalized.replace(/_/g, " ");
 };
 
+const formatDisplayLabel = (value) => {
+  if (!value) return "";
+  let str = String(value).replace(/_plus_/gi, "+ ");
+  str = str.replace(/[_-]/g, " ");
+  return str.split(" ")
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 const formatMoney = (value) => {
   const numeric = Number(value);
   if (Number.isFinite(numeric) && numeric > 0) {
@@ -154,7 +178,7 @@ const formatMoney = (value) => {
   return normalizeText(value) || "Not specified";
 };
 
-const normalizePortfolioItems = (serviceDetails = {}) => {
+const normalizePortfolioItems = (serviceDetails = {}, serviceKey = "") => {
   const rawItems = [...asArray(serviceDetails.portfolio), ...asArray(serviceDetails.projects)];
 
   return rawItems
@@ -173,6 +197,7 @@ const normalizePortfolioItems = (serviceDetails = {}) => {
           role: "",
           timeline: "",
           budget: "",
+          niche: "",
         };
       }
 
@@ -192,9 +217,28 @@ const normalizePortfolioItems = (serviceDetails = {}) => {
         role: firstTextValue(item.role),
         timeline: firstTextValue(item.timeline, item.duration),
         budget: firstTextValue(item.budget, item.budgetRange),
+        niche: firstTextValue(item.niche, item.category, item.serviceKey),
       };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((project) => {
+      if (!serviceKey || !project.niche) return true;
+      const sk = serviceKey.toLowerCase();
+      const n = project.niche.toLowerCase();
+      if (sk === n || n.includes(sk) || sk.includes(n)) return true;
+      if (sk.includes("web") && n.includes("web")) return true;
+      if (sk.includes("app") && n.includes("app")) return true;
+      
+      const skWords = sk.split(/[\s_-]+/).filter(w => w.length > 2);
+      const nWords = n.split(/[\s_-]+/).filter(w => w.length > 2);
+      return skWords.some(w => nWords.includes(w)) || nWords.some(w => skWords.includes(w));
+    })
+    .filter((project, index, self) => 
+      index === self.findIndex((p) => 
+        (p.id !== undefined && p.id === project.id && !p.id.startsWith('portfolio-')) || 
+        (p.title === project.title && p.imageUrl === project.imageUrl)
+      )
+    );
 };
 
 const normalizeImages = (serviceDetails = {}, portfolioItems = []) => {
@@ -319,6 +363,84 @@ const LoadingSkeleton = () => (
   </div>
 );
 
+const CaseStudyModal = memo(({ caseStudy, isOpen, onClose }) => {
+  if (!caseStudy) return null;
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-3xl p-0 overflow-hidden bg-background border-border dark:bg-[#111113] dark:border-white/10 sm:rounded-2xl flex flex-col max-h-[85vh]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>{caseStudy.title}</DialogTitle>
+          <DialogDescription>{caseStudy.description || "Case study details"}</DialogDescription>
+        </DialogHeader>
+        
+        {caseStudy.imageUrl && (
+          <div className="relative w-full h-48 sm:h-64 shrink-0 bg-muted/20">
+            <img 
+              src={caseStudy.imageUrl} 
+              alt={caseStudy.title} 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background/30 to-transparent" />
+          </div>
+        )}
+        
+        <div className="px-6 pb-6 pt-4 space-y-6 overflow-y-auto">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-foreground dark:text-white mb-2">
+              {caseStudy.title || "Untitled Project"}
+            </h2>
+            <p className="text-base leading-relaxed text-foreground/80 dark:text-[#c4c4cc]">
+              {caseStudy.description || "No detailed description provided for this case study."}
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-[#17171c]/50">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Niche</div>
+              <div className="mt-1 font-medium text-sm text-foreground dark:text-[#d4d4d8]">
+                {caseStudy.niche ? formatDisplayLabel(caseStudy.niche) : "Not specified"}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-[#17171c]/50">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Role</div>
+              <div className="mt-1 font-medium text-sm text-foreground dark:text-[#d4d4d8]">
+                {caseStudy.role ? formatDisplayLabel(caseStudy.role) : "Not specified"}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-[#17171c]/50">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Timeline</div>
+              <div className="mt-1 font-medium text-sm text-foreground dark:text-[#d4d4d8]">
+                {caseStudy.timeline ? formatDisplayLabel(caseStudy.timeline) : "Not specified"}
+              </div>
+            </div>
+            <div className="rounded-xl border border-border bg-muted/30 p-4 dark:border-white/10 dark:bg-[#17171c]/50">
+              <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Budget</div>
+              <div className="mt-1 font-medium text-sm text-foreground dark:text-[#d4d4d8]">
+                {caseStudy.budget ? formatMoney(caseStudy.budget) : "Not specified"}
+              </div>
+            </div>
+          </div>
+          
+          {caseStudy.link && (
+            <div className="pt-4 border-t border-border dark:border-white/10 flex justify-end">
+              <a 
+                href={caseStudy.link}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-8 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors gap-2"
+              >
+                Visit Project
+                <ExternalLink className="w-4 h-4" />
+              </a>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+});
+CaseStudyModal.displayName = "CaseStudyModal";
+
 const ServiceDetails = () => {
   const { id } = useParams();
   const location = useLocation();
@@ -331,6 +453,8 @@ const ServiceDetails = () => {
   const [reviewsLoading, setReviewsLoading] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [shareToast, setShareToast] = useState(false);
+  const [selectedCaseStudy, setSelectedCaseStudy] = useState(null);
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   const marketplaceReturnTo = useMemo(() => {
     const routeState =
@@ -348,7 +472,7 @@ const ServiceDetails = () => {
     const fetchService = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/marketplace/${id}`, {
+        const response = await fetch(`${API_BASE_URL}/marketplace/${encodeURIComponent(id)}`, {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("Service not found");
@@ -377,7 +501,7 @@ const ServiceDetails = () => {
     const fetchReviews = async () => {
       setReviewsLoading(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/marketplace/${id}/reviews?limit=25`, {
+        const response = await fetch(`${API_BASE_URL}/marketplace/${encodeURIComponent(id)}/reviews?limit=25`, {
           signal: controller.signal,
         });
         if (!response.ok) throw new Error("Failed to fetch reviews");
@@ -468,7 +592,7 @@ const ServiceDetails = () => {
     const freelancerProfile = asObject(freelancer.freelancerProfile);
     const caseStudy = asObject(serviceDetails.caseStudy);
 
-    const portfolioItems = normalizePortfolioItems(serviceDetails);
+    const portfolioItems = normalizePortfolioItems(serviceDetails, service.serviceKey || "");
     const images = normalizeImages(serviceDetails, portfolioItems);
     const deliverables = normalizeDeliverables(serviceDetails);
     const skillCategories = normalizeSkillCategories(service, serviceDetails);
@@ -500,6 +624,8 @@ const ServiceDetails = () => {
       timeline: firstTextValue(caseStudy.timeline, portfolioItems[0]?.timeline),
       budgetRange: firstTextValue(caseStudy.budgetRange, portfolioItems[0]?.budget),
       techStack: uniqueText(flattenTextValues(caseStudy.techStack)).slice(0, 5),
+      niche: firstTextValue(caseStudy.niche, caseStudy.category, portfolioItems[0]?.niche),
+      role: firstTextValue(caseStudy.role, portfolioItems[0]?.role),
     };
 
     const freelancerProfileDetails = asObject(freelancerProfile.profileDetails);
@@ -540,7 +666,14 @@ const ServiceDetails = () => {
           freelancerProfile.city,
           freelancerProfile.country
         ),
-        experienceYears: Number(freelancerProfile.experienceYears || 0),
+        experienceYears: Number(freelancerProfile.experienceYears || serviceDetails.experienceYears || 0),
+        experienceLevel: firstTextValue(
+          serviceDetails.experienceLevel, 
+          serviceDetails.workingLevel, 
+          freelancerProfile.experienceLevel,
+          freelancerProfile.workingLevel,
+          freelancer.experienceLevel
+        ),
         memberSince: formatMemberSince(freelancerProfile.createdAt),
       },
     };
@@ -608,7 +741,21 @@ const ServiceDetails = () => {
                 {normalized.serviceName}
               </h1>
 
-              <p className="max-w-3xl text-sm leading-7 text-muted-foreground">{normalized.shortDescription}</p>
+              <p className="max-w-3xl text-sm leading-7 text-muted-foreground">
+                {isDescriptionExpanded 
+                  ? normalized.description 
+                  : (normalized.description?.length > 140 
+                      ? normalized.description.slice(0, 140).trim() + "..." 
+                      : normalized.description)}
+                {normalized.description?.length > 140 && (
+                  <button 
+                    onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                    className="ml-2 font-semibold text-primary hover:underline"
+                  >
+                    {isDescriptionExpanded ? "Show Less" : "Read More"}
+                  </button>
+                )}
+              </p>
 
               <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2.5">
@@ -749,14 +896,7 @@ const ServiceDetails = () => {
                       </div>
                     </div>
                   </div>
-                  <Button
-                    type="button"
-                    className="h-10 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                    onClick={() => setChatModalOpen(true)}
-                    disabled={hasExistingRequest}
-                  >
-                    {hasExistingRequest ? "Request Sent" : "Contact Me"}
-                  </Button>
+
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -778,9 +918,20 @@ const ServiceDetails = () => {
                     <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground dark:text-[#8f8f95]">Experience</p>
                     <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-foreground dark:text-white">
                       <BriefcaseBusiness className="h-3.5 w-3.5 text-primary" />
-                      {normalized.freelancer.experienceYears > 0
-                        ? `${normalized.freelancer.experienceYears}+ years`
-                        : "Not specified"}
+                      {(() => {
+                        const level = normalized.freelancer.experienceLevel?.toLowerCase();
+                        const labels = {
+                          entry: "Entry Level (0-1 years)",
+                          intermediate: "Intermediate (1-3 years)",
+                          experienced: "Experienced (3-5 years)",
+                          expert: "Expert (5-10 years)",
+                          veteran: "Veteran (10+ years)",
+                        };
+                        if (level && labels[level]) return labels[level];
+                        if (normalized.freelancer.experienceLevel) return normalized.freelancer.experienceLevel;
+                        if (normalized.freelancer.experienceYears > 0) return `${normalized.freelancer.experienceYears}+ years`;
+                        return "Not specified";
+                      })()}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border bg-background p-3 dark:border-white/10 dark:bg-black/30">
@@ -801,151 +952,181 @@ const ServiceDetails = () => {
               </div>
             </section>
 
-            <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-bold text-foreground dark:text-white">What people loved about this freelancer</h2>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-[#8f8f95]">
-                  <span>{reviewStats.total} reviews</span>
-                  <button type="button" className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted dark:border-white/10 dark:text-[#a1a1aa]">
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                  </button>
-                  <button type="button" className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted dark:border-white/10 dark:text-[#a1a1aa]">
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              {featuredReview ? (
-                <article className="rounded-xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500/90 text-xs font-semibold text-white">
-                        {(featuredReview.clientName || "U").charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground dark:text-white">{featuredReview.clientName || "Client"}</p>
-                        <p className="text-[11px] text-muted-foreground dark:text-[#8f8f95]">{formatReviewDate(featuredReview.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div className="inline-flex items-center gap-1.5">
-                      <Star className="h-4 w-4 fill-primary text-primary" />
-                      <span className="text-sm font-semibold text-foreground dark:text-white">{Number(featuredReview.rating || 0).toFixed(1)}</span>
-                    </div>
+            {(reviewStats.total > 0 || reviewsLoading) && (
+              <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
+                <div className="flex items-center justify-between gap-4">
+                  <h2 className="text-2xl font-bold text-foreground dark:text-white">What people loved about this freelancer</h2>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground dark:text-[#8f8f95]">
+                    <span>{reviewStats.total} reviews</span>
+                    <button type="button" className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted dark:border-white/10 dark:text-[#a1a1aa]">
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" className="rounded-full border border-border p-1.5 text-muted-foreground hover:bg-muted dark:border-white/10 dark:text-[#a1a1aa]">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
                   </div>
-                  <p className="mt-3 line-clamp-4 text-sm leading-6 text-foreground/80 dark:text-[#d4d4d8]">
-                    {featuredReview.comment || "No review comment available."}
-                  </p>
-                </article>
-              ) : (
-                <div className="rounded-xl border border-dashed border-border bg-muted/10 p-6 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-[#17171c] dark:text-[#8f8f95]">
-                  {reviewsLoading ? "Loading reviews..." : "No reviews yet for this service."}
                 </div>
-              )}
-            </section>
+
+                {featuredReview ? (
+                  <article className="rounded-xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-500/90 text-xs font-semibold text-white">
+                          {(featuredReview.clientName || "U").charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground dark:text-white">{featuredReview.clientName || "Client"}</p>
+                          <p className="text-[11px] text-muted-foreground dark:text-[#8f8f95]">{formatReviewDate(featuredReview.createdAt)}</p>
+                        </div>
+                      </div>
+                      <div className="inline-flex items-center gap-1.5">
+                        <Star className="h-4 w-4 fill-primary text-primary" />
+                        <span className="text-sm font-semibold text-foreground dark:text-white">{Number(featuredReview.rating || 0).toFixed(1)}</span>
+                      </div>
+                    </div>
+                    <p className="mt-3 line-clamp-4 text-sm leading-6 text-foreground/80 dark:text-[#d4d4d8]">
+                      {featuredReview.comment || "No review comment available."}
+                    </p>
+                  </article>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border bg-muted/10 p-6 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-[#17171c] dark:text-[#8f8f95]">
+                    {reviewsLoading ? "Loading reviews..." : "No reviews yet for this service."}
+                  </div>
+                )}
+              </section>
+            )}
 
             <section className="space-y-4 rounded-2xl border border-border bg-white p-4 md:p-5 dark:border-white/8 dark:bg-[#111113]">
               <h2 className="text-3xl font-bold text-foreground dark:text-white">My Portfolio</h2>
 
-              {normalized.featuredProject || normalized.caseStudy.projectTitle ? (
-                <article className="rounded-2xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]">
-                  <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr]">
-                    <div className="overflow-hidden rounded-xl border border-border bg-background dark:border-white/10 dark:bg-[#111113]">
-                      {normalized.featuredProject?.imageUrl ? (
-                        <img
-                          src={normalized.featuredProject.imageUrl}
-                          alt={normalized.featuredProject.title}
-                          className="h-full min-h-[220px] w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex min-h-[220px] w-full items-center justify-center text-muted-foreground dark:text-[#6b6b72]">
-                          <ImageIcon className="h-8 w-8" />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-3">
-                      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-[#8f8f95]">
-                        From {normalized.freelancer.memberSince}
-                      </p>
-                      <h3 className="text-2xl font-bold leading-tight text-foreground dark:text-white">
-                        {normalized.caseStudy.projectTitle || normalized.featuredProject?.title || "Case Study"}
-                      </h3>
-                      <p className="line-clamp-4 text-sm leading-7 text-foreground/80 dark:text-[#c4c4cc]">
-                        {normalized.caseStudy.goal ||
-                          normalized.featuredProject?.description ||
-                          "Project details are available on request."}
-                      </p>
-
-                      <div className="flex flex-wrap gap-2 text-xs">
-                        {normalized.caseStudy.timeline ? (
-                          <span className="rounded-full border border-border bg-background px-2.5 py-1 text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]">
-                            {normalized.caseStudy.timeline}
-                          </span>
-                        ) : null}
-                        {normalized.caseStudy.budgetRange ? (
-                          <span className="rounded-full border border-border bg-background px-2.5 py-1 text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]">
-                            {formatMoney(normalized.caseStudy.budgetRange)}
-                          </span>
-                        ) : null}
-                        {normalized.caseStudy.techStack.map((item) => (
-                          <span
-                            key={item}
-                            className="rounded-full border border-border bg-background px-2.5 py-1 text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]"
-                          >
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-
-                      {normalized.featuredProject?.link ? (
-                        <a
-                          href={normalized.featuredProject.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                        >
-                          View Case Study
-                        </a>
-                      ) : (
-                        <Button
-                          type="button"
-                          className="h-10 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                          onClick={handleShare}
-                        >
-                          Share Service
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {normalized.recentProjects.length > 0 ? (
-                    <div className="mt-4">
-                      <p className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground dark:text-[#8f8f95]">Recent Projects</p>
-                      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
-                        {normalized.recentProjects.slice(0, 6).map((item) => (
+              {normalized.portfolioItems?.length > 0 || normalized.caseStudy?.projectTitle ? (
+                <div className="relative w-full px-2 sm:px-10">
+                  <Carousel className="w-full" opts={{ loop: true }}>
+                    <CarouselContent>
+                      {(normalized.portfolioItems?.length > 0
+                        ? normalized.portfolioItems
+                        : [
+                            {
+                              id: "case-study-legacy",
+                              title: normalized.caseStudy.projectTitle,
+                              description: normalized.caseStudy.goal,
+                              timeline: normalized.caseStudy.timeline,
+                              budget: normalized.caseStudy.budgetRange,
+                              imageUrl: null,
+                              link: null,
+                            },
+                          ]
+                      ).map((project, idx) => (
+                        <CarouselItem key={project.id || idx}>
                           <article
-                            key={item.id}
-                            className="group overflow-hidden rounded-lg border border-border bg-background dark:border-white/10 dark:bg-[#111113]"
+                            className="h-full rounded-2xl border border-border bg-muted/20 p-4 dark:border-white/10 dark:bg-[#17171c]"
                           >
-                            <div className="aspect-square">
-                              {item.imageUrl ? (
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.title}
-                                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-muted-foreground dark:text-[#6b6b72]">
-                                  <ImageIcon className="h-4 w-4" />
-                                </div>
-                              )}
+                            <div className="grid h-full gap-4 lg:grid-cols-[1.1fr_1fr]">
+                              <div className="overflow-hidden rounded-xl border border-border bg-background dark:border-white/10 dark:bg-[#111113]">
+                                {project.imageUrl ? (
+                                  <img
+                                    src={project.imageUrl}
+                                    alt={project.title}
+                                    className="h-full min-h-[220px] w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex min-h-[220px] h-full w-full items-center justify-center bg-muted/20 text-6xl font-bold uppercase text-muted-foreground/30 dark:bg-white/5 dark:text-white/10">
+                                    {project.title ? project.title.charAt(0) : <ImageIcon className="h-8 w-8" />}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="flex h-full flex-col space-y-3">
+
+                                <h3 className="line-clamp-2 text-2xl font-bold leading-tight text-foreground dark:text-white" title={project.title}>
+                                  {project.title || `Case Study ${idx + 1}`}
+                               </h3>
+                                <p className="line-clamp-2 text-sm leading-7 text-foreground/80 dark:text-[#c4c4cc]">
+                                  {project.description || "Project details are available on request."}
+                                </p>
+
+                                {(() => {
+                                  const isLegacy = project.title === normalized.caseStudy?.projectTitle || idx === 0;
+                                  
+                                  const rawNiche = project.niche || (isLegacy ? normalized.caseStudy?.niche : "");
+                                  const displayNiche = rawNiche ? formatDisplayLabel(rawNiche) : "Not specified";
+                                  
+                                  const rawRole = project.role || (isLegacy ? normalized.caseStudy?.role : "");
+                                  const displayRole = rawRole ? formatDisplayLabel(rawRole) : "Not specified";
+                                  
+                                  const rawTimeline = project.timeline || (isLegacy ? normalized.caseStudy?.timeline : "");
+                                  const displayTimeline = rawTimeline ? formatDisplayLabel(rawTimeline) : "Not specified";
+                                  
+                                  const rawBudget = project.budget || (isLegacy ? normalized.caseStudy?.budgetRange : "");
+                                  const displayBudget = rawBudget ? formatMoney(rawBudget) : "Not specified";
+                                  
+                                  const fullProjectData = {
+                                    ...project,
+                                    niche: rawNiche,
+                                    role: rawRole,
+                                    timeline: rawTimeline,
+                                    budget: rawBudget,
+                                  };
+
+                                  return (
+                                    <>
+                                      <div className="mt-4 grid grid-cols-2 gap-3">
+                                        <div className="rounded-xl border border-border bg-background/50 p-3 dark:border-white/10 dark:bg-[#17171c]/50">
+                                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Niche</div>
+                                          <div className="mt-1 truncate text-xs font-medium text-foreground dark:text-[#d4d4d8]">{displayNiche}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-border bg-background/50 p-3 dark:border-white/10 dark:bg-[#17171c]/50">
+                                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Role</div>
+                                          <div className="mt-1 truncate text-xs font-medium text-foreground dark:text-[#d4d4d8]">{displayRole}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-border bg-background/50 p-3 dark:border-white/10 dark:bg-[#17171c]/50">
+                                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Timeline</div>
+                                          <div className="mt-1 truncate text-xs font-medium text-foreground dark:text-[#d4d4d8]">{displayTimeline}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-border bg-background/50 p-3 dark:border-white/10 dark:bg-[#17171c]/50">
+                                          <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground dark:text-[#8f8f95]">Budget</div>
+                                          <div className="mt-1 truncate text-xs font-medium text-foreground dark:text-[#d4d4d8]">{displayBudget}</div>
+                                        </div>
+                                      </div>
+
+                                      {isLegacy && normalized.caseStudy?.techStack?.length > 0 && (
+                                        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                                          {normalized.caseStudy.techStack.map((item) => (
+                                            <span
+                                              key={item}
+                                              className="rounded-full border border-border bg-background px-2.5 py-1 text-foreground dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d4d4d8]"
+                                            >
+                                              {item}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+
+                                      <div className="mt-auto flex justify-end pt-4">
+                                        <Button
+                                          onClick={() => setSelectedCaseStudy(fullProjectData)}
+                                          className="inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                                        >
+                                          View Case Study
+                                        </Button>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
                             </div>
                           </article>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </article>
+                        </CarouselItem>
+                      ))}
+                    </CarouselContent>
+                    {normalized.portfolioItems?.length > 1 && (
+                      <>
+                        <CarouselPrevious className="absolute -left-2 sm:-left-12 top-1/2 -translate-y-1/2" />
+                        <CarouselNext className="absolute -right-2 sm:-right-12 top-1/2 -translate-y-1/2" />
+                      </>
+                    )}
+                  </Carousel>
+                </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-border bg-muted/10 p-6 text-center text-sm text-muted-foreground dark:border-white/10 dark:bg-[#17171c] dark:text-[#8f8f95]">
                   No portfolio projects added yet.
@@ -1145,6 +1326,12 @@ const ServiceDetails = () => {
           </div>
         </section>
       </div>
+      
+      <CaseStudyModal 
+        caseStudy={selectedCaseStudy} 
+        isOpen={!!selectedCaseStudy} 
+        onClose={() => setSelectedCaseStudy(null)} 
+      />
     </div>
   );
 };
