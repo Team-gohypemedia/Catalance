@@ -2084,25 +2084,25 @@ const INTERNAL_CHAT_REQUEST_PROFILES = {
   system_extractor: {
     title: "Catalance AI Extractor",
     temperature: 0.1,
-    maxTokens: 240,
+    maxTokens: 440,
     skipConversationGuards: true,
   },
   system_validator: {
     title: "Catalance AI Validator",
     temperature: 0.15,
-    maxTokens: 360,
+    maxTokens: 460,
     skipConversationGuards: true,
   },
   system_runtime_options: {
     title: "Catalance Runtime Option Selector",
     temperature: 0.15,
-    maxTokens: 180,
+    maxTokens: 420,
     skipConversationGuards: true,
   },
   system_evaluator: {
     title: "Catalance AI Evaluator",
     temperature: 0.1,
-    maxTokens: 160,
+    maxTokens: 420,
     skipConversationGuards: true,
   },
   system_question_writer: {

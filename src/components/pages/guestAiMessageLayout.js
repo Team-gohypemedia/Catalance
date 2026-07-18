@@ -102,6 +102,48 @@ const normalizeWrappedQuestionContinuations = (text = "") =>
 
 const hasNestedOptionMarker = (text = "") => /\b\d+\.\s+\S/.test(String(text || ""));
 
+const normalizeLayoutComparableText = (text = "") =>
+  String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+
+const isLikelyPlainOptionLine = (line = "") => {
+  const text = stripInlineOptionListTail(
+    repairBrokenTechTokens(String(line || "").trim()),
+  ).trim();
+  if (!text) return false;
+  if (/^[?!.:;,-]+$/.test(text)) return false;
+  if (text.length > 70) return false;
+  if (/\?$/.test(text)) return false;
+  if (/[:]\s*$/.test(text)) return false;
+  if (REQUEST_PROMPT_LINE_REGEX.test(text)) return false;
+  if (/^(got it|nice|perfect|thanks|thank you|since|for this|to help|let me know|i will|i'll|we can)\b/i.test(text)) {
+    return false;
+  }
+  return /^[A-Za-z0-9][A-Za-z0-9\s,&/()'’+.-]*$/.test(text);
+};
+
+const extractPlainOptionEntries = (lines = [], questionLineIndex = -1) => {
+  if (!Array.isArray(lines) || lines.length === 0) return [];
+
+  const trailingLines = questionLineIndex >= 0
+    ? lines.slice(questionLineIndex + 1)
+    : [];
+
+  const optionLines = trailingLines
+    .map((line) => String(line || "").trim())
+    .filter(Boolean)
+    .filter(isLikelyPlainOptionLine);
+
+  if (optionLines.length < 2) return [];
+
+  return optionLines.map((text, index) => ({
+    number: String(index + 1),
+    text,
+  }));
+};
+
 const dedupeOptionEntries = (optionEntries = []) => {
   const bestByNumber = new Map();
 
@@ -295,6 +337,34 @@ export const parseAssistantMessageLayout = (
         text: option.text,
       })),
     };
+  }
+
+  if ((!result.options || result.options.length === 0) && forceInteractiveOptions && result.questionText) {
+    const normalizedQuestionText = normalizeLayoutComparableText(result.questionText);
+    let matchingQuestionIndex = lines.findLastIndex(
+      (line) => normalizeLayoutComparableText(line) === normalizedQuestionText,
+    );
+
+    if (matchingQuestionIndex < 0) {
+      matchingQuestionIndex = lines.findLastIndex((line) => REQUEST_PROMPT_LINE_REGEX.test(line));
+    }
+
+    const plainOptionEntries = extractPlainOptionEntries(lines, matchingQuestionIndex);
+    if (plainOptionEntries.length >= 2) {
+      const optionLineSet = new Set(
+        plainOptionEntries.map((entry) => normalizeLayoutComparableText(entry.text)),
+      );
+      const contextLines = lines.filter((line, idx) => {
+        if (idx === matchingQuestionIndex) return false;
+        return !optionLineSet.has(normalizeLayoutComparableText(line));
+      });
+
+      result = {
+        contextText: forceSentenceBreaks(contextLines.join("\n\n").trim()),
+        questionText: forceSentenceBreaks(result.questionText),
+        options: plainOptionEntries,
+      };
+    }
   }
 
   // Defensive Fallback Checks

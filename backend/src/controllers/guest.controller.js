@@ -5515,16 +5515,16 @@ ${buildAdminPromptSection(adminControls, "Admin Controls (highest priority when 
     })}
 
 Task:
-1. Generate the most relevant user-facing options for this question based on the known context.
+1. Generate only the most relevant user-facing options for this exact question.
 2. Do not use any backend option list. Think from the user context and the question itself.
-3. Prefer real-world choices, technologies, providers, directions, or business options when the context clearly suggests them.
-4. Keep labels short, clear, and natural.
-5. Prefer 2 to 5 options for single-select questions and 3 to 6 for multi-select questions.
-6. If the context is too weak or generic, return an empty options array.
-7. Do not generate fake brands, impossible tools, or overly random niche options.
-8. If the user context clearly points to a region, stack, market, or integration type, let the options reflect that.
+3. Return 2 to 8 options unless the question clearly needs more.
+4. Keep labels short, natural, and directly usable as menu items.
+5. If the context is weak or generic, return {"options": []} immediately.
+6. Do not generate fake brands, impossible tools, or random niche options.
+7. If the user context already points to a primary platform or technology, do not offer competing core platforms.
+8. If the direct custom answer candidate is specific and clearly relevant to this exact question, include it.
 9. CRITICAL: If the user context shows they have already chosen a primary platform or technology (e.g. Webflow, Shopify, WordPress), DO NOT offer competing core platforms (like React or WordPress if they chose Webflow). Only offer tools, integrations, or infrastructure that are highly compatible with their chosen stack.
-10. If the direct custom answer candidate is specific and clearly relevant to this exact question, include it as one of the visible options.
+10. Return strict JSON only. No markdown, no prose, no trailing commentary.
 
 Return strict JSON only:
 {
@@ -5533,6 +5533,29 @@ Return strict JSON only:
   ]
 }
 `;
+};
+
+const formatRuntimeOptionsDebugSnippet = (value = "", limit = 500) =>
+    String(value || "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, Math.max(0, limit));
+
+const getRuntimeOptionsDebugSummary = (rawMessage = "") => {
+    const raw = String(rawMessage || "");
+    const trimmed = raw.trim();
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+    return {
+        rawLength: raw.length,
+        trimmedLength: trimmed.length,
+        firstBrace,
+        lastBrace,
+        endsWithBrace: trimmed.endsWith("}"),
+        looksTruncated: Boolean(trimmed) && (!trimmed.endsWith("}") || lastBrace <= firstBrace),
+        head: formatRuntimeOptionsDebugSnippet(trimmed, 220),
+        tail: formatRuntimeOptionsDebugSnippet(trimmed.slice(Math.max(0, trimmed.length - 220)), 220),
+    };
 };
 
 const generateRuntimeOptionsForQuestion = async ({
@@ -5618,6 +5641,10 @@ const generateRuntimeOptionsForQuestion = async ({
         });
 
         if (!response?.success) {
+            const debugSummary = getRuntimeOptionsDebugSummary(response?.message || "");
+            console.log(
+                `[Runtime Options Debug] question=${String(question?.slug || question?.text || "question").trim()} reason=ai_failure success=${Boolean(response?.success)} rawLength=${debugSummary.rawLength} endsWithBrace=${debugSummary.endsWithBrace} looksTruncated=${debugSummary.looksTruncated} head=${JSON.stringify(debugSummary.head)} tail=${JSON.stringify(debugSummary.tail)}`
+            );
             console.log(`[Runtime Options] fallback=canonical reason=ai_failure question=${String(question?.slug || question?.text || "question").trim()}`);
             return fallbackOptions;
         }
@@ -5625,6 +5652,10 @@ const generateRuntimeOptionsForQuestion = async ({
         const parsed = parseJsonObjectFromRaw(response.message);
         const rows = Array.isArray(parsed?.options) ? parsed.options : [];
         if (rows.length === 0) {
+            const debugSummary = getRuntimeOptionsDebugSummary(response.message || "");
+            console.log(
+                `[Runtime Options Debug] question=${String(question?.slug || question?.text || "question").trim()} reason=empty_ai_options parsedType=${Array.isArray(parsed?.options) ? "array" : typeof parsed?.options} parsedValue=${JSON.stringify(formatRuntimeOptionsDebugSnippet(JSON.stringify(parsed || {})))} rawLength=${debugSummary.rawLength} endsWithBrace=${debugSummary.endsWithBrace} looksTruncated=${debugSummary.looksTruncated} head=${JSON.stringify(debugSummary.head)} tail=${JSON.stringify(debugSummary.tail)}`
+            );
             console.log(`[Runtime Options] fallback=canonical reason=empty_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
             return fallbackOptions;
         }
@@ -5654,6 +5685,10 @@ const generateRuntimeOptionsForQuestion = async ({
         );
 
         if (finalOptions.length < 2) {
+            const debugSummary = getRuntimeOptionsDebugSummary(response.message || "");
+            console.log(
+                `[Runtime Options Debug] question=${String(question?.slug || question?.text || "question").trim()} reason=weak_ai_options selectedCount=${finalOptions.length} parsedCount=${rows.length} rawLength=${debugSummary.rawLength} endsWithBrace=${debugSummary.endsWithBrace} looksTruncated=${debugSummary.looksTruncated} head=${JSON.stringify(debugSummary.head)} tail=${JSON.stringify(debugSummary.tail)}`
+            );
             console.log(`[Runtime Options] fallback=canonical reason=weak_ai_options question=${String(question?.slug || question?.text || "question").trim()}`);
             return fallbackOptions;
         }

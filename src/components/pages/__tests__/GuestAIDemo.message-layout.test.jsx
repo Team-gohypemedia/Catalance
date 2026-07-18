@@ -139,4 +139,29 @@ For that, I'd love to know your company or brand name.`;
     expect(parsed.contextText).toContain("Nice to meet you, Ravindra.");
     expect(parsed.contextText).toContain("so it'll help to align the design");
   });
+
+  it("treats plain trailing option lines as interactive options when forced", () => {
+    const content = `Got it. Since you're building an online store for women's clothing, we can shape the site even without selecting preset pages.
+
+Most ecommerce stores still benefit from a few core features to make shopping simple and smooth for customers.
+To help you get the right flow, let me know which features you'd like to include.
+
+Shopping Cart
+Payment Gateway
+Inventory Management
+None`;
+
+    const parsed = parseAssistantMessageLayout(content, { forceInteractiveOptions: true });
+
+    expect(parsed.questionText).toBe("To help you get the right flow, let me know which features you'd like to include.");
+    expect(parsed.options).toHaveLength(4);
+    expect(parsed.options.map((option) => option.text)).toEqual([
+      "Shopping Cart",
+      "Payment Gateway",
+      "Inventory Management",
+      "None",
+    ]);
+    expect(parsed.contextText).not.toContain("Shopping Cart");
+    expect(parsed.contextText).not.toContain("Payment Gateway");
+  });
 });
