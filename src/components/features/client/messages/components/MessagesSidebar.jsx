@@ -5,6 +5,7 @@ import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import X from "lucide-react/dist/esm/icons/x";
 import { Input } from "@/components/ui/input";
 import ConversationItem from "./ConversationItem";
+import { getConversationKey } from "../utils";
 import RequestListItem from "./RequestListItem";
 
 const MessagesSidebar = React.memo(function MessagesSidebar({
@@ -78,7 +79,7 @@ const MessagesSidebar = React.memo(function MessagesSidebar({
           filteredConversations.length > 0 ? (
             <div className="space-y-2">
               {filteredConversations.map((conversation) => {
-                const conversationKey = conversation.serviceKey || conversation.id;
+                const conversationKey = getConversationKey(conversation);
                 const isActive = conversationKey === selectedConversationKey;
 
                 return (
@@ -165,3 +166,4 @@ const MessagesSidebar = React.memo(function MessagesSidebar({
 });
 
 export default MessagesSidebar;
+

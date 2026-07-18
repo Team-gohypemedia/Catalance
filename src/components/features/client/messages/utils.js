@@ -30,7 +30,11 @@ export const filterAssistantMessages = (list = []) =>
   list.filter((message) => message?.role !== "assistant");
 
 export const getConversationKey = (conversation) =>
-  conversation?.id || conversation?.serviceKey || null;
+  conversation?.id ||
+  conversation?.serviceKey ||
+  conversation?.requestId ||
+  conversation?.conversationId ||
+  null;
 
 export const getTimestampValue = (value) => {
   if (!value) return 0;
@@ -663,3 +667,4 @@ export const mergeMessageCollections = (
 
 export const isSameMessageDay = (left, right) =>
   Boolean(left && right && isSameDay(new Date(left), new Date(right)));
+
