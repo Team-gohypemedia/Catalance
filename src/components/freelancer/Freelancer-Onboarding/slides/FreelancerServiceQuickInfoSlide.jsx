@@ -788,6 +788,38 @@ const FreelancerServiceQuickInfoSlide = ({
     () => new Set(selectedServiceToolIds),
     [selectedServiceToolIds],
   );
+  const resolvedServiceKey = useMemo(
+    () =>
+      resolveServiceKey(
+        dbServices,
+        currentServiceKey || serviceDraft?.serviceKey || currentServiceName,
+      ),
+    [currentServiceKey, currentServiceName, dbServices, serviceDraft?.serviceKey],
+  );
+  const shouldHideWebsitePricingUnitFields =
+    resolvedServiceKey === "website_development" ||
+    resolvedServiceKey === "web_development" ||
+    resolvedServiceKey === "app_development" ||
+    resolvedServiceKey === "mobile_app_development";
+
+  useEffect(() => {
+    if (!shouldHideWebsitePricingUnitFields) {
+      return;
+    }
+
+    if (servicePricingForm.pricingUnit) {
+      onServicePricingFieldChange("pricingUnit", "");
+    }
+
+    if (servicePricingForm.pricingQuantity) {
+      onServicePricingFieldChange("pricingQuantity", "");
+    }
+  }, [
+    onServicePricingFieldChange,
+    servicePricingForm.pricingQuantity,
+    servicePricingForm.pricingUnit,
+    shouldHideWebsitePricingUnitFields,
+  ]);
 
   /* Validation errors */
   const titleError = String(serviceInfoValidationErrors.title || "").trim();
@@ -924,10 +956,6 @@ const FreelancerServiceQuickInfoSlide = ({
   }, [configuredCategoryOptions, selectedCatalogCategoryIds]);
 
   useEffect(() => {
-    const resolvedServiceKey = resolveServiceKey(
-      dbServices,
-      currentServiceKey || serviceDraft?.serviceKey,
-    );
     if (!resolvedServiceKey) {
       setServiceToolOptions([]);
       setServiceToolFetchError("");
@@ -969,7 +997,7 @@ const FreelancerServiceQuickInfoSlide = ({
 
     void fetchServiceTools();
     return () => { cancelled = true; };
-  }, [currentServiceKey, dbServices, serviceDraft?.serviceKey]);
+  }, [resolvedServiceKey]);
 
   const syncDerivedSkills = useCallback(
     (draft = {}) => ({
@@ -1482,13 +1510,12 @@ const FreelancerServiceQuickInfoSlide = ({
                       }
 
                       {(() => {
-                        const actualServiceKey = resolveServiceKey(dbServices, currentServiceKey);
-                        const options = getPricingUnitOptions(actualServiceKey || currentServiceName);
+                        const options = getPricingUnitOptions(resolvedServiceKey || currentServiceName);
                         const currentUnit = servicePricingForm.pricingUnit || options[0].value;
                         
                         return (
                           <>
-                            {options[0].value !== "project" && (
+                            {!shouldHideWebsitePricingUnitFields && options[0].value !== "project" && (
                               <div className="space-y-1">
                                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
                                   Pricing Unit
@@ -1510,12 +1537,11 @@ const FreelancerServiceQuickInfoSlide = ({
                                       </option>
                                     ))}
                                   </select>
-                                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                                 </div>
                               </div>
                             )}
     
-                            {options[0].value !== "project" && (
+                            {!shouldHideWebsitePricingUnitFields && options[0].value !== "project" && (
                               <div className="space-y-1">
                                 <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block flex items-center")}>
                                   Quantity Included in Price
