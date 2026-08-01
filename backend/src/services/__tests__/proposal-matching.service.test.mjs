@@ -846,6 +846,66 @@ test("normalized web development service keys resolve as a service match", () =>
   assert.equal(ranked.results[0].serviceMatch, true);
 });
 
+test("branding kit projects normalize into the branding service family", async () => {
+  const targetProfile = await buildTargetProfileFromPayload({
+    title: "Detonate rebrand",
+    serviceKey: "Branding Kit",
+    serviceType: "Branding Kit",
+    budget: 25000,
+    businessCategory: "Beverages",
+    targetAudience: "Youth",
+    proposalContent: `
+Service Type: Branding Kit
+Project Overview: Full rebrand for an energy drink brand.
+Features/Deliverables Included:
+- Brand identity design
+- Typography system
+- Packaging design
+- Social media assets
+Budget: INR 25,000
+    `,
+  });
+  const freelancers = [
+    createFreelancer({
+      id: "freelancer-branding-kit-fit",
+      fullName: "Branding Fit",
+      services: ["branding"],
+      profileDetails: {
+        serviceDetails: {
+          branding: {
+            startingPrice: "15000",
+            title: "Branding Kit",
+            skillsAndTechnologies: [
+              "Adobe Illustrator",
+              "Adobe Photoshop",
+              "Adobe InDesign",
+              "Figma",
+            ],
+            caseStudy: {
+              id: "case-branding-kit-fit",
+              title: "Branding Kit",
+              serviceKey: "branding",
+              description: "Built a full brand identity system for an FMCG launch.",
+              budget: 15000,
+            },
+          },
+        },
+      },
+    }),
+  ];
+
+  const ranked = rankFreelancersFromData({
+    targetProfile,
+    freelancers,
+    completedProjects: [],
+    activeProjectCounts: new Map(),
+  });
+
+  assert.equal(ranked.results.length, 1);
+  assert.equal(ranked.results[0].id, "freelancer-branding-kit-fit");
+  assert.equal(ranked.results[0].serviceMatch, true);
+});
+
 test("service-aligned candidates rank ahead of mismatched fallback candidates", () => {
   const targetProfile = createTargetProfile();
   const freelancers = [

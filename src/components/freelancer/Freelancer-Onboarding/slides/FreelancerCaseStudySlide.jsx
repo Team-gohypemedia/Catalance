@@ -221,6 +221,17 @@ const FreelancerCaseStudySlide = ({
   const infoModalScrollRef = useRef(null);
   const [isRequestingNiche, setIsRequestingNiche] = useState(false);
   const [caseStudyToDeleteId, setCaseStudyToDeleteId] = useState(null);
+  const resolvedServiceKey = useMemo(
+    () =>
+      resolveServiceKey(
+        dbServices,
+        currentServiceKey || currentServiceName,
+      ),
+    [currentServiceKey, currentServiceName, dbServices],
+  );
+  const shouldHideWebsiteCaseStudyPricingFields =
+    resolvedServiceKey === "website_development" ||
+    resolvedServiceKey === "web_development";
 
 
   // Scroll onboarding container to top on mobile when slide mounts or active case study changes
@@ -235,6 +246,25 @@ const FreelancerCaseStudySlide = ({
       }
     }
   }, [activeCaseStudyId, activeCaseStudyIndex]);
+
+  useEffect(() => {
+    if (!shouldHideWebsiteCaseStudyPricingFields) {
+      return;
+    }
+
+    if (caseStudyForm.pricingUnit) {
+      onCaseStudyFieldChange("pricingUnit", "");
+    }
+
+    if (caseStudyForm.pricingQuantity) {
+      onCaseStudyFieldChange("pricingQuantity", "");
+    }
+  }, [
+    caseStudyForm.pricingQuantity,
+    caseStudyForm.pricingUnit,
+    onCaseStudyFieldChange,
+    shouldHideWebsiteCaseStudyPricingFields,
+  ]);
 
   // Scroll modal content to bottom when opened (mobile)
   useEffect(() => {
@@ -780,11 +810,10 @@ const FreelancerCaseStudySlide = ({
 
             {/* Pricing fields (Unit and Quantity) */}
             {(() => {
-              const actualServiceKey = resolveServiceKey(dbServices, currentServiceKey);
-              const options = getPricingUnitOptions(actualServiceKey || currentServiceName);
+              const options = getPricingUnitOptions(resolvedServiceKey || currentServiceName);
               const currentUnit = caseStudyForm.pricingUnit || options[0].value;
 
-              return options[0].value !== "project" ? (
+              return !shouldHideWebsiteCaseStudyPricingFields && options[0].value !== "project" ? (
                 <div className="grid min-w-0 gap-5 sm:grid-cols-2">
                   <div className="min-w-0 space-y-0">
                     <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>

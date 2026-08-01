@@ -47,7 +47,7 @@ const SERVICE_EQUIVALENCE_GROUPS = Object.freeze([
   ["seo", "search_engine_optimization"],
   ["social_media_marketing", "smm"],
   ["ui_ux_design", "ux_ui_design", "product_design"],
-  ["graphic_design", "branding", "brand_design"],
+  ["graphic_design", "branding", "brand_design", "branding_kit"],
   ["video_editing", "video_production"],
   ["cgi_video_services", "cgi_videos", "3d_animation_cgi_videos_vfx", "3d_animation", "vfx"],
   ["3d_modeling", "modeling_3d"],
