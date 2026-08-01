@@ -577,11 +577,6 @@ const doesStoredGuestSessionMatchService = (entry = {}, service = {}) => {
     return storedKeys.some((key) => serviceKeys.has(key));
 };
 
-const findStoredGuestSessionByService = (sessions = [], service = {}) =>
-    (Array.isArray(sessions) ? sessions : []).find((entry) =>
-        doesStoredGuestSessionMatchService(entry, service)
-    ) || null;
-
 const truncateText = (value = '', limit = 120) => {
     const source = String(value || '').trim().replace(/\s+/g, ' ');
     if (!source) return '';
@@ -4802,18 +4797,6 @@ const GuestAIDemo = () => {
 
                 if (queryChatId && sessionId === queryChatId && matchedServiceId === currentServiceId) {
                     return;
-                }
-
-                if (!queryChatId) {
-                    const storedChatForService = findStoredGuestSessionByService(storedSessions, matchedService);
-                    if (
-                        storedChatForService
-                        && storedChatForService.sessionId
-                        && storedChatForService.sessionId !== sessionId
-                    ) {
-                        void handleLoadPreviousChat(storedChatForService);
-                        return;
-                    }
                 }
 
                 if (selectedService && currentServiceId === matchedServiceId && sessionId) {
