@@ -146,38 +146,39 @@ const resolveProposalServiceType = (proposal = {}) =>
  * Extracts key details (Budget, Timeline) from the proposal text content.
  * This ensures consistency between the card view and the details dialog.
  */
-const extractProposalDetails = (content = "", budgetNum = null) => {
+const extractProposalDetails = (content = "", budgetNum = null, directTimeline = "") => {
   let budget = "Not specified";
   let timeline = "Not specified";
 
-  // 1. Try to find Budget
-  // If we have a numeric budget from the API, use that formatted
   if (budgetNum) {
     budget = `₹${parseInt(budgetNum).toLocaleString()}`;
   } else {
-    // Otherwise look in text
     const budgetMatch = content.match(
-      /(?:Budget|Price|Cost)[\s:_\-\n]*((?:₹|INR|Rs\.?)?\s*[\d,]+(?:k)?)/i
+      /(?:Budget|Price|Cost)[\s:_\-\n]*((?:₹|INR|Rs\.?)?\s*[\d,]+(?:k)?)/i,
     );
-    if (budgetMatch) {
-      budget = budgetMatch[1];
-    }
+    if (budgetMatch) budget = budgetMatch[1];
   }
 
   const visibleBudget = getFreelancerVisibleBudgetValue(budget);
-  if (visibleBudget !== null) {
-    budget = formatINR(visibleBudget);
+  if (visibleBudget !== null) budget = formatINR(visibleBudget);
+
+  const normalizeTimeline = (value) => {
+    const text = String(value || "").trim();
+    const duration = text.match(/\b\d+\s*(?:day|days|week|weeks|month|months)\b/i);
+    if (duration) return duration[0];
+    return /^(asap|ongoing|to be finalized)$/i.test(text) ? text : "";
+  };
+
+  // Prefer the structured project timeline. Text content is only a fallback.
+  timeline = normalizeTimeline(directTimeline);
+  if (!timeline) {
+    const timelineMatch = content.match(
+      /(?:^|[\r\n])\s*(?:launch\s+timeline|delivery(?:\s+(?:timeline|duration))?|timeline|duration)\s*[:\-]\s*([^\r\n]+)/i,
+    );
+    timeline = normalizeTimeline(timelineMatch?.[1]);
   }
 
-  // 2. Try to find Timeline
-  const timelineMatch = content.match(
-    /(?:Timeline|Duration|Time)[\s:_\-\n]*([^\n.,]+)/i
-  );
-  if (timelineMatch) {
-    timeline = timelineMatch[1].trim();
-  }
-
-  return { budget, timeline };
+  return { budget, timeline: timeline || "Not specified" };
 };
 
 /**
@@ -332,6 +333,12 @@ const mapApiProposal = (proposal = {}) => {
       ? `PRP-${proposal.id.slice(0, 6).toUpperCase()}`
       : `PRP-${Math.floor(Math.random() * 9000 + 1000)}`,
     budget: proposal.amount ?? proposal.budget ?? null,
+    timeline: getFirstNonEmptyText(
+      proposal.project?.timeline,
+      proposal.project?.duration,
+      proposal.timeline,
+      proposal.duration,
+    ),
     rejectionReason: String(proposal.rejectionReason || "").trim(),
     coverLetter: proposal.coverLetter || "",
     content:
@@ -415,7 +422,8 @@ const ProposalRowCard = ({
 
   const { budget, timeline } = extractProposalDetails(
     proposal.content,
-    proposal.budget
+    proposal.budget,
+    proposal.timeline,
   );
   const isPendingProposal = proposal.status === "pending" && !isMarketplaceApplication;
   const isProcessing = processingId === proposal.id;
