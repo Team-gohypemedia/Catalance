@@ -597,6 +597,7 @@ const Proposals = memo(function Proposals({
   draftProposalRows,
   onOpenQuickProject,
   showMarketplaceRedirect = false,
+  desktopCardsPerView = 3,
   className = "",
 }) {
   const isMobile = useIsMobile();
@@ -988,16 +989,21 @@ const Proposals = memo(function Proposals({
   }, [handleOpenMarketplace, handleOpenQuickProject, showMarketplaceRedirect]);
 
   const totalVisibleDraftCards = items.length + draftRedirectCards.length;
+  const resolvedDesktopCardsPerView = desktopCardsPerView === 2 ? 2 : 3;
   const shouldUseDraftProposalCarousel = isMobile
     ? totalVisibleDraftCards > 1
-    : totalVisibleDraftCards > (showMarketplaceRedirect ? 3 : 2);
+    : totalVisibleDraftCards > resolvedDesktopCardsPerView;
 
   const carouselItemClassName =
-    "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-1.25rem)/2)]";
+    resolvedDesktopCardsPerView === 2
+      ? "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%_-_1.5rem)_/_2)] xl:basis-[calc((100%_-_1.75rem)_/_2)]"
+      : "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%_-_1.5rem)_/_2)] lg:basis-[calc((100%_-_3rem)_/_3)] xl:basis-[calc((100%_-_3.5rem)_/_3)]";
 
-  const gridClassName = showMarketplaceRedirect
-    ? "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 lg:gap-6 xl:gap-7"
-    : "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 lg:gap-6 xl:gap-7";
+  const gridClassName = resolvedDesktopCardsPerView === 2
+    ? "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 lg:gap-6 xl:gap-7"
+    : showMarketplaceRedirect
+      ? "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 lg:gap-6 xl:gap-7"
+      : "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 lg:gap-6 xl:gap-7";
   const measureDraftCardHeights = useCallback(() => {
     const heights = Object.values(draftCardRefs.current)
       .map((card) => card?.getBoundingClientRect().height || 0)

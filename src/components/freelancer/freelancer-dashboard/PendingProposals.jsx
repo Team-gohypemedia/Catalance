@@ -7,6 +7,14 @@ import { useIsMobile } from "@/shared/hooks/use-mobile";
 import { cn } from "@/shared/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   FreelancerCarouselDots,
   FreelancerDashboardPanel,
   FreelancerDashboardSkeletonBlock,
@@ -69,7 +77,17 @@ export const FreelancerPendingProposalsSkeleton = ({ gridCols = 3 }) => (
   </section>
 );
 
-const FreelancerPendingProposalCard = ({ item }) => (
+const FreelancerPendingProposalCard = ({ item, onView }) => {
+  const handleView = () => {
+    if (onView) {
+      onView(item);
+      return;
+    }
+
+    item.onView?.();
+  };
+
+  return (
   <article className="flex h-auto w-full max-w-full min-w-0 flex-col rounded-[28px] border border-border/55 dark:border-white/[0.06] bg-card p-6 shadow-sm transition-transform duration-200 hover:-translate-y-1">
     {/* Header row: Status badge, Date, and Delete icon */}
     <div className="flex items-center justify-between">
@@ -165,7 +183,7 @@ const FreelancerPendingProposalCard = ({ item }) => (
     <div className="mt-5 space-y-2.5">
       <button
         type="button"
-        onClick={item.onView}
+        onClick={handleView}
         disabled={item.isAccepting}
         className="w-full h-11 rounded-full font-bold text-xs bg-[#D9692A] text-white hover:bg-[#C25820] dark:bg-[#F9D949] dark:text-[#1C1B1F] dark:hover:bg-[#E2C23B] transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
       >
@@ -191,19 +209,26 @@ const FreelancerPendingProposalCard = ({ item }) => (
       </div>
     </div>
   </article>
-);
+  );
+};
 
-const FreelancerPendingProposalListPanel = ({ pendingProposalRows, gridCols = 3 }) => (
+const FreelancerPendingProposalListPanel = ({ pendingProposalRows, gridCols = 3, onView }) => (
   <div className={cn(
     "grid grid-cols-1 md:grid-cols-2 gap-5",
     gridCols === 3 ? "lg:grid-cols-3" : ""
   )}>
     {pendingProposalRows.map((item) => (
-      <FreelancerPendingProposalCard key={item.id} item={item} />
+      <FreelancerPendingProposalCard key={item.id} item={item} onView={onView} />
     ))}
   </div>
 );
 
+const ProposalDetailCell = ({ label, value }) => (
+  <div className="rounded-2xl border border-border/70 bg-background px-4 py-3.5">
+    <dt className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">{label}</dt>
+    <dd className="mt-2 text-sm font-medium leading-5 text-foreground">{value || "Not provided"}</dd>
+  </div>
+);
 const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "", gridCols = 3 }) => {
   const isMobile = useIsMobile();
   const shouldUsePendingProposalCarousel = pendingProposalRows.length > 1;
@@ -212,6 +237,7 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "", grid
   const [canGoToNextPendingProposal, setCanGoToNextPendingProposal] = useState(false);
   const [pendingProposalSnapCount, setPendingProposalSnapCount] = useState(0);
   const [activePendingProposalSnap, setActivePendingProposalSnap] = useState(0);
+  const [selectedProposal, setSelectedProposal] = useState(null);
 
   useEffect(() => {
     if (!pendingProposalCarouselApi || !shouldUsePendingProposalCarousel) {
@@ -315,6 +341,92 @@ const PendingProposals = ({ pendingProposalRows, onOpenAll, className = "", grid
       ) : (
         <FreelancerPendingProposalListPanel pendingProposalRows={pendingProposalRows} gridCols={gridCols} />
       )}
+      <Dialog
+        open={Boolean(selectedProposal)}
+        onOpenChange={(open) => {
+          if (!open) setSelectedProposal(null);
+        }}
+      >
+        <DialogContent className="flex max-h-[90vh] w-[calc(100vw-2rem)] max-w-5xl flex-col overflow-hidden rounded-[28px] border-border bg-card p-0 sm:w-full">
+          <DialogHeader className="shrink-0 border-b border-border/60 px-6 py-5 sm:px-8">
+            <div className="flex items-center gap-3 pr-8">
+              <DialogTitle className="text-2xl font-semibold tracking-[-0.03em] text-foreground sm:text-[28px]">
+                {selectedProposal?.title}
+              </DialogTitle>
+              <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+                Pending
+              </span>
+            </div>
+            <DialogDescription className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <span className="rounded-full border border-border bg-background px-3 py-1.5 font-medium text-foreground">
+                {selectedProposal?.formattedDate}
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.2em]">Date received</span>
+            </DialogDescription>
+            <p className="mt-5 text-sm leading-6 text-foreground sm:text-base">
+              Review the proposal details, client requirements, and budget expectations.
+            </p>
+          </DialogHeader>
+
+          {selectedProposal ? (
+            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-6 sm:px-8">
+              <section>
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">01 Project summary</p>
+                <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-foreground">Start with the essentials</h3>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <ProposalDetailCell label="Project title" value={selectedProposal.title} />
+                  <ProposalDetailCell label="Client name" value={selectedProposal.clientName} />
+                  <ProposalDetailCell label="Business name" value={selectedProposal.businessName} />
+                  <ProposalDetailCell label="Service type" value={selectedProposal.service || "General"} />
+                  <ProposalDetailCell label="Launch timeline" value={selectedProposal.delivery} />
+                  <ProposalDetailCell label="Budget" value={selectedProposal.budget} />
+                </div>
+              </section>
+
+              <section className="mt-8">
+                <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-muted-foreground">02 Project scope & details</p>
+                <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-foreground">What the project includes</h3>
+                <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.8fr)]">
+                  <article className="rounded-2xl border border-border/70 bg-background p-5">
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground">Project overview</h4>
+                    <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-foreground sm:text-base">
+                      {selectedProposal.projectOverview}
+                    </p>
+                  </article>
+                  <article className="rounded-2xl border border-border/70 bg-background p-5">
+                    <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground">Project details</h4>
+                    <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                      {selectedProposal.projectDetails}
+                    </p>
+                    <dl className="mt-5 space-y-4 border-t border-border/60 pt-4">
+                      <div>
+                        <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Current status</dt>
+                        <dd className="mt-1 font-medium text-foreground">Pending</dd>
+                      </div>
+                      <div className="border-t border-border/60 pt-4">
+                        <dt className="text-[11px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Date received</dt>
+                        <dd className="mt-1 font-medium text-foreground">{selectedProposal.formattedDate}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                </div>
+              </section>
+            </div>
+          ) : null}
+
+          <DialogFooter className="shrink-0 flex-row items-center justify-end gap-3 border-t border-border/60 bg-muted/25 px-6 py-4 sm:px-8">
+            <button type="button" onClick={() => setSelectedProposal(null)} className="h-10 rounded-full px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+              Close
+            </button>
+            <button type="button" disabled={selectedProposal?.isAccepting} onClick={() => { selectedProposal?.onReject?.(); setSelectedProposal(null); }} className="h-10 rounded-full border border-rose-400 px-5 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50 dark:hover:bg-rose-500/10">
+              Reject
+            </button>
+            <button type="button" disabled={selectedProposal?.isAccepting} onClick={() => { selectedProposal?.onAccept?.(); setSelectedProposal(null); }} className="h-10 rounded-full border border-emerald-400 bg-emerald-50 px-5 text-sm font-semibold text-emerald-600 transition-colors hover:bg-emerald-100 disabled:opacity-50 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/20">
+              Accept Proposal
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 };

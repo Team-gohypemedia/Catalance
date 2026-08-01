@@ -2948,7 +2948,8 @@ export const DashboardContent = ({ _roleOverride, children }) => {
   const pendingProposalRows = useMemo(
     () =>
       metrics.pendingProposals.slice(0, 4).map((proposal, index) => {
-        const serviceType = resolveFreelancerProjectServiceType(proposal?.project || {}, proposal);
+        const project = proposal?.project || {};
+        const serviceType = resolveFreelancerProjectServiceType(project, proposal);
         const title =
           proposal?.project?.businessName ||
           proposal?.project?.companyName ||
@@ -2983,6 +2984,9 @@ export const DashboardContent = ({ _roleOverride, children }) => {
           formattedDate,
           budget: formatFreelancerDashboardCurrency(toFreelancerShareAmount(proposal?.amount)),
           service: serviceType ? toDisplayTitleCase(serviceType) : "General Service",
+          businessName: toDisplayTitleCase(project.businessName || project.companyName || title),
+          projectOverview: project.projectOverview || project.overview || project.description || proposal?.projectOverview || proposal?.overview || proposal?.description || "No project overview was provided.",
+          projectDetails: project.details || proposal?.details || "Review the delivery window and proposal scope before accepting this project.",
           projectId: proposal?.project?.id,
           clientName,
           clientAvatar,

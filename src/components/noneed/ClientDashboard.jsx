@@ -3339,6 +3339,9 @@ const ClientDashboardContent = () => {
                   <Proposals
                     draftProposalRows={draftProposalRows}
                     onOpenQuickProject={handleOpenQuickProject}
+                    desktopCardsPerView={
+                      acceptedFreelancerSection.rows.length > 0 ? 2 : 3
+                    }
                   />
                 ) : null}
 

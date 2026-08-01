@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
@@ -280,6 +281,11 @@ const normalizeProposalStatus = (status = "") => {
       return "pending";
     case "SENT":
       return "sent";
+    case "ACTIVE":
+    case "IN_PROGRESS":
+    case "ONGOING":
+    case "IN_REVIEW":
+      return "active";
     default:
       return "pending";
   }
@@ -798,6 +804,8 @@ const FreelancerProposalCarouselDots = ({ count, activeIndex, onSelect }) => {
 
 const FreelancerProposalContent = ({ filter = "all" }) => {
   const { authFetch, isAuthenticated } = useAuth();
+  const [searchParams] = useSearchParams();
+  const requestedProjectId = searchParams.get("projectId");
   const { notifications } = useNotifications();
   const [proposals, setProposals] = useState([]);
   const [selectedProposal, setSelectedProposal] = useState(null);
@@ -840,6 +848,17 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
   useEffect(() => {
     fetchProposals();
   }, [fetchProposals]);
+  useEffect(() => {
+    if (isLoading || !requestedProjectId) return;
+
+    const requestedProposal = proposals.find(
+      (proposal) => String(proposal.projectId || "") === String(requestedProjectId),
+    );
+
+    if (requestedProposal) {
+      setSelectedProposal(requestedProposal);
+    }
+  }, [isLoading, proposals, requestedProjectId]);
 
   // Real-time updates logic (Optional, kept simpler)
   useEffect(() => {
@@ -1031,7 +1050,7 @@ const FreelancerProposalContent = ({ filter = "all" }) => {
         return;
       }
 
-      if (p.status === "pending" || p.status === "received" || p.status === "accepted") {
+      if (p.status === "pending" || p.status === "received") {
         groups.pending.push(p);
       }
     });
