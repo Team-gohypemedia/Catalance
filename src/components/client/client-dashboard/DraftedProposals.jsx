@@ -123,6 +123,50 @@ const formatDraftBudget = (value) => {
   return formatINR(numericValue);
 };
 
+const resolveDraftBudget = (proposal = {}) => {
+  const directCandidates = [
+    proposal?.budget,
+    proposal?.amount,
+    proposal?.project?.budget,
+    proposal?.project?.amount,
+    proposal?.proposalContext?.budget,
+  ];
+
+  for (const candidate of directCandidates) {
+    const resolved = formatDraftBudget(candidate);
+    if (resolved && resolved !== "Not set") {
+      return resolved;
+    }
+  }
+
+  const textCandidates = [
+    proposal?.summary,
+    proposal?.content,
+    proposal?.proposalContent,
+    proposal?.description,
+    proposal?.project?.summary,
+    proposal?.project?.description,
+  ];
+
+  for (const candidate of textCandidates) {
+    const extracted = extractLabeledLineValue(candidate || "", [
+      "Budget",
+      "Project Budget",
+      "Estimated Budget",
+      "Pricing",
+      "Investment",
+    ]);
+    if (extracted) {
+      const resolved = formatDraftBudget(extracted);
+      if (resolved && resolved !== "Not set") {
+        return resolved;
+      }
+    }
+  }
+
+  return "Not set";
+};
+
 const formatDraftTimeline = (value) => {
   const rawValue = String(value || "").trim();
   return rawValue || "Not set";
@@ -150,7 +194,7 @@ const formatDraftDate = (value) => {
 const buildDraftServiceEntries = (proposal = {}) => {
   return extractAgencyProposalServiceEntries(proposal).map((entry) => ({
     name: entry.name,
-    budget: formatDraftBudget(entry.budget),
+    budget: resolveDraftBudget(entry),
     timeline: formatDraftTimeline(entry.timeline),
   }));
 };
@@ -899,7 +943,7 @@ const Proposals = memo(function Proposals({
         title: resolveDraftTitle(proposal),
         tag: resolveDraftService(proposal),
         summary: proposal.summary || proposal.content || proposal.proposalContent || "",
-        budget: formatDraftBudget(proposal.budget),
+        budget: resolveDraftBudget(proposal),
         timeline: formatDraftTimeline(
           proposal.timeline || proposal.launchTimeline || proposal.duration,
         ),

@@ -332,6 +332,50 @@ const formatBudget = (budget) => {
   return formatINR(finalValue);
 };
 
+const resolveProposalBudgetDisplay = (proposal = {}) => {
+  const directCandidates = [
+    proposal?.budget,
+    proposal?.amount,
+    proposal?.project?.budget,
+    proposal?.project?.amount,
+    proposal?.proposalContext?.budget,
+  ];
+
+  for (const candidate of directCandidates) {
+    const resolved = formatBudget(candidate);
+    if (resolved && resolved !== "Not set") {
+      return resolved;
+    }
+  }
+
+  const textCandidates = [
+    proposal?.summary,
+    proposal?.content,
+    proposal?.proposalContent,
+    proposal?.description,
+    proposal?.project?.summary,
+    proposal?.project?.description,
+  ];
+
+  for (const candidate of textCandidates) {
+    const extracted = extractLabeledLineValue(candidate || "", [
+      "Budget",
+      "Project Budget",
+      "Estimated Budget",
+      "Pricing",
+      "Investment",
+    ]);
+    if (extracted) {
+      const resolved = formatBudget(extracted);
+      if (resolved && resolved !== "Not set") {
+        return resolved;
+      }
+    }
+  }
+
+  return "Not set";
+};
+
 const parseProposalBudgetValue = (budget) => {
   const normalizedBudget = normalizeINRText(String(budget || "").trim());
   if (!normalizedBudget) return 0;
@@ -793,7 +837,7 @@ const mapProjectToSavedProposal = (project = {}) =>
     content: project.proposalContent || project.description || "",
     proposalContent: project.proposalContent || project.description || "",
     proposalJson: project.proposalJson || null,
-    budget: project.budget || "",
+    budget: resolveProposalBudgetDisplay(project),
     timeline: project.timeline || "",
     createdAt: project.createdAt || new Date().toISOString(),
     updatedAt: project.updatedAt || project.createdAt || new Date().toISOString()
@@ -2579,7 +2623,7 @@ const ClientDashboardContent = () => {
         toDisplayTitleCase(resolveProposalBusinessName(proposal)) ||
         resolveProposalTitle(proposal),
       tag: toDisplayTitleCase(resolveProposalServiceLabel(proposal)),
-      budget: formatBudget(proposal.budget),
+      budget: resolveProposalBudgetDisplay(proposal),
       onView: () => {
         setActiveProposalId(proposal.id);
         persistActiveProposalSelection(savedProposals, proposal.id, storageKeys);

@@ -707,10 +707,10 @@ export const ClientProposalDataProvider = ({ children }) => {
   );
 
   const updateProposalProjectReference = useCallback(
-    (proposal, projectId, projectStatus = "OPEN") => {
+    (proposal, projectId, projectStatus = "DRAFT") => {
       const now = new Date().toISOString();
       const normalizedProjectId = String(projectId || "").trim();
-      const normalizedProjectStatus = String(projectStatus || "OPEN").toUpperCase();
+      const normalizedProjectStatus = String(projectStatus || "DRAFT").toUpperCase();
 
       if (!proposal?.id || !normalizedProjectId) {
         return;
@@ -1803,7 +1803,7 @@ export const ClientProposalDataProvider = ({ children }) => {
           budget: normalizedBudget,
           timeline: proposal.timeline || "1 month",
           serviceKey: proposal.serviceKey || resolveProposalServiceLabel(proposal),
-          status: "OPEN",
+          status: proposal.projectStatus || "DRAFT",
           ...(projectProposalContext ? { proposalContext: projectProposalContext } : {}),
         });
 
@@ -1845,7 +1845,7 @@ export const ClientProposalDataProvider = ({ children }) => {
             publishPayload?.data?.project ||
             publishPayload?.data || {
               id: sourceProjectId,
-              status: "OPEN",
+              status: proposal.projectStatus || "DRAFT",
             };
         }
 
@@ -1865,7 +1865,7 @@ export const ClientProposalDataProvider = ({ children }) => {
             projectPayload?.data?.project ||
             projectPayload?.data || {
               id: null,
-              status: "OPEN",
+              status: proposal.projectStatus || "DRAFT",
             };
         }
 
@@ -1921,7 +1921,7 @@ export const ClientProposalDataProvider = ({ children }) => {
                 description: proposal.summary || proposal.content || "",
                 budget: normalizedBudget,
                 timeline: proposal.timeline || "1 month",
-                status: String(project.status || "OPEN").toUpperCase(),
+                status: String(project.status || "DRAFT").toUpperCase(),
                 serviceKey: proposal.serviceKey || resolveProposalServiceLabel(proposal),
                 serviceType:
                   proposal.serviceType ||
