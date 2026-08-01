@@ -16,7 +16,7 @@ const Client = () => {
         }}
       />
 
-      <div className="relative z-10 max-w-[90rem] mx-auto px-6 py-16">
+      <div className="relative z-10 max-w-[90rem] mx-auto px-6 py-10 sm:py-12">
         <ClientOnboading />
       </div>
     </main>

@@ -37,7 +37,7 @@ const HeroGreetingBlock = memo(function HeroGreetingBlock({
   return (
     <section
       className={cn(
-        "mt-14 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between",
+        "mt-6 flex flex-col gap-5 sm:mt-8 lg:flex-row lg:items-end lg:justify-between",
         className,
       )}
     >

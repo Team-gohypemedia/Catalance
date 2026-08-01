@@ -19,7 +19,7 @@ const ProjectProgressLoadingSkeleton = memo(function ProjectProgressLoadingSkele
   className = "",
 }) {
   return (
-    <section className={cn("mt-14 sm:mt-16", className)} aria-busy="true">
+    <section className={cn("mt-8 sm:mt-10", className)} aria-busy="true">
       <div className="mb-4 flex flex-col gap-4 sm:mb-5 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 space-y-3">
           <DashboardSkeletonBlock className="h-9 w-56 rounded-full sm:h-10 sm:w-72" />

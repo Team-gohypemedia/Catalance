@@ -512,7 +512,7 @@ export const ProjectProgressSection = ({
   });
 
   return (
-    <section className="mt-14 sm:mt-16">
+    <section className="mt-8 sm:mt-10">
       <div className="mb-4 flex flex-col gap-4 sm:mb-5 sm:gap-5 lg:flex-row lg:items-center lg:justify-between">
         <h2 className="min-w-0 text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
           Project Progress

@@ -288,7 +288,7 @@ const ActiveProjects = memo(function ActiveProjects({
   }
 
   return (
-    <section className={cn("mt-6 sm:mt-14", className)}>
+    <section className={cn("mt-4 sm:mt-8", className)}>
       <div className="mb-4 flex flex-col gap-3.5 sm:mb-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-center justify-between w-full sm:w-auto min-w-0">
           <div className="flex items-center gap-3">

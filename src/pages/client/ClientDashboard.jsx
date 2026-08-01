@@ -269,9 +269,9 @@ const ClientDashboardContent = () => {
             </section>
           )}
 
-          <section className={useEmptyWorkspaceLayout ? "mt-6 md:mt-10 lg:mt-14" : "mt-6 md:mt-10 lg:mt-14 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]"}>
+          <section className={useEmptyWorkspaceLayout ? "mt-4 md:mt-6 lg:mt-8" : "mt-4 md:mt-6 lg:mt-8 grid items-start gap-5 sm:gap-6 lg:grid-cols-[minmax(0,1fr)_340px] xl:gap-7 xl:grid-cols-[minmax(0,1fr)_420px]"}>
             <div className={useEmptyWorkspaceLayout ? "" : "min-w-0 flex flex-col gap-5 sm:gap-6 xl:gap-7"}>
-              <Proposals isWide={useEmptyWorkspaceLayout} />
+              <Proposals isWide={useEmptyWorkspaceLayout} showMarketplaceRedirect={useEmptyWorkspaceLayout} />
             </div>
 
             {!useEmptyWorkspaceLayout && (
@@ -282,7 +282,7 @@ const ClientDashboardContent = () => {
           </section>
 
           <ProjectProgress />
-          <RecentActivity className="mt-6 md:mt-10 lg:mt-14 sm:mt-16" />
+          <RecentActivity className="mt-4 sm:mt-10 md:mt-6 lg:mt-8" />
         </main>
 
         <ClientDashboardFooter variant="workspace" />
@@ -300,12 +300,3 @@ const ClientDashboard = () => (
 );
 
 export default ClientDashboard;
-
-
-
-
-
-
-
-
-

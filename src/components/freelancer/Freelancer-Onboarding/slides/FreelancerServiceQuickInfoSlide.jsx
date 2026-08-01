@@ -81,6 +81,16 @@ const MAX_IMAGES = 2;
 const MAX_VIDEOS = 1;
 const MAX_MEDIA_FILE_SIZE_BYTES = 4.5 * 1024 * 1024;
 
+const formatFileSize = (bytes) => {
+  const numericBytes = Number(bytes);
+  if (!Number.isFinite(numericBytes) || numericBytes <= 0) return "0 B";
+
+  const units = ["B", "KB", "MB", "GB"];
+  const exponent = Math.min(Math.floor(Math.log(numericBytes) / Math.log(1024)), units.length - 1);
+  const value = numericBytes / 1024 ** exponent;
+
+  return `${value.toFixed(value >= 10 || exponent === 0 ? 0 : 1)} ${units[exponent]}`;
+};
 const toPositiveInteger = (value) => {
   const parsed = Number(value);
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
@@ -261,6 +271,12 @@ const CompactMediaCard = ({ item, previewUrl, index, onRemove }) => (
         </div>
       </div>
     )}
+    <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-2 p-2">
+      <div className="min-w-0 rounded-lg bg-black/60 px-2 py-1 text-left backdrop-blur-sm">
+        <p className="truncate text-[10px] font-medium text-white">{item.name}</p>
+        <p className="text-[9px] text-white/75">{[item.isVideo ? "Video" : "Image", item.fileSize].filter(Boolean).join(" • ")}</p>
+      </div>
+    </div>
   </div>
 );
 
@@ -315,7 +331,14 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
         const localFile = getMediaFile(entry);
         const isVideo = isVideoMedia(entry);
         const remoteUrl = getMediaUrl(entry);
-        return { id: getMediaItemId(entry, index), name: String(entry?.name || localFile?.name || "Media").trim(), isVideo, localFile, remoteUrl };
+        return {
+          id: getMediaItemId(entry, index),
+          name: String(entry?.name || localFile?.name || "Media").trim(),
+          isVideo,
+          localFile,
+          remoteUrl,
+          fileSize: formatFileSize(localFile?.size ?? entry?.size ?? 0),
+        };
       }),
     [normalizedFiles],
   );
@@ -378,21 +401,51 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
     if (!incomingFiles.length) return;
     setUploadError("");
     const validFiles = [];
+    const rejectedFiles = [];
     let nextImageCount = imageCount;
     let nextVideoCount = videoCount;
-    let hadUnsupportedType = false;
-    let hadOversizedFile = false;
     for (const file of incomingFiles) {
       const fileType = String(file?.type || "").trim().toLowerCase();
-      if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) { hadUnsupportedType = true; continue; }
-      if (Number(file?.size || 0) > MAX_MEDIA_FILE_SIZE_BYTES) { hadOversizedFile = true; continue; }
-      if (fileType.startsWith("image/") && nextImageCount < MAX_IMAGES) { nextImageCount += 1; validFiles.push(file); continue; }
-      if (fileType.startsWith("video/") && nextVideoCount < MAX_VIDEOS) { nextVideoCount += 1; validFiles.push(file); }
+      if (!fileType.startsWith("image/") && !fileType.startsWith("video/")) {
+        rejectedFiles.push({ file, reason: "type" });
+        continue;
+      }
+      if (Number(file?.size || 0) > MAX_MEDIA_FILE_SIZE_BYTES) {
+        rejectedFiles.push({ file, reason: "size" });
+        continue;
+      }
+      if (fileType.startsWith("image/") && nextImageCount < MAX_IMAGES) {
+        nextImageCount += 1;
+        validFiles.push(file);
+        continue;
+      }
+      if (fileType.startsWith("video/") && nextVideoCount < MAX_VIDEOS) {
+        nextVideoCount += 1;
+        validFiles.push(file);
+        continue;
+      }
+      rejectedFiles.push({ file, reason: "limit" });
     }
-    if (hadUnsupportedType) { const msg = "Only image or video files are allowed."; setUploadError(msg); toast.error(msg); }
-    else if (hadOversizedFile) { const msg = "Each file must be 4.5MB or smaller."; setUploadError(msg); toast.error(msg); }
-    else if (!validFiles.length) { const msg = `Max ${MAX_IMAGES} images + ${MAX_VIDEOS} video.`; setUploadError(msg); toast.error(msg); }
-    if (!validFiles.length) return;
+    if (rejectedFiles.length > 0 && !validFiles.length) {
+      const firstRejected = rejectedFiles[0];
+      const rejectedName = String(firstRejected?.file?.name || "This file").trim();
+      const rejectedSize = formatFileSize(firstRejected?.file?.size || 0);
+      const msg =
+        firstRejected?.reason === "size"
+          ? `${rejectedName} is ${rejectedSize}. Maximum allowed size is ${formatFileSize(MAX_MEDIA_FILE_SIZE_BYTES)}.`
+          : firstRejected?.reason === "type"
+            ? `${rejectedName} is not an image or video file.`
+            : `Max ${MAX_IMAGES} images + ${MAX_VIDEOS} video. Remove one file and try again.`;
+      setUploadError(msg);
+      toast.error(msg);
+      return;
+    }
+    if (!validFiles.length) {
+      const msg = `Max ${MAX_IMAGES} images + ${MAX_VIDEOS} video.`;
+      setUploadError(msg);
+      toast.error(msg);
+      return;
+    }
     setIsUploading(true);
     try {
       let nextFiles = [...filesRef.current];
@@ -1546,4 +1599,3 @@ const FreelancerServiceQuickInfoSlide = ({
 };
 
 export default FreelancerServiceQuickInfoSlide;
-

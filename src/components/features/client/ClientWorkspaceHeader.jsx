@@ -328,13 +328,13 @@ const HeaderNavItem = ({ active, item, mobile, onSelect, variant = "marketing" }
       )
     : variant === "workspace"
       ? cn(
-          "rounded-full px-3 py-2 text-base lg:text-[17px] font-semibold transition-colors",
+          "rounded-full px-3 py-2 text-base lg:text-[17px] font-medium transition-colors",
           active
             ? "border border-border bg-background text-primary"
             : "text-muted-foreground hover:text-foreground",
         )
       : cn(
-          "text-base lg:text-[17px] font-semibold transition-colors",
+          "text-base lg:text-[17px] font-medium transition-colors",
           active ? "text-[var(--primary)]" : "text-muted-foreground hover:text-foreground",
         );
 

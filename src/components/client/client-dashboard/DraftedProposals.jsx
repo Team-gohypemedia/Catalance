@@ -20,6 +20,7 @@ import MoreVertical from "lucide-react/dist/esm/icons/more-vertical";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import Search from "lucide-react/dist/esm/icons/search";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 import {
@@ -551,6 +552,7 @@ const DraftProposalCard = memo(function DraftProposalCard({ item }) {
 const Proposals = memo(function Proposals({
   draftProposalRows,
   onOpenQuickProject,
+  showMarketplaceRedirect = false,
   className = "",
 }) {
   const isMobile = useIsMobile();
@@ -608,6 +610,10 @@ const Proposals = memo(function Proposals({
 
     navigate("/service");
   }, [navigate, onOpenQuickProject]);
+
+  const handleOpenMarketplace = useCallback(() => {
+    navigate("/marketplace");
+  }, [navigate]);
 
   const loadDrafts = useCallback(() => {
     if (isControlled) return;
@@ -918,26 +924,36 @@ const Proposals = memo(function Proposals({
   );
 
   const draftRedirectCards = useMemo(() => {
-    return [
+    const cards = [
       {
         id: "create-proposal-redirect",
         title: "Create New Proposal",
         onClick: handleOpenQuickProject,
       },
     ];
-  }, [handleOpenQuickProject]);
+
+    if (showMarketplaceRedirect) {
+      cards.push({
+        id: "browse-marketplace-redirect",
+        title: "Browse Marketplace",
+        onClick: handleOpenMarketplace,
+      });
+    }
+
+    return cards;
+  }, [handleOpenMarketplace, handleOpenQuickProject, showMarketplaceRedirect]);
 
   const totalVisibleDraftCards = items.length + draftRedirectCards.length;
   const shouldUseDraftProposalCarousel = isMobile
     ? totalVisibleDraftCards > 1
-    : totalVisibleDraftCards > 2;
+    : totalVisibleDraftCards > (showMarketplaceRedirect ? 3 : 2);
 
   const carouselItemClassName =
     "basis-full pl-[2px] pr-[2px] pt-1 md:basis-[calc((100%-1.25rem)/2)] lg:basis-[calc((100%-1.25rem)/2)] xl:basis-[calc((100%-1.25rem)/2)] 2xl:basis-[calc((100%-1.25rem)/2)]";
 
-  const gridClassName =
-    "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 lg:gap-6 xl:gap-7";
-
+  const gridClassName = showMarketplaceRedirect
+    ? "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3 lg:gap-6 xl:gap-7"
+    : "grid items-start gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-2 lg:gap-6 xl:gap-7";
   const measureDraftCardHeights = useCallback(() => {
     const heights = Object.values(draftCardRefs.current)
       .map((card) => card?.getBoundingClientRect().height || 0)
@@ -1386,7 +1402,7 @@ const Proposals = memo(function Proposals({
                       <ProjectRedirectCard
                         item={{
                           id: item.id,
-                          Icon: Plus,
+                          Icon: item.id === "browse-marketplace-redirect" ? Search : Plus,
                           title: item.title,
                           onClick: item.onClick,
                         }}
@@ -1431,7 +1447,7 @@ const Proposals = memo(function Proposals({
                 <ProjectRedirectCard
                   item={{
                     id: item.id,
-                    Icon: Plus,
+                    Icon: item.id === "browse-marketplace-redirect" ? Search : Plus,
                     title: item.title,
                     onClick: item.onClick,
                   }}
@@ -1515,5 +1531,7 @@ const Proposals = memo(function Proposals({
 });
 
 export default Proposals;
+
+
 
 
