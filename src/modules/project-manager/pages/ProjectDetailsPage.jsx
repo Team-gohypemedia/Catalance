@@ -6,8 +6,10 @@ import Settings from "lucide-react/dist/esm/icons/settings";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Download from "lucide-react/dist/esm/icons/download";
+import Upload from "lucide-react/dist/esm/icons/upload";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import MessageCircle from "lucide-react/dist/esm/icons/message-circle";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Users from "lucide-react/dist/esm/icons/users";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
@@ -834,13 +836,6 @@ const ProjectDetailsPage = () => {
       </div>
 
       <Tabs defaultValue="overview" className="w-full space-y-6">
-        <TabsList className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card p-1.5 shadow-xs overflow-x-auto max-w-full">
-          <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Overview</TabsTrigger>
-          <TabsTrigger value="messages" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Messages</TabsTrigger>
-          <TabsTrigger value="milestones" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Milestones</TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Notifications</TabsTrigger>
-        </TabsList>
-
         <TabsContent value="overview" className="mt-0 overflow-x-clip space-y-6">
           <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="space-y-6">
@@ -1461,119 +1456,137 @@ const ProjectDetailsPage = () => {
                   </CardContent>
                </Card>
 
-               <Card className="flex h-[clamp(540px,68vh,700px)] flex-col overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-xs">
-                  <div className="flex items-center justify-between border-b border-border/60 p-4">
-                     <div className="flex items-center gap-3">
-                        <div className="flex -space-x-2">
-                           <Avatar className="h-8 w-8 border-2 border-background">
-                              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${project.title}`} />
-                           </Avatar>
-                        </div>
-                        <div>
-                           <h4 className="text-sm font-semibold text-foreground">Assigned Workspace</h4>
-                           <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider">• Active Sync</p>
-                        </div>
-                     </div>
-                     <Settings className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
-                  </div>
-                  
-                  <div className="subtle-scrollbar flex-1 space-y-4 overflow-y-auto bg-muted/10 p-4">
-                     {messages.loading ? (
-                         <div className="flex h-full items-center justify-center text-xs font-semibold text-muted-foreground">Syncing messages...</div>
-                     ) : conversationRows.length > 0 ? (
-                         conversationRows.map((msg) => (
-                           <div key={msg.id} className={`flex flex-col ${msg.senderRole === 'PROJECT_MANAGER' ? 'items-end' : 'items-start'}`}>
-                              <p className="mb-1 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
-                                 {msg.senderLabel} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                              <div className={`max-w-[90%] rounded-2xl p-3.5 text-xs font-medium ${msg.senderRole === 'PROJECT_MANAGER' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted border border-border/50 text-foreground rounded-tl-none'}`}>
-                                 {(() => {
-                                   const raw = String(msg.content || "");
-                                   const scopeMatch = raw.match(/^\[SCOPE:(\w+)\]/i);
-                                   const scope = scopeMatch ? scopeMatch[1] : null;
-                                   const scopeBadge = scope === "CLIENT" ? "PM + Client" : scope === "FREELANCER" ? "PM + Freelancer" : scope === "BOTH" ? "All Participants" : null;
+                <Card className="flex h-[clamp(540px,68vh,700px)] flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white shadow-sm">
+                   {/* Header matching Image 2 */}
+                   <div className="flex items-center justify-between border-b border-slate-100 p-5 bg-white">
+                      <div>
+                         <h4 className="text-xs font-black uppercase tracking-widest text-slate-900">PROJECT CHAT</h4>
+                         <p className="text-xs font-medium text-slate-500 mt-0.5">Ask questions & share files</p>
+                      </div>
+                      
+                      <Button
+                         type="button"
+                         variant="outline"
+                         onClick={() => navigate(`/project-manager/messages?projectId=${projectId}`)}
+                         className="h-9 rounded-xl border-amber-200/80 bg-amber-50/60 text-[#D9692A] hover:bg-amber-100/80 font-bold text-xs px-4 transition-all shadow-2xs cursor-pointer"
+                      >
+                         Open Chat
+                      </Button>
+                   </div>
+                   
+                   {/* Chat Body */}
+                   <div className="subtle-scrollbar flex-1 space-y-4 overflow-y-auto bg-white p-5">
+                      {messages.loading ? (
+                          <div className="flex h-full flex-col items-center justify-center gap-2 text-xs font-bold text-slate-400">
+                             <Loader2 className="h-5 w-5 animate-spin text-[#D9692A]" />
+                             <span>Syncing project chat...</span>
+                          </div>
+                      ) : conversationRows.length > 0 ? (
+                          conversationRows.map((msg) => (
+                            <div key={msg.id} className={`flex flex-col ${msg.senderRole === 'PROJECT_MANAGER' ? 'items-end' : 'items-start'}`}>
+                               <p className="mb-1 text-[9px] font-semibold text-slate-400 uppercase tracking-wider">
+                                  {msg.senderLabel} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                               </p>
+                               <div className={`max-w-[90%] rounded-2xl p-3.5 text-xs font-medium shadow-2xs ${msg.senderRole === 'PROJECT_MANAGER' ? 'bg-[#D9692A] text-white rounded-tr-none' : 'bg-slate-100 border border-slate-200/60 text-slate-900 rounded-tl-none'}`}>
+                                  {(() => {
+                                    const raw = String(msg.content || "");
+                                    const scopeMatch = raw.match(/^\[SCOPE:(\w+)\]/i);
+                                    const scope = scopeMatch ? scopeMatch[1] : null;
+                                    const scopeBadge = scope === "CLIENT" ? "PM + Client" : scope === "FREELANCER" ? "PM + Freelancer" : scope === "BOTH" ? "All Participants" : null;
 
-                                   const text = raw.replace(/^\[SCOPE:\w+\]\s*/i, "").replace(/^\[System\]/i, "[Project Manager]").trim();
-                                   const isMeeting = /meeting/i.test(text) && (text.includes("scheduled") || text.includes("Invitation") || text.includes("Join"));
+                                    const text = raw.replace(/^\[SCOPE:\w+\]\s*/i, "").replace(/^\[System\]/i, "[Project Manager]").trim();
+                                    const isMeeting = /meeting/i.test(text) && (text.includes("scheduled") || text.includes("Invitation") || text.includes("Join"));
 
-                                   if (isMeeting) {
-                                     const titleMatch = text.match(/"([^"]+)"/);
-                                     const title = titleMatch ? titleMatch[1] : "Project Sync";
-                                     const linkMatch = text.match(/https?:\/\/[^\s]+/);
-                                     const link = linkMatch ? linkMatch[0].replace(/[.,;)]+$/, "") : "https://meet.google.com/new";
-                                     const timeMatch = text.match(/scheduled for ([^\n.]+)/i);
-                                     const timeStr = timeMatch ? timeMatch[1].replace(/\.?\s*Join Meeting.*$/i, "").trim() : "";
+                                    if (isMeeting) {
+                                      const titleMatch = text.match(/"([^"]+)"/);
+                                      const title = titleMatch ? titleMatch[1] : "Project Sync";
+                                      const linkMatch = text.match(/https?:\/\/[^\s]+/);
+                                      const link = linkMatch ? linkMatch[0].replace(/[.,;)]+$/, "") : "https://meet.google.com/new";
+                                      const timeMatch = text.match(/scheduled for ([^\n.]+)/i);
+                                      const timeStr = timeMatch ? timeMatch[1].replace(/\.?\s*Join Meeting.*$/i, "").trim() : "";
 
-                                     return (
-                                       <div className="space-y-2.5 min-w-[220px]">
-                                         <div className="flex items-center justify-between gap-2 border-b border-current/20 pb-2">
-                                           <div className="flex items-center gap-2 min-w-0">
-                                             <div className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                                               <CalendarIcon className="h-4 w-4" />
-                                             </div>
-                                             <div className="min-w-0">
-                                               <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Meeting Scheduled</p>
-                                               <p className="text-xs font-semibold truncate">{title}</p>
-                                             </div>
-                                           </div>
-                                           {scopeBadge && (
-                                             <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 shrink-0">
-                                               {scopeBadge}
-                                             </span>
-                                           )}
-                                         </div>
-                                         {timeStr && (
-                                           <p className="text-[11px] font-medium opacity-90">
-                                             📅 {timeStr}
-                                           </p>
-                                         )}
-                                         <div className="pt-1">
-                                           <a
-                                             href={link}
-                                             target="_blank"
-                                             rel="noopener noreferrer"
-                                             className="inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full bg-white text-primary text-xs font-bold shadow-xs hover:bg-white/90 transition-colors"
-                                           >
-                                             <span>Join Meeting</span>
-                                             <ExternalLink className="h-3.5 w-3.5" />
-                                           </a>
-                                         </div>
-                                       </div>
-                                     );
-                                   }
+                                      return (
+                                        <div className="space-y-2.5 min-w-[220px]">
+                                          <div className="flex items-center justify-between gap-2 border-b border-current/20 pb-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <div className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                                <CalendarIcon className="h-4 w-4" />
+                                              </div>
+                                              <div className="min-w-0">
+                                                <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Meeting Scheduled</p>
+                                                <p className="text-xs font-semibold truncate">{title}</p>
+                                              </div>
+                                            </div>
+                                            {scopeBadge && (
+                                              <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 shrink-0">
+                                                {scopeBadge}
+                                              </span>
+                                            )}
+                                          </div>
+                                          {timeStr && (
+                                            <p className="text-[11px] font-medium opacity-90">
+                                              📅 {timeStr}
+                                            </p>
+                                          )}
+                                          <div className="pt-1">
+                                            <a
+                                              href={link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full bg-white text-[#D9692A] text-xs font-bold shadow-xs hover:bg-amber-50 transition-colors"
+                                            >
+                                              <span>Join Meeting</span>
+                                              <ExternalLink className="h-3.5 w-3.5" />
+                                            </a>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
 
-                                   return text;
-                                 })()}
-                              </div>
-                           </div>
-                         ))
-                     ) : (
-                         <div className="flex h-full flex-col items-center justify-center text-center p-8 space-y-3">
-                             <MessageCircle className="h-10 w-10 text-muted-foreground/40" />
-                             <p className="text-xs font-medium text-muted-foreground">No messages yet. Start the conversation with the client and freelancer.</p>
-                         </div>
-                     )}
-                  </div>
-                  
-                  <div className="p-4 border-t border-border/60 bg-card">
-                     <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="relative">
-                        <Input 
-                           value={composer}
-                           onChange={(e) => setComposer(e.target.value)}
-                           className="h-11 w-full rounded-full border border-border bg-background px-4 pr-12 text-xs font-medium text-foreground placeholder:text-muted-foreground shadow-xs focus-visible:ring-1 focus-visible:ring-primary" 
-                           placeholder="Drop an update or ask a question..."
-                           disabled={sending}
-                        />
-                        <button 
-                            type="submit"
-                            disabled={sending || !composer.trim()}
-                            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50 transition-all"
-                        >
-                            {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                        </button>
-                     </form>
-                  </div>
-               </Card>
+                                    return text;
+                                  })()}
+                               </div>
+                            </div>
+                          ))
+                      ) : (
+                          <div className="flex h-full flex-col items-center justify-center p-4 my-auto">
+                             <div className="w-full rounded-3xl border border-dashed border-slate-200/90 bg-slate-50/50 p-10 text-center">
+                                <p className="text-sm font-semibold text-slate-700 max-w-xs mx-auto leading-relaxed">
+                                   No messages yet. Start the conversation with your client.
+                                </p>
+                             </div>
+                          </div>
+                      )}
+                   </div>
+                   
+                   {/* Footer Input Bar matching Image 2 */}
+                   <div className="p-4 border-t border-slate-100 bg-white">
+                      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-center gap-2">
+                         <Input 
+                            value={composer}
+                            onChange={(e) => setComposer(e.target.value)}
+                            className="h-12 flex-1 rounded-2xl border border-slate-200 bg-amber-50/20 px-4 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus-visible:ring-[#D9692A]" 
+                            placeholder="Type your message..."
+                            disabled={sending}
+                         />
+                         <button
+                            type="button"
+                            onClick={() => navigate(`/project-manager/messages?projectId=${projectId}`)}
+                            className="h-12 w-12 flex items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all shrink-0 cursor-pointer"
+                            title="Upload file in full chat"
+                         >
+                            <Upload className="h-4 w-4" />
+                         </button>
+                         <button 
+                             type="submit"
+                             disabled={sending || !composer.trim()}
+                             className="h-12 w-12 flex items-center justify-center rounded-2xl bg-[#D9692A] text-white shadow-xs hover:bg-[#B85A24] disabled:opacity-50 transition-all shrink-0 cursor-pointer"
+                         >
+                             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                         </button>
+                      </form>
+                   </div>
+                </Card>
             </div>
           </div>
         </TabsContent>

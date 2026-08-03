@@ -1297,6 +1297,43 @@ const FreelancerProfile = () => {
     const avatarFileToUpload = avatarFileOverride || selectedFile;
     const coverFileToUpload = coverFileOverride || selectedCoverFile;
 
+    const compressImage = (file, { maxWidth = 1920, maxHeight = 1920, quality = 0.8 } = {}) =>
+      new Promise((resolve) => {
+        // Skip non-image files or files already small enough (under 1MB)
+        if (!file.type.startsWith("image/") || file.size < 1024 * 1024) {
+          return resolve(file);
+        }
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+          URL.revokeObjectURL(url);
+          let { width, height } = img;
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width = Math.round(width * ratio);
+            height = Math.round(height * ratio);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (!blob || blob.size >= file.size) return resolve(file);
+              resolve(new File([blob], file.name, { type: "image/jpeg", lastModified: Date.now() }));
+            },
+            "image/jpeg",
+            quality,
+          );
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(url);
+          resolve(file);
+        };
+        img.src = url;
+      });
+
     const uploadToR2 = async (file, endpoint, fallbackMessage) => {
       const uploadData = new FormData();
       uploadData.append("file", file);
@@ -1327,18 +1364,14 @@ const FreelancerProfile = () => {
       try {
         const [nextAvatarUrl, nextCoverUrl] = await Promise.all([
           avatarFileToUpload
-            ? uploadToR2(
-              avatarFileToUpload,
-              "/upload",
-              "Failed to upload profile image"
-            )
+            ? compressImage(avatarFileToUpload, { maxWidth: 800, maxHeight: 800, quality: 0.85 }).then(
+                (compressed) => uploadToR2(compressed, "/upload", "Failed to upload profile image")
+              )
             : Promise.resolve(currentAvatarUrl),
           coverFileToUpload
-            ? uploadToR2(
-              coverFileToUpload,
-              "/upload/profile-cover",
-              "Failed to upload profile cover image"
-            )
+            ? compressImage(coverFileToUpload, { maxWidth: 2400, maxHeight: 1200, quality: 0.8 }).then(
+                (compressed) => uploadToR2(compressed, "/upload/profile-cover", "Failed to upload profile cover image")
+              )
             : Promise.resolve(currentCoverUrl),
         ]);
 

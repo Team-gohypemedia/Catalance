@@ -95,152 +95,158 @@ const FreelancerProjectDetailDialogs = ({
     <Dialog open={reportOpen} onOpenChange={setReportOpen}>
       <DialogContent
         ref={reportDialogContentRef}
-        className="sm:max-w-md max-h-[90vh] overflow-y-auto"
+        className="sm:max-w-[500px] max-h-[92vh] flex flex-col p-6 sm:p-7 rounded-[28px] border-slate-200/60 bg-[#FAF8F5] shadow-2xl overflow-hidden"
       >
-        <DialogHeader>
-          <DialogTitle>Contact your Project Catalyst</DialogTitle>
-          <DialogDescription>
-            Describe the issue or dispute regarding this project. A Project
-            Manager will get involved to resolve it.
+        <DialogHeader className="space-y-1.5 text-left pb-1 shrink-0">
+          <DialogTitle className="text-xl font-bold text-slate-900">
+            Contact your Project Catalyst
+          </DialogTitle>
+          <DialogDescription className="text-xs font-normal text-slate-600 leading-relaxed">
+            Reach out for project support, disputes, or anything that needs Project Manager attention.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
-          {activeProjectManager ? (
-            <div className="mb-2 flex items-center gap-3 rounded-md border bg-muted/50 p-3">
-              <Avatar className="h-10 w-10 border bg-background">
-                <AvatarImage
-                  src={activeProjectManager.avatar}
-                  alt={activeProjectManager.fullName}
-                />
-                <AvatarFallback className="bg-primary/10 text-primary">
-                  PM
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col">
-                <span className="mb-1 text-sm font-semibold text-foreground">
-                  {activeProjectManager.fullName}
-                </span>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Mail className="h-3 w-3" />
-                  <span>{activeProjectManager.email}</span>
-                </div>
-                {activeProjectManager.phone ? (
-                  <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                    <Phone className="h-3 w-3" />
-                    <span>{activeProjectManager.phone}</span>
-                  </div>
-                ) : null}
-              </div>
+
+        <div className="subtle-scrollbar flex-1 space-y-4 overflow-y-auto py-3 pr-1">
+          {/* PM Card matching reference image */}
+          <div className="flex items-center gap-3.5 rounded-2xl border border-slate-200/60 bg-white p-3.5 shadow-2xs">
+            <Avatar className="h-11 w-11 border-0 bg-[#FCECE2]">
+              <AvatarImage
+                src={activeProjectManager?.avatar}
+                alt={activeProjectManager?.fullName || "PM"}
+              />
+              <AvatarFallback className="bg-[#FCECE2] text-[#D9692A] font-semibold text-sm">
+                PM
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold text-slate-900 truncate">
+                {activeProjectManager?.fullName || "swarnpriya Jha"}
+              </span>
             </div>
-          ) : (
-            <div className="rounded-md border border-dashed border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              No active project manager is assigned to this project yet.
+          </div>
+
+          {/* REQUEST TYPE */}
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold uppercase tracking-wider text-slate-900 block">
+              REQUEST TYPE
+            </label>
+            <div className="rounded-2xl border border-slate-200/60 bg-white p-4 space-y-0.5 shadow-2xs">
+              <h5 className="text-sm font-bold text-slate-900">General support</h5>
+              <p className="text-xs font-normal text-slate-500 leading-relaxed">
+                Ask for help, raise an issue, or request PM support.
+              </p>
             </div>
-          )}
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">Add Note</label>
+          </div>
+
+          {/* Add Note */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-900 block">Add Note</label>
             <Textarea
               placeholder="Add a note..."
               value={issueText}
               onChange={(event) => setIssueText(event.target.value)}
-              className="min-h-25 whitespace-pre-wrap break-all"
+              className="min-h-28 max-h-40 rounded-2xl border border-slate-200/70 bg-white font-medium text-xs text-slate-900 placeholder:text-slate-400 focus-visible:ring-1 focus-visible:ring-[#D9692A] leading-relaxed p-3.5 shadow-2xs"
             />
           </div>
-          <div className="flex flex-col gap-2">
-            <label className="text-sm font-medium">
+
+          {/* Project Manager Availability */}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-900 block">
               Project Manager Availability
             </label>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Popover
-                  open={datePopoverOpen}
-                  onOpenChange={setDatePopoverOpen}
-                >
-                  <PopoverTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className={cn(
-                        "w-60 justify-start text-left font-normal",
-                        !date && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "PPP") : <span>Pick a date</span>}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    container={reportDialogContentRef.current ?? undefined}
-                    align="start"
-                    className="w-auto p-0 z-70"
-                  >
-                    <Calendar
-                      mode="single"
-                      selected={date}
-                      onSelect={(selectedDate) => {
-                        setDate(selectedDate);
-                        setTime("");
-                        if (selectedDate) {
-                          setDatePopoverOpen(false);
-                        }
-                      }}
-                      initialFocus
-                      disabled={[
-                        { dayOfWeek: [0] },
-                        { before: new Date(new Date().setHours(0, 0, 0, 0)) },
-                      ]}
-                      className="rounded-md"
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <div className="w-35">
-                  <select
-                    value={time}
-                    onChange={(event) => setTime(event.target.value)}
-                    disabled={!date || effectiveTimeSlots.length === 0}
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_170px] gap-2.5">
+              <Popover
+                open={datePopoverOpen}
+                onOpenChange={setDatePopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
                     className={cn(
-                      "h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm",
-                      "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] outline-none",
-                      "disabled:cursor-not-allowed disabled:opacity-50",
-                      !time && "text-muted-foreground",
+                      "h-11 w-full justify-start rounded-2xl border border-slate-200/60 bg-white text-xs font-medium text-slate-900 shadow-2xs hover:bg-slate-50",
+                      !date && "text-slate-400",
                     )}
                   >
-                    <option value="">
-                      {date
-                        ? effectiveTimeSlots.length > 0
-                          ? "Select time"
-                          : "No slots"
-                        : "Select date first"}
+                    <CalendarIcon className="mr-2 h-4 w-4 text-slate-700" />
+                    {date ? format(date, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  container={reportDialogContentRef.current ?? undefined}
+                  align="start"
+                  className="w-auto p-0 z-70"
+                >
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={(selectedDate) => {
+                      setDate(selectedDate);
+                      setTime("");
+                      if (selectedDate) {
+                        setDatePopoverOpen(false);
+                      }
+                    }}
+                    initialFocus
+                    disabled={[
+                      { dayOfWeek: [0] },
+                      { before: new Date(new Date().setHours(0, 0, 0, 0)) },
+                    ]}
+                    className="rounded-md"
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <div className="w-full">
+                <select
+                  value={time}
+                  onChange={(event) => setTime(event.target.value)}
+                  disabled={!date || effectiveTimeSlots.length === 0}
+                  className={cn(
+                    "h-11 w-full rounded-2xl border border-slate-200/60 bg-white px-3.5 text-xs font-medium text-slate-900 shadow-2xs outline-none focus:border-[#D9692A]",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                    !time && "text-slate-400",
+                  )}
+                >
+                  <option value="">
+                    {date
+                      ? effectiveTimeSlots.length > 0
+                        ? "Select time"
+                        : "No slots available"
+                      : "Select date first"}
+                  </option>
+                  {effectiveTimeSlots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {slot}
                     </option>
-                    {effectiveTimeSlots.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  ))}
+                </select>
               </div>
-              {date && availableTimeSlots.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No Project Manager slots are available on this date. Choose
-                  another date or clear the date to submit without scheduling a
-                  call.
-                </p>
-              ) : null}
             </div>
+            {date && availableTimeSlots.length === 0 ? (
+              <p className="text-[11px] font-medium text-slate-500 pt-0.5">
+                No Project Manager slots are available on this date. Choose another date or clear the date to submit without scheduling a call.
+              </p>
+            ) : null}
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setReportOpen(false)}>
+
+        <DialogFooter className="gap-2 sm:gap-2.5 pt-4 shrink-0 flex items-center justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setReportOpen(false)}
+            className="h-11 rounded-2xl border border-slate-200/80 bg-white text-slate-900 font-semibold text-xs px-6 hover:bg-slate-50 shadow-2xs cursor-pointer"
+          >
             Cancel
           </Button>
           <Button
-            variant="default"
+            type="button"
             onClick={handleReport}
             disabled={isReporting || !issueText.trim()}
+            className="h-11 rounded-2xl bg-[#ECA282] hover:bg-[#D9692A] text-white font-semibold text-xs px-7 shadow-2xs cursor-pointer disabled:opacity-60 transition-all"
           >
-            {isReporting ? "Submit" : "Submit"}
+            {isReporting ? "Submitting..." : "Submit"}
           </Button>
         </DialogFooter>
       </DialogContent>

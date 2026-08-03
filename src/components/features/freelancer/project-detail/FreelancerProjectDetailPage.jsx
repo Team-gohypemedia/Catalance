@@ -1860,6 +1860,7 @@ const FreelancerProjectDetailContent = () => {
             isFallback={isFallback}
             isAuditing={isAuditingHeader}
             onTriggerAudit={handleTriggerAuditHeader}
+            onOpenCatalystDialog={() => setReportOpen(true)}
           />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">

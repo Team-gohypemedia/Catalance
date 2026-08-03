@@ -19,18 +19,18 @@ const envUseRemoteApiInDev = String(import.meta.env.VITE_USE_REMOTE_API_IN_DEV |
   .trim()
   .toLowerCase();
 
-const isLocal5173 = safeWindow && safeWindow.location.origin === "http://localhost:5173";
-const isLocal5174 = safeWindow && safeWindow.location.origin === "http://localhost:5174";
+const isLocalDevOrigin =
+  safeWindow &&
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(safeWindow.location.origin);
 
 const sameOriginBaseUrl =
-  safeWindow && safeWindow.location.origin && !isLocal5173 && !isLocal5174
+  safeWindow && safeWindow.location.origin && !isLocalDevOrigin
     ? `${safeWindow.location.origin}/api`
     : null;
 
-const localDevBaseUrl =
-  safeWindow && (isLocal5173 || isLocal5174)
-    ? "http://localhost:5000/api"
-    : null;
+const localDevBaseUrl = isLocalDevOrigin
+  ? "http://localhost:5000/api"
+  : null;
 
 const shouldPreferLocalApiInDev =
   Boolean(localDevBaseUrl) &&
@@ -42,9 +42,24 @@ const effectiveEnvBaseUrl =
     ? null
     : envBaseUrl;
 
+// In production browsers, if the env base URL points to a different origin
+// (e.g. user is on catalance.in but env says www.catalance.in), prefer
+// same-origin /api to avoid CORS errors.
+const isCrossOriginEnv = (() => {
+  if (!safeWindow || !effectiveEnvBaseUrl || isLocalDevOrigin) return false;
+  try {
+    const envOrigin = new URL(effectiveEnvBaseUrl).origin;
+    return envOrigin !== safeWindow.location.origin;
+  } catch {
+    return false;
+  }
+})();
+
 export const API_BASE_URL =
   (shouldPreferLocalApiInDev ? localDevBaseUrl : null) ||
-  effectiveEnvBaseUrl ||
+  (isCrossOriginEnv && sameOriginBaseUrl
+    ? normalizeBaseUrl(sameOriginBaseUrl)
+    : effectiveEnvBaseUrl) ||
   normalizeBaseUrl(sameOriginBaseUrl) ||
   normalizeBaseUrl(localDevBaseUrl) ||
   "http://localhost:5000/api";
