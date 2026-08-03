@@ -289,13 +289,13 @@ export const getUsers = asyncHandler(async (req, res) => {
     // Special view for approvals page
     if (view === 'approvals') {
       where = {
-        role: { not: 'ADMIN' },
+        ...(role ? { role } : { role: { not: 'ADMIN' } }),
         OR: [
           { status: 'PENDING_APPROVAL' },
           {
             AND: [
               { role: 'FREELANCER' },
-              { isVerified: false } // Catch unverified freelancers
+              { isVerified: false }
             ]
           }
         ],

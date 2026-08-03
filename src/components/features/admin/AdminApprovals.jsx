@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,6 +15,20 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import { toast } from "sonner";
 import UserDetailsDialog from "./UserDetailsDialog";
 
+const PAGE_SIZE = 12;
+
+const buildApprovalsQuery = (params = {}) => {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+
+  return query.toString();
+};
+
 const AdminApprovals = () => {
   const { authFetch } = useAuth();
   const [users, setUsers] = useState([]);
@@ -22,12 +36,24 @@ const AdminApprovals = () => {
   const [actionLoading, setActionLoading] = useState(null);
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: PAGE_SIZE,
+    total: 0,
+    totalPages: 1,
+  });
+  const [metrics, setMetrics] = useState({
+    totalPending: 0,
+    kycPending: 0,
+    accountPending: 0,
+  });
 
   const fetchPendingUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ view: "approvals" });
-      const res = await authFetch(`/admin/users?${params}`);
+      const query = buildApprovalsQuery({ view: "approvals", page, limit: PAGE_SIZE });
+      const res = await authFetch(`/admin/users?${query}`);
       const data = await res.json();
 
       if (Array.isArray(data?.data?.users)) {
@@ -35,25 +61,75 @@ const AdminApprovals = () => {
       } else {
         setUsers([]);
       }
+
+      const nextPagination = data?.data?.pagination ?? {
+        page,
+        limit: PAGE_SIZE,
+        total: 0,
+        totalPages: 1,
+      };
+
+      if (nextPagination.totalPages > 0 && page > nextPagination.totalPages) {
+        setPage(nextPagination.totalPages);
+        return;
+      }
+
+      setPagination({
+        page: nextPagination.page || page,
+        limit: nextPagination.limit || PAGE_SIZE,
+        total: nextPagination.total || 0,
+        totalPages: Math.max(nextPagination.totalPages || 1, 1),
+      });
     } catch (error) {
       console.error("Failed to fetch pending users:", error);
+      setUsers([]);
+      setPagination({
+        page: 1,
+        limit: PAGE_SIZE,
+        total: 0,
+        totalPages: 1,
+      });
       toast.error("Failed to load approvals list");
     } finally {
       setLoading(false);
     }
-  }, [authFetch]);
+  }, [authFetch, page]);
 
   useEffect(() => {
     fetchPendingUsers();
   }, [fetchPendingUsers]);
 
-  const metrics = useMemo(() => {
-    const totalPending = users.length;
-    const kycPending = users.filter((u) => u.role === "FREELANCER" && !u.isVerified).length;
-    const accountPending = users.filter((u) => u.status === "PENDING_APPROVAL").length;
+  const fetchMetrics = useCallback(async () => {
+    try {
+      const [totalRes, kycRes, accountRes] = await Promise.all([
+        authFetch(`/admin/users?${buildApprovalsQuery({ view: "approvals", page: 1, limit: 1 })}`),
+        authFetch(`/admin/users?${buildApprovalsQuery({ role: "FREELANCER", isVerified: false, page: 1, limit: 1 })}`),
+        authFetch(`/admin/users?${buildApprovalsQuery({ status: "PENDING_APPROVAL", page: 1, limit: 1 })}`),
+      ]);
+      const [totalData, kycData, accountData] = await Promise.all([
+        totalRes.json().catch(() => null),
+        kycRes.json().catch(() => null),
+        accountRes.json().catch(() => null),
+      ]);
 
-    return { totalPending, kycPending, accountPending };
-  }, [users]);
+      setMetrics({
+        totalPending: Number(totalData?.data?.pagination?.total || 0),
+        kycPending: Number(kycData?.data?.pagination?.total || 0),
+        accountPending: Number(accountData?.data?.pagination?.total || 0),
+      });
+    } catch (error) {
+      console.error("Failed to fetch approval metrics:", error);
+      setMetrics({
+        totalPending: 0,
+        kycPending: 0,
+        accountPending: 0,
+      });
+    }
+  }, [authFetch]);
+
+  useEffect(() => {
+    void fetchMetrics();
+  }, [fetchMetrics]);
 
   const handleApprove = async (userId) => {
     setActionLoading(userId);
@@ -70,7 +146,7 @@ const AdminApprovals = () => {
       }
 
       toast.success("User approved");
-      await fetchPendingUsers();
+      await refreshApprovals();
     } catch (error) {
       console.error("Failed to approve:", error);
       toast.error("Failed to approve user");
@@ -94,7 +170,7 @@ const AdminApprovals = () => {
       }
 
       toast.success("User suspended");
-      await fetchPendingUsers();
+      await refreshApprovals();
     } catch (error) {
       console.error("Failed to reject:", error);
       toast.error("Failed to reject user");
@@ -118,7 +194,7 @@ const AdminApprovals = () => {
       }
 
       toast.success(isVerified ? "KYC approved" : "KYC rejected");
-      await fetchPendingUsers();
+      await refreshApprovals();
     } catch (error) {
       console.error("Failed to update KYC:", error);
       toast.error("Failed to update KYC status");
@@ -143,6 +219,13 @@ const AdminApprovals = () => {
 
     return <Badge className="bg-primary/10 text-primary border-0">Pending Review</Badge>;
   };
+
+  const refreshApprovals = useCallback(async () => {
+    await Promise.all([fetchPendingUsers(), fetchMetrics()]);
+  }, [fetchMetrics, fetchPendingUsers]);
+
+  const pageStart = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1;
+  const pageEnd = Math.min(pagination.page * pagination.limit, pagination.total);
 
   return (
     <>
@@ -312,6 +395,37 @@ const AdminApprovals = () => {
                   )}
                 </TableBody>
               </Table>
+            </div>
+            <div className="flex flex-col gap-3 rounded-lg border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted-foreground">
+                Showing {pageStart}-{pageEnd} of {pagination.total} pending approvals.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 1 || loading}
+                  onClick={() => setPage((currentPage) => Math.max(currentPage - 1, 1))}
+                >
+                  Previous
+                </Button>
+                <span className="min-w-24 text-center text-sm text-muted-foreground">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page >= pagination.totalPages || loading}
+                  onClick={() =>
+                    setPage((currentPage) => Math.min(currentPage + 1, pagination.totalPages))
+                  }
+                >
+                  Next
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => void refreshApprovals()}>
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
         </div>

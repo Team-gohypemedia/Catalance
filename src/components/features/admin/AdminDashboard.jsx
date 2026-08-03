@@ -69,6 +69,21 @@ const toMonthKey = (value) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
+const buildAdminUsersQuery = (params = {}) => {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      query.set(key, String(value));
+    }
+  });
+
+  return query.toString();
+};
+
+const extractUsers = (payload) =>
+  Array.isArray(payload?.data?.users) ? payload.data.users : [];
+
 const AdminDashboard = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
@@ -92,19 +107,21 @@ const AdminDashboard = () => {
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, disputesRes, freelancersRes, clientsRes, projectsRes, contactInquiriesRes] = await Promise.all([
+      const [statsRes, disputesRes, activeFreelancersRes, pendingFreelancersRes, activeClientsRes, projectsRes, contactInquiriesRes] = await Promise.all([
         authFetch("/admin/stats"),
         authFetch("/disputes"),
-        authFetch("/admin/users?role=FREELANCER"),
-        authFetch("/admin/users?role=CLIENT"),
+        authFetch(`/admin/users?${buildAdminUsersQuery({ role: "FREELANCER", status: "ACTIVE", limit: 4 })}`),
+        authFetch(`/admin/users?${buildAdminUsersQuery({ role: "FREELANCER", status: "PENDING_APPROVAL", limit: 6 })}`),
+        authFetch(`/admin/users?${buildAdminUsersQuery({ role: "CLIENT", status: "ACTIVE", limit: 4 })}`),
         authFetch("/admin/projects"),
         authFetch("/admin/contact-inquiries?limit=6"),
       ]);
 
       const statsData = await statsRes.json().catch(() => null);
       const disputesData = await disputesRes.json().catch(() => null);
-      const freelancersData = await freelancersRes.json().catch(() => null);
-      const clientsData = await clientsRes.json().catch(() => null);
+      const activeFreelancersData = await activeFreelancersRes.json().catch(() => null);
+      const pendingFreelancersData = await pendingFreelancersRes.json().catch(() => null);
+      const activeClientsData = await activeClientsRes.json().catch(() => null);
       const projectsData = await projectsRes.json().catch(() => null);
       const contactInquiriesData = await contactInquiriesRes.json().catch(() => null);
 
@@ -122,17 +139,9 @@ const AdminDashboard = () => {
         setAllProjects(projectsData.data.projects);
       }
 
-      if (Array.isArray(freelancersData?.data?.users)) {
-        const activeFreelancers = freelancersData.data.users.filter((u) => u.status === "ACTIVE");
-        const pending = freelancersData.data.users.filter((u) => u.status === "PENDING_APPROVAL");
-        setRecentFreelancers(activeFreelancers.slice(0, 4));
-        setPendingFreelancers(pending);
-      }
-
-      if (Array.isArray(clientsData?.data?.users)) {
-        const activeClients = clientsData.data.users.filter((u) => u.status === "ACTIVE");
-        setRecentClients(activeClients.slice(0, 4));
-      }
+      setRecentFreelancers(extractUsers(activeFreelancersData));
+      setPendingFreelancers(extractUsers(pendingFreelancersData));
+      setRecentClients(extractUsers(activeClientsData));
 
       if (Array.isArray(contactInquiriesData?.data?.inquiries)) {
         setRecentContactInquiries(contactInquiriesData.data.inquiries);
@@ -162,8 +171,8 @@ const AdminDashboard = () => {
         return;
       }
 
-      setPendingFreelancers((prev) => prev.filter((u) => u.id !== userId));
       toast.success("Freelancer approved");
+      await fetchDashboardData();
     } catch (error) {
       console.error("Failed to approve user:", error);
       toast.error("Failed to approve user");
