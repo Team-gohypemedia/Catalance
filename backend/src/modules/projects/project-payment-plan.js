@@ -263,6 +263,65 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
   };
 };
 
+export const hasProjectChatUnlocked = (
+  project = {},
+  options = {},
+) => {
+  const { acceptedProposal = null } = options || {};
+  const normalizedStatus = String(project?.status || "").trim().toUpperCase();
+
+  if (
+    normalizedStatus === "COMPLETED" ||
+    normalizedStatus === "IN_PROGRESS" ||
+    normalizedStatus === "PAUSED"
+  ) {
+    return true;
+  }
+
+  if (normalizeProjectAmount(project?.spent || 0) > 0) {
+    return true;
+  }
+
+  const projectWithAcceptedProposal =
+    acceptedProposal && !Array.isArray(project?.proposals)
+      ? {
+          ...project,
+          proposals: [acceptedProposal],
+        }
+      : project;
+
+  const paymentPlan = resolveProjectPaymentPlan(projectWithAcceptedProposal);
+
+  if (!paymentPlan) {
+    return false;
+  }
+
+  const installments = Array.isArray(paymentPlan.installments)
+    ? paymentPlan.installments
+    : [];
+  const firstInstallment = installments[0] || null;
+  const nextDueInstallment = paymentPlan.nextDueInstallment || null;
+  const hasPaidInstallment = installments.some(
+    (installment) => installment?.isPaid,
+  );
+  const hasFirstPhaseMovedForward = Number(nextDueInstallment?.sequence) > 1;
+  const kickoffPaymentStillDue =
+    Number(nextDueInstallment?.sequence) === 1 ||
+    normalizedStatus === "AWAITING_PAYMENT" ||
+    normalizedStatus === "PENDING_PAYMENT";
+
+  if (kickoffPaymentStillDue) {
+    return false;
+  }
+
+  return (
+    paymentPlan.isFullyPaid ||
+    Boolean(firstInstallment?.isPaid) ||
+    hasPaidInstallment ||
+    hasFirstPhaseMovedForward
+  );
+};
+
 export const attachProjectPaymentPlan = (project) => ({
   ...project,
   paymentPlan: resolveProjectPaymentPlan(project),

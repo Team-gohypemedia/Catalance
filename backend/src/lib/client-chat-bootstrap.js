@@ -1,4 +1,7 @@
-import { resolveProjectPaymentPlan } from "../modules/projects/project-payment-plan.js";
+import {
+  hasProjectChatUnlocked,
+  resolveProjectPaymentPlan,
+} from "../modules/projects/project-payment-plan.js";
 import {
   CHAT_SERVICE_LABEL,
   buildProjectChatServiceKey,
@@ -58,6 +61,40 @@ const getConversationPreview = (item = {}) => {
   return "Open the conversation to continue the project discussion.";
 };
 
+const CHAT_BOOTSTRAP_LOG_PREFIX = "[ClientChatBootstrap]";
+
+const formatBootstrapLogContext = (context = {}) =>
+  Object.fromEntries(
+    Object.entries(context).filter(([, value]) => value !== undefined),
+  );
+
+const logClientChatBootstrap = (message, context = {}) => {
+  console.log(
+    `${CHAT_BOOTSTRAP_LOG_PREFIX} ${message}`,
+    formatBootstrapLogContext(context),
+  );
+};
+
+const summarizePaymentPlan = (paymentPlan = null) => {
+  if (!paymentPlan) {
+    return null;
+  }
+
+  const installments = Array.isArray(paymentPlan.installments)
+    ? paymentPlan.installments
+    : [];
+
+  return {
+    isFullyPaid: Boolean(paymentPlan.isFullyPaid),
+    nextDueSequence: Number(paymentPlan.nextDueInstallment?.sequence || 0) || 0,
+    paidInstallmentCount: installments.filter(
+      (installment) => installment?.isPaid,
+    ).length,
+    totalInstallmentCount: installments.length,
+    firstInstallmentPaid: Boolean(installments[0]?.isPaid),
+  };
+};
+
 const hasHistory = (conversation = null) =>
   Boolean(
     conversation?.lastMessage ||
@@ -85,12 +122,6 @@ const selectPreferredConversation = (current, candidate) => {
 };
 
 export const hasUnlockedProjectChatRecord = (project = {}, proposal = null) => {
-  const normalizedStatus = normalizeText(project?.status).toUpperCase();
-
-  if (normalizedStatus === "COMPLETED") {
-    return true;
-  }
-
   const acceptedProposal = proposal
     ? {
         id: proposal.id,
@@ -100,44 +131,7 @@ export const hasUnlockedProjectChatRecord = (project = {}, proposal = null) => {
       }
     : null;
 
-  const paymentPlan = resolveProjectPaymentPlan({
-    ...project,
-    proposals: acceptedProposal ? [acceptedProposal] : [],
-  });
-
-  if (!paymentPlan) {
-    return false;
-  }
-
-  const installments = Array.isArray(paymentPlan.installments)
-    ? paymentPlan.installments
-    : [];
-  const firstInstallment = installments[0] || null;
-  const nextDueInstallment = paymentPlan.nextDueInstallment || null;
-  const hasPaidInstallment = installments.some(
-    (installment) => installment?.isPaid,
-  );
-  const firstInstallmentPaid = Boolean(firstInstallment?.isPaid);
-  const hasFirstPhaseMovedForward = Number(nextDueInstallment?.sequence) > 1;
-  const kickoffPaymentStillDue =
-    Number(nextDueInstallment?.sequence) === 1 ||
-    normalizedStatus === "AWAITING_PAYMENT" ||
-    normalizedStatus === "PENDING_PAYMENT";
-
-  if (kickoffPaymentStillDue) {
-    return false;
-  }
-
-  if (
-    paymentPlan.isFullyPaid ||
-    firstInstallmentPaid ||
-    hasPaidInstallment ||
-    hasFirstPhaseMovedForward
-  ) {
-    return true;
-  }
-
-  return false;
+  return hasProjectChatUnlocked(project, { acceptedProposal });
 };
 
 const buildConversationMetaByService = (conversations = []) => {
@@ -168,28 +162,68 @@ export const buildClientChatBootstrapFromData = ({
   const seenServiceKeys = new Set();
   const rows = [];
   let hasLockedAcceptedProjects = false;
+  const stats = {
+    totalProposals: proposals.length,
+    included: 0,
+    skippedMissingIdentifiers: 0,
+    skippedSelfProposal: 0,
+    skippedDuplicateServiceKey: 0,
+    skippedLockedChat: 0,
+    skippedCompletedWithoutHistory: 0,
+  };
+
+  logClientChatBootstrap("Building bootstrap rows", {
+    currentUserId,
+    proposals: proposals.length,
+    conversations: conversations.length,
+    conversationServices: conversations.map((conversation) => conversation?.service),
+  });
 
   for (const proposal of proposals) {
     const project = proposal?.project;
     const projectId = normalizeText(project?.id);
     const ownerId = normalizeText(project?.ownerId);
     const freelancerId = normalizeText(proposal?.freelancerId);
-
-    if (!projectId || !ownerId || !freelancerId) {
-      continue;
-    }
-
-    if (normalizeComparableText(freelancerId) === normalizeComparableText(currentUserId)) {
-      continue;
-    }
-
+    const proposalId = normalizeText(proposal?.id);
+    const projectStatus = normalizeText(project?.status).toUpperCase();
     const serviceKey = buildProjectChatServiceKey({
       projectId,
       ownerId,
       freelancerId,
     });
+    const baseContext = {
+      proposalId,
+      projectId,
+      ownerId,
+      freelancerId,
+      currentUserId,
+      projectStatus,
+      serviceKey,
+    };
+
+    if (!projectId || !ownerId || !freelancerId) {
+      stats.skippedMissingIdentifiers += 1;
+      logClientChatBootstrap("Skipping proposal: missing identifiers", {
+        ...baseContext,
+        hasProjectId: Boolean(projectId),
+        hasOwnerId: Boolean(ownerId),
+        hasFreelancerId: Boolean(freelancerId),
+      });
+      continue;
+    }
+
+    if (normalizeComparableText(freelancerId) === normalizeComparableText(currentUserId)) {
+      stats.skippedSelfProposal += 1;
+      logClientChatBootstrap("Skipping proposal: freelancer matches current user", baseContext);
+      continue;
+    }
 
     if (!serviceKey || seenServiceKeys.has(serviceKey)) {
+      stats.skippedDuplicateServiceKey += 1;
+      logClientChatBootstrap("Skipping proposal: duplicate or empty service key", {
+        ...baseContext,
+        alreadySeen: seenServiceKeys.has(serviceKey),
+      });
       continue;
     }
 
@@ -197,14 +231,37 @@ export const buildClientChatBootstrapFromData = ({
 
     const chatUnlocked = hasUnlockedProjectChatRecord(project, proposal);
     if (!chatUnlocked) {
+      const paymentPlan = resolveProjectPaymentPlan({
+        ...project,
+        proposals: [
+          {
+            id: proposal.id,
+            amount: proposal.amount,
+            status: "ACCEPTED",
+            freelancerId: proposal.freelancerId,
+          },
+        ],
+      });
+
+      stats.skippedLockedChat += 1;
       hasLockedAcceptedProjects = true;
+      logClientChatBootstrap("Skipping proposal: chat locked", {
+        ...baseContext,
+        paymentPlan: summarizePaymentPlan(paymentPlan),
+      });
       continue;
     }
 
     const conversationMeta = conversationMetaByService.get(serviceKey) || null;
-    const projectStatus = normalizeText(project?.status).toUpperCase();
 
     if (projectStatus === "COMPLETED" && !hasHistory(conversationMeta)) {
+      stats.skippedCompletedWithoutHistory += 1;
+      logClientChatBootstrap("Skipping completed project: no chat history", {
+        ...baseContext,
+        conversationId: conversationMeta?.id || null,
+        messageCount: Number(conversationMeta?.messageCount || 0),
+        hasLastMessage: Boolean(conversationMeta?.lastMessage),
+      });
       continue;
     }
 
@@ -254,9 +311,27 @@ export const buildClientChatBootstrapFromData = ({
       }),
       chatUnlocked: true,
     });
+
+    stats.included += 1;
+    logClientChatBootstrap("Included project chat", {
+      ...baseContext,
+      conversationId: conversationMeta?.id || null,
+      messageCount: Number(conversationMeta?.messageCount || 0),
+      hasLastMessage: Boolean(conversationMeta?.lastMessage),
+      projectTitle,
+      businessName,
+    });
   }
 
   rows.sort((left, right) => right.lastActivity - left.lastActivity);
+
+  logClientChatBootstrap("Bootstrap build complete", {
+    currentUserId,
+    ...stats,
+    hasLockedAcceptedProjects,
+    finalConversationCount: rows.length,
+    finalServiceKeys: rows.map((row) => row.serviceKey),
+  });
 
   return {
     conversations: rows,
@@ -294,11 +369,13 @@ export const getClientChatBootstrapData = async (userId) => {
           title: true,
           status: true,
           spent: true,
+          proposalJson: true,
           clientName: true,
           businessName: true,
           serviceType: true,
           serviceKey: true,
           budget: true,
+          budgetSummary: true,
           verifiedTasks: true,
           paymentPlanVersion: true,
           updatedAt: true,
@@ -307,6 +384,13 @@ export const getClientChatBootstrapData = async (userId) => {
     },
     orderBy: { createdAt: "desc" },
     take: 200,
+  });
+
+  logClientChatBootstrap("Accepted proposals fetched", {
+    userId,
+    proposalCount: proposals.length,
+    proposalIds: proposals.map((proposal) => proposal.id),
+    projectIds: proposals.map((proposal) => proposal?.project?.id || null),
   });
 
   const serviceKeys = Array.from(
@@ -322,6 +406,12 @@ export const getClientChatBootstrapData = async (userId) => {
         .filter(Boolean),
     ),
   );
+
+  logClientChatBootstrap("Derived service keys from accepted proposals", {
+    userId,
+    serviceKeyCount: serviceKeys.length,
+    serviceKeys,
+  });
 
   const conversations = serviceKeys.length
     ? await prisma.chatConversation.findMany({
@@ -350,6 +440,13 @@ export const getClientChatBootstrapData = async (userId) => {
       })
     : [];
 
+  logClientChatBootstrap("Conversation metadata fetched", {
+    userId,
+    conversationCount: conversations.length,
+    conversationIds: conversations.map((conversation) => conversation.id),
+    conversationServices: conversations.map((conversation) => conversation.service),
+  });
+
   const normalizedConversations = conversations.map((conversation) => ({
     ...conversation,
     lastMessage: conversation.messages?.[0]
@@ -357,6 +454,17 @@ export const getClientChatBootstrapData = async (userId) => {
       : null,
     messageCount: Number(conversation._count?.messages || 0),
   }));
+
+  logClientChatBootstrap("Normalized conversation metadata ready", {
+    userId,
+    conversations: normalizedConversations.map((conversation) => ({
+      id: conversation.id,
+      service: conversation.service,
+      messageCount: conversation.messageCount,
+      lastMessageCreatedAt: conversation.lastMessage?.createdAt || null,
+      updatedAt: conversation.updatedAt,
+    })),
+  });
 
   return buildClientChatBootstrapFromData({
     currentUserId: userId,

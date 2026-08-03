@@ -1,9 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  appendMarketplaceConversationMessage,
-  getMarketplaceConversationMessages,
-  MARKETPLACE_CHAT_UPDATED_EVENT,
-} from "@/shared/lib/marketplace-chat-requests";
 import { migrateChatConversationStorageKey } from "@/shared/lib/storage-keys";
 import { apiClient } from "@/shared/lib/api-client";
 import useChatSocket from "./useChatSocket";
@@ -542,14 +537,11 @@ const useConversationSession = ({
           includeHistory: false,
         });
 
-        const lastCreatedAt =
-          messageCacheRef.current.get(conversationKey)?.lastCreatedAt || null;
-
         await fetchConversationMessages({
           conversation: activeConversation,
           conversationId: resolvedConversationId,
-          after: lastCreatedAt,
-          preserveExisting: Boolean(lastCreatedAt),
+          after: null,
+          preserveExisting: false,
         });
       } catch (error) {
         if (controller.signal.aborted) {

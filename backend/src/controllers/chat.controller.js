@@ -50,7 +50,26 @@ export const getClientChatBootstrap = asyncHandler(async (req, res) => {
     throw new AppError("Authentication required", 401);
   }
 
+  console.log("[ChatController] GET /chat/client-bootstrap", {
+    userId,
+  });
+
   const data = await getClientChatBootstrapData(userId);
+
+  console.log("[ChatController] GET /chat/client-bootstrap success", {
+    userId,
+    conversationCount: Array.isArray(data?.conversations)
+      ? data.conversations.length
+      : 0,
+    hasLockedAcceptedProjects: Boolean(data?.hasLockedAcceptedProjects),
+    conversationProjectIds: Array.isArray(data?.conversations)
+      ? data.conversations.map((conversation) => conversation?.projectId || null)
+      : [],
+    conversationServiceKeys: Array.isArray(data?.conversations)
+      ? data.conversations.map((conversation) => conversation?.serviceKey || null)
+      : [],
+  });
+
   res.json({ data });
 });
 

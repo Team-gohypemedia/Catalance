@@ -1,5 +1,6 @@
 import { AppError } from "../utils/app-error.js";
 import { prisma } from "./prisma.js";
+import { hasProjectChatUnlocked } from "../modules/projects/project-payment-plan.js";
 
 export const CHAT_SERVICE_LABEL = "Project Chat";
 
@@ -51,13 +52,20 @@ export const ensureProjectChatAccess = async ({
     where: { id: projectId },
     select: {
       id: true,
+      title: true,
       ownerId: true,
       managerId: true,
       status: true,
       spent: true,
+      budget: true,
+      budgetSummary: true,
+      proposalJson: true,
+      paymentPlanVersion: true,
+      verifiedTasks: true,
+      customSop: true,
       proposals: {
         where: { status: "ACCEPTED" },
-        select: { freelancerId: true },
+        select: { freelancerId: true, amount: true, status: true, id: true },
         orderBy: { createdAt: "desc" },
         take: 1,
       },
@@ -80,12 +88,12 @@ export const ensureProjectChatAccess = async ({
   }
 
   const normalizedStatus = String(project.status || "").toUpperCase();
-  const isPaymentPending =
-    normalizedStatus === "AWAITING_PAYMENT" ||
-    normalizedStatus === "PENDING_PAYMENT" ||
-    Number(project.spent || 0) <= 0;
+  const acceptedProposal = project.proposals?.[0] || null;
+  const isChatUnlocked = hasProjectChatUnlocked(project, {
+    acceptedProposal,
+  });
 
-  if (isPaymentPending && normalizedStatus !== "COMPLETED") {
+  if (!isChatUnlocked && normalizedStatus !== "COMPLETED") {
     throw errorFactory(
       "Chat will start after the initial 20% payment is completed.",
       403,

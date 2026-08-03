@@ -52,6 +52,25 @@ test("hasUnlockedProjectChatRecord unlocks once kickoff payment is covered", () 
   assert.equal(unlocked, true);
 });
 
+test("hasUnlockedProjectChatRecord keeps started projects visible even when legacy payment data is incomplete", () => {
+  const unlocked = hasUnlockedProjectChatRecord(
+    {
+      ...baseProposal.project,
+      status: "IN_PROGRESS",
+      spent: 0,
+      budget: null,
+      budgetSummary: null,
+      proposalJson: null,
+    },
+    {
+      ...baseProposal,
+      amount: 0,
+    },
+  );
+
+  assert.equal(unlocked, true);
+});
+
 test("buildClientChatBootstrapFromData prefers the conversation that has message history", () => {
   const result = buildClientChatBootstrapFromData({
     currentUserId: "client_1",

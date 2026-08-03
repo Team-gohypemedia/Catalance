@@ -30,10 +30,10 @@ export const filterAssistantMessages = (list = []) =>
   list.filter((message) => message?.role !== "assistant");
 
 export const getConversationKey = (conversation) =>
-  conversation?.id ||
   conversation?.serviceKey ||
-  conversation?.requestId ||
   conversation?.conversationId ||
+  conversation?.requestId ||
+  conversation?.id ||
   null;
 
 export const getTimestampValue = (value) => {
