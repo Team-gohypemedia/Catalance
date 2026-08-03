@@ -1684,7 +1684,9 @@ export const createPmMeeting = asyncHandler(async (req, res) => {
       });
     }
 
-    const messageContent = `[System] A new meeting "${title}" has been scheduled for ${startsAt.toLocaleString()}.`;
+    const scopeTag = `[SCOPE:${participantScope || "BOTH"}]`;
+    const link = meetingLink || "https://meet.google.com/new";
+    const messageContent = `${scopeTag} [Project Manager] A new meeting "${title}" has been scheduled for ${startsAt.toLocaleString()}. Join Meeting: ${link}`;
     await prisma.chatMessage.create({
       data: {
         conversationId: conversation.id,

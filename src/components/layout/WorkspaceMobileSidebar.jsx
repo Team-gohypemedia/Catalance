@@ -271,7 +271,7 @@ const MobileProfileSwitchCard = ({
 };
 
 MobileProfileSwitchCard.propTypes = {
-  currentDashboard: PropTypes.oneOf(["client", "freelancer"]).isRequired,
+  currentDashboard: PropTypes.oneOf(["client", "freelancer", "project-manager", "admin"]).isRequired,
   displayName: PropTypes.string.isRequired,
   profile: PropTypes.shape({
     avatar: PropTypes.string,
@@ -453,7 +453,7 @@ const WorkspaceMobileSidebar = ({
 };
 
 WorkspaceMobileSidebar.propTypes = {
-  currentDashboard: PropTypes.oneOf(["client", "freelancer"]).isRequired,
+  currentDashboard: PropTypes.oneOf(["client", "freelancer", "project-manager", "admin"]).isRequired,
   displayName: PropTypes.string.isRequired,
   profile: PropTypes.shape({
     avatar: PropTypes.string,

@@ -23,6 +23,8 @@ import { FreelancerTopBar } from "@/components/features/freelancer/FreelancerTop
 import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import Paperclip from "lucide-react/dist/esm/icons/paperclip";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import Clock4 from "lucide-react/dist/esm/icons/clock-4";
 import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
@@ -650,10 +652,13 @@ const ChatArea = ({
 
 
   const visibleMessages = useMemo(() => {
+    const scopeAllowed = messages.filter(
+      (m) => !String(m?.content || "").includes("[SCOPE:CLIENT]")
+    );
     const query = deferredMessageSearch.trim().toLowerCase();
     const filteredMessages = !query
-      ? messages
-      : messages.filter((message) => {
+      ? scopeAllowed
+      : scopeAllowed.filter((message) => {
           const haystack = [
             message?.content,
             message?.attachment?.name,
@@ -1162,7 +1167,51 @@ const ChatArea = ({
                                       wordBreak: "break-word",
                                     }}
                                   >
-                                    {message.content}
+                                    {(() => {
+                                      const text = String(message.content || "").replace(/^\[SCOPE:\w+\]\s*/i, "").replace(/^\[System\]/i, "[Project Manager]").trim();
+                                      const isMeeting = /meeting/i.test(text) && (text.includes("scheduled") || text.includes("Invitation") || text.includes("Join"));
+
+                                      if (isMeeting) {
+                                        const titleMatch = text.match(/"([^"]+)"/);
+                                        const title = titleMatch ? titleMatch[1] : "Project Sync";
+                                        const linkMatch = text.match(/https?:\/\/[^\s]+/);
+                                        const link = linkMatch ? linkMatch[0].replace(/[.,;)]+$/, "") : "https://meet.google.com/new";
+                                        const timeMatch = text.match(/scheduled for ([^\n.]+)/i);
+                                        const timeStr = timeMatch ? timeMatch[1].replace(/\.?\s*Join Meeting.*$/i, "").trim() : "";
+
+                                        return (
+                                          <div className="space-y-2.5 min-w-[220px]">
+                                            <div className="flex items-center gap-2 border-b border-current/20 pb-2">
+                                              <div className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                                <CalendarIcon className="h-4 w-4" />
+                                              </div>
+                                              <div className="min-w-0">
+                                                <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Meeting Scheduled</p>
+                                                <p className="text-xs font-semibold truncate">{title}</p>
+                                              </div>
+                                            </div>
+                                            {timeStr && (
+                                              <p className="text-[11px] font-medium opacity-90">
+                                                📅 {timeStr}
+                                              </p>
+                                            )}
+                                            <div className="pt-1">
+                                              <a
+                                                href={link}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full bg-white text-primary text-xs font-bold shadow-xs hover:bg-white/90 transition-colors"
+                                              >
+                                                <span>Join Meeting</span>
+                                                <ExternalLink className="h-3.5 w-3.5" />
+                                              </a>
+                                            </div>
+                                          </div>
+                                        );
+                                      }
+
+                                      return text;
+                                    })()}
                                   </p>
                                 ) : null}
 
@@ -1188,7 +1237,51 @@ const ChatArea = ({
                                     wordBreak: "break-word",
                                   }}
                                 >
-                                  {message.content}
+                                  {(() => {
+                                    const text = String(message.content || "").replace(/^\[System\]/i, "[Project Manager]").trim();
+                                    const isMeeting = /meeting/i.test(text) && (text.includes("scheduled") || text.includes("Invitation") || text.includes("Join"));
+
+                                    if (isMeeting) {
+                                      const titleMatch = text.match(/"([^"]+)"/);
+                                      const title = titleMatch ? titleMatch[1] : "Project Sync";
+                                      const linkMatch = text.match(/https?:\/\/[^\s]+/);
+                                      const link = linkMatch ? linkMatch[0] : "https://meet.google.com/cat-sync";
+                                      const timeMatch = text.match(/scheduled for ([^\n.]+)/i);
+                                      const timeStr = timeMatch ? timeMatch[1].replace(/\.?\s*Join Meeting.*$/i, "").trim() : "";
+
+                                      return (
+                                        <div className="space-y-2.5 min-w-[220px]">
+                                          <div className="flex items-center gap-2 border-b border-current/20 pb-2">
+                                            <div className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                              <CalendarIcon className="h-4 w-4" />
+                                            </div>
+                                            <div className="min-w-0">
+                                              <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Meeting Scheduled</p>
+                                              <p className="text-xs font-semibold truncate">{title}</p>
+                                            </div>
+                                          </div>
+                                          {timeStr && (
+                                            <p className="text-[11px] font-medium opacity-90">
+                                              📅 {timeStr}
+                                            </p>
+                                          )}
+                                          <div className="pt-1">
+                                            <a
+                                              href={link}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full bg-white text-primary text-xs font-bold shadow-xs hover:bg-white/90 transition-colors"
+                                            >
+                                              <span>Join Meeting</span>
+                                              <ExternalLink className="h-3.5 w-3.5" />
+                                            </a>
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    return text;
+                                  })()}
                                 </p>
                                 <div className="shrink-0 self-end">
                                   {renderMessageStatus(message, ownMessage, "inline")}

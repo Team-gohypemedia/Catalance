@@ -27,67 +27,69 @@ export const MeetingCard = ({
 
   return (
     <Card
-      className={`relative w-full min-w-0 overflow-hidden rounded-[40px] border-2 transition-all duration-700 ${
-        interactive ? "cursor-pointer hover:-translate-y-1 hover:shadow-2xl focus-within:-translate-y-1 focus-within:shadow-2xl" : ""
-      } ${highlight ? "border-[#D9692A] bg-[#D9692A] text-white shadow-xl shadow-orange-500/20" : "border-slate-50 bg-white"}`}
+      className={`relative w-full min-w-0 overflow-hidden rounded-3xl border transition-all duration-300 ${
+        interactive ? "cursor-pointer hover:-translate-y-1 hover:shadow-md focus-within:-translate-y-1 focus-within:shadow-md" : ""
+      } ${
+        highlight
+          ? "border-primary/30 bg-primary/10 text-foreground shadow-sm dark:bg-primary/15"
+          : "border-border/60 bg-card text-card-foreground shadow-xs"
+      }`}
     >
-      {highlight && (
-         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-            <Clock className="h-40 w-40 text-white/20 rotate-12" />
-         </div>
-      )}
-      <CardContent className="p-0 relative z-10">
+      <CardContent className="p-5 sm:p-6 relative z-10">
         <button
           type="button"
-          className="block w-full appearance-none border-0 bg-transparent p-10 text-left"
+          className="block w-full appearance-none border-0 bg-transparent p-0 text-left outline-none"
           onClick={onOpen}
           disabled={!interactive}
           aria-label={interactive ? `Open ${project} project details` : undefined}
         >
-        <div className="mb-8 flex items-center justify-between">
-          <div className={`flex h-14 w-14 items-center justify-center rounded-[20px] shadow-lg ${highlight ? "bg-white/20 text-white shadow-white/20" : "bg-orange-50 text-[#D9692A]"}`}>
-            <Icon className="h-7 w-7" />
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
+              highlight ? "bg-primary text-primary-foreground shadow-sm" : "bg-primary/10 text-primary"
+            }`}>
+              <Icon className="h-5.5 w-5.5" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide ${
+                highlight
+                  ? "bg-primary/20 text-primary"
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                {status}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col items-end">
-             <span className={`text-[9px] font-black uppercase tracking-[0.3em] mb-1 ${highlight ? "text-white/70" : "text-slate-400"}`}>
-               {status}
-             </span>
-             <div className={`h-1.5 w-8 rounded-full overflow-hidden ${highlight ? 'bg-white/20' : 'bg-[#D9692A]/20'}`}>
-                <div className={`h-full animate-pulse ${highlight ? 'bg-white w-full' : 'bg-[#D9692A] w-1/2'}`} />
-             </div>
+          
+          <div className="mb-5">
+            <h4 className="text-lg sm:text-xl font-semibold leading-snug text-foreground mb-1 line-clamp-1">{title}</h4>
+            <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <span className="inline-block size-1.5 rounded-full bg-primary" />
+              {project}
+            </p>
           </div>
-        </div>
-        
-        <div className="mb-10">
-          <h4 className={`text-2xl font-black leading-tight mb-2 ${highlight ? "text-white" : "text-slate-900"}`}>{title}</h4>
-          <div className="flex items-center gap-2">
-             <div className={`h-2 w-2 rounded-full ${highlight ? 'bg-white' : 'bg-[#D9692A]'}`} />
-             <p className={`text-[10px] font-black uppercase tracking-widest ${highlight ? "text-white/70" : "text-slate-500"}`}>{project}</p>
+          
+          <div className="flex items-center justify-between pt-4 border-t border-border/50 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Participants</span>
+              <div className="flex -space-x-2 overflow-hidden">
+                {participants.slice(0, 3).map((p, i) => (
+                  <Avatar key={i} className="h-7 w-7 border-2 border-background ring-1 ring-border">
+                    <AvatarImage src={p.avatar} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold uppercase">{p.initials}</AvatarFallback>
+                  </Avatar>
+                ))}
+                {participants.length > 3 && (
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-muted-foreground text-[10px] font-bold">
+                    +{participants.length - 3}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col items-end shrink-0 rounded-2xl bg-muted/50 px-3.5 py-1.5">
+              <span className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">Time</span>
+              <span className="text-sm font-semibold text-foreground">{time}</span>
+            </div>
           </div>
-        </div>
-        
-        <div className={`flex items-center justify-between pt-8 border-t border-dashed ${highlight ? 'border-white/10' : 'border-slate-100'}`}>
-          <div className="flex flex-col gap-3">
-             <span className={`text-[9px] font-black uppercase tracking-widest ${highlight ? "text-slate-500" : "text-slate-400"}`}>Participants</span>
-             <div className="flex -space-x-3">
-               {participants.map((p, i) => (
-                 <Avatar key={i} className={`h-10 w-10 border-4 shadow-xl ${highlight ? 'border-[#D9692A]' : 'border-white'}`}>
-                   <AvatarImage src={p.avatar} />
-                   <AvatarFallback className={`${highlight ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-400'} text-[10px] font-bold uppercase`}>{p.initials}</AvatarFallback>
-                 </Avatar>
-               ))}
-               {participants.length > 2 && (
-                 <div className={`flex h-10 w-10 items-center justify-center rounded-full border-4 shadow-xl ${highlight ? 'border-[#D9692A] bg-white/20 text-white' : 'border-white bg-slate-100 text-slate-400'} text-[10px] font-black`}>
-                   +{participants.length - 2}
-                 </div>
-               )}
-             </div>
-          </div>
-          <div className={`flex flex-col items-end gap-2 px-6 py-3 rounded-[24px] shadow-inner ${highlight ? 'bg-white/5 text-white ring-1 ring-white/10' : 'bg-slate-50 text-slate-900'}`}>
-             <span className={`text-[9px] font-black uppercase tracking-widest ${highlight ? 'text-white/70' : 'text-slate-400'}`}>START TIME</span>
-             <span className="text-xl font-black italic">{time}</span>
-          </div>
-        </div>
         </button>
       </CardContent>
     </Card>

@@ -19,10 +19,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 const STAT_COLOR_CLASS = {
-  blue: { bg: "bg-[#f8fafc]", text: "text-[#D9692A]" },
-  rose: { bg: "bg-rose-50", text: "text-rose-600" },
-  indigo: { bg: "bg-orange-50", text: "text-[#D9692A]" },
-  amber: { bg: "bg-amber-50", text: "text-amber-600" },
+  blue: { bg: "bg-primary/10", text: "text-primary" },
+  rose: { bg: "bg-destructive/10", text: "text-destructive" },
+  indigo: { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400" },
+  amber: { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400" },
 };
 
 const DashboardPage = () => {
@@ -88,13 +88,13 @@ const DashboardPage = () => {
   return (
     <PmShell
       title="Management Hub"
-      subtitle={`Overseeing ${loading ? "..." : stats.activeProjects} operational units across the platform infrastructure.`}
-
+      subtitle={`Overseeing ${loading ? "..." : stats.activeProjects} active operational units across platform infrastructure.`}
     >
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 sm:gap-5">
         {loading ? (
           [1, 2, 3, 4].map(i => (
-            <div key={i} className="h-40 rounded-[7px] bg-slate-50 animate-pulse border border-slate-100" />
+            <div key={i} className="h-36 rounded-3xl bg-muted/50 animate-pulse border border-border/40" />
           ))
         ) : (
          statCards.map((stat) => (
@@ -102,19 +102,21 @@ const DashboardPage = () => {
              key={stat.label}
              type="button"
              onClick={() => navigate(stat.href)}
-             className="w-full text-left"
+             className="w-full text-left outline-none group"
              aria-label={`Open ${stat.label}`}
            >
-             <Card className="rounded-[7px] border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300 group overflow-hidden bg-white hover:-translate-y-0.5">
-              <CardContent className="p-8">
-                 <div className={`mb-6 flex h-12 w-12 items-center justify-center rounded-[7px] transition-transform group-hover:scale-110 ${STAT_COLOR_CLASS[stat.color]?.bg || "bg-slate-50"}`}>
-                    <stat.icon className={`h-6 w-6 ${STAT_COLOR_CLASS[stat.color]?.text || "text-slate-600"}`} />
+             <Card className="rounded-3xl border-border/60 bg-card text-card-foreground shadow-xs transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-md overflow-hidden">
+              <CardContent className="p-6">
+                 <div className="flex items-center justify-between mb-4">
+                   <div className={`flex h-11 w-11 items-center justify-center rounded-2xl transition-transform group-hover:scale-105 ${STAT_COLOR_CLASS[stat.color]?.bg || "bg-muted"}`}>
+                      <stat.icon className={`h-5.5 w-5.5 ${STAT_COLOR_CLASS[stat.color]?.text || "text-foreground"}`} />
+                   </div>
+                   <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2.5 py-0.5 rounded-full">
+                     {stat.sub}
+                   </span>
                  </div>
-                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                 <div className="flex items-end justify-between">
-                    <h3 className="text-3xl font-black text-slate-900">{stat.value}</h3>
-                    <p className="text-[10px] font-bold text-slate-400 italic mb-1">{stat.sub}</p>
-                 </div>
+                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{stat.label}</p>
+                 <h3 className="text-3xl font-bold tracking-tight text-foreground">{stat.value}</h3>
               </CardContent>
              </Card>
            </button>
@@ -122,20 +124,22 @@ const DashboardPage = () => {
         )}
       </div>
 
-      <section className="mb-12">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 sm:gap-0">
-           <div className="flex items-center gap-4">
-              <div className="h-10 w-10 shrink-0 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
-                <CalendarIcon className="h-5 w-5" />
-             </div>
-              <div className="min-w-0">
-                 <h2 className="text-xl font-black text-slate-900 leading-tight truncate">Meeting Pipeline</h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate">Vetting & Sync Schedules</p>
-              </div>
+      {/* Meeting Pipeline Section */}
+      <section className="space-y-5 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+           <div className="flex items-center gap-3">
+              <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+                Meeting Pipeline
+              </h2>
+              <span className="relative inline-flex size-[15px] shrink-0 items-center justify-center">
+                <span className="absolute inset-0 rounded-full bg-emerald-500/10" />
+                <span className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping" />
+                <span className="relative block size-[6px] rounded-full bg-emerald-500" />
+              </span>
            </div>
            <Button 
-            variant="link" 
-            className="text-[10px] self-start sm:self-auto font-black text-[#D9692A] uppercase tracking-widest p-0 h-auto hover:text-[#B85A24] transition-colors flex items-center gap-2 group shrink-0" 
+            variant="ghost" 
+            className="text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/5 p-0 h-auto self-start sm:self-auto flex items-center gap-1.5 group shrink-0" 
             onClick={() => navigate("/project-manager/appointments?time=UPCOMING")}
           >
             Expanded View
@@ -145,10 +149,10 @@ const DashboardPage = () => {
         
         {loading ? (
            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {[1,2,3].map(i => <div key={i} className="h-48 rounded-[7px] bg-slate-50 animate-pulse border-2 border-dashed border-slate-100" />)}
+              {[1, 2, 3].map(i => <div key={i} className="h-44 rounded-3xl bg-muted/50 animate-pulse border border-border/40" />)}
            </div>
         ) : meetings.length > 0 ? (
-           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
              {meetings.map((meeting) => (
                <MeetingCard 
                  key={meeting.id} 
@@ -162,50 +166,50 @@ const DashboardPage = () => {
              ))}
            </div>
         ) : (
-           <div className="flex flex-col items-center justify-center py-12 rounded-[7px] border-2 border-dashed border-slate-100 bg-white shadow-inner text-center space-y-4">
-              <div className="h-16 w-16 bg-slate-50 rounded-full flex items-center justify-center">
-                 <CheckCircle2 className="h-8 w-8 text-slate-200" />
+           <div className="flex flex-col items-center justify-center py-12 rounded-3xl border border-border/60 bg-card p-8 text-center space-y-3">
+              <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
+                 <CheckCircle2 className="h-6 w-6" />
               </div>
-              <p className="text-sm font-bold text-slate-400 italic">No operational briefings scheduled for the next 24 hours.</p>
+              <p className="text-sm font-medium text-muted-foreground">No operational briefings scheduled for the next 24 hours.</p>
            </div>
         )}
       </section>
 
-      <section className="space-y-6">
+      {/* Assigned Projects Section */}
+      <section className="space-y-5 pt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-0">
-           <div className="flex items-center gap-4">
-              <div className="h-10 w-10 shrink-0 rounded-[7px] bg-[#D9692A] text-white flex items-center justify-center">
-                 <LayoutGrid className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                 <h2 className="text-xl font-black text-slate-900 leading-tight truncate">Elite Portfolios</h2>
-                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate">High-Security Operational Workspaces</p>
-              </div>
+           <div className="flex items-center gap-3">
+              <h2 className="text-[22px] sm:text-[1.75rem] font-semibold tracking-[-0.02em] text-foreground">
+                Assigned Projects
+              </h2>
+              <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary/10 px-2 text-[11px] font-bold text-primary">
+                {projects.length}
+              </span>
            </div>
-           <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto">
-             <div className="flex items-center gap-2 bg-slate-100/50 p-1 rounded-[7px] border border-slate-100">
-             <Button
-               variant="ghost"
-               size="icon"
-               aria-pressed={portfolioView === "grid"}
-               className={`h-10 w-10 rounded-xl transition-all ${portfolioView === "grid" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-               onClick={() => setPortfolioView("grid")}
-             >
-               <LayoutGrid className="h-5 w-5" />
-             </Button>
-             <Button
-               variant="ghost"
-               size="icon"
-               aria-pressed={portfolioView === "list"}
-               className={`h-10 w-10 rounded-xl transition-all ${portfolioView === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
-               onClick={() => setPortfolioView("list")}
-             >
-               <List className="h-5 w-5" />
-             </Button>
+           <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+             <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-full border border-border/60">
+               <Button
+                 variant="ghost"
+                 size="icon"
+                 aria-pressed={portfolioView === "grid"}
+                 className={`h-8 w-8 rounded-full transition-all ${portfolioView === "grid" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
+                 onClick={() => setPortfolioView("grid")}
+               >
+                 <LayoutGrid className="h-4 w-4" />
+               </Button>
+               <Button
+                 variant="ghost"
+                 size="icon"
+                 aria-pressed={portfolioView === "list"}
+                 className={`h-8 w-8 rounded-full transition-all ${portfolioView === "list" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"}`}
+                 onClick={() => setPortfolioView("list")}
+               >
+                 <List className="h-4 w-4" />
+               </Button>
              </div>
              <Button
-               variant="link"
-               className="h-auto p-0 text-[10px] font-black text-[#D9692A] uppercase tracking-widest hover:text-[#B85A24] transition-colors shrink-0"
+               variant="ghost"
+               className="h-auto p-0 text-xs font-semibold text-primary hover:bg-transparent hover:underline shrink-0"
                onClick={() => navigate("/project-manager/projects")}
              >
                Full List
@@ -215,11 +219,11 @@ const DashboardPage = () => {
 
         {loading ? (
           <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2, 3, 4].map(i => <div key={i} className="aspect-video rounded-[7px] bg-slate-100 animate-pulse" />)}
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-40 rounded-3xl bg-muted/50 animate-pulse border border-border/40" />)}
           </div>
         ) : projects.length > 0 ? (
           portfolioView === "grid" ? (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="grid gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
                 <ProjectPremiumCard
                   key={project.id}
@@ -229,33 +233,27 @@ const DashboardPage = () => {
               ))}
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="overflow-hidden rounded-3xl border border-border/60 bg-card shadow-xs divide-y divide-border/60">
               {projects.map((project) => (
                 <button
                   key={project.id}
                   type="button"
                   onClick={() => navigate(`/project-manager/projects/${project.id}`)}
-                  className="flex w-full flex-col sm:flex-row items-start sm:items-center justify-between border-b border-slate-100 px-5 py-4 text-left last:border-b-0 hover:bg-slate-50 gap-3 sm:gap-0"
+                  className="flex w-full flex-col sm:flex-row items-start sm:items-center justify-between px-5 py-4 text-left hover:bg-muted/40 gap-3 sm:gap-0 transition-colors"
                 >
                   <div className="min-w-0 w-full sm:w-auto">
-                    <p className="text-sm font-black text-slate-900 truncate">{project.projectName}</p>
-                    <p className="text-[11px] font-medium text-slate-500 truncate">
-                      {project.clientName} | {project.assignedFreelancer}
+                    <p className="text-sm font-semibold text-foreground truncate">{project.projectName}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      Client: {project.clientName} | Freelancer: {project.assignedFreelancer}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <Badge
-                      className={`text-[9px] font-black uppercase ${
-                        project.statusColor === "red"
-                          ? "bg-rose-600 text-white"
-                          : project.statusColor === "green"
-                            ? "bg-emerald-600 text-white"
-                            : "bg-[#D9692A] text-white"
-                      }`}
+                      className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-primary/10 text-primary border-primary/20"
                     >
                       {project.status}
                     </Badge>
-                    <span className="text-[10px] font-bold text-slate-400">
+                    <span className="text-xs text-muted-foreground font-medium">
                       Unread: {project.unreadMessages || 0}
                     </span>
                   </div>
@@ -264,15 +262,18 @@ const DashboardPage = () => {
             </div>
           )
         ) : (
-          <div className="flex flex-col items-center justify-center py-12 text-center space-y-6 rounded-[7px] bg-white border-2 border-dashed border-slate-100 shadow-inner">
-            <div className="h-20 w-20 rounded-full bg-orange-50 text-[#D9692A] flex items-center justify-center animate-bounce">
-              <Plus className="h-10 w-10" />
+          <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 rounded-3xl bg-card border border-border/60 shadow-xs px-6">
+            <div className="h-14 w-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+              <Plus className="h-7 w-7" />
             </div>
-            <div className="space-y-3">
-              <h3 className="text-xl font-black text-[#0f172a]">Zero Active Deployments</h3>
-              <p className="text-sm font-medium text-[#64748b] max-w-sm mx-auto leading-relaxed">Initiate your first secure project workspace to begin orchestrating high-level digital talent.</p>
+            <div className="space-y-1 max-w-sm">
+              <h3 className="text-lg font-semibold text-foreground">Zero Active Deployments</h3>
+              <p className="text-sm text-muted-foreground">Initiate your first secure project workspace to begin orchestrating digital talent.</p>
             </div>
-            <Button className="h-12 rounded-[7px] bg-[#D9692A] px-8 text-[10px] font-black tracking-widest uppercase text-white shadow-xl shadow-orange-600/20 hover:bg-[#B85A24] hover:scale-[1.03] transition-all" onClick={() => navigate("/project-manager/create-project")}>
+            <Button 
+              className="h-10 rounded-full bg-primary px-6 text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors" 
+              onClick={() => navigate("/project-manager/create-project")}
+            >
                Spawn Operation
             </Button>
           </div>

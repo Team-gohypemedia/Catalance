@@ -1,16 +1,29 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import Plus from "lucide-react/dist/esm/icons/plus";
-import Funnel from "lucide-react/dist/esm/icons/funnel";
+import Filter from "lucide-react/dist/esm/icons/filter";
 import Search from "lucide-react/dist/esm/icons/search";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import Check from "lucide-react/dist/esm/icons/check";
+import X from "lucide-react/dist/esm/icons/x";
+import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
+import List from "lucide-react/dist/esm/icons/list";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+
 import { useAuth } from "@/shared/context/AuthContext";
 import { PmShell } from "@/modules/project-manager/components/PmShell";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
 import { useAsyncResource } from "@/modules/project-manager/hooks/use-async-resource";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { StatusBadge } from "@/modules/project-manager/components/StatusBadge";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/shared/lib/utils";
 
 const toTaskKeySet = (value) => {
   if (Array.isArray(value)) {
@@ -112,7 +125,7 @@ const mapProjectRow = (project) => {
   return {
     id: project.id,
     title: project.title,
-    clientName: project?.owner?.fullName || "Unknown",
+    clientName: project?.owner?.fullName || "Unknown Client",
     freelancerName: freelancer?.fullName || "Unassigned",
     status: deriveProjectStatus(project),
     budget: Number(project?.budget || 0),
@@ -120,14 +133,260 @@ const mapProjectRow = (project) => {
   };
 };
 
+const getInitials = (value = "") => {
+  const parts = String(value)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+};
+
+const statusFilterLabels = {
+  ALL: "All Status",
+  Started: "Started",
+  "In Progress": "In Progress",
+  Completed: "Completed",
+  "Issue Raised": "Issue Raised",
+  Proposal: "Proposal",
+};
+
+const assignmentFilterLabels = {
+  ALL: "All Assignment",
+  ASSIGNED: "Assigned Freelancer",
+  UNASSIGNED: "Unassigned Freelancer",
+};
+
+const syncFilterLabels = {
+  ALL: "Any Sync Date",
+  LAST_7_DAYS: "Synced in 7 days",
+  LAST_30_DAYS: "Synced in 30 days",
+};
+
+const ProjectCardGridItem = ({ row, onOpen }) => {
+  const isLive = row.status === "In Progress" || row.status === "Started";
+  const isIssue = row.status === "Issue Raised";
+  const isCompleted = row.status === "Completed";
+
+  const statusToneClass = isCompleted
+    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : isIssue
+    ? "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    : isLive
+    ? "border-primary/25 bg-primary/10 text-primary"
+    : "border-border bg-muted text-muted-foreground";
+
+  return (
+    <article className="group flex w-full flex-col justify-between rounded-[28px] border border-border bg-card p-5 sm:p-6 transition-all duration-200 hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg">
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+            Workspace
+          </span>
+          <span
+            className={cn(
+              "inline-flex h-6.5 items-center gap-1.5 shrink-0 rounded-full border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+              statusToneClass
+            )}
+          >
+            {isLive && <span className="size-1.5 shrink-0 rounded-full bg-primary animate-pulse" />}
+            {isIssue && <span className="size-1.5 shrink-0 rounded-full bg-rose-500 animate-pulse" />}
+            {row.status}
+          </span>
+        </div>
+
+        <h3
+          className="mt-3 text-lg font-semibold tracking-[-0.03em] text-foreground truncate group-hover:text-primary transition-colors"
+          title={row.title}
+        >
+          {row.title}
+        </h3>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Avatar className="size-7.5 shrink-0 border border-border">
+              <AvatarFallback className="bg-primary/10 text-primary text-[9px] font-bold">
+                {getInitials(row.clientName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/80 leading-none">
+                Client
+              </span>
+              <p className="text-xs font-semibold text-foreground truncate leading-tight mt-0.5" title={row.clientName}>
+                {row.clientName}
+              </p>
+            </div>
+          </div>
+
+          <div className="h-6 w-px bg-border/60 shrink-0" />
+
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Avatar className="size-7.5 shrink-0 border border-border">
+              <AvatarFallback className="bg-muted text-muted-foreground text-[9px] font-bold">
+                {getInitials(row.freelancerName)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <span className="block text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground/80 leading-none">
+                Freelancer
+              </span>
+              <p className="text-xs font-semibold text-foreground truncate leading-tight mt-0.5" title={row.freelancerName}>
+                {row.freelancerName}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 border-t border-border/60" />
+
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+              Budget
+            </p>
+            <p className="mt-1 text-sm font-semibold text-foreground truncate">
+              INR {row.budget.toLocaleString("en-IN")}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+            <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+              Last Sync
+            </p>
+            <p className="mt-1 text-xs font-medium text-foreground truncate">
+              {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "Pending"}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onOpen(row.id)}
+        className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-xs sm:text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs cursor-pointer"
+      >
+        <span>Open Project</span>
+        <ArrowRight className="size-4" />
+      </button>
+    </article>
+  );
+};
+
+const ProjectCardListItem = ({ row, onOpen }) => {
+  const isLive = row.status === "In Progress" || row.status === "Started";
+  const isIssue = row.status === "Issue Raised";
+  const isCompleted = row.status === "Completed";
+
+  const statusToneClass = isCompleted
+    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+    : isIssue
+    ? "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+    : isLive
+    ? "border-primary/25 bg-primary/10 text-primary"
+    : "border-border bg-muted text-muted-foreground";
+
+  return (
+    <div className="group flex flex-col md:flex-row md:items-center justify-between gap-5 p-5 sm:p-6 rounded-[28px] border border-border bg-card transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md">
+      <div className="flex items-center gap-4 min-w-0">
+        <Avatar className="size-12 shrink-0 border border-border">
+          <AvatarFallback className="bg-primary/10 text-primary font-bold text-sm">
+            {getInitials(row.title)}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 space-y-1">
+          <h3
+            className="text-base font-semibold text-foreground truncate group-hover:text-primary transition-colors"
+            title={row.title}
+          >
+            {row.title}
+          </h3>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>Client: <strong className="font-semibold text-foreground">{row.clientName}</strong></span>
+            <span>•</span>
+            <span>Freelancer: <strong className="font-semibold text-foreground">{row.freelancerName}</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between md:justify-end gap-6 sm:gap-8 border-t md:border-t-0 border-border/60 pt-4 md:pt-0">
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+            Status
+          </p>
+          <span
+            className={cn(
+              "inline-flex h-6.5 items-center gap-1.5 rounded-full border px-2.5 text-[9px] font-bold uppercase tracking-[0.12em]",
+              statusToneClass
+            )}
+          >
+            {isLive && <span className="size-1.5 shrink-0 rounded-full bg-primary animate-pulse" />}
+            {isIssue && <span className="size-1.5 shrink-0 rounded-full bg-rose-500 animate-pulse" />}
+            {row.status}
+          </span>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+            Budget
+          </p>
+          <p className="text-sm font-semibold text-foreground">
+            INR {row.budget.toLocaleString("en-IN")}
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted-foreground/80">
+            Last Sync
+          </p>
+          <p className="text-xs font-medium text-muted-foreground">
+            {row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "Pending"}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onOpen(row.id)}
+          className="flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-xs sm:text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs shrink-0 cursor-pointer"
+        >
+          <span>Open Project</span>
+          <ArrowRight className="size-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const ProjectCardSkeletonItem = () => (
+  <div className="rounded-[28px] border border-border bg-card p-5 sm:p-6 space-y-4">
+    <div className="flex items-center justify-between">
+      <Skeleton className="h-4 w-20 rounded-full" />
+      <Skeleton className="h-6 w-24 rounded-full" />
+    </div>
+    <Skeleton className="h-6 w-3/4 rounded-md mt-2" />
+    <div className="flex items-center gap-3 mt-4">
+      <Skeleton className="size-9 rounded-full shrink-0" />
+      <div className="space-y-1.5 flex-1">
+        <Skeleton className="h-3.5 w-32 rounded-md" />
+        <Skeleton className="h-3 w-24 rounded-md" />
+      </div>
+    </div>
+    <div className="grid grid-cols-2 gap-3 mt-4">
+      <Skeleton className="h-16 rounded-2xl" />
+    <Skeleton className="h-16 rounded-2xl" />
+    </div>
+    <Skeleton className="h-11 w-full rounded-full mt-6" />
+  </div>
+);
+
 const ProjectsPage = () => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [assignmentFilter, setAssignmentFilter] = useState("ALL");
-  const [syncFilter, setSyncFilter] = useState("ALL");
   const [presetFilter, setPresetFilter] = useState("ALL");
+  const [viewMode, setViewMode] = useState("grid");
 
   const { data, loading } = useAsyncResource(
     () => pmApi.getProjects(authFetch),
@@ -142,7 +401,6 @@ const ProjectsPage = () => {
   useEffect(() => {
     setStatusFilter(normalizeStatusFilter(searchParams.get("status")));
     setAssignmentFilter(normalizeAssignmentFilter(searchParams.get("assignment")));
-    setSyncFilter(normalizeSyncFilter(searchParams.get("sync")));
     setPresetFilter(normalizePresetFilter(searchParams.get("preset")));
   }, [searchParams]);
 
@@ -156,161 +414,225 @@ const ProjectsPage = () => {
         if (assignmentFilter === "ASSIGNED" && row.freelancerName === "Unassigned") return false;
         if (assignmentFilter === "UNASSIGNED" && row.freelancerName !== "Unassigned") return false;
 
-        if (syncFilter !== "ALL") {
-          const updatedAt = row.updatedAt ? new Date(row.updatedAt) : null;
-          if (!updatedAt || Number.isNaN(updatedAt.getTime())) return false;
-
-          const now = Date.now();
-          const diffDays = (now - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
-          if (syncFilter === "LAST_7_DAYS" && diffDays > 7) return false;
-          if (syncFilter === "LAST_30_DAYS" && diffDays > 30) return false;
-        }
-
         return true;
       }),
-    [rows, presetFilter, statusFilter, assignmentFilter, syncFilter]
+    [rows, presetFilter, statusFilter, assignmentFilter]
   );
+
+  const hasActiveFilters =
+    statusFilter !== "ALL" ||
+    assignmentFilter !== "ALL" ||
+    presetFilter !== "ALL";
+
+  const handleResetFilters = useCallback(() => {
+    setStatusFilter("ALL");
+    setAssignmentFilter("ALL");
+    setPresetFilter("ALL");
+    navigate("/project-manager/projects");
+  }, [navigate]);
+
+  const handleSelectPreset = useCallback((presetKey) => {
+    setPresetFilter(presetKey);
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      if (presetKey === "ALL") {
+        nextParams.delete("preset");
+      } else {
+        nextParams.set("preset", presetKey.toLowerCase());
+      }
+      return nextParams;
+    });
+  }, [setSearchParams]);
+
+  const handleOpenProject = useCallback((id) => {
+    navigate(`/project-manager/projects/${id}`);
+  }, [navigate]);
+
+  const presetOptions = [
+    { key: "ALL", label: "All Projects" },
+    { key: "ACTIVE", label: "Active Projects" },
+    { key: "ISSUES", label: "Issue Queue" },
+  ];
 
   return (
     <PmShell
       title="Project Master List"
       subtitle="Comprehensive view of all active and historical project workspaces under your management."
     >
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-         <div className="flex w-full flex-col gap-3 lg:flex-row lg:items-center">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-[#64748b]">
-               <Funnel className="h-4 w-4 text-[#D9692A]" />
-               Project Filters
-            </div>
-            <div className="grid w-full gap-3 sm:grid-cols-3">
-              <select
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
-                className="h-11 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-bold uppercase tracking-wider text-[#334155] focus:outline-none focus:ring-2 focus:ring-[#D9692A]/30"
+      <section className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="inline-flex h-auto w-full max-w-[28rem] flex-nowrap items-stretch gap-1 rounded-[32px] border border-border bg-card p-1 shadow-xs sm:w-auto sm:max-w-none sm:gap-1.5 sm:p-1.5">
+          {presetOptions.map((option) => {
+            const isActive = presetFilter === option.key;
+            return (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => handleSelectPreset(option.key)}
+                className={cn(
+                  "h-10 min-w-0 basis-0 flex-1 whitespace-nowrap rounded-full border border-transparent px-3 text-center text-xs font-semibold transition sm:h-11 sm:basis-auto sm:flex-none sm:px-5 sm:text-sm cursor-pointer",
+                  isActive
+                    ? "border-primary/70 bg-primary text-primary-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                <option value="ALL">All Status</option>
-                <option value="Started">Started</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Issue Raised">Issue Raised</option>
-                <option value="Proposal">Proposal</option>
-              </select>
-              <select
-                value={assignmentFilter}
-                onChange={(event) => setAssignmentFilter(event.target.value)}
-                className="h-11 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-bold uppercase tracking-wider text-[#334155] focus:outline-none focus:ring-2 focus:ring-[#D9692A]/30"
-              >
-                <option value="ALL">All Assignment</option>
-                <option value="ASSIGNED">Assigned Freelancer</option>
-                <option value="UNASSIGNED">Unassigned Freelancer</option>
-              </select>
-              <select
-                value={syncFilter}
-                onChange={(event) => setSyncFilter(event.target.value)}
-                className="h-11 rounded-xl border border-[#dbe3ef] bg-white px-3 text-xs font-bold uppercase tracking-wider text-[#334155] focus:outline-none focus:ring-2 focus:ring-[#D9692A]/30"
-              >
-                <option value="ALL">Any Sync Date</option>
-                <option value="LAST_7_DAYS">Synced in 7 days</option>
-                <option value="LAST_30_DAYS">Synced in 30 days</option>
-              </select>
-            </div>
-            <Button
-              variant="outline"
-              className="h-11 rounded-xl border-[#dbe3ef] px-4 text-xs font-black uppercase tracking-wider text-[#D9692A] hover:bg-orange-50 hover:border-[#D9692A] transition-colors"
-              onClick={() => {
-                setStatusFilter("ALL");
-                setAssignmentFilter("ALL");
-                setSyncFilter("ALL");
-                setPresetFilter("ALL");
-                navigate("/project-manager/projects");
-              }}
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between lg:justify-end gap-2.5 sm:gap-3 w-full lg:w-auto">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-primary px-3 py-2 text-xs sm:text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shrink-0">
+                <Filter className="size-3.5 shrink-0" />
+                <span className="max-w-[130px] truncate">
+                  {statusFilterLabels[statusFilter] || "All Status"}
+                </span>
+                <ChevronDown className="size-3.5 opacity-80 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52 rounded-2xl border border-border bg-card p-1.5 shadow-md">
+              {Object.entries(statusFilterLabels).map(([key, label]) => (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() => setStatusFilter(key)}
+                  className={cn(
+                    "cursor-pointer rounded-xl flex items-center justify-between px-3 py-2 text-sm",
+                    statusFilter === key && "bg-muted font-medium"
+                  )}
+                >
+                  <span className="truncate">{label}</span>
+                  {statusFilter === key && <Check className="size-4 opacity-70 shrink-0 ml-2" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 sm:gap-2 rounded-full bg-primary px-3 py-2 text-xs sm:text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-colors cursor-pointer shrink-0">
+                <Filter className="size-3.5 shrink-0" />
+                <span className="max-w-[150px] truncate">
+                  {assignmentFilterLabels[assignmentFilter] || "All Assignment"}
+                </span>
+                <ChevronDown className="size-3.5 opacity-80 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl border border-border bg-card p-1.5 shadow-md">
+              {Object.entries(assignmentFilterLabels).map(([key, label]) => (
+                <DropdownMenuItem
+                  key={key}
+                  onClick={() => setAssignmentFilter(key)}
+                  className={cn(
+                    "cursor-pointer rounded-xl flex items-center justify-between px-3 py-2 text-sm",
+                    assignmentFilter === key && "bg-muted font-medium"
+                  )}
+                >
+                  <span className="truncate">{label}</span>
+                  {assignmentFilter === key && <Check className="size-4 opacity-70 shrink-0 ml-2" />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={handleResetFilters}
+              className="inline-flex items-center justify-center size-9 rounded-full border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+              title="Reset all filters"
             >
-              Reset
-            </Button>
-         </div>
-         <div className="flex items-center gap-2">
-            {presetFilter !== "ALL" ? (
-              <Badge className="bg-orange-50 text-[10px] font-black text-[#D9692A] hover:bg-orange-50 border border-orange-200">
-                {presetFilter === "ACTIVE" ? "Active Projects View" : "Issue Queue View"}
-              </Badge>
-            ) : null}
-            <span className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">Total Managed:</span>
-            <Badge className="bg-[#0f172a] text-[10px] font-black">{rows.length}</Badge>
-         </div>
-      </div>
+              <X className="size-4" />
+            </button>
+          )}
 
-      <div className="space-y-4">
-         {loading ? (
-           Array.from({ length: 3 }).map((_, index) => (
-             <Card key={index} className="rounded-[32px] border-slate-100 h-24 animate-pulse bg-slate-50/50" />
-           ))
-         ) : filteredRows.length === 0 ? (
-           <div className="py-24 text-center rounded-[40px] border-2 border-dashed border-slate-100 bg-slate-50/20">
-              <div className="mx-auto w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                 <Search className="h-8 w-8 text-slate-300" />
-              </div>
-              <p className="text-sm font-bold text-slate-400 italic">No matching projects found.</p>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-muted/80 px-3 py-1.5 text-xs font-semibold text-foreground border border-border shrink-0">
+            <span>Total:</span>
+            <Badge className="bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+              {rows.length}
+            </Badge>
+          </span>
+
+          <div className="flex items-center rounded-full border border-border bg-card p-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "flex size-8 items-center justify-center rounded-full transition-colors cursor-pointer",
+                viewMode === "grid"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="Grid View"
+            >
+              <LayoutGrid className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex size-8 items-center justify-center rounded-full transition-colors cursor-pointer",
+                viewMode === "list"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              title="List View"
+            >
+              <List className="size-4" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-8">
+        {loading ? (
+          <div
+            className={cn(
+              viewMode === "grid"
+                ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6"
+                : "space-y-4"
+            )}
+          >
+            {Array.from({ length: 6 }).map((_, index) => (
+              <ProjectCardSkeletonItem key={index} />
+            ))}
+          </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="rounded-[28px] border border-border bg-card p-12 text-center my-6">
+            <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
+              <Search className="size-7 opacity-70" />
+            </div>
+            <h2 className="mt-6 text-xl font-semibold tracking-[-0.03em] text-foreground">
+              No matching projects found
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
+              No active or historical projects matched your selected filter criteria. Try resetting your search filters.
+            </p>
+            {hasActiveFilters && (
               <Button
-                variant="link"
-                onClick={() => {
-                  setStatusFilter("ALL");
-                  setAssignmentFilter("ALL");
-                  setSyncFilter("ALL");
-                  setPresetFilter("ALL");
-                  navigate("/project-manager/projects");
-                }}
-                className="text-blue-600 font-black text-xs uppercase mt-2"
+                variant="outline"
+                onClick={handleResetFilters}
+                className="mt-6 rounded-full border-border bg-background px-6 py-2.5 text-xs font-semibold text-foreground hover:bg-muted"
               >
-                Clear Filter
+                Clear All Filters
               </Button>
-           </div>
-         ) : (
-           <div className="grid gap-4">
-             {filteredRows.map((row) => (
-               <div 
-                 key={row.id} 
-                 className="group relative flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-[32px] border border-[#dbe3ef] bg-white shadow-sm transition-all hover:shadow-xl hover:border-[#D9692A]/30 hover:-translate-y-1"
-               >
-                 <div className="flex items-center gap-6">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-[24px] bg-orange-50 text-[#D9692A] group-hover:bg-[#D9692A] group-hover:text-white transition-colors">
-                       <Plus className="h-8 w-8 rotate-45" />
-                    </div>
-                    <div className="space-y-1">
-                       <h3 className="text-base font-black text-[#0f172a] leading-tight group-hover:text-[#D9692A] transition-colors">{row.title}</h3>
-                       <div className="flex items-center gap-4">
-                          <p className="text-[10px] font-bold text-[#64748b] uppercase tracking-tighter">CLIENT: <span className="text-[#334155]">{row.clientName}</span></p>
-                          <div className="h-1 w-1 rounded-full bg-[#dbe3ef]" />
-                          <p className="text-[10px] font-bold text-[#64748b] uppercase tracking-tighter">ROLE: <span className="text-[#334155]">{row.freelancerName}</span></p>
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="flex flex-wrap items-center gap-8 md:gap-12">
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">STATUS</p>
-                       <StatusBadge status={row.status} />
-                    </div>
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">BUDGET</p>
-                       <p className="text-sm font-black text-[#0f172a]">INR {row.budget.toLocaleString("en-IN")}</p>
-                    </div>
-                    <div className="space-y-1">
-                       <p className="text-[10px] font-black text-[#64748b] uppercase tracking-widest">LAST SYNC</p>
-                       <p className="text-xs font-bold text-[#64748b]">{row.updatedAt ? new Date(row.updatedAt).toLocaleDateString() : "Pending"}</p>
-                    </div>
-                    <Button
-                      className="h-12 w-12 md:w-auto md:px-6 rounded-2xl bg-[#D9692A] text-[10px] font-black tracking-widest uppercase text-white shadow-lg shadow-orange-900/10 hover:bg-[#B85A24] transition-all hover:scale-105 active:scale-95"
-                      onClick={() => navigate(`/project-manager/projects/${row.id}`)}
-                    >
-                      <span className="hidden md:inline">Open Project</span>
-                      <Plus className="md:hidden h-5 w-5" />
-                    </Button>
-                 </div>
-               </div>
-             ))}
-           </div>
-         )}
-      </div>
+            )}
+          </div>
+        ) : viewMode === "grid" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+            {filteredRows.map((row) => (
+              <ProjectCardGridItem key={row.id} row={row} onOpen={handleOpenProject} />
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredRows.map((row) => (
+              <ProjectCardListItem key={row.id} row={row} onOpen={handleOpenProject} />
+            ))}
+          </div>
+        )}
+      </section>
     </PmShell>
   );
 };

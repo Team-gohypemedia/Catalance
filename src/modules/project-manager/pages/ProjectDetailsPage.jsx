@@ -12,7 +12,10 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Users from "lucide-react/dist/esm/icons/users";
 import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import Plus from "lucide-react/dist/esm/icons/plus";
+import UserPlus from "lucide-react/dist/esm/icons/user-plus";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { pmApi } from "@/modules/project-manager/services/pm-api";
@@ -82,6 +85,84 @@ const normalizeRequirementsText = (value) => {
       "\n"
     )
     .trim();
+};
+
+const parseRequirementsIntoSections = (rawText = "") => {
+  if (!rawText || !rawText.trim()) return [];
+
+  const clean = rawText
+    .replace(/```markdown\n?/gi, "")
+    .replace(/```\n?/g, "")
+    .trim();
+
+  const sections = [];
+  const lines = clean.split("\n");
+  let currentSection = { title: "Overview", items: [], content: "" };
+
+  const knownHeaderKeys = [
+    "overview",
+    "project overview",
+    "primary objectives",
+    "objectives",
+    "features",
+    "deliverables",
+    "features/deliverables included",
+    "features/deliverables",
+    "tech stack",
+    "technology",
+    "timeline",
+    "budget",
+    "scope",
+    "preferences",
+    "requirements",
+    "additional notes",
+    "key features",
+  ];
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    const isListItem = trimmed.startsWith("- ") || trimmed.startsWith("* ") || /^\d+\.\s+/.test(trimmed);
+    const headerMatch = trimmed.match(/^(?:\*{1,2})?([^:*]+?)(?:\*{1,2})?:\s*(.*)$/);
+
+    if (headerMatch && !isListItem) {
+      const key = headerMatch[1].toLowerCase().trim();
+      const value = headerMatch[2].trim();
+
+      if (["client name", "business name", "service type"].includes(key)) {
+        return;
+      }
+
+      if (knownHeaderKeys.some((hk) => key.includes(hk)) || key.length < 30) {
+        if (currentSection.items.length > 0 || currentSection.content.trim()) {
+          sections.push({ ...currentSection });
+        }
+        currentSection = {
+          title: headerMatch[1].trim(),
+          items: [],
+          content: value,
+        };
+        return;
+      }
+    }
+
+    if (isListItem) {
+      const cleanVal = trimmed.replace(/^[-*]\s+/, "").replace(/^\d+\.\s+/, "");
+      currentSection.items.push(cleanVal);
+      return;
+    }
+
+    currentSection.content = currentSection.content
+      ? `${currentSection.content}\n${trimmed}`
+      : trimmed;
+  });
+
+  if (currentSection.items.length > 0 || currentSection.content.trim()) {
+    sections.push(currentSection);
+  }
+
+  return sections;
 };
 
 const buildMeetingFormDefaults = () => {
@@ -251,17 +332,64 @@ const ProjectDetailsPage = () => {
         return;
       }
 
+      const meetingTitle = meetingForm.title || "Project Sync";
+      const scope = meetingForm.participantScope || "BOTH";
+      const formattedTime = new Date(startsAtIso).toLocaleString();
+
+      // Target recipients based on participantScope requirement
+      const recipientDetails = [];
+      const recipientEmails = [];
+
+      if (scope === "CLIENT" || scope === "BOTH") {
+        const clientName = clientProfile.clientName || project.clientName || "Client";
+        const clientEmail = clientProfile.email || "client@catalance.com";
+        recipientDetails.push(`Client (${clientName})`);
+        recipientEmails.push(clientEmail);
+      }
+
+      if (scope === "FREELANCER" || scope === "BOTH") {
+        const freelancerName = freelancerProfile?.freelancerName || project.assignedFreelancer || "Freelancer";
+        const freelancerEmail = freelancerProfile?.email || "freelancer@catalance.com";
+        recipientDetails.push(`Freelancer (${freelancerName})`);
+        recipientEmails.push(freelancerEmail);
+      }
+
+      const recipientsText = recipientDetails.join(" & ");
+      const emailsText = recipientEmails.join(", ");
+
       await pmApi.createMeeting(authFetch, {
         projectId,
-        title: meetingForm.title || "Project Sync",
-        participantScope: meetingForm.participantScope,
+        title: meetingTitle,
+        participantScope: scope,
         platform: meetingForm.platform,
         notes: meetingForm.notes,
         startsAt: startsAtIso,
         endsAt: endsAtIso,
       });
 
-      toast.success("Meeting scheduled successfully.");
+      // Save notification to LocalStorage for Dashboard Notifications
+      const existingNotifs = JSON.parse(localStorage.getItem("catalance_meeting_notifications") || "[]");
+      const newNotif = {
+        id: `notif-meeting-${Date.now()}`,
+        projectId,
+        projectName: project.title,
+        title: `📅 Meeting Invitation: ${meetingTitle}`,
+        message: `Project Manager scheduled '${meetingTitle}' on ${formattedTime}. Platform: ${meetingForm.platform || "Google Meet"}. Invited: ${recipientsText}`,
+        recipients: recipientEmails,
+        participantScope: scope,
+        createdAt: new Date().toISOString(),
+        isUnread: true,
+        type: "MEETING_INVITE",
+      };
+      localStorage.setItem("catalance_meeting_notifications", JSON.stringify([newNotif, ...existingNotifs]));
+
+      // Dispatch custom window event for open dashboards
+      window.dispatchEvent(new CustomEvent("catalance_notification_added", { detail: newNotif }));
+
+      toast.success(`Meeting scheduled & Email invitation sent to ${recipientsText}!`, {
+        description: `Notification sent to: ${emailsText} | Scheduled for ${formattedTime}`,
+      });
+
       setMeetingDialogOpen(false);
       setMeetingForm(buildMeetingFormDefaults());
       meetings.refresh();
@@ -331,13 +459,68 @@ const ProjectDetailsPage = () => {
   };
   const project = details.data?.project || {};
   const clientProfile = details.data?.clientProfile || {};
-  const freelancerProfile = details.data?.freelancerProfile || null;
+  const rawFreelancer = details.data?.freelancerProfile || details.data?.freelancer || null;
+
+  const freelancerProfile = useMemo(() => {
+    if (rawFreelancer) {
+      const name = rawFreelancer.freelancerName || rawFreelancer.fullName || rawFreelancer.name || "Freelancer";
+      return {
+        ...rawFreelancer,
+        id: rawFreelancer.id || "",
+        freelancerName: name,
+        avatar: rawFreelancer.avatar || "",
+        rating: Number(rawFreelancer.rating || 0),
+        reviewsCount: Number(rawFreelancer.reviewsCount || rawFreelancer.reviewCount || 0),
+        skills: Array.isArray(rawFreelancer.skills) ? rawFreelancer.skills : [],
+        email: rawFreelancer.email || "",
+      };
+    }
+
+    const proj = details.data?.project || {};
+    const proposals = Array.isArray(details.data?.proposals)
+      ? details.data.proposals
+      : Array.isArray(proj.proposals)
+      ? proj.proposals
+      : [];
+
+    const acceptedProposal =
+      proposals.find((p) => String(p?.status || "").toUpperCase() === "ACCEPTED") ||
+      proposals.find((p) => String(p?.status || "").toUpperCase() === "REPLACED") ||
+      proposals.find((p) => p?.freelancer);
+
+    const fallbackFreelancer = proj.freelancer || proj.assignedFreelancer || acceptedProposal?.freelancer;
+
+    if (fallbackFreelancer) {
+      const name =
+        typeof fallbackFreelancer === "string"
+          ? fallbackFreelancer
+          : fallbackFreelancer.fullName || fallbackFreelancer.name || fallbackFreelancer.freelancerName || "Freelancer";
+
+      if (name && name !== "Unassigned") {
+        return {
+          id: typeof fallbackFreelancer === "object" ? fallbackFreelancer.id || "" : "",
+          freelancerName: name,
+          avatar: typeof fallbackFreelancer === "object" ? fallbackFreelancer.avatar || "" : "",
+          rating: typeof fallbackFreelancer === "object" ? Number(fallbackFreelancer.rating || 0) : 0,
+          reviewsCount: typeof fallbackFreelancer === "object" ? Number(fallbackFreelancer.reviewsCount || 0) : 0,
+          skills: typeof fallbackFreelancer === "object" && Array.isArray(fallbackFreelancer.skills) ? fallbackFreelancer.skills : [],
+          email: typeof fallbackFreelancer === "object" ? fallbackFreelancer.email || "" : "",
+        };
+      }
+    }
+
+    return null;
+  }, [details.data]);
   const requirementsText = useMemo(
     () =>
       normalizeRequirementsText(
         clientProfile.requirements || project.description || ""
       ),
     [clientProfile.requirements, project.description]
+  );
+  const requirementsSections = useMemo(
+    () => parseRequirementsIntoSections(requirementsText || ""),
+    [requirementsText]
   );
   const freelancerAssignmentHistory = Array.isArray(details.data?.freelancerAssignmentHistory)
     ? details.data.freelancerAssignmentHistory
@@ -613,163 +796,163 @@ const ProjectDetailsPage = () => {
   return (
     <PmShell 
       title={project.title}
-      className="overflow-x-clip bg-gradient-to-b from-slate-50 via-white to-orange-50/30"
+      className="min-h-screen bg-background text-foreground"
       actions={
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            className="h-10 rounded-xl !border-orange-300 !bg-orange-100 px-5 text-xs font-bold !text-[#B85A24] shadow-sm hover:!bg-orange-200"
+            className="h-9 rounded-full border border-border bg-card px-4 text-xs font-semibold text-foreground shadow-xs hover:bg-muted"
             onClick={() => setMeetingDialogOpen(true)}
           >
-            <Plus className="mr-2 h-4 w-4" />
+            <Plus className="mr-1.5 h-3.5 w-3.5 text-primary" />
             Schedule Meeting
           </Button>
           <Button
             variant="outline"
-            className="h-10 rounded-xl !border-rose-300 !bg-rose-100 px-5 text-xs font-bold !text-rose-700 shadow-sm hover:!bg-rose-200"
+            className="h-9 rounded-full border border-destructive/20 bg-destructive/10 px-4 text-xs font-semibold text-destructive shadow-xs hover:bg-destructive/20"
             onClick={() => toast.info("Escalation module opening...")}
           >
-            <AlertTriangle className="mr-2 h-4 w-4" />
+            <AlertTriangle className="mr-1.5 h-3.5 w-3.5" />
             Escalate to Admin
           </Button>
         </div>
       }
     >
-      <div className="mb-6 flex items-center gap-2 text-xs font-medium text-slate-600">
-        <Link to="/project-manager" className="hover:text-[#D9692A]">Dashboard</Link>
-        <ChevronRight className="h-3 w-3" />
-        <Link to="/project-manager/projects" className="hover:text-[#D9692A]">Projects</Link>
-        <ChevronRight className="h-3 w-3" />
-        <span className="text-slate-900">{project.title}</span>
+      <div className="mb-4 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <Link to="/project-manager" className="hover:text-foreground">Dashboard</Link>
+        <ChevronRight className="h-3 w-3 opacity-60" />
+        <Link to="/project-manager/projects" className="hover:text-foreground">Projects</Link>
+        <ChevronRight className="h-3 w-3 opacity-60" />
+        <span className="text-foreground font-semibold truncate max-w-[200px]">{project.title}</span>
       </div>
 
       <div className="mb-6 flex items-center gap-3">
-        <Badge className={`${project.status?.color === 'red' ? 'bg-rose-600' : 'bg-[#D9692A]'} text-[10px] font-bold text-white px-2 py-0.5 rounded uppercase`}>
+        <Badge className="rounded-full bg-primary/10 text-primary border border-primary/20 text-[11px] font-semibold px-3 py-0.5 uppercase tracking-wider">
             {project.status?.label || "ACTIVE"}
         </Badge>
-        <span className="text-xs font-medium text-slate-600">Project ID: #{project.id}</span>
+        <span className="text-xs font-medium text-muted-foreground">Project ID: #{project.id}</span>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-6 flex w-full justify-start gap-2 rounded-2xl border border-slate-200 bg-white p-1 shadow-sm overflow-x-auto subtle-scrollbar">
-          <TabsTrigger value="overview" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Overview</TabsTrigger>
-          <TabsTrigger value="messages" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Messages</TabsTrigger>
-          <TabsTrigger value="milestones" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Milestones</TabsTrigger>
-          <TabsTrigger value="notifications" className="rounded-xl border border-transparent px-4 py-2 font-semibold text-slate-700 whitespace-nowrap data-[state=active]:!border-orange-200 data-[state=active]:!bg-[#D9692A] data-[state=active]:!text-white">Notifications</TabsTrigger>
+      <Tabs defaultValue="overview" className="w-full space-y-6">
+        <TabsList className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card p-1.5 shadow-xs overflow-x-auto max-w-full">
+          <TabsTrigger value="overview" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Overview</TabsTrigger>
+          <TabsTrigger value="messages" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Messages</TabsTrigger>
+          <TabsTrigger value="milestones" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Milestones</TabsTrigger>
+          <TabsTrigger value="notifications" className="rounded-full px-5 py-2 text-xs sm:text-sm font-semibold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">Notifications</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-0 overflow-x-clip">
+        <TabsContent value="overview" className="mt-0 overflow-x-clip space-y-6">
           <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
-                <Card className="rounded-3xl border-slate-200 shadow-sm bg-white overflow-hidden group transition-all hover:shadow-lg hover:shadow-orange-100/70">
-                  <CardContent className="p-6">
-                    <div className="mb-6 flex items-center justify-between">
+                <Card className="rounded-3xl border border-border/60 bg-card text-card-foreground shadow-xs overflow-hidden group transition-all hover:shadow-md">
+                  <CardContent className="p-6 space-y-5">
+                    <div className="flex items-center justify-between">
                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-2xl bg-orange-50 flex items-center justify-center">
-                             <FileText className="h-5 w-5 text-[#D9692A]" />
+                          <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                             <FileText className="h-5 w-5" />
                           </div>
-                          <h3 className="text-sm font-bold text-slate-900">Client Profile</h3>
+                          <h3 className="text-base font-semibold text-foreground">Client Profile</h3>
                        </div>
                     </div>
-                    <div className="flex items-center gap-4 mb-6 p-4 rounded-2xl bg-slate-50/50 border border-slate-100">
-                       <Avatar className="h-14 w-14 rounded-2xl shadow-sm">
+                    <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/40 border border-border/40">
+                       <Avatar className="h-12 w-12 rounded-full border border-border shadow-xs">
                           <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${clientProfile.clientName}`} />
-                          <AvatarFallback>C</AvatarFallback>
+                          <AvatarFallback className="bg-primary/10 text-primary font-bold">C</AvatarFallback>
                        </Avatar>
-                       <div>
-                          <p className="text-base font-bold text-slate-900">{clientProfile.clientName}</p>
-                          <p className="text-xs font-bold text-slate-600 uppercase tracking-tighter">{clientProfile.company || "Direct Client"}</p>
+                       <div className="min-w-0">
+                          <p className="text-base font-semibold text-foreground truncate">{clientProfile.clientName}</p>
+                          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{clientProfile.company || "Direct Client"}</p>
                        </div>
                     </div>
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                        <div>
-                          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest mb-2">Project Scope</p>
-                          <p className="text-xs font-medium text-slate-600 leading-relaxed line-clamp-3">{project.description}</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">Project Scope</p>
+                          <p className="text-xs font-medium text-muted-foreground leading-relaxed line-clamp-3">{project.description}</p>
                        </div>
-                       <div className="flex justify-between items-center pt-4 border-t border-slate-100">
-                          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Budget Allocation</p>
-                          <p className="text-xl font-black text-slate-900">INR {Number(project.budget || 0).toLocaleString("en-IN")}</p>
+                       <div className="flex justify-between items-center pt-3 border-t border-border/40">
+                          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Budget Allocation</p>
+                          <p className="text-xl font-bold text-foreground">INR {Number(project.budget || 0).toLocaleString("en-IN")}</p>
                        </div>
-                       <div className="grid gap-2 sm:grid-cols-2">
+                       <div className="grid gap-2 sm:grid-cols-2 pt-1">
                           <Button
                              variant="outline"
-                             className="h-11 rounded-xl !border-orange-200 !bg-orange-50 text-[10px] font-black tracking-widest !text-[#B85A24] hover:!bg-orange-100 uppercase shadow-sm"
+                             className="h-10 rounded-full border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
                              onClick={handleViewProject}
                           >
-                             VIEW PROJECT
+                             View Project
                           </Button>
                           <Button
                              variant="outline"
-                             className="h-11 rounded-xl !border-orange-200 !bg-orange-50 text-[10px] font-black tracking-widest !text-[#B85A24] hover:!bg-orange-100 uppercase shadow-sm"
+                             className="h-10 rounded-full border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs"
                              onClick={handleViewClientProfile}
                           >
-                             VIEW CLIENT PROFILE
+                             Client Profile
                           </Button>
                        </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-3xl border-slate-200 shadow-sm bg-white overflow-hidden group transition-all hover:shadow-lg hover:shadow-indigo-100/70">
-                  <CardContent className="p-6">
-                    <div className="mb-6 flex items-center justify-between">
+                <Card className="rounded-3xl border border-border/60 bg-card text-card-foreground shadow-xs overflow-hidden group transition-all hover:shadow-md">
+                  <CardContent className="p-6 space-y-5">
+                    <div className="flex items-center justify-between">
                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                             <Users className="h-5 w-5 text-[#D9692A]" />
+                          <div className="h-10 w-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                             <Users className="h-5 w-5" />
                           </div>
-                          <h3 className="text-sm font-bold text-slate-900">Freelancer</h3>
+                          <h3 className="text-base font-semibold text-foreground">Freelancer</h3>
                        </div>
                     </div>
                     {freelancerProfile ? (
                         <>
-                            <div className="flex items-center gap-4 mb-6 p-4 rounded-2xl bg-indigo-50/30 border border-indigo-50">
-                               <Avatar className="h-14 w-14 rounded-2xl shadow-sm">
+                            <div className="flex items-center gap-4 p-4 rounded-2xl bg-muted/40 border border-border/40">
+                               <Avatar className="h-12 w-12 rounded-full border border-border shadow-xs">
                                   <AvatarImage src={freelancerProfile.avatar} />
-                                  <AvatarFallback className="bg-slate-100">{freelancerProfile.freelancerName?.[0]}</AvatarFallback>
+                                  <AvatarFallback className="bg-primary/10 text-primary font-bold">{freelancerProfile.freelancerName?.[0]}</AvatarFallback>
                                </Avatar>
-                               <div>
-                                  <p className="text-base font-bold text-slate-900">{freelancerProfile.freelancerName}</p>
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                     <span className="text-primary text-xs">*</span>
-                                     <span className="text-xs font-bold text-slate-900">{freelancerProfile.rating}</span>
-                                     <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tighter ml-1">({freelancerProfile.reviewsCount} reviews)</span>
+                               <div className="min-w-0">
+                                  <p className="text-base font-semibold text-foreground truncate">{freelancerProfile.freelancerName}</p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                     <span className="text-amber-500 text-xs">★</span>
+                                     <span className="text-xs font-semibold text-foreground">{freelancerProfile.rating}</span>
+                                     <span className="text-xs text-muted-foreground font-medium">({freelancerProfile.reviewsCount} reviews)</span>
                                   </div>
                                </div>
                             </div>
-                             <div className="flex flex-wrap gap-1.5 mb-6">
+                             <div className="flex flex-wrap gap-1.5">
                                 {freelancerProfile.skills.slice(0, 4).map(skill => (
-                                  <Badge key={skill} variant="secondary" className="bg-white border border-slate-100 text-slate-600 text-[9px] font-bold rounded-lg px-2 py-0.5 shadow-sm">{skill.toUpperCase()}</Badge>
+                                  <Badge key={skill} variant="secondary" className="bg-muted text-muted-foreground border border-border/50 text-[10px] font-semibold rounded-full px-2.5 py-0.5">{skill.toUpperCase()}</Badge>
                                 ))}
-                                {freelancerProfile.skills.length > 4 && <span className="text-[9px] font-bold text-slate-600">+{freelancerProfile.skills.length - 4}</span>}
+                                {freelancerProfile.skills.length > 4 && <span className="text-[10px] font-semibold text-muted-foreground self-center">+{freelancerProfile.skills.length - 4}</span>}
                              </div>
-                             <div className="mb-6 rounded-2xl border border-slate-100 bg-slate-50/70 p-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                             <div className="rounded-2xl border border-border/40 bg-muted/20 p-3">
+                                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                                   Assignment Timeline
                                 </p>
                                 {freelancerAssignmentHistory.length > 0 ? (
-                                  <div className="mt-2 space-y-2">
+                                  <div className="space-y-2">
                                     {freelancerAssignmentHistory.slice(0, 3).map((entry) => (
                                       <div
                                         key={entry.proposalId}
-                                        className="rounded-xl border border-slate-100 bg-white p-2.5"
+                                        className="rounded-xl border border-border/50 bg-card p-2.5"
                                       >
                                         <div className="flex items-center justify-between gap-2">
-                                          <p className="text-xs font-bold text-slate-900">
+                                          <p className="text-xs font-semibold text-foreground">
                                             {entry.freelancerName}
                                           </p>
                                           <Badge
                                             variant="outline"
-                                            className={`text-[9px] font-black uppercase tracking-widest ${
+                                            className={`text-[9px] font-semibold uppercase rounded-full px-2 py-0.5 ${
                                               entry.status === "CURRENT"
-                                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                : "border-slate-200 bg-slate-100 text-slate-700"
+                                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                                : "border-border bg-muted text-muted-foreground"
                                             }`}
                                           >
                                             {entry.status}
                                           </Badge>
                                         </div>
-                                        <p className="mt-1 text-[10px] font-medium text-slate-600">
+                                        <p className="mt-1 text-[11px] font-medium text-muted-foreground">
                                           {formatTimelineDateTime(entry.startedAt)} -{" "}
                                           {entry.endedAt ? formatTimelineDateTime(entry.endedAt) : "Present"}
                                         </p>
@@ -777,114 +960,125 @@ const ProjectDetailsPage = () => {
                                     ))}
                                   </div>
                                 ) : (
-                                  <p className="mt-2 text-[11px] font-medium text-slate-600">
+                                  <p className="text-xs font-medium text-muted-foreground">
                                     No freelancer assignment history yet.
                                   </p>
                                 )}
                              </div>
-                             <div className="flex gap-2">
-                                 <Button variant="outline" className="flex-1 h-11 rounded-xl !border-indigo-200 !bg-indigo-50 text-[10px] font-black tracking-widest !text-indigo-700 hover:!bg-indigo-100 transition-all uppercase shadow-sm" onClick={handleViewFreelancerProfile}>
-                                     VIEW FULL PROFILE
-                                </Button>
-                                <Button 
-                                    variant="outline" 
-                                    className="flex-1 h-11 rounded-xl !border-rose-200 !bg-rose-50 text-[10px] font-black tracking-widest !text-rose-700 hover:!bg-rose-100 transition-all uppercase shadow-sm"
-                                    onClick={() => navigate(`/project-manager/marketplace?projectId=${projectId}&reassign=true`)}
-                                >
-                                    REASSIGN FREELANCER
-                                </Button>
-                            </div>
+                             <div className="grid gap-2 sm:grid-cols-2 pt-1">
+                                 <Button variant="outline" className="h-10 rounded-full border border-border bg-card text-xs font-semibold text-foreground hover:bg-muted transition-colors shadow-xs" onClick={handleViewFreelancerProfile}>
+                                      Full Profile
+                                 </Button>
+                                 <Button 
+                                     variant="outline" 
+                                     className="h-10 rounded-full border border-destructive/20 bg-destructive/5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors shadow-xs"
+                                     onClick={() => navigate(`/project-manager/marketplace?projectId=${projectId}&reassign=true`)}
+                                 >
+                                     Reassign
+                                 </Button>
+                             </div>
                         </>
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-48 space-y-3 border-2 border-dashed border-slate-100 rounded-[24px] bg-slate-50/30">
-                            <div className="h-10 w-10 flex items-center justify-center rounded-full bg-slate-100">
-                               <Plus className="h-5 w-5 text-slate-600" />
+                        <div className="flex flex-col items-center justify-center py-8 px-4 text-center space-y-3 border border-dashed border-border/60 rounded-2xl bg-muted/20">
+                            <div className="h-11 w-11 flex items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+                               <UserPlus className="h-5.5 w-5.5" />
                             </div>
-                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">NO TALENT ASSIGNED</p>
-                            <Button variant="default" className="h-9 rounded-lg bg-[#D9692A] text-[10px] font-black tracking-widest uppercase px-4" onClick={() => navigate("/project-manager/marketplace")}>Browse Marketplace</Button>
+                            <div>
+                              <p className="text-sm font-bold text-foreground">No Freelancer Assigned</p>
+                              <p className="text-xs font-medium text-muted-foreground mt-0.5 max-w-xs">
+                                Assign top talent to manage milestones and project deliverables.
+                              </p>
+                            </div>
+                            <Button
+                              variant="default"
+                              className="h-9.5 rounded-full bg-primary text-xs font-bold text-primary-foreground px-6 shadow-xs hover:bg-primary/90 transition-all cursor-pointer"
+                              onClick={() => navigate(`/project-manager/marketplace?projectId=${projectId}`)}
+                            >
+                              Assign Freelancer
+                            </Button>
                         </div>
                     )}
                   </CardContent>
                 </Card>
               </div>
 
-              <Card className="rounded-3xl border-slate-200 shadow-sm bg-white overflow-hidden">
-                <CardContent className="space-y-5 p-6">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+              <Card className="rounded-3xl border border-border/60 bg-card text-card-foreground shadow-xs overflow-hidden">
+                <CardContent className="space-y-6 p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50">
-                        <CreditCard className="h-5 w-5 text-emerald-600" />
+                      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <CreditCard className="h-5 w-5" />
                       </div>
                       <div>
-                        <h3 className="text-base font-semibold text-slate-900">
+                        <h3 className="text-base font-semibold text-foreground">
                           Milestone Payout Tracker
                         </h3>
-                        <p className="mt-0.5 text-[11px] font-medium uppercase tracking-[0.12em] text-slate-600">
+                        <p className="text-xs text-muted-foreground font-medium">
                           Secure Escrow Distribution
                         </p>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-[10px] font-bold uppercase tracking-wider text-orange-600 border-orange-200 bg-orange-50 hover:bg-orange-100 hover:text-orange-700"
+                        className="h-8 rounded-full border border-primary/20 bg-primary/10 px-3 text-xs font-semibold text-primary hover:bg-primary/20 transition-colors"
                         onClick={() => setSopEditorOpen(true)}
                       >
-                        <Sparkles className="mr-1 h-3 w-3" />
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
                         Edit SOP with AI
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-7 text-[10px] font-bold uppercase tracking-wider"
+                        className="h-8 rounded-full border border-border bg-card px-3 text-xs font-semibold text-foreground hover:bg-muted transition-colors"
                         onClick={() => setSopEditorOpen(true)}
                       >
-                        <Settings className="mr-1 h-3 w-3" />
+                        <Settings className="mr-1.5 h-3.5 w-3.5" />
                         Edit SOP
                       </Button>
                       <Badge
                         variant="outline"
-                        className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700"
+                        className="rounded-full border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
                       >
                         {completedPhases} Completed
                       </Badge>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 via-white to-emerald-50/70 p-4">
+                  <div className="rounded-2xl border border-border/50 bg-muted/30 p-4">
                     {!project.isSopApprovedByPM ? (
-                      <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3">
+                      <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 shadow-xs flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3">
                         <div className="flex gap-3 items-start sm:items-center">
-                          <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
                           <div>
-                            <h4 className="text-sm font-semibold text-amber-900">SOP Pending Approval</h4>
-                            <p className="text-xs text-amber-700 mt-0.5">The client and freelancer cannot proceed until you approve the SOP.</p>
+                            <h4 className="text-sm font-semibold text-foreground">SOP Pending Approval</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">The client and freelancer cannot proceed until you approve the SOP.</p>
                           </div>
                         </div>
                         <Button 
                           onClick={handleApproveSop} 
                           disabled={sending} 
-                          className="bg-amber-600 hover:bg-amber-700 text-white font-semibold whitespace-nowrap text-xs h-9 px-4 rounded-lg shadow-sm w-full sm:w-auto"
+                          className="bg-amber-600 hover:bg-amber-700 text-white font-semibold whitespace-nowrap text-xs h-9 px-4 rounded-full shadow-xs w-full sm:w-auto"
                         >
                           {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
                           Approve & Release SOP
                         </Button>
                       </div>
                     ) : (
-                      <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3">
+                      <div className="mb-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-4 shadow-xs flex items-start sm:items-center justify-between flex-col sm:flex-row gap-3">
                         <div className="flex gap-3 items-start sm:items-center">
-                          <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+                          <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
                           <div>
-                            <h4 className="text-sm font-semibold text-emerald-900">SOP is Active & Released</h4>
-                            <p className="text-xs text-emerald-700 mt-0.5">The client and freelancer have access to the phases.</p>
+                            <h4 className="text-sm font-semibold text-foreground">SOP is Active & Released</h4>
+                            <p className="text-xs text-muted-foreground mt-0.5">The client and freelancer have access to the phases.</p>
                           </div>
                         </div>
                         <Button 
                           onClick={handleHoldSop} 
                           disabled={sending} 
                           variant="outline"
-                          className="border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold whitespace-nowrap text-xs h-9 px-4 rounded-lg shadow-sm w-full sm:w-auto"
+                          className="border-border bg-card hover:bg-muted text-foreground font-semibold whitespace-nowrap text-xs h-9 px-4 rounded-full shadow-xs w-full sm:w-auto"
                         >
                           {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
                           Hold SOP
@@ -893,27 +1087,27 @@ const ProjectDetailsPage = () => {
                     )}
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">Phases Overview</p>
-                        <p className="text-xs text-slate-700">
+                        <p className="text-sm font-semibold text-foreground">Phases Overview</p>
+                        <p className="text-xs text-muted-foreground font-medium">
                           Expand each phase to review blockers, verification, and payout readiness.
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Badge
                           variant="outline"
-                          className="rounded-full border-slate-300 bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-slate-700"
+                          className="rounded-full border-border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground"
                         >
                           {phaseInsightRows.length} Total Phases
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="rounded-full border-emerald-200 bg-emerald-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-emerald-700"
+                          className="rounded-full border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
                         >
                           {completedPhases} Completed
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-primary"
+                          className="rounded-full border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
                         >
                           {Math.max(phaseInsightRows.length - completedPhases, 0)} Pending
                         </Badge>
@@ -946,29 +1140,29 @@ const ProjectDetailsPage = () => {
                       </Accordion>
                     </div>
                   ) : (
-                    <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-sm text-slate-700">
+                    <p className="rounded-2xl border border-dashed border-border/60 bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
                       No milestone phases available for this project yet.
                     </p>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="rounded-3xl border-slate-200 shadow-sm bg-white overflow-hidden">
-                <CardHeader className="border-b border-slate-100 bg-gradient-to-r from-orange-50/70 to-white p-6 pb-5">
+              <Card className="rounded-3xl border border-border/60 bg-card text-card-foreground shadow-xs overflow-hidden">
+                <CardHeader className="border-b border-border/60 bg-muted/20 p-6 pb-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <CardTitle className="text-base font-bold text-slate-900">
+                    <CardTitle className="text-base font-semibold text-foreground">
                       All Phase Task Matrix
                     </CardTitle>
-                    <Badge className="bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase tracking-[0.08em] px-3 py-1">
+                    <Badge className="bg-muted text-muted-foreground text-[10px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full border border-border/50">
                       {visibleSopTaskRows.length} / {filteredSopTaskRows.length} Points
                     </Badge>
                   </div>
-                  <p className="mt-2 text-sm font-medium text-slate-600">
+                  <p className="mt-1 text-xs text-muted-foreground font-medium">
                     Start with 4 points. Use role cards to filter tasks and tap view more for complete list.
                   </p>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="grid gap-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-orange-50/40 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-3 border-b border-border/60 bg-muted/10 p-5 sm:grid-cols-2 lg:grid-cols-4">
                     {[totalTaskSummary, ...roleProgressRows].map((roleRow) => {
                       const roleKey = roleRow.role;
                       const isActive = activeTaskRoleFilter === roleKey;
@@ -983,17 +1177,17 @@ const ProjectDetailsPage = () => {
                         type="button"
                         key={roleKey}
                         onClick={() => setActiveTaskRoleFilter(roleKey)}
-                        className={`rounded-2xl border bg-white p-4 text-left transition-colors ${
+                        className={`rounded-2xl border p-4 text-left transition-colors ${
                           isActive
-                            ? "border-orange-200 bg-orange-50/60 shadow-sm"
-                            : "border-slate-200/80 hover:bg-orange-50/40"
+                            ? "border-primary/30 bg-primary/10 shadow-xs"
+                            : "border-border/60 bg-card hover:bg-muted/40"
                         }`}
                       >
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-700">
+                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                           {roleLabel}
                         </p>
-                        <p className="mt-1 text-sm font-semibold text-slate-900">{roleRow.assignee}</p>
-                        <p className="mt-1 text-xs font-medium leading-relaxed text-slate-700">
+                        <p className="mt-1 text-sm font-semibold text-foreground">{roleRow.assignee}</p>
+                        <p className="mt-1 text-xs font-medium leading-relaxed text-muted-foreground">
                           Total {roleRow.total} | Verified {roleRow.verified} | Completed {roleRow.completed} | Pending {roleRow.pending}
                         </p>
                       </button>
@@ -1001,10 +1195,10 @@ const ProjectDetailsPage = () => {
                     })}
                   </div>
 
-                  <div className="border-b border-slate-100 bg-white px-4 py-3 md:hidden">
-                    <p className="text-xs font-medium text-slate-700">
+                  <div className="border-b border-border/60 bg-card px-4 py-3 md:hidden">
+                    <p className="text-xs font-medium text-muted-foreground">
                       Showing:{" "}
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-semibold text-foreground">
                         {activeTaskRoleFilter === "ALL"
                           ? "All roles"
                           : activeTaskRoleFilter.replace("_", " ")}
@@ -1014,16 +1208,16 @@ const ProjectDetailsPage = () => {
 
                   <div className="space-y-2 p-4 md:hidden">
                     {visibleSopTaskRows.map((task) => (
-                      <article key={task.id} className="rounded-xl border border-slate-200 bg-white p-3">
+                      <article key={task.id} className="rounded-2xl border border-border/60 bg-card p-3">
                         <div className="mb-2 flex items-start justify-between gap-3">
-                          <p className="text-xs font-semibold text-slate-700">Point {task.serial}</p>
+                          <p className="text-xs font-semibold text-muted-foreground">Point {task.serial}</p>
                           {task.status !== "PENDING" && (
                             <Badge
-                              className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
+                              className={`text-[10px] font-semibold uppercase rounded-full px-2.5 py-0.5 ${
                                 task.status === "VERIFIED"
-                                  ? "bg-emerald-500 text-white"
+                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                                   : task.status === "COMPLETED"
-                                    ? "bg-amber-500 text-white"
+                                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                                     : "bg-primary/10 text-primary border border-primary/20"
                               }`}
                             >
@@ -1031,28 +1225,28 @@ const ProjectDetailsPage = () => {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-sm font-semibold text-slate-900">{task.title}</p>
-                        <p className="mt-1 text-xs text-slate-700">
+                        <p className="text-sm font-semibold text-foreground">{task.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
                           Phase {task.phaseId} | {task.phaseName}
                         </p>
                         <div className="mt-2 flex flex-wrap items-center gap-2">
                           <Badge
-                            className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
+                            className={`text-[10px] font-semibold uppercase rounded-full px-2.5 py-0.5 ${
                               task.leadRole === "CLIENT"
-                                ? "bg-orange-50 text-[#B85A24] border border-orange-100"
+                                ? "bg-primary/10 text-primary border border-primary/20"
                                 : task.leadRole === "FREELANCER"
-                                  ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
-                                  : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                  ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                                  : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                             }`}
                           >
                             {task.leadRole.replace("_", " ")}
                           </Badge>
-                          <span className="text-xs font-medium text-slate-600">{task.leadName}</span>
+                          <span className="text-xs font-medium text-muted-foreground">{task.leadName}</span>
                         </div>
                       </article>
                     ))}
                     {visibleSopTaskRows.length === 0 ? (
-                      <p className="rounded-xl border border-dashed border-slate-200 px-4 py-6 text-center text-sm font-medium text-slate-700">
+                      <p className="rounded-xl border border-dashed border-border/60 px-4 py-6 text-center text-sm font-medium text-muted-foreground">
                         No tasks found for this role.
                       </p>
                     ) : null}
@@ -1069,59 +1263,59 @@ const ProjectDetailsPage = () => {
                         <col className="w-[110px]" />
                         <col className="w-[100px]" />
                       </colgroup>
-                      <thead className="bg-slate-100/80">
+                      <thead className="bg-muted/40">
                         <tr>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Point</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Phase</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Task</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Lead Role</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Assigned User</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Status</th>
-                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-700">Action</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Point</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Phase</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Task</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Lead Role</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Assigned User</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                          <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white">
+                      <tbody className="bg-card divide-y divide-border/60">
                         {visibleSopTaskRows.map((task) => (
-                          <tr key={task.id} className="border-t border-slate-100 align-top transition-colors hover:bg-orange-50/30">
-                            <td className="px-4 py-3 text-sm font-semibold text-slate-800">{task.serial}</td>
-                            <td className="px-4 py-3 text-sm font-semibold text-slate-700">
+                          <tr key={task.id} className="align-top transition-colors hover:bg-muted/30">
+                            <td className="px-4 py-3 text-sm font-semibold text-foreground">{task.serial}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-foreground">
                               Phase {task.phaseId}
-                              <div className="mt-1 text-xs font-medium text-slate-700">
+                              <div className="mt-0.5 text-xs font-medium text-muted-foreground">
                                 {task.phaseName}
                               </div>
                             </td>
-                            <td className="px-4 py-3 text-sm font-medium leading-relaxed text-slate-900 break-words">
+                            <td className="px-4 py-3 text-sm font-medium leading-relaxed text-foreground break-words">
                               {task.title}
                             </td>
                             <td className="px-4 py-3">
                               <Badge
-                                className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
+                                className={`text-[10px] font-semibold uppercase rounded-full px-2.5 py-0.5 ${
                                   task.leadRole === "CLIENT"
-                                    ? "bg-orange-50 text-[#B85A24] border border-orange-100"
+                                    ? "bg-primary/10 text-primary border border-primary/20"
                                     : task.leadRole === "FREELANCER"
-                                      ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
-                                      : "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                                      ? "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20"
+                                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                                 }`}
                               >
                                 {task.leadRole.replace("_", " ")}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 text-sm font-semibold text-slate-800 break-words">{task.leadName}</td>
+                            <td className="px-4 py-3 text-sm font-semibold text-foreground break-words">{task.leadName}</td>
                             <td className="px-4 py-3">
                               {task.status !== "PENDING" ? (
                                 <Badge
-                                  className={`text-[10px] font-semibold uppercase tracking-[0.06em] px-2 py-0.5 ${
+                                  className={`text-[10px] font-semibold uppercase rounded-full px-2.5 py-0.5 ${
                                     task.status === "VERIFIED"
-                                      ? "bg-emerald-500 text-white"
+                                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                                       : task.status === "COMPLETED"
-                                        ? "bg-amber-500 text-white"
+                                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                                         : "bg-primary/10 text-primary border border-primary/20"
                                   }`}
                                 >
                                   {task.status === "COMPLETED" ? "PENDING REVIEW" : task.status}
                                 </Badge>
                               ) : (
-                                <span className="text-slate-300">-</span>
+                                <span className="text-muted-foreground">-</span>
                               )}
                             </td>
                             <td className="px-4 py-3">
@@ -1129,10 +1323,10 @@ const ProjectDetailsPage = () => {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleHoldTask(task.originalTaskId, task.phaseId, !task.isHeld)}
-                                className={`h-7 px-2 text-[10px] font-semibold uppercase tracking-wider ${
+                                className={`h-7 px-2.5 text-[10px] font-semibold uppercase rounded-full ${
                                   task.isHeld
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20"
+                                    : "border-border bg-card text-muted-foreground hover:bg-muted"
                                 }`}
                               >
                                 {task.isHeld ? "UNHOLD" : "HOLD"}
@@ -1144,7 +1338,7 @@ const ProjectDetailsPage = () => {
                           <tr>
                             <td
                               colSpan={6}
-                              className="px-4 py-10 text-center text-sm font-medium text-slate-700"
+                              className="px-4 py-10 text-center text-sm font-medium text-muted-foreground"
                             >
                               No tasks found for this role.
                             </td>
@@ -1154,10 +1348,10 @@ const ProjectDetailsPage = () => {
                     </table>
                   </div>
                   {filteredSopTaskRows.length > 4 ? (
-                    <div className="flex justify-end border-t border-slate-100 bg-white px-4 py-3">
+                    <div className="flex justify-end border-t border-border/60 bg-card px-4 py-3">
                       <Button
                         variant="outline"
-                        className="h-9 rounded-lg !border-orange-200 !bg-orange-50 px-3 text-[11px] font-semibold !text-[#B85A24] shadow-sm hover:!bg-orange-100"
+                        className="h-9 rounded-full border border-border bg-card px-4 text-xs font-semibold text-foreground hover:bg-muted"
                         onClick={() => setShowAllTaskRows((current) => !current)}
                       >
                         {showAllTaskRows
@@ -1169,47 +1363,46 @@ const ProjectDetailsPage = () => {
                 </CardContent>
               </Card>
 
-              <div className="group relative overflow-hidden rounded-3xl border border-orange-200/70 bg-gradient-to-r from-orange-50 via-white to-indigo-50/70 p-8 shadow-sm">
-
-                 <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-10">
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-[30px] bg-white text-[#D9692A] shadow-xl shadow-[#D9692A]/5">
-                       <Download className="h-8 w-8" />
+              <div className="group relative overflow-hidden rounded-3xl border border-border/60 bg-card p-6 sm:p-8 shadow-xs">
+                 <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8">
+                    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                       <Download className="h-7 w-7" />
                     </div>
                     <div className="flex-1 text-center lg:text-left">
-                       <h3 className="mb-2 text-xl font-bold text-slate-900">Handover Documentation</h3>
-                       <p className="mb-8 text-sm font-medium text-slate-700 leading-relaxed max-w-xl">
+                       <h3 className="mb-1 text-lg font-semibold text-foreground">Handover Documentation</h3>
+                       <p className="mb-6 text-xs font-medium text-muted-foreground leading-relaxed max-w-xl">
                           Ensure all deliverables, source files, and credentials have been securely verified by you before initiating Final Release.
                        </p>
-                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-orange-50/60 transition-colors border border-orange-100 shadow-sm">
+                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                          <label className="flex items-center gap-3 cursor-pointer p-3.5 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors border border-border/50">
                              <Checkbox 
                                 checked={checklist.sourceCodeTransferred} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, sourceCodeTransferred: !!v}))}
-                                className="h-5 w-5 rounded-md border-orange-300 bg-white data-[state=checked]:bg-[#D9692A] data-[state=checked]:border-[#D9692A] shadow-sm" 
+                                className="h-4 w-4 rounded border-border" 
                              />
-                             <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Sources</span>
+                             <span className="text-xs font-semibold text-foreground">Sources</span>
                           </label>
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-orange-50/60 transition-colors border border-orange-100 shadow-sm">
+                          <label className="flex items-center gap-3 cursor-pointer p-3.5 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors border border-border/50">
                              <Checkbox 
                                 checked={checklist.documentationFinalized} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, documentationFinalized: !!v}))}
-                                className="h-5 w-5 rounded-md border-orange-300 bg-white data-[state=checked]:bg-[#D9692A] data-[state=checked]:border-[#D9692A] shadow-sm" 
+                                className="h-4 w-4 rounded border-border" 
                              />
-                             <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Docs</span>
+                             <span className="text-xs font-semibold text-foreground">Docs</span>
                           </label>
-                          <label className="flex items-center gap-3 cursor-pointer p-4 rounded-2xl bg-white hover:bg-orange-50/60 transition-colors border border-orange-100 shadow-sm">
+                          <label className="flex items-center gap-3 cursor-pointer p-3.5 rounded-2xl bg-muted/40 hover:bg-muted/60 transition-colors border border-border/50">
                              <Checkbox 
                                 checked={checklist.credentialsShared} 
                                 onCheckedChange={(v) => setChecklist(p => ({...p, credentialsShared: !!v}))}
-                                className="h-5 w-5 rounded-md border-orange-300 bg-white data-[state=checked]:bg-[#D9692A] data-[state=checked]:border-[#D9692A] shadow-sm" 
+                                className="h-4 w-4 rounded border-border" 
                              />
-                             <span className="text-[11px] font-black text-slate-900 uppercase tracking-tighter">Access</span>
+                             <span className="text-xs font-semibold text-foreground">Access</span>
                           </label>
                        </div>
                        <Button 
                            onClick={handleFinalizeHandover}
                            disabled={!checklist.sourceCodeTransferred || !checklist.documentationFinalized || !checklist.credentialsShared}
-                           className="h-14 rounded-2xl bg-[#D9692A] px-10 text-xs font-black tracking-widest uppercase text-white shadow-xl shadow-[#D9692A]/30 hover:bg-[#B85A24] disabled:bg-orange-300 disabled:text-white/95 disabled:opacity-100 disabled:grayscale-0 transition-all hover:scale-105 active:scale-95"
+                           className="h-11 rounded-full bg-primary px-8 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all"
                        >
                           Finalize Project Closure
                        </Button>
@@ -1219,16 +1412,16 @@ const ProjectDetailsPage = () => {
             </div>
 
             <div className="space-y-6 2xl:sticky 2xl:top-24 2xl:self-start">
-               <Card className="rounded-3xl border-slate-200/80 shadow-sm bg-white">
+               <Card className="rounded-3xl border border-border/60 bg-card text-card-foreground shadow-xs">
                   <CardContent className="p-5">
                      <div className="mb-4 flex items-center justify-between">
                         <div>
-                           <h4 className="text-sm font-bold text-slate-900">Meeting Scheduler</h4>
-                           <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">PM + Client/Freelancer/Both</p>
+                           <h4 className="text-sm font-semibold text-foreground">Meeting Scheduler</h4>
+                           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">PM + Client/Freelancer/Both</p>
                         </div>
                         <Button
                           variant="outline"
-                          className="h-8 rounded-lg !border-orange-300 !bg-orange-100 px-3 text-[10px] font-black uppercase tracking-widest !text-[#B85A24] hover:!bg-orange-200 shadow-sm"
+                          className="h-8 rounded-full border border-primary/20 bg-primary/10 px-3 text-xs font-semibold text-primary hover:bg-primary/20"
                           onClick={() => setMeetingDialogOpen(true)}
                         >
                           Schedule
@@ -1236,91 +1429,147 @@ const ProjectDetailsPage = () => {
                      </div>
                      <div className="space-y-2">
                         {meetings.loading ? (
-                          <p className="text-xs font-medium text-slate-600">Loading meetings...</p>
+                          <p className="text-xs font-medium text-muted-foreground">Loading meetings...</p>
                         ) : projectMeetings.length > 0 ? (
                           projectMeetings.map((meeting) => (
-                            <div key={meeting.id} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2 mb-2 last:mb-0">
+                            <div key={meeting.id} className="rounded-2xl border border-border/50 bg-muted/30 p-3 mb-2 last:mb-0">
                               <div className="flex items-center justify-between">
-                                <p className="text-xs font-bold text-slate-900">{meeting.title}</p>
+                                <p className="text-xs font-semibold text-foreground">{meeting.title}</p>
                                 {meeting.meetingLink && (
                                   <a
                                     href={meeting.meetingLink}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="text-[10px] font-bold uppercase tracking-widest text-[#D9692A] hover:text-[#B85A24] bg-orange-50 px-2 py-0.5 rounded border border-orange-200"
+                                    className="text-[10px] font-semibold text-primary hover:underline bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20"
                                   >
                                     Join
                                   </a>
                                 )}
                               </div>
-                              <p className="mt-1 text-[11px] font-medium text-slate-700">
+                              <p className="mt-1 text-xs text-muted-foreground">
                                 {new Date(meeting.startsAt).toLocaleString()} - {new Date(meeting.endsAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                               </p>
-                              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">
                                 Scope: {meeting.participantScope || "BOTH"}
                               </p>
                             </div>
                           ))
                         ) : (
-                          <p className="text-xs font-medium text-slate-600">No meetings scheduled for this project yet.</p>
+                          <p className="text-xs font-medium text-muted-foreground">No meetings scheduled for this project yet.</p>
                         )}
                      </div>
                   </CardContent>
                </Card>
 
-               <Card className="flex h-[clamp(540px,68vh,700px)] flex-col overflow-hidden rounded-3xl border-slate-200/80 bg-white shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-100 p-4">
+               <Card className="flex h-[clamp(540px,68vh,700px)] flex-col overflow-hidden rounded-3xl border border-border/60 bg-card text-card-foreground shadow-xs">
+                  <div className="flex items-center justify-between border-b border-border/60 p-4">
                      <div className="flex items-center gap-3">
                         <div className="flex -space-x-2">
-                           <Avatar className="h-8 w-8 border-2 border-white">
+                           <Avatar className="h-8 w-8 border-2 border-background">
                               <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${project.title}`} />
                            </Avatar>
                         </div>
                         <div>
-                           <h4 className="text-sm font-bold text-slate-900">Assigned Workspace</h4>
-                           <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">• ACTIVE SYNC</p>
+                           <h4 className="text-sm font-semibold text-foreground">Assigned Workspace</h4>
+                           <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider">• Active Sync</p>
                         </div>
                      </div>
-                     <Settings className="h-4 w-4 text-slate-600" />
+                     <Settings className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground transition-colors" />
                   </div>
                   
-                  <div className="subtle-scrollbar flex-1 space-y-6 overflow-y-auto bg-slate-50/10 p-4">
+                  <div className="subtle-scrollbar flex-1 space-y-4 overflow-y-auto bg-muted/10 p-4">
                      {messages.loading ? (
-                         <div className="flex h-full items-center justify-center text-xs font-bold text-slate-300">Syncing messages...</div>
+                         <div className="flex h-full items-center justify-center text-xs font-semibold text-muted-foreground">Syncing messages...</div>
                      ) : conversationRows.length > 0 ? (
                          conversationRows.map((msg) => (
                            <div key={msg.id} className={`flex flex-col ${msg.senderRole === 'PROJECT_MANAGER' ? 'items-end' : 'items-start'}`}>
-                              <p className="mb-1 text-[9px] font-black text-slate-600 uppercase tracking-tighter">
+                              <p className="mb-1 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">
                                  {msg.senderLabel} • {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </p>
-                              <div className={`max-w-[90%] rounded-2xl p-4 text-sm font-medium ${msg.senderRole === 'PROJECT_MANAGER' ? 'bg-[#D9692A] text-white rounded-tr-none shadow-lg shadow-orange-500/10' : 'bg-white border border-slate-100 text-slate-900 rounded-tl-none shadow-sm'}`}>
-                                 {msg.content}
+                              <div className={`max-w-[90%] rounded-2xl p-3.5 text-xs font-medium ${msg.senderRole === 'PROJECT_MANAGER' ? 'bg-primary text-primary-foreground rounded-tr-none' : 'bg-muted border border-border/50 text-foreground rounded-tl-none'}`}>
+                                 {(() => {
+                                   const raw = String(msg.content || "");
+                                   const scopeMatch = raw.match(/^\[SCOPE:(\w+)\]/i);
+                                   const scope = scopeMatch ? scopeMatch[1] : null;
+                                   const scopeBadge = scope === "CLIENT" ? "PM + Client" : scope === "FREELANCER" ? "PM + Freelancer" : scope === "BOTH" ? "All Participants" : null;
+
+                                   const text = raw.replace(/^\[SCOPE:\w+\]\s*/i, "").replace(/^\[System\]/i, "[Project Manager]").trim();
+                                   const isMeeting = /meeting/i.test(text) && (text.includes("scheduled") || text.includes("Invitation") || text.includes("Join"));
+
+                                   if (isMeeting) {
+                                     const titleMatch = text.match(/"([^"]+)"/);
+                                     const title = titleMatch ? titleMatch[1] : "Project Sync";
+                                     const linkMatch = text.match(/https?:\/\/[^\s]+/);
+                                     const link = linkMatch ? linkMatch[0].replace(/[.,;)]+$/, "") : "https://meet.google.com/new";
+                                     const timeMatch = text.match(/scheduled for ([^\n.]+)/i);
+                                     const timeStr = timeMatch ? timeMatch[1].replace(/\.?\s*Join Meeting.*$/i, "").trim() : "";
+
+                                     return (
+                                       <div className="space-y-2.5 min-w-[220px]">
+                                         <div className="flex items-center justify-between gap-2 border-b border-current/20 pb-2">
+                                           <div className="flex items-center gap-2 min-w-0">
+                                             <div className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                               <CalendarIcon className="h-4 w-4" />
+                                             </div>
+                                             <div className="min-w-0">
+                                               <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Meeting Scheduled</p>
+                                               <p className="text-xs font-semibold truncate">{title}</p>
+                                             </div>
+                                           </div>
+                                           {scopeBadge && (
+                                             <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-white/20 shrink-0">
+                                               {scopeBadge}
+                                             </span>
+                                           )}
+                                         </div>
+                                         {timeStr && (
+                                           <p className="text-[11px] font-medium opacity-90">
+                                             📅 {timeStr}
+                                           </p>
+                                         )}
+                                         <div className="pt-1">
+                                           <a
+                                             href={link}
+                                             target="_blank"
+                                             rel="noopener noreferrer"
+                                             className="inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full bg-white text-primary text-xs font-bold shadow-xs hover:bg-white/90 transition-colors"
+                                           >
+                                             <span>Join Meeting</span>
+                                             <ExternalLink className="h-3.5 w-3.5" />
+                                           </a>
+                                         </div>
+                                       </div>
+                                     );
+                                   }
+
+                                   return text;
+                                 })()}
                               </div>
                            </div>
                          ))
                      ) : (
-                         <div className="flex h-full flex-col items-center justify-center text-center p-8 space-y-4">
-                             <MessageCircle className="h-12 w-12 text-slate-100" />
-                             <p className="text-sm font-bold text-slate-600">No messages yet. Start the conversation with the client and freelancer.</p>
+                         <div className="flex h-full flex-col items-center justify-center text-center p-8 space-y-3">
+                             <MessageCircle className="h-10 w-10 text-muted-foreground/40" />
+                             <p className="text-xs font-medium text-muted-foreground">No messages yet. Start the conversation with the client and freelancer.</p>
                          </div>
                      )}
                   </div>
                   
-                  <div className="p-4 border-t border-slate-100 bg-white">
+                  <div className="p-4 border-t border-border/60 bg-card">
                      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="relative">
                         <Input 
                            value={composer}
                            onChange={(e) => setComposer(e.target.value)}
-                           className="h-14 w-full rounded-2xl border !border-orange-200 !bg-white px-6 pr-14 text-sm font-medium !text-slate-800 placeholder:text-slate-600 shadow-sm focus-visible:ring-2 focus-visible:ring-[#D9692A]/20" 
+                           className="h-11 w-full rounded-full border border-border bg-background px-4 pr-12 text-xs font-medium text-foreground placeholder:text-muted-foreground shadow-xs focus-visible:ring-1 focus-visible:ring-primary" 
                            placeholder="Drop an update or ask a question..."
                            disabled={sending}
                         />
                         <button 
                             type="submit"
                             disabled={sending || !composer.trim()}
-                            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-[#D9692A] text-white shadow-lg shadow-orange-500/30 hover:bg-[#B85A24] disabled:opacity-50 transition-all"
+                            className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 disabled:opacity-50 transition-all"
                         >
-                            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            {sending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
                         </button>
                      </form>
                   </div>
@@ -1379,7 +1628,59 @@ const ProjectDetailsPage = () => {
                           : "bg-white border border-slate-100 text-slate-900 rounded-tl-none"
                       }`}
                     >
-                      {msg.content}
+                      {(() => {
+                        const raw = String(msg.content || "");
+                        const text = raw.replace(/^\[SCOPE:\w+\]\s*/i, "").replace(/^\[System\]/i, "[Project Manager]").trim();
+                        const isMeeting = /meeting/i.test(text) && (text.includes("scheduled") || text.includes("Invitation") || text.includes("Join") || text.includes("Project Sync"));
+
+                        if (isMeeting) {
+                          const titleMatch = text.match(/"([^"]+)"/);
+                          const title = titleMatch ? titleMatch[1] : "Project Sync";
+                          const linkMatch = text.match(/https?:\/\/[^\s]+/);
+                          const link = linkMatch ? linkMatch[0].replace(/[.,;)]+$/, "") : "https://meet.google.com/new";
+                          const timeMatch = text.match(/scheduled for ([^\n.]+)/i);
+                          let timeStr = timeMatch ? timeMatch[1].replace(/\.?\s*Join Meeting.*$/i, "").trim() : "";
+
+                          if (!timeStr) {
+                            const fallbackTime = text.match(/\b\d{1,2}\/\d{1,2}\/\d{4}[^.]*/);
+                            if (fallbackTime) {
+                              timeStr = fallbackTime[0].trim();
+                            }
+                          }
+
+                          return (
+                            <div className="space-y-2.5 min-w-[220px] p-0.5">
+                              <div className="flex items-center gap-2 border-b border-current/20 pb-2">
+                                <div className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                  <CalendarIcon className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Meeting Scheduled</p>
+                                  <p className="text-xs font-semibold truncate">{title}</p>
+                                </div>
+                              </div>
+                              {timeStr && (
+                                <p className="text-[11px] font-medium opacity-90">
+                                  📅 {timeStr}
+                                </p>
+                              )}
+                              <div className="pt-1">
+                                <a
+                                  href={link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full bg-white text-primary text-xs font-bold shadow-xs hover:bg-white/90 transition-colors"
+                                >
+                                  <span>Join Meeting</span>
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return text;
+                      })()}
                     </div>
                   </div>
                 ))
@@ -1654,83 +1955,87 @@ const ProjectDetailsPage = () => {
       </Dialog>
 
       <Dialog open={projectSummaryOpen} onOpenChange={setProjectSummaryOpen}>
-        <DialogContent className="max-w-3xl rounded-3xl border-slate-200 bg-white/95 p-0 shadow-2xl">
-          <DialogHeader className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-slate-100 p-6 pb-4">
-            <DialogTitle className="text-lg font-black text-slate-900">
-              Project Overview
+        <DialogContent className="max-w-3xl rounded-3xl border-border bg-card p-0 shadow-2xl overflow-hidden text-card-foreground">
+          <DialogHeader className="border-b border-border bg-gradient-to-r from-primary/10 via-background to-accent/20 p-6 pb-5">
+            <DialogTitle className="text-xl font-extrabold text-foreground">
+              {project.title || "Untitled Project"}
             </DialogTitle>
-            <DialogDescription className="text-sm text-slate-700">
-              Dynamic project details with full manager visibility.
+            <DialogDescription className="text-xs font-semibold text-muted-foreground">
+              Complete project brief and requirements overview.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 p-6 pt-5">
-            <div className="grid gap-4 rounded-2xl border border-slate-100 bg-slate-50/70 p-4 sm:grid-cols-2">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Project Name
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
-                  {project.title || "Untitled Project"}
-                </p>
+          <div className="space-y-5 p-6 max-h-[75vh] overflow-y-auto subtle-scrollbar">
+            {/* Quick Info Bar */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3.5 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Client</span>
+                <span className="text-xs font-bold text-foreground">{clientProfile.clientName || "Unknown"}</span>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Project ID
-                </p>
-                <p className="mt-1 text-xs font-semibold text-slate-700">
-                  #{project.id || projectId}
-                </p>
+              <div className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3.5 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Budget</span>
+                <span className="text-xs font-bold text-foreground">INR {Number(project.budget || 0).toLocaleString("en-IN")}</span>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Status
-                </p>
-                <Badge className="mt-1 w-fit rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-700">
-                  {project.status?.label || "Active"}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Budget
-                </p>
-                <p className="mt-1 text-sm font-black text-slate-900">
-                  INR {Number(project.budget || 0).toLocaleString("en-IN")}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Created
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-700">
-                  {project.createdAt ? new Date(project.createdAt).toLocaleString() : "Not available"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Updated
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-700">
-                  {project.updatedAt ? new Date(project.updatedAt).toLocaleString() : "Not available"}
-                </p>
-              </div>
+              {freelancerProfile && (
+                <div className="flex items-center gap-2 rounded-full border border-border bg-muted/40 px-3.5 py-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Freelancer</span>
+                  <span className="text-xs font-bold text-foreground">{freelancerProfile.freelancerName}</span>
+                </div>
+              )}
             </div>
 
-            <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                Project Description
-              </p>
-              <div className="mt-2 max-h-[40vh] overflow-y-auto pr-2">
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+            {/* Structured Requirements Sections */}
+            {requirementsSections.length > 0 ? (
+              <div className="space-y-3.5">
+                {requirementsSections.map((section, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl border border-border/60 bg-card shadow-xs overflow-hidden"
+                  >
+                    <div className="px-4 py-2.5 bg-muted/40 border-b border-border/60 flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-foreground">
+                        {section.title}
+                      </h4>
+                    </div>
+                    <div className="p-4 space-y-3">
+                      {section.content && (
+                        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line font-medium">
+                          {section.content}
+                        </p>
+                      )}
+                      {section.items.length > 0 && (
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {section.items.map((item, itemIdx) => (
+                            <li
+                              key={itemIdx}
+                              className="flex items-start gap-2.5 rounded-xl border border-border/40 bg-muted/20 px-3 py-2"
+                            >
+                              <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                              <span className="text-xs font-medium text-foreground leading-relaxed">
+                                {item}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-border/60 bg-muted/20 p-5">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground font-medium">
                   {project.description || "No description available."}
                 </p>
               </div>
-            </div>
+            )}
 
+            {/* Footer Actions */}
             <div className="flex flex-wrap justify-end gap-3 pt-1">
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-slate-200 bg-white px-4 text-xs font-bold text-slate-700"
+                className="h-10 rounded-xl border-border bg-card px-4 text-xs font-bold text-foreground hover:bg-muted transition-colors"
                 onClick={() => {
                   setProjectSummaryOpen(false);
                   handleViewClientProfile();
@@ -1739,7 +2044,7 @@ const ProjectDetailsPage = () => {
                 View Client Profile
               </Button>
               <Button
-                className="h-10 rounded-xl bg-[#D9692A] px-4 text-xs font-bold text-white shadow-sm hover:bg-[#B85A24]"
+                className="h-10 rounded-xl bg-primary px-4 text-xs font-bold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
                 onClick={() => {
                   setProjectSummaryOpen(false);
                   navigate(`/project-manager/projects/${projectId}`);
@@ -1759,22 +2064,22 @@ const ProjectDetailsPage = () => {
       />
 
       <Dialog open={clientProfileOpen} onOpenChange={setClientProfileOpen}>
-        <DialogContent className="max-w-3xl rounded-[2rem] border-slate-200 p-0 shadow-2xl">
-          <DialogHeader className="border-b border-slate-100 bg-gradient-to-r from-orange-50 via-white to-indigo-50 p-6 pb-5">
-            <DialogTitle className="text-xl font-black text-slate-900">
+        <DialogContent className="max-w-4xl rounded-3xl border-border bg-card p-0 shadow-2xl overflow-hidden text-card-foreground">
+          <DialogHeader className="border-b border-border bg-gradient-to-r from-primary/10 via-background to-accent/20 p-6 pb-5">
+            <DialogTitle className="text-xl font-extrabold text-foreground">
               Client Profile
             </DialogTitle>
-            <DialogDescription className="text-sm font-medium text-slate-700">
+            <DialogDescription className="text-xs font-semibold text-muted-foreground">
               PM-ready snapshot with client details and project requirement brief.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6 p-6">
-            <div className="flex flex-col gap-4 rounded-2xl border border-orange-100 bg-gradient-to-r from-orange-50 to-white p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-12 w-12 rounded-xl border border-orange-100">
+          <div className="space-y-6 p-6 max-h-[80vh] overflow-y-auto subtle-scrollbar">
+            <div className="flex flex-col gap-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <Avatar className="h-12 w-12 rounded-xl border border-primary/20 shrink-0">
                   <AvatarImage src={clientProfile.avatar || ""} />
-                  <AvatarFallback className="bg-[#D9692A] text-sm font-black text-white">
+                  <AvatarFallback className="bg-primary text-sm font-black text-primary-foreground">
                     {(clientProfile.clientName || "Client")
                       .split(" ")
                       .map((part) => part?.[0] || "")
@@ -1783,119 +2088,125 @@ const ProjectDetailsPage = () => {
                       .toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <div>
-                  <p className="text-base font-black text-slate-900">
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-bold text-foreground truncate">
                     {clientProfile.clientName || "Unknown Client"}
                   </p>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-[#B85A24]">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-primary truncate">
                     {clientProfile.company || "Direct Client"}
                   </p>
                 </div>
               </div>
-              <Badge className="w-fit rounded-full bg-[#D9692A] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white">
+              <Badge className="w-fit rounded-full bg-primary px-3.5 py-1 text-[10px] font-extrabold uppercase tracking-wider text-primary-foreground shrink-0">
                 Active Engagement
               </Badge>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+            <div className="grid gap-4 rounded-2xl border border-border/60 bg-muted/30 p-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
                   Client Name
                 </p>
-                <p className="mt-1 text-sm font-bold text-slate-900 break-words">
+                <p className="mt-1 text-xs font-bold text-foreground truncate">
                   {clientProfile.clientName || "Unknown"}
                 </p>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
                   Email
                 </p>
-                <p className="mt-1 text-sm font-medium text-slate-700">
+                <p className="mt-1 text-xs font-semibold text-foreground truncate" title={clientProfile.email}>
                   {clientProfile.email || "Not available"}
                 </p>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
                   Company
                 </p>
-                <p className="mt-1 text-sm font-medium text-slate-700">
+                <p className="mt-1 text-xs font-semibold text-foreground truncate">
                   {clientProfile.company || "Not specified"}
                 </p>
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+              <div className="min-w-0">
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">
                   Budget
                 </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
+                <p className="mt-1 text-xs font-bold text-foreground">
                   INR {Number(project.budget || 0).toLocaleString("en-IN")}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Project
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-900 break-words">
-                  {project.title || "Untitled Project"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Project ID
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-700 break-all">
-                  #{project.id || projectId}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Status
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-900">
-                  {project.status?.label || "Active"}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                  Last Updated
-                </p>
-                <p className="mt-1 text-sm font-medium text-slate-700">
-                  {project.updatedAt
-                    ? new Date(project.updatedAt).toLocaleString()
-                    : "Not available"}
                 </p>
               </div>
             </div>
 
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
-                Requirements
+              <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground mb-3">
+                Requirements & Project Brief
               </p>
-              <div className="mt-2 max-h-[44vh] overflow-y-auto rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
-                <pre className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-700 font-medium">
-                  {requirementsText || "No requirements shared yet."}
-                </pre>
-              </div>
+              {requirementsSections.length === 0 ? (
+                <div className="rounded-2xl border border-border/60 bg-muted/20 p-5">
+                  <p className="text-xs text-foreground leading-relaxed whitespace-pre-line font-medium">
+                    {requirementsText || "No requirements shared yet."}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[44vh] overflow-y-auto subtle-scrollbar pr-1">
+                  {requirementsSections.map((section, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-2xl border border-border/60 bg-card shadow-xs overflow-hidden"
+                    >
+                      <div className="px-4 py-2.5 bg-muted/40 border-b border-border/60 flex items-center gap-2">
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                        <h4 className="font-bold text-xs uppercase tracking-wider text-foreground">
+                          {section.title}
+                        </h4>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {section.content ? (
+                          <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line font-medium">
+                            {section.content}
+                          </p>
+                        ) : null}
+                        {section.items.length > 0 ? (
+                          <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            {section.items.map((item, i) => (
+                              <li
+                                key={i}
+                                className="flex items-start gap-2.5 text-xs bg-muted/30 p-2.5 rounded-xl border border-border/40"
+                              >
+                                <span className="text-primary font-black mt-0.5">•</span>
+                                <span className="text-foreground leading-relaxed font-medium">
+                                  {item}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-2.5 border-t border-border/60 pt-4 sm:flex-row sm:justify-end">
               <Button
                 variant="outline"
-                className="h-11 rounded-xl border-slate-200 bg-white px-4 text-xs font-black tracking-widest text-slate-700 uppercase"
+                className="h-10 rounded-full border-border bg-background px-5 text-xs font-bold text-foreground hover:bg-accent"
                 onClick={() => {
                   setClientProfileOpen(false);
                   setProjectSummaryOpen(true);
                 }}
               >
-                View Project
+                View Project Overview
               </Button>
               <Button
-                className="h-11 rounded-xl bg-[#D9692A] px-4 text-xs font-black tracking-widest text-white uppercase hover:bg-[#B85A24]"
+                className="h-10 rounded-full bg-primary px-5 text-xs font-bold text-primary-foreground hover:opacity-90 shadow-xs"
                 onClick={() => {
                   setClientProfileOpen(false);
                   navigate(`/project-manager/projects/${projectId}`);
                 }}
               >
-                Open Full Project Page
+                Open Full Project Workspace
               </Button>
             </div>
           </div>

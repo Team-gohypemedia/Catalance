@@ -142,7 +142,7 @@ const navConfigs = {
     {
       title: "Active Projects",
       url: "/project-manager/projects?preset=active",
-      icon: AlertCircle,
+      icon: Briefcase,
     },
     {
       title: "Appointments",

@@ -33,6 +33,8 @@ import SendHorizontal from "lucide-react/dist/esm/icons/send-horizontal";
 import Smile from "lucide-react/dist/esm/icons/smile";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import CalendarIcon from "lucide-react/dist/esm/icons/calendar";
 import { cn } from "@/shared/lib/utils";
 import {
   CHAT_EMOJIS,
@@ -144,10 +146,13 @@ const ChatArea = React.memo(function ChatArea({
   );
 
   const visibleMessages = useMemo(() => {
+    const scopeAllowed = messages.filter(
+      (m) => !String(m?.content || "").includes("[SCOPE:FREELANCER]")
+    );
     const query = deferredMessageSearch.trim().toLowerCase();
     const filteredMessages = !query
-      ? messages
-      : messages.filter((message) =>
+      ? scopeAllowed
+      : scopeAllowed.filter((message) =>
           [message?.content, message?.attachment?.name, message?.senderName]
             .filter(Boolean)
             .join(" ")
@@ -756,12 +761,68 @@ const ChatArea = React.memo(function ChatArea({
                             )}
                           >
                             <div className="flex max-w-full items-end gap-2">
-                              <p
-                                className="min-w-0 whitespace-pre-wrap text-[0.96rem] leading-5.5"
-                                style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
-                              >
-                                {message.content}
-                              </p>
+                              <div className="min-w-0 flex-1">
+                                {(() => {
+                                  const raw = String(message.content || "");
+                                  const text = raw.replace(/^\[SCOPE:\w+\]\s*/i, "").replace(/^\[System\]/i, "[Project Manager]").trim();
+                                  const isMeeting = /meeting/i.test(text) && (text.includes("scheduled") || text.includes("Invitation") || text.includes("Join") || text.includes("Project Sync"));
+
+                                  if (isMeeting) {
+                                    const titleMatch = text.match(/"([^"]+)"/);
+                                    const title = titleMatch ? titleMatch[1] : "Project Sync";
+                                    const linkMatch = text.match(/https?:\/\/[^\s]+/);
+                                    const link = linkMatch ? linkMatch[0].replace(/[.,;)]+$/, "") : "https://meet.google.com/new";
+                                    const timeMatch = text.match(/scheduled for ([^\n.]+)/i);
+                                    let timeStr = timeMatch ? timeMatch[1].replace(/\.?\s*Join Meeting.*$/i, "").trim() : "";
+
+                                    if (!timeStr) {
+                                      const fallbackTime = text.match(/\b\d{1,2}\/\d{1,2}\/\d{4}[^.]*/);
+                                      if (fallbackTime) {
+                                        timeStr = fallbackTime[0].trim();
+                                      }
+                                    }
+
+                                    return (
+                                      <div className="space-y-2.5 min-w-[220px] p-0.5">
+                                        <div className="flex items-center gap-2 border-b border-current/20 pb-2">
+                                          <div className="h-7 w-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                            <CalendarIcon className="h-4 w-4" />
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">Meeting Scheduled</p>
+                                            <p className="text-xs font-semibold truncate">{title}</p>
+                                          </div>
+                                        </div>
+                                        {timeStr && (
+                                          <p className="text-[11px] font-medium opacity-90">
+                                            📅 {timeStr}
+                                          </p>
+                                        )}
+                                        <div className="pt-1">
+                                          <a
+                                            href={link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center justify-center gap-1.5 h-8 px-4 rounded-full bg-white text-primary text-xs font-bold shadow-xs hover:bg-white/90 transition-colors"
+                                          >
+                                            <span>Join Meeting</span>
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                          </a>
+                                        </div>
+                                      </div>
+                                    );
+                                  }
+
+                                  return (
+                                    <p
+                                      className="whitespace-pre-wrap text-[0.96rem] leading-5.5"
+                                      style={{ overflowWrap: "break-word", wordBreak: "break-word" }}
+                                    >
+                                      {text}
+                                    </p>
+                                  );
+                                })()}
+                              </div>
                               <div className="shrink-0 self-end">
                                 {renderStatus(message, ownsMessage, "inline")}
                               </div>

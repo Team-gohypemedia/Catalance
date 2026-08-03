@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Calendar } from "@/components/ui/calendar";
+import { AvailabilitySlotManager } from "@/modules/project-manager/components/AvailabilitySlotManager";
 
 const MEETING_FILTERS = [
   { value: "ALL", label: "All Meetings" },
@@ -441,6 +442,10 @@ const CalendarPage = () => {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="col-span-full">
+        <AvailabilitySlotManager selectedDate={date} />
       </div>
     </PmShell>
   );
