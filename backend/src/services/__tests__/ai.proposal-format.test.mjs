@@ -281,6 +281,39 @@ Budget: ...
   assert.match(normalized, /^Reporting Cadence: Weekly dashboard and monthly strategy review$/m);
 });
 
+test("does not inject default core fields when admin defined a custom structure", () => {
+  const normalized = normalizeProposalMarkdown({
+    markdown: `
+Campaign Focus: Local lead generation
+Target Locations:
+- Mumbai
+Reporting Cadence: Weekly dashboard
+    `,
+    proposalContext: {
+      serviceName: "SEO",
+      proposalStructure: `
+Campaign Focus: ...
+Target Locations:
+- ...
+Reporting Cadence: ...
+      `,
+    },
+    selectedServiceName: "SEO",
+  });
+
+  assert.match(normalized, /^Campaign Focus: Local lead generation$/m);
+  assert.match(normalized, /^Target Locations:$/m);
+  assert.match(normalized, /^Reporting Cadence: Weekly dashboard$/m);
+  assert.doesNotMatch(normalized, /^Client Name:/m);
+  assert.doesNotMatch(normalized, /^Business Name:/m);
+  assert.doesNotMatch(normalized, /^Service Type:/m);
+  assert.doesNotMatch(normalized, /^Project Overview:/m);
+  assert.doesNotMatch(normalized, /^Primary Objectives:/m);
+  assert.doesNotMatch(normalized, /^Features\/Deliverables Included:/m);
+  assert.doesNotMatch(normalized, /^Launch Timeline:/m);
+  assert.doesNotMatch(normalized, /^Budget:/m);
+});
+
 test("normalizes standalone numeric helpers", () => {
   assert.equal(normalizeNumericFieldValue("seven pages"), "7");
   assert.equal(normalizeProposalBudgetValue("twenty five thousand"), "INR 25,000");

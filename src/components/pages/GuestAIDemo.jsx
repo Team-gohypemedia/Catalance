@@ -280,6 +280,12 @@ const toStoredProposalServiceEntry = (service = {}) => {
         id: id || slug || name,
         ...(slug ? { slug } : {}),
         ...(name ? { name } : {}),
+        ...(typeof service?.proposalStructure === 'string' && service.proposalStructure.trim()
+            ? { proposalStructure: service.proposalStructure }
+            : {}),
+        ...(typeof service?.proposalPrompt === 'string' && service.proposalPrompt.trim()
+            ? { proposalPrompt: service.proposalPrompt }
+            : {}),
         ...(typeof service?.agencyProposalStructure === 'string' && service.agencyProposalStructure.trim()
             ? { agencyProposalStructure: service.agencyProposalStructure }
             : {}),

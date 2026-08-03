@@ -3066,25 +3066,8 @@ const resolveProposalConfiguration = ({
   const parsedDefinitions = parseProposalStructureDefinitions(proposalStructure);
   const usesCustomStructure = parsedDefinitions.length > 0;
   const customFieldDefinitions = dedupeProposalFieldDefinitions(parsedDefinitions);
-  const customFieldLabels = new Set(
-    customFieldDefinitions.map(({ label }) => label)
-  );
   const fieldDefinitions = usesCustomStructure
-    ? dedupeProposalFieldDefinitions([
-        ...PROPOSAL_CORE_PREFIX_FIELDS
-          .filter((label) => !customFieldLabels.has(label))
-          .map((label) => ({
-            label,
-            isList: PROPOSAL_MULTI_VALUE_FIELDS.has(label)
-          })),
-        ...customFieldDefinitions,
-        ...PROPOSAL_CORE_SUFFIX_FIELDS
-          .filter((label) => !customFieldLabels.has(label))
-          .map((label) => ({
-            label,
-            isList: PROPOSAL_MULTI_VALUE_FIELDS.has(label)
-          }))
-      ])
+    ? customFieldDefinitions
     : buildDefaultProposalFieldDefinitions(
         resolveProposalServiceCategory(serviceLabel)
       );
@@ -3922,18 +3905,19 @@ const normalizeProposalMarkdown = ({
   const expectedFields = proposalConfiguration.fieldDefinitions.map(
     ({ label }) => label
   );
+  const usesCustomStructure = proposalConfiguration.usesCustomStructure === true;
   const contextFieldLabels = Array.from(contextFields.keys());
   const knownFieldKeys = new Set(
-    [...expectedFields, ...contextFieldLabels, PROPOSAL_ADDITIONAL_FIELD]
+    [...expectedFields, ...(usesCustomStructure ? [] : contextFieldLabels), PROPOSAL_ADDITIONAL_FIELD]
       .flatMap((field) => PROPOSAL_FIELD_ALIASES[field] || [field])
       .map((field) => normalizeProposalFieldKey(field))
   );
-  const contextOnlyFieldLabels = contextFieldLabels.filter((field) => {
+  const contextOnlyFieldLabels = usesCustomStructure ? [] : contextFieldLabels.filter((field) => {
     if (!field || field === PROPOSAL_ADDITIONAL_FIELD) return false;
     return !expectedFields.includes(field);
   });
 
-  const unknownFieldEntries = Array.from(sectionIndex.values())
+  const unknownFieldEntries = usesCustomStructure ? [] : Array.from(sectionIndex.values())
     .filter((section) => {
       if (!section?.normalizedKey) return false;
       return !knownFieldKeys.has(section.normalizedKey);
