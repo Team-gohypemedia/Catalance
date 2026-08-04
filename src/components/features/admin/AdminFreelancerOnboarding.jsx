@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Archive from "lucide-react/dist/esm/icons/archive";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import Eye from "lucide-react/dist/esm/icons/eye";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Filter from "lucide-react/dist/esm/icons/filter";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import Plus from "lucide-react/dist/esm/icons/plus";
+import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import RotateCcw from "lucide-react/dist/esm/icons/rotate-ccw";
 import Search from "lucide-react/dist/esm/icons/search";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
@@ -67,6 +70,11 @@ const STATUS_FILTERS = [
   { value: "SUBMITTED", label: "Submitted" },
   { value: "APPROVED", label: "Approved" },
   { value: "ARCHIVED", label: "Archived" },
+];
+const ONBOARDING_FILTER_OPTIONS = [
+  { value: "ALL", label: "All onboarding states" },
+  { value: "true", label: "Completed" },
+  { value: "false", label: "Incomplete" },
 ];
 const PROFILE_ROLE_OPTIONS = [
   { value: "individual", label: "Individual Freelancer" },
@@ -358,6 +366,7 @@ const FieldError = ({ message }) =>
 
 const AdminFreelancerOnboarding = () => {
   const { authFetch } = useAuth();
+  const navigate = useNavigate();
   const [submissions, setSubmissions] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
@@ -379,6 +388,7 @@ const AdminFreelancerOnboarding = () => {
     accountStatus: "ALL",
     service: "ALL",
     kycVerified: "ALL",
+    onboardingComplete: "ALL",
   });
   const [loading, setLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -406,6 +416,9 @@ const AdminFreelancerOnboarding = () => {
     }
     if (filters.service !== "ALL") params.set("service", filters.service);
     if (filters.kycVerified !== "ALL") params.set("kycVerified", filters.kycVerified);
+    if (filters.onboardingComplete !== "ALL") {
+      params.set("onboardingComplete", filters.onboardingComplete);
+    }
 
     return params.toString();
   }, [filters, pagination.limit, pagination.page]);
@@ -454,6 +467,12 @@ const AdminFreelancerOnboarding = () => {
     setFormErrors({});
     setGeneratedPassword("");
     setDialogMode("create");
+  };
+
+  const closeDialog = () => {
+    setDialogMode(null);
+    setFormErrors({});
+    setGeneratedPassword("");
   };
 
   const loadSubmission = async (submissionId, mode) => {
@@ -603,6 +622,7 @@ const AdminFreelancerOnboarding = () => {
 
   const isDialogOpen = Boolean(dialogMode);
   const isFormMode = dialogMode === "create" || dialogMode === "edit";
+  const stateOptions = getStateOptionsForCountry(form.country);
   const dialogTitle =
     dialogMode === "create"
       ? "Create Onboarding Submission"
@@ -623,10 +643,16 @@ const AdminFreelancerOnboarding = () => {
                 Manage freelancer onboarding submissions, status review, profile data, services, and admin-created records.
               </p>
             </div>
-            <Button onClick={openCreateDialog} className="w-full gap-2 sm:w-auto">
-              <Plus className="h-4 w-4" />
-              Create submission
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button variant="outline" onClick={() => void fetchSubmissions()} disabled={loading} className="gap-2">
+                <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              <Button onClick={openCreateDialog} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create submission
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -719,6 +745,22 @@ const AdminFreelancerOnboarding = () => {
                     <SelectItem value="ALL">All KYC</SelectItem>
                     <SelectItem value="true">Verified</SelectItem>
                     <SelectItem value="false">Unverified</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select
+                  value={filters.onboardingComplete}
+                  onValueChange={(value) => updateFilter("onboardingComplete", value)}
+                >
+                  <SelectTrigger className="w-full xl:w-[180px]">
+                    <SelectValue placeholder="Onboarding state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ONBOARDING_FILTER_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -816,22 +858,14 @@ const AdminFreelancerOnboarding = () => {
                           {formatDate(submission.updatedAt)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="View"
-                              onClick={() => loadSubmission(submission.id, "view")}
-                            >
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSubmission(submission.id, "view")}>
                               <Eye className="h-4 w-4" />
+                              View
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              title="Edit"
-                              onClick={() => loadSubmission(submission.id, "edit")}
-                            >
+                            <Button variant="outline" size="sm" className="gap-2" onClick={() => loadSubmission(submission.id, "edit")}>
                               <Pencil className="h-4 w-4" />
+                              Edit
                             </Button>
                             <Button
                               variant="ghost"
@@ -933,7 +967,7 @@ const AdminFreelancerOnboarding = () => {
         </div>
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && setDialogMode(null)}>
+      <Dialog open={isDialogOpen} onOpenChange={(open) => !open && closeDialog()}>
         <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{dialogTitle}</DialogTitle>
@@ -1082,27 +1116,65 @@ const AdminFreelancerOnboarding = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium">Profile role</label>
-                  <Input
+                  <Select
                     value={form.profileRole}
-                    onChange={(event) => handleFormFieldChange("profileRole", event.target.value)}
-                    placeholder="individual"
-                  />
+                    onValueChange={(value) => handleFormFieldChange("profileRole", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROFILE_ROLE_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Country</label>
-                  <Input
+                  <Select
                     value={form.country}
-                    onChange={(event) => handleFormFieldChange("country", event.target.value)}
-                    placeholder="India"
-                  />
+                    onValueChange={(value) => handleFormFieldChange("country", value)}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRY_OPTIONS.map((country) => (
+                        <SelectItem key={country} value={country}>
+                          {country}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <label className="text-sm font-medium">City / State</label>
-                  <Input
-                    value={form.city}
-                    onChange={(event) => handleFormFieldChange("city", event.target.value)}
-                    placeholder="Maharashtra"
-                  />
+                  {stateOptions.length > 0 ? (
+                    <Select
+                      value={form.city}
+                      onValueChange={(value) => handleFormFieldChange("city", value)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select state" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stateOptions.map((state) => (
+                          <SelectItem key={state} value={state}>
+                            {state}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={form.city}
+                      onChange={(event) => handleFormFieldChange("city", event.target.value)}
+                      placeholder="City or state"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium">Languages</label>
@@ -1111,6 +1183,27 @@ const AdminFreelancerOnboarding = () => {
                     onChange={(event) => handleFormFieldChange("languagesText", event.target.value)}
                     placeholder="English, Hindi"
                   />
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {LANGUAGE_OPTIONS.map((language) => (
+                      <Button
+                        key={language}
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-xs"
+                        onClick={() => {
+                          const currentLanguages = parseListText(form.languagesText);
+                          if (currentLanguages.includes(language)) return;
+                          handleFormFieldChange(
+                            "languagesText",
+                            [...currentLanguages, language].join(", "),
+                          );
+                        }}
+                      >
+                        {language}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium">Services</label>
@@ -1229,6 +1322,7 @@ const AdminFreelancerOnboarding = () => {
               onEdit={() => setDialogMode("edit")}
               onStatusAction={handleStatusAction}
               onArchive={() => setArchiveTarget(selectedSubmission)}
+              onOpenUser={() => navigate(`/admin/users/${selectedSubmission?.id}`)}
             />
           )}
 
@@ -1244,7 +1338,7 @@ const AdminFreelancerOnboarding = () => {
                 </Button>
               </>
             ) : (
-              <Button variant="outline" onClick={() => setDialogMode(null)}>
+              <Button variant="outline" onClick={closeDialog}>
                 Close
               </Button>
             )}
@@ -1286,6 +1380,7 @@ const SubmissionDetails = ({
   onEdit,
   onStatusAction,
   onArchive,
+  onOpenUser,
 }) => {
   if (!submission) {
     return (
@@ -1343,6 +1438,10 @@ const SubmissionDetails = ({
         <Button size="sm" className="gap-2" onClick={onEdit}>
           <Pencil className="h-4 w-4" />
           Edit
+        </Button>
+        <Button size="sm" variant="outline" className="gap-2" onClick={onOpenUser}>
+          <ExternalLink className="h-4 w-4" />
+          Open User Profile
         </Button>
         <Button
           size="sm"
