@@ -31,11 +31,6 @@ npm run dev                             # nodemon on http://localhost:5000
 
 Fill in `backend/.env` with your Neon, Resend, and auth secrets before running the commands above.
 
-Admin dashboard seed credentials:
-
-- Email: `admin@catalance.com`
-- Password: `Password123`
-
 You can execute the same commands from the repository root:
 
 ```bash
