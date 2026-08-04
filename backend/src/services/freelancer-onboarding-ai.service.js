@@ -1,6 +1,7 @@
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { buildAiUsageContext, recordAiUsageEventSafe } from "./ai-usage.service.js";
 import { ensurePdfJsRuntime, loadPdfJsWorker } from "../utils/pdfjs-runtime.js";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -523,6 +524,10 @@ const requestResumeAutofillCompletion = async ({
   if (!apiKey) {
     throw new AppError("OpenRouter API key not configured.", 500);
   }
+  const startedAt = Date.now();
+  const trackingContext = buildAiUsageContext({
+    featureKey: "resume_autofill",
+  });
 
   const response = await fetch(OPENROUTER_API_URL, {
     method: "POST",
@@ -559,6 +564,18 @@ const requestResumeAutofillCompletion = async ({
 
   const data = await response.json().catch(() => null);
   if (!response.ok) {
+    await recordAiUsageEventSafe({
+      context: trackingContext,
+      provider: "openrouter",
+      model: DEFAULT_MODEL,
+      title,
+      responseStatus: "error",
+      responseStatusCode: response.status,
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        errorMessage: normalizeText(data?.error?.message || data?.message),
+      },
+    });
     console.error(
       "[ResumeAutofill][AI Error Response]",
       JSON.stringify(
@@ -579,6 +596,16 @@ const requestResumeAutofillCompletion = async ({
 
   const content = readMessageContent(data?.choices?.[0]?.message?.content);
   const parsed = extractJsonObject(content);
+  await recordAiUsageEventSafe({
+    context: trackingContext,
+    provider: "openrouter",
+    model: DEFAULT_MODEL,
+    title,
+    usage: data?.usage || null,
+    responseStatus: parsed ? "success" : "invalid_json",
+    responseStatusCode: response.status,
+    durationMs: Date.now() - startedAt,
+  });
   if (!parsed) {
     console.error(
       "[ResumeAutofill][AI Invalid JSON]",

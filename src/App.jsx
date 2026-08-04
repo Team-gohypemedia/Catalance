@@ -131,6 +131,9 @@ const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
 const AdminDashboard = lazy(
   () => import("@/components/features/admin/AdminDashboard"),
 );
+const AdminAiUsage = lazy(
+  () => import("@/components/features/admin/AdminAiUsage"),
+);
 const AdminUsers = lazy(() => import("@/components/features/admin/AdminUsers"));
 const AdminProjects = lazy(
   () => import("@/components/features/admin/AdminProjects"),
@@ -763,6 +766,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminUsers roleFilter="CLIENT" />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/ai-usage"
+              element={
+                <AdminRoute>
+                  <AdminAiUsage />
                 </AdminRoute>
               }
             />

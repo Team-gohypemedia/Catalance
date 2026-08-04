@@ -1163,17 +1163,39 @@ model UserRequest {
 }
 model AIUsage {
   id               String   @id @default(cuid())
-  userId           String
-  user             User     @relation(fields: [userId], references: [id])
+  userId           String?
+  user             User?    @relation(fields: [userId], references: [id])
   projectId        String?
   project          Project? @relation(fields: [projectId], references: [id])
+  provider         String   @default("openrouter")
+  model            String?
+  title            String?
+  featureKey       String?
+  requestPath      String?
+  pagePath         String?
+  pageUrl          String?
+  routeKey         String?
+  visitorType      String   @default("guest")
+  guestSessionId   String?
+  guestIdentifier  String?
+  responseStatus   String   @default("success")
+  responseStatusCode Int?
+  durationMs       Float?
   promptTokens     Int      @default(0)
   completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
   costInRupees     Float    @default(0.0)
+  metadata         Json     @default("{}")
   createdAt        DateTime @default(now())
 
   @@index([userId])
   @@index([projectId])
+  @@index([pagePath])
+  @@index([featureKey])
+  @@index([guestSessionId])
+  @@index([guestIdentifier])
+  @@index([visitorType, createdAt])
+  @@index([createdAt])
 }
 
 model ProjectAudit {

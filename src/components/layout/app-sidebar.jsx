@@ -11,7 +11,6 @@ import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
 import User from "lucide-react/dist/esm/icons/user";
 import Users from "lucide-react/dist/esm/icons/users";
-import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import History from "lucide-react/dist/esm/icons/history";
 import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
@@ -19,6 +18,7 @@ import UserCheck from "lucide-react/dist/esm/icons/user-check";
 import MessageSquareCode from "lucide-react/dist/esm/icons/message-square-code";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Layers from "lucide-react/dist/esm/icons/layers";
+import Bot from "lucide-react/dist/esm/icons/bot";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -197,6 +197,12 @@ const navConfigs = {
       title: "Engagement",
       url: "/admin/engagement",
       icon: Sparkles,
+      isActive: true,
+    },
+    {
+      title: "AI Usage",
+      url: "/admin/ai-usage",
+      icon: Bot,
       isActive: true,
     },
     {

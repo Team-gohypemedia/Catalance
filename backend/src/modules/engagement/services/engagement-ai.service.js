@@ -1,5 +1,6 @@
 import { env } from "../../../config/env.js";
 import { AppError } from "../../../utils/app-error.js";
+import { buildAiUsageContext, recordAiUsageEventSafe } from "../../../services/ai-usage.service.js";
 import { engagementRules } from "../config/engagement-rules.config.js";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
@@ -77,6 +78,10 @@ const requestOpenRouterJson = async ({
   if (!apiKey) {
     throw new AppError("OpenRouter API key not configured.", 500);
   }
+  const startedAt = Date.now();
+  const trackingContext = buildAiUsageContext({
+    featureKey: "engagement_ai_generation",
+  });
 
   const modelsToTry = [DEFAULT_MODEL];
   if (FALLBACK_MODEL && !modelsToTry.includes(FALLBACK_MODEL)) {
@@ -119,6 +124,16 @@ const requestOpenRouterJson = async ({
     }
 
     if (response.ok) {
+      await recordAiUsageEventSafe({
+        context: trackingContext,
+        provider: "openrouter",
+        model,
+        title,
+        usage: data?.usage || null,
+        responseStatus: "success",
+        responseStatusCode: response.status,
+        durationMs: Date.now() - startedAt,
+      });
       return extractFirstJsonBlock(extractTextResponse(data));
     }
 
@@ -129,6 +144,16 @@ const requestOpenRouterJson = async ({
       OPENROUTER_AUTH_ERROR_REGEX.test(errorMessage);
 
     if (isAuthError) {
+      await recordAiUsageEventSafe({
+        context: trackingContext,
+        provider: "openrouter",
+        model,
+        title,
+        responseStatus: "error",
+        responseStatusCode: response.status,
+        durationMs: Date.now() - startedAt,
+        metadata: { errorMessage },
+      });
       throw new AppError("OpenRouter authentication failed.", 502, {
         provider: "openrouter",
         providerStatus: response.status,
@@ -140,6 +165,16 @@ const requestOpenRouterJson = async ({
       continue;
     }
 
+    await recordAiUsageEventSafe({
+      context: trackingContext,
+      provider: "openrouter",
+      model,
+      title,
+      responseStatus: "error",
+      responseStatusCode: response.status,
+      durationMs: Date.now() - startedAt,
+      metadata: { errorMessage },
+    });
     throw new AppError(errorMessage || "OpenRouter request failed.", 502, {
       provider: "openrouter",
       providerStatus: response.status,

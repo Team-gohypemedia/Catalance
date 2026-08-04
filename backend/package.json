@@ -4,13 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "prisma generate",
-    "dev": "nodemon index.js",
+    "dev": "nodemon --watch prisma\\schema.prisma --watch src --ext js,json,prisma --ignore .tmp\\** --ignore node_modules\\** --exec node scripts/dev-with-prisma.js",
     "test:budget": "node --test src/services/__tests__/ai.budget.test.mjs",
     "build": "prisma generate",
     "vercel-build": "prisma generate",
     "postinstall": "prisma generate",
-    "start": "node index.js",
+    "start": "node src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "prisma:migrate:dev": "prisma migrate dev",
@@ -25,7 +24,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^6.19.3",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -50,6 +49,6 @@
   "devDependencies": {
     "drizzle-kit": "^0.31.4",
     "nodemon": "^3.1.7",
-    "prisma": "^5.22.0"
+    "prisma": "^6.19.3"
   }
 }

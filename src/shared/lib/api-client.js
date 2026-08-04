@@ -91,6 +91,44 @@ const defaultHeaders = {
   "Content-Type": "application/json"
 };
 
+const GUEST_TRACKING_STORAGE_KEY = "catalance_guest_tracking_id";
+
+const getOrCreateGuestTrackingId = () => {
+  if (!safeWindow) return null;
+
+  try {
+    const existingValue = safeWindow.localStorage.getItem(GUEST_TRACKING_STORAGE_KEY);
+    if (existingValue) {
+      return existingValue;
+    }
+
+    const nextValue =
+      typeof safeWindow.crypto?.randomUUID === "function"
+        ? safeWindow.crypto.randomUUID()
+        : `guest_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+
+    safeWindow.localStorage.setItem(GUEST_TRACKING_STORAGE_KEY, nextValue);
+    return nextValue;
+  } catch {
+    return null;
+  }
+};
+
+export const buildCatalanceRequestHeaders = (headers = {}) => {
+  const currentPagePath = safeWindow
+    ? `${safeWindow.location.pathname || ""}${safeWindow.location.search || ""}`
+    : "";
+  const currentPageUrl = safeWindow?.location?.href || "";
+  const guestTrackingId = getOrCreateGuestTrackingId();
+
+  return {
+    ...(currentPagePath ? { "X-Catalance-Page-Path": currentPagePath } : {}),
+    ...(currentPageUrl ? { "X-Catalance-Page-Url": currentPageUrl } : {}),
+    ...(guestTrackingId ? { "X-Catalance-Guest-Session": guestTrackingId } : {}),
+    ...(headers || {}),
+  };
+};
+
 const MAX_CATA_AI_CANDIDATES = 10;
 const MAX_CATA_AI_PROPOSAL_TEXT_LENGTH = 1600;
 const MAX_CATA_AI_CANDIDATE_TEXT_LENGTH = 480;
@@ -682,11 +720,11 @@ export const request = async (path, options = {}) => {
     response = await fetch(`${API_BASE_URL}${path}`, {
       ...fetchOptions,
       signal: controller.signal,
-      headers: {
+      headers: buildCatalanceRequestHeaders({
         ...defaultHeaders,
         ...authHeaders,
         ...(fetchOptions.headers || {})
-      }
+      })
     });
   } catch (error) {
     if (error.name === "AbortError") {

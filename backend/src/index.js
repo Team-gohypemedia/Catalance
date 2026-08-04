@@ -9,6 +9,7 @@ import { errorHandler } from "./middlewares/error-handler.js";
 import { notFoundHandler } from "./middlewares/not-found.js";
 import { initSocket } from "./lib/socket.js";
 import { startCronJobs } from "./services/cron.service.js";
+import { requestContextMiddleware } from "./lib/request-context.js";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(cors({
 }));
 
 app.use(morgan("dev"));
+app.use(requestContextMiddleware);
 app.use(express.json({ limit: "256kb" }));
 app.use(express.urlencoded({ extended: true, limit: "256kb" }));
 

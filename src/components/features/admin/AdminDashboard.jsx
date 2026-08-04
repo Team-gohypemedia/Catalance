@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
+import Bot from "lucide-react/dist/esm/icons/bot";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Check from "lucide-react/dist/esm/icons/check";
 import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
@@ -32,6 +33,8 @@ import { AdminTopBar } from "./AdminTopBar";
 
 const formatINR = (value) =>
   `INR ${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
+
+const formatCount = (value) => Number(value || 0).toLocaleString("en-IN");
 
 const formatDateTime = (value) => {
   const date = new Date(value);
@@ -101,13 +104,14 @@ const AdminDashboard = () => {
   const [pendingFreelancers, setPendingFreelancers] = useState([]);
   const [recentClients, setRecentClients] = useState([]);
   const [recentContactInquiries, setRecentContactInquiries] = useState([]);
+  const [aiUsageSummary, setAiUsageSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [overrideLoadingId, setOverrideLoadingId] = useState(null);
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, disputesRes, activeFreelancersRes, pendingFreelancersRes, activeClientsRes, projectsRes, contactInquiriesRes] = await Promise.all([
+      const [statsRes, disputesRes, activeFreelancersRes, pendingFreelancersRes, activeClientsRes, projectsRes, contactInquiriesRes, aiUsageRes] = await Promise.all([
         authFetch("/admin/stats"),
         authFetch("/disputes"),
         authFetch(`/admin/users?${buildAdminUsersQuery({ role: "FREELANCER", status: "ACTIVE", limit: 4 })}`),
@@ -115,6 +119,7 @@ const AdminDashboard = () => {
         authFetch(`/admin/users?${buildAdminUsersQuery({ role: "CLIENT", status: "ACTIVE", limit: 4 })}`),
         authFetch("/admin/projects"),
         authFetch("/admin/contact-inquiries?limit=6"),
+        authFetch("/admin/ai-usage/summary?days=30&limit=5"),
       ]);
 
       const statsData = await statsRes.json().catch(() => null);
@@ -124,6 +129,7 @@ const AdminDashboard = () => {
       const activeClientsData = await activeClientsRes.json().catch(() => null);
       const projectsData = await projectsRes.json().catch(() => null);
       const contactInquiriesData = await contactInquiriesRes.json().catch(() => null);
+      const aiUsageData = await aiUsageRes.json().catch(() => null);
 
       if (statsData?.data?.stats) {
         setStats(statsData.data.stats);
@@ -145,6 +151,10 @@ const AdminDashboard = () => {
 
       if (Array.isArray(contactInquiriesData?.data?.inquiries)) {
         setRecentContactInquiries(contactInquiriesData.data.inquiries);
+      }
+
+      if (aiUsageData?.data) {
+        setAiUsageSummary(aiUsageData.data);
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
@@ -279,6 +289,34 @@ const AdminDashboard = () => {
       value: formatINR(financialSummary.activeDisputeLiability),
       icon: ShieldAlert,
       description: "Exposure on unresolved disputes",
+    },
+  ];
+
+  const aiOverview = aiUsageSummary?.overview || null;
+  const aiUsageCards = [
+    {
+      title: "AI Calls",
+      value: formatCount(aiOverview?.totalCalls),
+      icon: Bot,
+      description: "Tracked over the last 30 days",
+    },
+    {
+      title: "AI Tokens",
+      value: formatCount(aiOverview?.totalTokens),
+      icon: FileText,
+      description: "Prompt + completion tokens",
+    },
+    {
+      title: "AI Spend",
+      value: formatINR(aiOverview?.totalCostInRupees),
+      icon: DollarSign,
+      description: "Estimated OpenRouter cost",
+    },
+    {
+      title: "Guest Sessions",
+      value: formatCount(aiOverview?.uniqueGuestSessions),
+      icon: Users,
+      description: "Distinct guest AI sessions",
     },
   ];
 
@@ -455,6 +493,118 @@ const AdminDashboard = () => {
               </Card>
             ))}
           </div>
+
+          <Card className="border-primary/10">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="h-5 w-5 text-primary" />
+                  AI Usage Intelligence
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Usage tracked by page, user, and guest session across AI features.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline">
+                  Last 30 days
+                </Badge>
+                <Button variant="outline" size="sm" onClick={() => navigate("/admin/ai-usage")}>
+                  Open full view
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {aiUsageCards.map((stat) => (
+                  <Card key={stat.title} className="border-border/60 shadow-none">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+                      <stat.icon className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {loading ? <div className="h-8 w-24 animate-pulse rounded bg-muted" /> : stat.value}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="grid gap-6 lg:grid-cols-3">
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">Top Pages</h3>
+                  {loading ? (
+                    [...Array(4)].map((_, index) => (
+                      <div key={`ai-page-${index}`} className="h-14 animate-pulse rounded-lg bg-muted" />
+                    ))
+                  ) : (aiUsageSummary?.topPages || []).length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      No tracked page usage yet.
+                    </div>
+                  ) : (
+                    (aiUsageSummary?.topPages || []).map((page) => (
+                      <div key={page.pagePath} className="rounded-lg border p-4">
+                        <div className="font-medium">{page.pagePath || "Unknown page"}</div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {formatCount(page.calls)} calls • {formatCount(page.totalTokens)} tokens
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">Top Users</h3>
+                  {loading ? (
+                    [...Array(4)].map((_, index) => (
+                      <div key={`ai-user-${index}`} className="h-14 animate-pulse rounded-lg bg-muted" />
+                    ))
+                  ) : (aiUsageSummary?.topUsers || []).length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      No authenticated AI usage yet.
+                    </div>
+                  ) : (
+                    (aiUsageSummary?.topUsers || []).map((user) => (
+                      <div key={user.userId} className="rounded-lg border p-4">
+                        <div className="font-medium">{user.fullName}</div>
+                        <div className="text-xs text-muted-foreground">{user.email}</div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {formatCount(user.calls)} calls • {formatCount(user.totalTokens)} tokens
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">Recent AI Activity</h3>
+                  {loading ? (
+                    [...Array(4)].map((_, index) => (
+                      <div key={`ai-recent-${index}`} className="h-16 animate-pulse rounded-lg bg-muted" />
+                    ))
+                  ) : (aiUsageSummary?.recentUsage || []).length === 0 ? (
+                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                      No recent AI activity found.
+                    </div>
+                  ) : (
+                    (aiUsageSummary?.recentUsage || []).slice(0, 5).map((entry) => (
+                      <div key={entry.id} className="rounded-lg border p-4">
+                        <div className="font-medium">{entry.pagePath || entry.featureKey || entry.title || "AI event"}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {entry.user?.fullName || entry.visitorType}
+                        </div>
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {formatCount(entry.totalTokens)} tokens • {formatDateTime(entry.createdAt)}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>

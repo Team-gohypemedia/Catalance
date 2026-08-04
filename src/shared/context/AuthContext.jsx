@@ -28,7 +28,7 @@ import {
   isSessionTokenExpired,
   persistSession,
 } from "@/shared/lib/auth-storage";
-import { API_BASE_URL } from "@/shared/lib/api-client";
+import { API_BASE_URL, buildCatalanceRequestHeaders } from "@/shared/lib/api-client";
 import { migrateSavedProposalsToUser } from "@/shared/lib/client-proposal-storage";
 import { rememberDashboardFromPath } from "@/shared/lib/dashboard-preference";
 
@@ -197,11 +197,11 @@ export const AuthProvider = ({ children }) => {
 
         const response = await fetch(url, {
           ...fetchOptions,
-          headers: {
+          headers: buildCatalanceRequestHeaders({
             ...defaultHeaders,
             Authorization: `Bearer ${token}`,
             ...(fetchOptions.headers || {}),
-          },
+          }),
         });
 
         if (response.status === 401) {

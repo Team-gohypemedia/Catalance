@@ -7,8 +7,10 @@ import {
   generateProposalMarkdown,
   generateProjectSopJson
 } from "../services/ai.service.js";
+import { optionalAuth } from "../middlewares/optional-auth.js";
 
 export const aiRouter = Router();
+aiRouter.use(optionalAuth);
 
 aiRouter.post("/chat", async (req, res) => {
   try {

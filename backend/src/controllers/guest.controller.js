@@ -3,6 +3,7 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { AppError } from "../utils/app-error.js";
 import { env } from "../config/env.js";
 import { ensurePdfJsRuntime, loadPdfJsWorker } from "../utils/pdfjs-runtime.js";
+import { buildAiUsageContext, recordAiUsageEventSafe } from "../services/ai-usage.service.js";
 import {
     chatWithAI,
     convertBudgetAmount,
@@ -1109,8 +1110,12 @@ const analyzeImageAttachmentWithVision = async ({ url = "", name = "", type = ""
     const apiKey = env.OPENROUTER_API_KEY?.trim();
     if (!apiKey || !url) return "";
 
+    const startedAt = Date.now();
     const model = env.OPENROUTER_MODEL || "openai/gpt-5.1";
     const referer = env.FRONTEND_URL || env.CORS_ORIGIN || "http://localhost:5173";
+    const trackingContext = buildAiUsageContext({
+        featureKey: "guest_attachment_vision",
+    });
     const prompt = [
         "Analyze this uploaded image for project-requirement discovery.",
         `File name: ${name || "image"}`,
@@ -1166,11 +1171,38 @@ const analyzeImageAttachmentWithVision = async ({ url = "", name = "", type = ""
 
         const data = await response.json().catch(() => null);
         if (!response.ok) {
+            await recordAiUsageEventSafe({
+                context: trackingContext,
+                provider: "openrouter",
+                model,
+                title: "Catalance Guest Attachment Analyzer",
+                responseStatus: "error",
+                responseStatusCode: response.status,
+                durationMs: Date.now() - startedAt,
+                metadata: {
+                    errorMessage: data?.error?.message || data?.message || "Unknown error",
+                    fileName: name || "image",
+                },
+            });
             console.warn(
                 `[Attachment Vision] OpenRouter vision failed (${response.status}): ${data?.error?.message || data?.message || "Unknown error"}`
             );
             return "";
         }
+
+        await recordAiUsageEventSafe({
+            context: trackingContext,
+            provider: "openrouter",
+            model,
+            title: "Catalance Guest Attachment Analyzer",
+            usage: data?.usage || null,
+            responseStatus: "success",
+            responseStatusCode: response.status,
+            durationMs: Date.now() - startedAt,
+            metadata: {
+                fileName: name || "image",
+            },
+        });
 
         const rawContentValue = data?.choices?.[0]?.message?.content;
         const rawContent = typeof rawContentValue === "string"

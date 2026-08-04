@@ -83,6 +83,10 @@ import {
   updateAdminTool,
   deleteAdminTool,
 } from "../controllers/adminMarketplaceFilters.controller.js";
+import {
+  getAiUsageRecords,
+  getAiUsageSummary,
+} from "../controllers/adminAiUsage.controller.js";
 
 const router = Router();
 
@@ -95,6 +99,8 @@ router.use((req, res, next) => {
 });
 
 router.get("/stats", getDashboardStats);
+router.get("/ai-usage/summary", getAiUsageSummary);
+router.get("/ai-usage", getAiUsageRecords);
 router.get("/contact-inquiries", getContactInquiries);
 router.get(
   "/freelancer-onboarding",

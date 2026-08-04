@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
+import { buildAiUsageContext, estimateAiCostInRupees, recordAiUsageEventSafe } from "./ai-usage.service.js";
 
 const GITHUB_API = "https://api.github.com";
 const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -312,7 +313,14 @@ export const aiAssistCode = async (messages, projectContext = {}, userId = null,
     throw new Error("OpenRouter API key is not configured");
   }
 
+  const startedAt = Date.now();
+  const model = env.OPENROUTER_MODEL || "openai/gpt-4o";
   const systemPrompt = buildAISystemPrompt(projectContext);
+  const trackingContext = buildAiUsageContext({
+    userId,
+    projectId,
+    featureKey: "github_ai_assist",
+  });
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -323,7 +331,7 @@ export const aiAssistCode = async (messages, projectContext = {}, userId = null,
       "X-Title": "Catalance IDE Assistant",
     },
     body: JSON.stringify({
-      model: env.OPENROUTER_MODEL || "openai/gpt-4o",
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         ...messages,
@@ -335,6 +343,18 @@ export const aiAssistCode = async (messages, projectContext = {}, userId = null,
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    await recordAiUsageEventSafe({
+      context: trackingContext,
+      provider: "openrouter",
+      model,
+      title: "Catalance IDE Assistant",
+      responseStatus: "error",
+      responseStatusCode: response.status,
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        errorMessage: errorData?.error?.message || response.statusText,
+      },
+    });
     throw new Error(`OpenRouter error (${response.status}): ${errorData?.error?.message || response.statusText}`);
   }
 
@@ -346,7 +366,7 @@ export const aiAssistCode = async (messages, projectContext = {}, userId = null,
   }
 
   // ── Log AI usage in DB ────────────────────────────────────────────────────
-  if (userId) {
+  if (false && userId) {
     try {
       const promptTokens = data.usage?.prompt_tokens || 0;
       const completionTokens = data.usage?.completion_tokens || 0;
@@ -370,6 +390,24 @@ export const aiAssistCode = async (messages, projectContext = {}, userId = null,
       console.error("[AIUsage logging failed]:", logErr);
     }
   }
+
+  await recordAiUsageEventSafe({
+    context: trackingContext,
+    provider: "openrouter",
+    model,
+    title: "Catalance IDE Assistant",
+    usage: data?.usage || null,
+    responseStatus: "success",
+    responseStatusCode: response.status,
+    durationMs: Date.now() - startedAt,
+    costInRupees: estimateAiCostInRupees({
+      promptTokens: data?.usage?.prompt_tokens || 0,
+      completionTokens: data?.usage?.completion_tokens || 0,
+    }),
+    metadata: {
+      messageCount: Array.isArray(messages) ? messages.length : 0,
+    },
+  });
 
   return reply;
 };
@@ -623,6 +661,12 @@ export const auditProjectCodebase = async (accessToken, repoFullName, projectCon
   if (!env.OPENROUTER_API_KEY) {
     throw new Error("OpenRouter API key is not configured for auditing");
   }
+  const startedAt = Date.now();
+  const model = env.OPENROUTER_MODEL || "openai/gpt-4o";
+  const trackingContext = buildAiUsageContext({
+    projectId: projectContext?.id || null,
+    featureKey: "github_repo_audit",
+  });
 
   // 1. Construct audit context
   const filesList = Object.entries(filesDict)
@@ -676,7 +720,7 @@ Required JSON Structure:
       "X-Title": "Catalance Code Auditor",
     },
     body: JSON.stringify({
-      model: env.OPENROUTER_MODEL || "openai/gpt-4o",
+      model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -688,11 +732,38 @@ Required JSON Structure:
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    await recordAiUsageEventSafe({
+      context: trackingContext,
+      provider: "openrouter",
+      model,
+      title: "Catalance Code Auditor",
+      responseStatus: "error",
+      responseStatusCode: response.status,
+      durationMs: Date.now() - startedAt,
+      metadata: {
+        repoFullName,
+        errorMessage: errorData?.error?.message || response.statusText,
+      },
+    });
     throw new Error(`OpenRouter audit failed: ${errorData?.error?.message || response.statusText}`);
   }
 
   const resJson = await response.json();
   const rawReply = resJson.choices?.[0]?.message?.content?.trim();
+  await recordAiUsageEventSafe({
+    context: trackingContext,
+    provider: "openrouter",
+    model,
+    title: "Catalance Code Auditor",
+    usage: resJson?.usage || null,
+    responseStatus: rawReply ? "success" : "empty",
+    responseStatusCode: response.status,
+    durationMs: Date.now() - startedAt,
+    metadata: {
+      repoFullName,
+      fileCount: Object.keys(filesDict || {}).length,
+    },
+  });
 
   if (!rawReply) {
     throw new Error("Auditor returned an empty report");

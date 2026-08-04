@@ -4,6 +4,7 @@ import { dirname, join } from "path";
 import { env } from "../config/env.js";
 import { prisma, prismaInitError } from "../lib/prisma.js";
 import { AppError } from "../utils/app-error.js";
+import { buildAiUsageContext, recordAiUsageEventSafe } from "./ai-usage.service.js";
 import { buildProjectFreelancerMatchingSeed } from "../../../src/shared/lib/project-proposal-fields.js";
 import { getSopFromTitle } from "../../../src/shared/data/sopTemplates.js";
 
@@ -278,7 +279,9 @@ const requestOpenRouterCompletion = async ({
   title,
   messages,
   temperature,
-  maxTokens
+  maxTokens,
+  trackingContext = null,
+  trackingMetadata = {},
 }) => {
   const modelsToTry = [DEFAULT_MODEL];
   if (FALLBACK_MODEL && !modelsToTry.includes(FALLBACK_MODEL)) {
@@ -287,6 +290,7 @@ const requestOpenRouterCompletion = async ({
 
   const overallStartedAt = getAiServiceNow();
   const attempts = [];
+  const resolvedTrackingContext = trackingContext || buildAiUsageContext();
 
   for (let index = 0; index < modelsToTry.length; index += 1) {
     const model = modelsToTry[index];
@@ -336,6 +340,24 @@ const requestOpenRouterCompletion = async ({
         ok: true,
       });
 
+      await recordAiUsageEventSafe({
+        context: resolvedTrackingContext,
+        provider: "openrouter",
+        model,
+        title,
+        usage: data?.usage || null,
+        responseStatus: "success",
+        responseStatusCode: response.status,
+        durationMs: roundDurationMs(getAiServiceNow() - overallStartedAt),
+        metadata: {
+          attemptCount: attempts.length,
+          attempts,
+          temperature,
+          maxTokens,
+          ...trackingMetadata,
+        },
+      });
+
       return {
         data,
         model,
@@ -357,6 +379,25 @@ const requestOpenRouterCompletion = async ({
       response.status === 401 ||
       response.status === 403 ||
       OPENROUTER_AUTH_ERROR_REGEX.test(errorMessage);
+
+    await recordAiUsageEventSafe({
+      context: resolvedTrackingContext,
+      provider: "openrouter",
+      model,
+      title,
+      usage: data?.usage || null,
+      responseStatus: "error",
+      responseStatusCode: response.status,
+      durationMs: roundDurationMs(getAiServiceNow() - overallStartedAt),
+      metadata: {
+        attemptCount: attempts.length,
+        attempts,
+        errorMessage,
+        temperature,
+        maxTokens,
+        ...trackingMetadata,
+      },
+    });
 
     if (isAuthError) {
       throw buildOpenRouterAuthError(response.status, model);
