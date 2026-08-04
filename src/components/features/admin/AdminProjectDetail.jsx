@@ -144,15 +144,23 @@ const AdminProjectDetail = () => {
     return `₹${(amount || 0).toLocaleString("en-IN")}`;
   };
 
+  const cleanEmail = (email) => {
+    if (!email) return "";
+    if (email.endsWith("@phone.catalance.local")) return "";
+    return email;
+  };
+
   const getStatusBadge = (status) => {
     const colors = {
       DRAFT: "bg-gray-500",
       OPEN: "bg-blue-500",
-      IN_PROGRESS: "bg-primary/10",
+      IN_PROGRESS: "bg-amber-500",
+      AWAITING_PAYMENT: "bg-indigo-500",
       COMPLETED: "bg-green-500",
+      PAUSED: "bg-yellow-600"
     };
     return (
-      <Badge className={`${colors[status] || "bg-gray-500"} text-white`}>
+      <Badge className={`${colors[status] || "bg-gray-500"} text-white font-medium`}>
         {status?.replace("_", " ")}
       </Badge>
     );
@@ -390,57 +398,57 @@ const AdminProjectDetail = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 pt-4 border-t mt-4">
-                  <div>
-                    <span className="text-xs text-muted-foreground block mb-1">
+                  <div className="p-3 bg-muted/40 rounded-lg">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">
                       Client Budget
                     </span>
-                    <span className="font-semibold text-lg">
+                    <span className="font-bold text-base text-foreground">
                       {formatCurrency(
                         project.proposals?.find((p) => p.status === "ACCEPTED")
                           ?.amount || project.budget
                       )}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground block mb-1">
+                  <div className="p-3 bg-muted/40 rounded-lg">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">
                       Freelancer Pay
                     </span>
-                    <span className="font-semibold text-lg text-emerald-600">
+                    <span className="font-bold text-base text-emerald-600">
                       {formatCurrency(
                         (project.proposals?.find((p) => p.status === "ACCEPTED")
                           ?.amount || project.budget) * 0.7
                       )}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground block mb-1">
+                  <div className="p-3 bg-muted/40 rounded-lg">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">
                       Spent
                     </span>
-                    <span className="font-semibold text-lg">
+                    <span className="font-bold text-base text-foreground">
                       {formatCurrency(project.spent)}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground block mb-1">
+                  <div className="p-3 bg-muted/40 rounded-lg">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">
                       Disputes
                     </span>
                     <span
-                      className={`font-semibold text-lg ${
+                      className={`font-bold text-base ${
                         project.disputes?.filter((d) => d.status !== "RESOLVED")
                           .length > 0
                           ? "text-red-500"
-                          : ""
+                          : "text-foreground"
                       }`}
                     >
                       {project.disputes?.filter((d) => d.status !== "RESOLVED")
                         .length || 0}
                     </span>
                   </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground block mb-1">
+                  <div className="p-3 bg-muted/40 rounded-lg">
+                    <span className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground block mb-1">
                       Agency Proposal
                     </span>
-                    <span className={`font-semibold text-lg ${project.isAgencyProposal ? "text-primary" : ""}`}>
+                    <span className={`font-bold text-base ${project.isAgencyProposal ? "text-primary" : "text-foreground"}`}>
                       {project.isAgencyProposal ? "Yes" : "No"}
                     </span>
                   </div>
@@ -766,9 +774,11 @@ const AdminProjectDetail = () => {
                   </div>
                   <div>
                     <div className="font-medium">{project.owner?.fullName}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {project.owner?.email}
-                    </div>
+                    {cleanEmail(project.owner?.email) && (
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {cleanEmail(project.owner.email)}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="pt-2 text-xs text-muted-foreground border-t mt-2">
@@ -799,9 +809,11 @@ const AdminProjectDetail = () => {
                         <div className="font-medium">
                           {project.freelancer?.fullName}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {project.freelancer?.email}
-                        </div>
+                        {cleanEmail(project.freelancer?.email) && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {cleanEmail(project.freelancer.email)}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="pt-2 text-xs text-muted-foreground border-t mt-2">
