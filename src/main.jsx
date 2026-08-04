@@ -8,6 +8,7 @@ import { AuthProvider } from "@/shared/context/AuthContext";
 import { NotificationProvider } from "@/shared/context/NotificationContext";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import ScrollToTop from "@/components/common/ScrollToTop";
+import MetaPixelPageTracker from "@/components/common/MetaPixelPageTracker";
 
 import "./font.css";
 
@@ -15,6 +16,7 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <ScrollToTop />
+      <MetaPixelPageTracker />
       <AuthProvider>
         <NotificationProvider>
           <ThemeProvider defaultTheme="light" storageKey="catalance-theme">
