@@ -70,6 +70,18 @@ const ContactUs = () => {
               .
             </p>
             <p>
+              WhatsApp support is available at{" "}
+              <a
+                className="text-primary hover:underline"
+                href="https://wa.me/917056063693"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                +91 7056063693
+              </a>
+              .
+            </p>
+            <p>
               You can also write to Catalance Technologies Pvt. Ltd., 3rd
               Floor, Connaught Place, New Delhi 110001, India.
             </p>

@@ -131,7 +131,7 @@ export const CataButton = () => {
           </h4>
 
           <a
-            href="https://wa.me/918447788703"
+            href="https://wa.me/917056063693"
             target="_blank"
             rel="noopener noreferrer"
             className={cn(
@@ -157,7 +157,7 @@ export const CataButton = () => {
           </a>
 
           <a
-            href="tel:+918447788703"
+            href="tel:+917056063693"
             className={cn(
               "flex items-center gap-3 p-3 rounded-xl w-full",
               "bg-white/60 dark:bg-neutral-800/50",
