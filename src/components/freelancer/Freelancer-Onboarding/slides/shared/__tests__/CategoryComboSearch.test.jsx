@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, within } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import CategoryMultiSelect from "../CategoryComboSearch";
 
@@ -83,5 +83,71 @@ describe("CategoryComboSearch Component", () => {
     await waitFor(() => {
       expect(screen.getByText("Shopify")).toBeTruthy();
     });
+  });
+
+  it("shows selected skills in their Website Development category path", () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    render(
+      <CategoryMultiSelect
+        options={[
+          {
+            value: "catalog:9",
+            label: "CMS Development",
+            subCategoryId: 9,
+          },
+        ]}
+        selected={["catalog:9"]}
+        serviceLabel="Website Development"
+        selectedSubcategories={[
+          {
+            subCategoryId: 9,
+            subCategoryKey: "catalog:9",
+            selectedToolIds: [26],
+          },
+        ]}
+        toolOptionsByCategory={{
+          9: [{ id: 26, label: "Shopify" }],
+        }}
+        onChange={vi.fn()}
+        onSubcategorySkillChange={vi.fn()}
+      />,
+    );
+
+    const selectedSummary = screen.getByLabelText("Selected service categories and skills");
+    expect(selectedSummary).toBeTruthy();
+    expect(within(selectedSummary).getByText("Website Development")).toBeTruthy();
+    expect(within(selectedSummary).getByText("CMS Development")).toBeTruthy();
+    expect(within(selectedSummary).getByText("Shopify")).toBeTruthy();
+  });
+
+  it("keeps the category picker closed when the empty search input is focused", () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    render(
+      <CategoryMultiSelect
+        options={[
+          {
+            value: "catalog:9",
+            label: "CMS Development",
+            subCategoryId: 9,
+          },
+        ]}
+        onChange={vi.fn()}
+        onSubcategorySkillChange={vi.fn()}
+      />,
+    );
+
+    fireEvent.focus(screen.getByPlaceholderText("Search categories & skills..."));
+
+    expect(
+      screen.queryByRole("dialog", { name: "Choose categories and skills" }),
+    ).toBeNull();
   });
 });

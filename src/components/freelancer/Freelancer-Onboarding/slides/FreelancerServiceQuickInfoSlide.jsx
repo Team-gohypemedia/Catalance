@@ -1298,6 +1298,7 @@ const FreelancerServiceQuickInfoSlide = ({
                       selected={selectedCategoryKeys}
                       onChange={handleSelectedCategoriesChange}
                       options={allCategoryOptions}
+                      serviceLabel={serviceName}
                       placeholder={isCategoriesLoading ? "Loading..." : infoFieldMap.categories?.placeholder || "Search or select a skill"}
                       searchPlaceholder={infoFieldMap.categories?.searchPlaceholder || "Search skills..."}
                       isLoading={isCategoriesLoading}

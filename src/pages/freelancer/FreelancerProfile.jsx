@@ -123,6 +123,7 @@ import CaseStudyModalContent from "@/components/freelancer/Freelancer-Profile/mo
 const AVATAR_UPLOAD_MAX_BYTES = 4.5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
 const CUSTOM_SERVICE_OPTION_VALUE = "__custom__";
+const SHOW_PROFILE_ACCOUNT_DELETION = false;
 
 const createInitialServiceForm = () => ({
   selectedServiceKey: "",
@@ -4280,6 +4281,7 @@ const FreelancerProfile = () => {
             />
           </div>
 
+          {SHOW_PROFILE_ACCOUNT_DELETION ? (
           <div className="mt-8 rounded-[20px] border border-red-500/20 bg-card p-6 sm:p-10">
             <div className="space-y-6 sm:space-y-8">
               <div>
@@ -4310,6 +4312,7 @@ const FreelancerProfile = () => {
               </div>
             </div>
           </div>
+          ) : null}
         </div>
       </FreelancerProfilePageShell>
       {/* Modal */}

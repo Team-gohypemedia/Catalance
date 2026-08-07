@@ -168,31 +168,32 @@ const CalendarPage = () => {
       className="overflow-x-clip"
     >
       <div className="grid min-w-0 gap-6 lg:grid-cols-[280px_minmax(0,1fr)] 2xl:grid-cols-[280px_minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-6">
+        {/* Left Filter Column */}
+        <div className="min-w-0 space-y-4">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               placeholder="Search meetings, projects..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="h-12 rounded-2xl border-slate-100 bg-white pl-12 text-xs font-medium placeholder:text-slate-400 focus-visible:ring-4 focus-visible:ring-orange-100 shadow-sm"
+              className="h-10 rounded-xl border-slate-200 bg-white pl-10 text-xs font-medium placeholder:text-slate-400 focus-visible:ring-2 focus-visible:ring-[#D9692A]/20 focus-visible:border-[#D9692A] shadow-xs"
             />
           </div>
 
-          <div className="rounded-2xl border border-slate-100 bg-white p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <Filter className="h-4 w-4 text-slate-400" />
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-xs">
+            <div className="mb-2 flex items-center gap-2">
+              <Filter className="h-3.5 w-3.5 text-[#D9692A]" />
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                 Meeting Filters
               </p>
             </div>
-            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
               Project
             </p>
             <select
               value={projectFilter}
               onChange={(event) => setProjectFilter(event.target.value)}
-              className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700"
+              className="h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#D9692A]/20 focus:border-[#D9692A]"
             >
               <option value="ALL">All Projects</option>
               {projectOptions.map((option) => (
@@ -203,7 +204,7 @@ const CalendarPage = () => {
             </select>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2">
             {MEETING_FILTERS.map((filter) => {
               const active = timeFilter === filter.value;
               return (
@@ -211,22 +212,22 @@ const CalendarPage = () => {
                   key={filter.value}
                   type="button"
                   onClick={() => setTimeFilter(filter.value)}
-                  className={`flex w-full items-center justify-between rounded-2xl border px-5 py-4 text-left transition-all ${
+                  className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-all ${
                     active
-                      ? "bg-[#D9692A] border-[#D9692A] shadow-lg shadow-orange-500/10"
-                      : "bg-white border-slate-100 text-slate-500 hover:bg-slate-50"
+                      ? "bg-[#D9692A] border-[#D9692A] text-white shadow-md shadow-orange-500/15"
+                      : "bg-white border-slate-200/80 text-slate-600 hover:bg-slate-50 hover:border-slate-300"
                   }`}
                 >
                   <span
-                    className={`text-[10px] font-black uppercase tracking-[0.2em] ${
-                      active ? "text-white" : "text-slate-400"
+                    className={`text-[11px] font-bold uppercase tracking-wider ${
+                      active ? "text-white" : "text-slate-600"
                     }`}
                   >
                     {filter.label}
                   </span>
                   <Badge
-                    className={`rounded-xl px-2.5 py-0.5 text-[10px] font-black border-none ${
-                      active ? "bg-[#D9692A] text-white" : "bg-slate-100 text-slate-400"
+                    className={`rounded-md px-2 py-0.5 text-[10px] font-bold border-none ${
+                      active ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
                     }`}
                   >
                     {counts[filter.value]}
@@ -237,49 +238,53 @@ const CalendarPage = () => {
           </div>
 
           <Button
-            className="h-14 w-full rounded-2xl bg-[#D9692A] text-[10px] font-black tracking-[0.2em] uppercase text-white shadow-xl shadow-orange-500/20 hover:bg-[#B85A24] hover:scale-[1.02] transition-all"
+            className="h-11 w-full rounded-xl bg-[#D9692A] text-xs font-bold tracking-wider uppercase text-white shadow-md shadow-orange-500/15 hover:bg-[#B85A24] transition-all"
             onClick={() => navigate("/project-manager/projects")}
           >
-            <Plus className="mr-3 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             Open Projects
           </Button>
         </div>
 
-        <div className="min-w-0 space-y-6">
-          <Card className="min-w-0 overflow-hidden rounded-3xl border-slate-100 bg-white p-6 shadow-lg shadow-slate-200/40 md:p-8">
-            <div className="mb-10 flex items-center justify-between">
-              <div className="space-y-1">
-                <h2 className="text-2xl font-black text-slate-900">
+        {/* Center Calendar Section (Compact Height) */}
+        <div className="min-w-0 space-y-4">
+          <Card className="min-w-0 overflow-hidden rounded-2xl border-slate-200/80 bg-white p-5 shadow-sm md:p-6">
+            <div className="mb-5 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <h2 className="text-xl font-extrabold text-slate-900">
                   {date.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
                 </h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  Global Ops Schedule
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#D9692A]" />
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Global Ops Schedule
+                  </p>
+                </div>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-1.5">
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-12 w-12 rounded-2xl border-slate-100 hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all"
+                  className="h-9 w-9 rounded-xl border-slate-200 text-slate-500 hover:border-orange-200 hover:bg-orange-50 hover:text-[#D9692A] transition-all"
                   onClick={() =>
                     setDate(
                       (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
                     )
                   }
                 >
-                  <ChevronLeft className="h-6 w-6" />
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-12 w-12 rounded-2xl border-slate-100 hover:bg-slate-50 text-slate-400 hover:text-slate-900 transition-all"
+                  className="h-9 w-9 rounded-xl border-slate-200 text-slate-500 hover:border-orange-200 hover:bg-orange-50 hover:text-[#D9692A] transition-all"
                   onClick={() =>
                     setDate(
                       (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
                     )
                   }
                 >
-                  <ChevronRight className="h-6 w-6" />
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             </div>
@@ -288,65 +293,71 @@ const CalendarPage = () => {
               mode="single"
               selected={date}
               onSelect={setDate}
-              className="w-full min-w-0"
+              className="w-full min-w-0 p-0"
               classNames={{
                 months: "w-full",
-                month: "w-full space-y-6",
+                month: "w-full space-y-3",
+                month_caption: "hidden",
+                caption_label: "hidden",
+                nav: "hidden",
                 caption: "hidden",
-                head_row: "mb-3 flex w-full justify-between md:mb-4",
+                head_row: "flex w-full justify-between mb-2",
                 head_cell:
-                  "w-10 text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] sm:w-12 lg:w-14 xl:w-16",
-                row: "mt-1.5 flex w-full justify-between sm:mt-2 lg:mt-3",
-                cell: "relative h-12 w-10 p-0 text-center text-sm focus-within:z-20 sm:h-14 sm:w-12 lg:h-16 lg:w-14 xl:h-20 xl:w-16",
-                day: "flex h-10 w-10 items-center justify-center rounded-2xl border-2 border-transparent p-0 font-black transition-all hover:bg-orange-50 hover:text-slate-900 aria-selected:opacity-100 sm:h-12 sm:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 xl:rounded-[28px]",
+                  "w-8 sm:w-9 lg:w-10 xl:w-11 text-center text-slate-400 font-bold text-[11px] uppercase tracking-wider",
+                row: "flex w-full justify-between mt-1",
+                cell: "relative h-8 sm:h-9 lg:h-10 xl:h-11 w-8 sm:w-9 lg:w-10 xl:w-11 p-0 text-center text-sm focus-within:z-20",
+                day: "flex h-8 w-8 sm:h-9 sm:w-9 lg:h-10 lg:w-10 xl:h-11 xl:w-11 items-center justify-center rounded-xl font-bold text-xs sm:text-sm transition-all hover:bg-orange-50 hover:text-orange-600 aria-selected:opacity-100",
                 day_selected:
-                  "rounded-2xl border-[#D9692A] bg-[#D9692A] text-white shadow-lg hover:bg-[#B85A24] xl:rounded-[28px]",
-                day_today: "rounded-2xl border-orange-100 bg-orange-50 text-slate-900 xl:rounded-[28px]",
-                day_outside: "text-slate-300 opacity-30",
+                  "rounded-xl border-[#D9692A] bg-[#D9692A] text-white shadow-md shadow-orange-500/20 hover:bg-[#B85A24]",
+                day_today:
+                  "rounded-xl border border-orange-200 bg-orange-50 text-orange-900 font-extrabold",
+                day_outside: "text-slate-300 opacity-40 hover:bg-transparent hover:text-slate-300",
               }}
             />
           </Card>
         </div>
 
-        <div className="min-w-0 space-y-6 lg:col-span-2 2xl:col-span-1">
-          <div className="px-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-2">
+        {/* Right Meeting Timeline Column */}
+        <div className="min-w-0 space-y-4 lg:col-span-2 2xl:col-span-1">
+          <div className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-xs">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
               Meeting Timeline
             </p>
-            <h3 className="text-2xl font-black text-slate-900 leading-tight">
+            <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
               {date.toLocaleDateString(undefined, {
                 weekday: "long",
                 day: "numeric",
                 month: "short",
               })}
             </h3>
-            <p className="mt-2 text-xs font-medium text-slate-500">
+            <p className="mt-1 text-xs font-medium text-slate-500">
               Showing {visibleCount} meeting(s) for selected filters.
             </p>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {loading ? (
-              Array.from({ length: 3 }).map((_, index) => (
+              Array.from({ length: 2 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-28 w-full rounded-[28px] border-2 border-dashed border-slate-100 bg-slate-50/50 animate-pulse"
+                  className="h-24 w-full rounded-2xl border border-slate-200 bg-slate-50/50 animate-pulse"
                 />
               ))
             ) : visibleCount > 0 ? (
-              visibleSections.map((section) => (
-                <div key={section.key} className="space-y-3">
-                  <div className="flex items-center justify-between px-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
-                      {section.title}
-                    </p>
-                    <Badge className="bg-slate-100 text-slate-600 text-[9px] font-black border-none">
-                      {section.rows.length}
-                    </Badge>
-                  </div>
+              visibleSections
+                .filter((section) => section.rows.length > 0)
+                .map((section) => (
+                  <div key={section.key} className="space-y-2.5">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        {section.title}
+                      </p>
+                      <Badge className="bg-slate-100 text-slate-600 text-[10px] font-bold border-none">
+                        {section.rows.length}
+                      </Badge>
+                    </div>
 
-                  {section.rows.length > 0 ? (
-                    section.rows.map((session) => {
+                    {section.rows.map((session) => {
                       const type = getMeetingWindowType(session);
                       const participants = Array.isArray(session?.participants)
                         ? session.participants
@@ -364,26 +375,26 @@ const CalendarPage = () => {
                           type="button"
                           onClick={() => openMeetingProject(session.projectId)}
                           disabled={!session.projectId}
-                          className={`group relative flex w-full items-start gap-4 rounded-[26px] border border-slate-100 bg-white p-4 text-left shadow-sm transition-all ${
+                          className={`group relative flex w-full items-start gap-3.5 rounded-xl border border-slate-200/80 bg-white p-3.5 text-left shadow-xs transition-all ${
                             session.projectId
-                              ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-lg"
+                              ? "cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-orange-200"
                               : "cursor-default"
                           }`}
                         >
-                          <Avatar className="h-12 w-12 rounded-xl border-2 border-white shadow-sm">
+                          <Avatar className="h-10 w-10 rounded-lg border border-slate-100 shadow-2xs">
                             <AvatarImage src={freelancer?.avatar || null} />
-                            <AvatarFallback className="bg-slate-100 font-black text-slate-500">
+                            <AvatarFallback className="bg-orange-50 font-bold text-[#D9692A] text-xs">
                               {formatInitials(previewName)}
                             </AvatarFallback>
                           </Avatar>
 
-                          <div className="min-w-0 flex-1 space-y-2">
+                          <div className="min-w-0 flex-1 space-y-1.5">
                             <div className="flex items-start justify-between gap-2">
-                              <p className="truncate text-sm font-black text-slate-900">
+                              <p className="truncate text-xs font-bold text-slate-900">
                                 {session.title || "Project Meeting"}
                               </p>
                               <Badge
-                                className={`text-[9px] font-black uppercase border-none ${
+                                className={`text-[9px] font-bold uppercase border-none px-2 py-0.5 ${
                                   type === "CURRENT"
                                     ? "bg-emerald-600 text-white"
                                     : type === "UPCOMING"
@@ -395,15 +406,15 @@ const CalendarPage = () => {
                               </Badge>
                             </div>
 
-                            <p className="truncate text-[11px] font-semibold text-slate-500">
+                            <p className="truncate text-[11px] font-medium text-slate-500">
                               {session.projectName || "General"} • Scope:{" "}
                               {session.participantScope || "BOTH"}
                             </p>
 
-                            <div className="flex flex-wrap items-center gap-2">
-                              <div className="flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1">
-                                <Clock className="h-3.5 w-3.5 text-slate-900" />
-                                <span className="text-[11px] font-black text-slate-800">
+                            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                              <div className="flex items-center gap-1 rounded-md border border-slate-100 bg-slate-50 px-2 py-0.5">
+                                <Clock className="h-3 w-3 text-slate-600" />
+                                <span className="text-[10px] font-bold text-slate-700">
                                   {new Date(session.startsAt).toLocaleString([], {
                                     day: "2-digit",
                                     month: "short",
@@ -414,7 +425,7 @@ const CalendarPage = () => {
                               </div>
                               <Badge
                                 variant="outline"
-                                className="border-slate-100 text-[9px] font-black text-slate-500"
+                                className="border-slate-200 text-[9px] font-bold text-slate-500"
                               >
                                 {session.platform || "INTERNAL"}
                               </Badge>
@@ -422,21 +433,19 @@ const CalendarPage = () => {
                           </div>
                         </button>
                       );
-                    })
-                  ) : (
-                    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-5 text-center text-xs font-medium text-slate-400">
-                      No meetings in this section.
-                    </div>
-                  )}
-                </div>
-              ))
+                    })}
+                  </div>
+                ))
             ) : (
-              <div className="rounded-[32px] border-2 border-dashed border-slate-100 bg-slate-50/20 py-16 text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm">
-                  <CalendarIcon className="h-8 w-8 text-slate-200" />
+              <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center shadow-xs">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-orange-50 text-[#D9692A]">
+                  <CalendarIcon className="h-6 w-6" />
                 </div>
-                <p className="text-xs font-black uppercase tracking-widest text-slate-400">
-                  No meetings for selected filters
+                <h4 className="text-xs font-bold text-slate-800">
+                  No meetings scheduled
+                </h4>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  There are no meetings for the selected date and filters.
                 </p>
               </div>
             )}

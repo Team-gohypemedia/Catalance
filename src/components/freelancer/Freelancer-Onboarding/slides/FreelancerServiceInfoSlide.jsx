@@ -29,6 +29,7 @@ import {
   DEFAULT_FREELANCER_ONBOARDING_CONTENT,
   resolveServiceInfoFields,
 } from "@/shared/lib/freelancer-onboarding-content";
+import CategoryComboSearch from "./shared/CategoryComboSearch";
 const ONBOARDING_SECTION_DESCRIPTION_CLASS = "text-base font-normal leading-7";
 
 const EXPERIENCE_OPTIONS = [
@@ -71,7 +72,7 @@ const normalizeSkillMatchKey = (value = "") =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "");
 
-const CategoryMultiSelect = ({
+const InlineCategoryMultiSelect = ({
   options = [],
   selected = [],
   onChange,

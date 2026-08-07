@@ -181,42 +181,42 @@ export const AvailabilitySlotManager = ({ selectedDate = new Date() }) => {
   }, [savedHours, selectedHours]);
 
   return (
-    <Card className="mt-8 rounded-3xl border border-border/60 bg-card p-6 shadow-xs text-card-foreground">
-      <CardHeader className="p-0 pb-6 border-b border-border/60">
+    <Card className="mt-6 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+      <CardHeader className="p-0 pb-4 border-b border-slate-100">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-xl font-black text-foreground">
+            <CardTitle className="text-lg font-extrabold text-slate-900">
               {formattedSelectedDate}
             </CardTitle>
-            <CardDescription className="mt-1 text-xs font-semibold text-muted-foreground">
+            <CardDescription className="mt-0.5 text-xs font-medium text-slate-500">
               {lockedCount > 0
                 ? `${lockedCount} slot${lockedCount > 1 ? "s" : ""} already booked and locked.`
                 : "Configure your client booking availability for this date."}
             </CardDescription>
           </div>
-          <Badge className="w-fit rounded-full bg-primary/10 text-primary border border-primary/20 px-3.5 py-1 text-[10px] font-black uppercase tracking-wider">
+          <Badge className="w-fit rounded-lg bg-orange-50 text-[#D9692A] border border-orange-200/60 px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
             {selectedSlotCount} SLOTS CONFIGURED
           </Badge>
         </div>
       </CardHeader>
 
-      <CardContent className="p-0 pt-6 space-y-6">
+      <CardContent className="p-0 pt-4 space-y-5">
         {lockedCount > 0 && (
-          <div className="flex items-start gap-3 rounded-2xl border border-orange-200 bg-orange-50/70 p-4 text-xs font-medium text-slate-700">
+          <div className="flex items-start gap-2.5 rounded-xl border border-orange-200/80 bg-orange-50/60 p-3 text-xs font-medium text-slate-700">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#D9692A]" />
             <p>
-              Slots marked as <strong>LOCKED</strong> are reserved for existing client bookings or appointments.
+              Slots marked as <strong>LOCKED</strong> are reserved for existing client bookings.
               Saving will update open slots for this date.
             </p>
           </div>
         )}
 
         {loading ? (
-          <div className="flex h-44 items-center justify-center text-xs font-semibold text-muted-foreground gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading availability...
+          <div className="flex h-36 items-center justify-center text-xs font-medium text-slate-400 gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-[#D9692A]" /> Loading availability...
           </div>
         ) : (
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {SLOT_HOURS.map((hour) => {
               const isLocked = lockedHours.has(hour);
               const isSelected = selectedHours.has(hour);
@@ -228,39 +228,39 @@ export const AvailabilitySlotManager = ({ selectedDate = new Date() }) => {
                   disabled={isLocked}
                   onClick={() => toggleHour(hour)}
                   className={cn(
-                    "flex flex-col justify-between rounded-2xl p-4 text-left transition-all border",
+                    "flex flex-col justify-between rounded-xl p-3 text-left transition-all border",
                     isLocked
-                      ? "cursor-not-allowed border-orange-200 bg-orange-50/60 opacity-80"
+                      ? "cursor-not-allowed border-orange-200/80 bg-orange-50/60 opacity-80"
                       : isSelected
-                        ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                        : "border-border/60 bg-muted/20 hover:border-border hover:bg-muted/40 text-foreground"
+                        ? "border-[#D9692A] bg-[#D9692A] text-white shadow-xs"
+                        : "border-slate-200 bg-slate-50/40 hover:border-slate-300 hover:bg-slate-50 text-slate-800"
                   )}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-black tracking-tight">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-xs font-bold tracking-tight">
                       {formatHourLabel(hour)}
                     </span>
                     {isLocked ? (
-                      <Badge className="bg-orange-200 text-[#B85A24] text-[9px] font-black uppercase">
+                      <Badge className="bg-orange-200 text-[#B85A24] text-[8px] font-bold uppercase px-1.5 py-0">
                         LOCKED
                       </Badge>
                     ) : isSelected ? (
-                      <CheckCircle2 className="h-4 w-4" />
+                      <CheckCircle2 className="h-3.5 w-3.5" />
                     ) : (
-                      <Clock className="h-4 w-4 opacity-40" />
+                      <Clock className="h-3.5 w-3.5 opacity-40" />
                     )}
                   </div>
                   <p
                     className={cn(
-                      "mt-3 text-xs font-bold",
+                      "mt-2 text-[10px] font-semibold",
                       isLocked
                         ? "text-slate-600"
                         : isSelected
-                          ? "text-primary-foreground/90"
-                          : "text-muted-foreground"
+                          ? "text-white/90"
+                          : "text-slate-500"
                     )}
                   >
-                    {isLocked ? "Booked already" : isSelected ? "Available to clients" : "Not offered"}
+                    {isLocked ? "Booked" : isSelected ? "Available" : "Not offered"}
                   </p>
                 </button>
               );
@@ -268,53 +268,53 @@ export const AvailabilitySlotManager = ({ selectedDate = new Date() }) => {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border/60 bg-muted/20 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               Selected Slots
             </p>
-            <p className="mt-1 text-2xl font-black text-foreground">
+            <p className="mt-0.5 text-xl font-extrabold text-slate-900">
               {selectedSlotCount}
             </p>
           </div>
           <Button
             type="button"
-            className="h-11 rounded-full bg-primary px-6 text-xs font-black uppercase tracking-wider text-primary-foreground hover:opacity-90 shadow-xs"
+            className="h-9 rounded-lg bg-[#D9692A] px-5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#B85A24] shadow-xs transition-all"
             onClick={handleSaveAvailability}
             disabled={saving || loading || !hasUnsavedChanges}
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
             {saving ? "Saving..." : "Save Availability"}
           </Button>
         </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+        <div className="space-y-2.5">
+          <div className="flex items-center gap-1.5">
+            <CalendarIcon className="h-3.5 w-3.5 text-[#D9692A]" />
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
               Current Day Schedule
             </p>
           </div>
 
           {selectedDateSlots.length > 0 ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               {selectedDateSlots.map((slot) => (
                 <div
                   key={slot.id}
-                  className="flex items-center justify-between rounded-2xl border border-border/60 bg-card p-4 shadow-2xs"
+                  className="flex items-center justify-between rounded-xl border border-slate-200/80 bg-white p-3 shadow-2xs"
                 >
                   <div>
-                    <p className="text-xs font-bold text-foreground">
+                    <p className="text-xs font-bold text-slate-800">
                       {formatHourRange(slot.startHour, slot.endHour)}
                     </p>
-                    <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                    <p className="mt-0.5 text-[10px] font-medium text-slate-500">
                       {slot.isBooked ? "Reserved by existing booking" : "Open to new bookings"}
                     </p>
                   </div>
                   <Badge
                     variant="outline"
                     className={cn(
-                      "rounded-full px-3 py-0.5 text-[10px] font-black uppercase tracking-wider",
+                      "rounded-md px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider",
                       slot.isBooked
                         ? "border-orange-200 bg-orange-50 text-[#D9692A]"
                         : "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -326,11 +326,11 @@ export const AvailabilitySlotManager = ({ selectedDate = new Date() }) => {
               ))}
             </div>
           ) : (
-            <div className="rounded-2xl border border-dashed border-border/60 bg-muted/20 px-4 py-6 text-center">
-              <p className="text-xs font-semibold text-muted-foreground">
+            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/40 px-4 py-4 text-center">
+              <p className="text-xs font-semibold text-slate-500">
                 No availability saved for this date.
               </p>
-              <p className="mt-1 text-[11px] font-medium text-muted-foreground/70">
+              <p className="mt-0.5 text-[10px] font-medium text-slate-400">
                 Choose one or more hours above, then click Save Availability.
               </p>
             </div>

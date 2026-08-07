@@ -54,6 +54,7 @@ import { toast } from "sonner";
 
 const PROFILE_PHOTO_MAX_BYTES = 5 * 1024 * 1024;
 const NOTIFICATION_PREFS_STORAGE_KEY = "catalance:client-profile:notification-prefs";
+const SHOW_PROFILE_ACCOUNT_DELETION = false;
 
 const defaultNotificationPrefs = Object.freeze({
   projectUpdates: true,
@@ -1221,6 +1222,7 @@ const ClientProfileContent = () => {
               </div>
             </ProfileSurface>
 
+            {SHOW_PROFILE_ACCOUNT_DELETION ? (
             <ProfileSurface className="mt-8 p-6 sm:p-10 border-red-500/20">
               <div className="space-y-6 sm:space-y-8">
                 <div>
@@ -1251,6 +1253,7 @@ const ClientProfileContent = () => {
                 </div>
               </div>
             </ProfileSurface>
+            ) : null}
           </div>
         </main>
 
