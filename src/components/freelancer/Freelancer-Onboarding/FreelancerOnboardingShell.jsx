@@ -4362,7 +4362,7 @@ const FreelancerOnboardingShell = () => {
         <button
           type="button"
           onClick={() => setIsAiHelperExpanded(true)}
-          className={`fixed right-5 z-40 flex size-12 items-center justify-center rounded-full border border-border/50 bg-background text-primary shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all hover:scale-110 hover:border-primary/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.16)] sm:right-8 cursor-pointer ${
+          className={`fixed right-24 z-40 flex size-12 items-center justify-center rounded-full border border-border/50 bg-background text-primary shadow-[0_8px_30px_rgba(0,0,0,0.12)] backdrop-blur-xl transition-all hover:scale-110 hover:border-primary/40 hover:shadow-[0_12px_40px_rgba(0,0,0,0.16)] sm:right-28 cursor-pointer ${
             isFooterHidden ? "bottom-6" : "bottom-[92px]"
           }`}
           aria-label="Get help completing profile"

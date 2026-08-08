@@ -18,11 +18,14 @@ export const CataButton = () => {
       ? location.pathname.slice(0, -1)
       : location.pathname;
 
+  const isOnboarding = normalizedPathname.includes("/onboarding");
+
   // Vertical position state (distance from bottom in pixels)
   const [bottomPosition, setBottomPosition] = useState(() => {
     if (typeof window === "undefined") return DEFAULT_BOTTOM;
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? parseInt(stored, 10) : DEFAULT_BOTTOM;
+    if (stored) return parseInt(stored, 10);
+    return isOnboarding ? 96 : DEFAULT_BOTTOM;
   });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartY = useRef(0);
@@ -79,10 +82,6 @@ export const CataButton = () => {
     if (e.target.closest("button") || e.target.closest("a")) {
       return;
     }
-    // Don't prevent default on touch to allow scrolling if not dragging,
-    // but here we want to drag the button container.
-    // However, FamilyButton itself might need touch events.
-    // Let's assume touches on the container (outside of inner buttons) are drags.
     handleDragStart(e.touches[0].clientY);
   };
 
@@ -108,7 +107,9 @@ export const CataButton = () => {
   }, [isDragging, handleDragMove, handleDragEnd]);
 
   const isSupportedDashboard =
-    normalizedPathname === "/client" || normalizedPathname === "/freelancer";
+    normalizedPathname === "/client" ||
+    normalizedPathname === "/freelancer" ||
+    isOnboarding;
 
   if (!isSupportedDashboard) {
     return null;
@@ -117,7 +118,7 @@ export const CataButton = () => {
   return (
     <div
       className={cn(
-        "fixed right-3 z-50 origin-bottom-right scale-90 group cursor-grab active:cursor-grabbing sm:right-8 sm:scale-100",
+        "fixed right-3 z-[100] origin-bottom-right scale-90 group cursor-grab active:cursor-grabbing sm:right-8 sm:scale-100 touch-none select-none",
         isDragging && "cursor-grabbing",
       )}
       style={{ bottom: `${bottomPosition}px` }}
