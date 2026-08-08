@@ -10,6 +10,7 @@ const MODELED_PROFILE_DETAILS_KEYS = new Set([
   "services",
   "serviceDetails",
   "portfolioProjects",
+  "onboardingProgress",
 ]);
 
 const MODELED_IDENTITY_KEYS = new Set([
@@ -351,6 +352,10 @@ export const buildFreelancerProfileDetailsObject = (record = null) => {
   nextProfileDetails.portfolioProjects = mergeWithFallback(
     asArray(normalizedRecord.portfolioProjects),
     legacyProfileDetails.portfolioProjects
+  );
+  nextProfileDetails.onboardingProgress = mergeWithFallback(
+    asObject(normalizedRecord.onboardingProgress),
+    legacyProfileDetails.onboardingProgress
   );
   nextProfileDetails.globalIndustryFocus = mergeWithFallback(
     toStringArray(normalizedRecord.globalIndustryFocus),

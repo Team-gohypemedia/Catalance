@@ -322,7 +322,24 @@ export const getUsers = asyncHandler(async (req, res) => {
         role: true,
         status: true,
         isVerified: true,
+        avatar: true,
+        onboardingComplete: true,
         createdAt: true,
+        updatedAt: true,
+        freelancerProfile: {
+          select: {
+            profileRole: true,
+            username: true,
+            city: true,
+            country: true,
+            services: true,
+            serviceDetails: true,
+            rating: true,
+            reviewCount: true,
+            experienceYears: true,
+            updatedAt: true,
+          },
+        },
         managerProfile: {
           select: {
             profileDetails: true,
@@ -340,9 +357,7 @@ export const getUsers = asyncHandler(async (req, res) => {
         user.managerProfile?.profileDetails && typeof user.managerProfile.profileDetails === "object"
           ? user.managerProfile.profileDetails
           : undefined,
-    })); // Already paginated via Prisma
-
-    console.log("Returning", paginatedUsers.length, "users");
+    }));
 
     res.json({
       data: {
@@ -371,7 +386,6 @@ export const createProjectManager = asyncHandler(async (req, res) => {
   const phoneNumber = String(req.body?.phoneNumber || "").trim();
 
   if (!fullName) {
-    throw new AppError("Full name is required.", 400);
   }
 
   if (!email) {
@@ -1418,6 +1432,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         role: true,
         status: true,
         isVerified: true,
+        onboardingComplete: true,
         phone: true,
         phoneNumber: true,
         createdAt: true,
@@ -1609,12 +1624,7 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           take: 12,
         }
       }
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-    const freelancerProfile =
+    });    const freelancerProfile =
       user.freelancerProfile && typeof user.freelancerProfile === "object"
         ? user.freelancerProfile
         : {};
@@ -1791,6 +1801,12 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           fullName: user.fullName,
           email: user.email,
           role: user.role,
+          onboardingComplete: Boolean(user.onboardingComplete),
+          profileDetails: freelancerProfileDetails,
+          freelancerProfile: {
+            ...freelancerProfile,
+            serviceDetails: freelancerProfileDetails.serviceDetails ?? freelancerProfile.serviceDetails ?? {},
+          },
           bio:
             freelancerProfileDetails.professionalBio ||
             freelancerProfile.professionalBio ||
@@ -1826,7 +1842,6 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           portfolioProjects: Array.isArray(freelancerProfileDetails.portfolioProjects)
             ? freelancerProfileDetails.portfolioProjects
             : [],
-          profileDetails: freelancerProfileDetails,
           profilePhoto: freelancerIdentity.profilePhoto || freelancerProfile.profilePhoto || null
         },
         stats,
@@ -1886,10 +1901,7 @@ export const getProjectDetails = asyncHandler(async (req, res) => {
     throw new AppError("Project not found", 404);
   }
 
-  // Determine accepted freelancer if any
   const acceptedProposal = project.proposals.find(p => p.status === 'ACCEPTED');
-
-  // Fetch conversation associated with the project
   const conversation = await prisma.chatConversation.findFirst({
     where: {
       projectTitle: project.title,

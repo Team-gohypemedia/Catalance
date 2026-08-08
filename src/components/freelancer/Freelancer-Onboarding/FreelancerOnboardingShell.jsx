@@ -1029,6 +1029,35 @@ const FreelancerOnboardingShell = () => {
   const totalSlides = onboardingSlides.length;
   const currentSlide =
     onboardingSlides[currentSlideIndex] || onboardingSlides[0];
+
+  // Real-time Onboarding Tracking Telemetry
+  useEffect(() => {
+    if (!user || user.role !== "FREELANCER") return;
+    if (!currentSlide) return;
+
+    const progressPercentage = Math.round(
+      currentSlide.progressValue ??
+        ((currentSlideIndex + 1) / Math.max(totalSlides, 1)) * 100,
+    );
+
+    const payload = {
+      currentStep: currentSlide.id,
+      currentStepTitle: currentSlide.label || currentSlide.title || currentSlide.id,
+      progressPercentage,
+      totalSteps: totalSlides,
+      currentServiceIndex,
+      isCompleted: user?.onboardingComplete || false,
+    };
+
+    authFetch("/auth/onboarding-progress", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }).catch(() => {
+      // Silent telemetry failure
+    });
+  }, [authFetch, currentServiceIndex, currentSlide, currentSlideIndex, totalSlides, user]);
+
   const ActiveSlide = slideRegistry[currentSlide.id];
   const progressValue =
     currentSlide.progressValue ??

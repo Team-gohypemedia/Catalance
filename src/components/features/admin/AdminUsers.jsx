@@ -394,10 +394,16 @@ const AdminUsers = ({ roleFilter }) => {
               <TableHeader>
                 <TableRow>
                   <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Status</TableHead>
-                  {showFreelancerColumns ? <TableHead>KYC</TableHead> : null}
+                  <TableHead>Role / Type</TableHead>
+                  {showFreelancerColumns ? (
+                    <>
+                      <TableHead>Onboarding Phase & Drop-Off</TableHead>
+                      <TableHead>Primary Service & Skills</TableHead>
+                    </>
+                  ) : (
+                    <TableHead>Status</TableHead>
+                  )}
+                  <TableHead>Joined & Last Active</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -407,12 +413,10 @@ const AdminUsers = ({ roleFilter }) => {
                     <TableRow key={index}>
                       <TableCell><div className="h-4 w-32 animate-pulse rounded bg-muted" /></TableCell>
                       <TableCell><div className="h-4 w-16 animate-pulse rounded bg-muted" /></TableCell>
+                      <TableCell><div className="h-4 w-28 animate-pulse rounded bg-muted" /></TableCell>
                       <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
-                      <TableCell><div className="h-4 w-16 animate-pulse rounded bg-muted" /></TableCell>
-                      {showFreelancerColumns ? (
-                        <TableCell><div className="h-4 w-20 animate-pulse rounded bg-muted" /></TableCell>
-                      ) : null}
-                      <TableCell><div className="ml-auto h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
+                      <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
+                      <TableCell><div className="ml-auto h-4 w-20 animate-pulse rounded bg-muted" /></TableCell>
                     </TableRow>
                   ))
                 ) : users.length === 0 ? (
@@ -424,136 +428,154 @@ const AdminUsers = ({ roleFilter }) => {
                 ) : (
                   users.map((user) => {
                     const displayStatus = getDisplayStatus(user);
-                    const userActionLoading = actionLoadingKey.startsWith(`${user.id}:`);
+                    const fp = user.freelancerProfile || {};
+                    const progressObj = fp?.serviceDetails?.__profileDetails?.onboardingProgress || fp?.serviceDetails?.onboardingProgress || user?.profileDetails?.onboardingProgress || {};
+                    const isComplete = Boolean(user.onboardingComplete || progressObj?.isCompleted);
+                    const stepId = progressObj.currentStep || (isComplete ? "completed" : "welcome");
+                    const stepTitle = progressObj.currentStepTitle || stepId;
+                    const percentage = isComplete ? 100 : (Number(progressObj.progressPercentage) || (stepId === "welcome" ? 10 : 35));
+                    const servicesList = Array.isArray(fp.services) ? fp.services : [];
+                    const primaryService = servicesList[0] ? String(servicesList[0]).replace(/[_-]+/g, " ") : "Not set";
+                    const lastActiveDate = progressObj.lastActiveAt || fp.updatedAt || user.updatedAt || user.createdAt;
 
                     return (
-                      <TableRow key={user.id}>
+                      <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{user.fullName}</p>
-                            <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary overflow-hidden shrink-0">
+                              {user.avatar || fp.profilePhoto ? (
+                                <img src={user.avatar || fp.profilePhoto} alt={user.fullName} className="h-full w-full object-cover" />
+                              ) : (
+                                user.fullName?.charAt(0)?.toUpperCase() || "U"
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm truncate">{user.fullName}</p>
+                              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                              {fp.username ? (
+                                <p className="text-[11px] text-primary/80 font-mono">@{fp.username}</p>
+                              ) : null}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <span
-                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                              user.role === "ADMIN"
-                                ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                                : user.role === "CLIENT"
-                                  ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                  : user.role === "PROJECT_MANAGER"
-                                    ? "bg-primary/10 text-primary dark:bg-primary/10 dark:text-primary"
-                                    : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                            }`}
-                          >
-                            {user.role === "PROJECT_MANAGER" ? "PM" : user.role}
-                          </span>
+                          <div className="flex flex-col gap-1 items-start">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                user.role === "ADMIN"
+                                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
+                                  : user.role === "CLIENT"
+                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                    : user.role === "PROJECT_MANAGER"
+                                      ? "bg-primary/10 text-primary dark:bg-primary/10 dark:text-primary"
+                                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                              }`}
+                            >
+                              {user.role === "PROJECT_MANAGER" ? "PM" : user.role}
+                            </span>
+                            {fp.profileRole ? (
+                              <span className="text-[11px] text-muted-foreground capitalize">
+                                {fp.profileRole}
+                              </span>
+                            ) : null}
+                          </div>
                         </TableCell>
-                        <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          <Badge
-                            className={
-                              displayStatus === "SUSPENDED"
-                                ? "bg-red-100 text-red-700 border-0 dark:bg-red-900/30 dark:text-red-400"
-                                : displayStatus === "PENDING"
-                                  ? "bg-amber-100 text-amber-700 border-0 dark:bg-amber-900/30 dark:text-amber-400"
-                                  : "bg-green-100 text-green-700 border-0 dark:bg-green-900/30 dark:text-green-400"
-                            }
-                          >
-                            {displayStatus === "PENDING" ? "Pending" : displayStatus === "SUSPENDED" ? "Suspended" : "Active"}
-                          </Badge>
-                        </TableCell>
+
                         {showFreelancerColumns ? (
+                          <>
+                            {/* Onboarding Phase & Real-Time Drop-off */}
+                            <TableCell className="min-w-[200px]">
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span className="font-medium capitalize text-foreground">
+                                    {stepTitle}
+                                  </span>
+                                  <span className="text-muted-foreground font-mono font-semibold">
+                                    {percentage}%
+                                  </span>
+                                </div>
+                                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className={`h-full transition-all duration-300 ${
+                                      isComplete
+                                        ? "bg-emerald-500"
+                                        : percentage > 50
+                                          ? "bg-blue-500"
+                                          : "bg-amber-500"
+                                    }`}
+                                    style={{ width: `${percentage}%` }}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-[10px] px-1.5 py-0 font-normal ${
+                                      isComplete
+                                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                                        : "border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                                    }`}
+                                  >
+                                    {isComplete ? "Onboarded" : `Backed up at ${stepId}`}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </TableCell>
+
+                            {/* Primary Service & Skills */}
+                            <TableCell className="max-w-[200px]">
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium capitalize text-foreground truncate">
+                                  {primaryService}
+                                </p>
+                                {servicesList.length > 1 ? (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    +{servicesList.length - 1} more services
+                                  </span>
+                                ) : null}
+                              </div>
+                            </TableCell>
+                          </>
+                        ) : (
                           <TableCell>
                             <Badge
                               className={
-                                user.isVerified
-                                  ? "bg-green-100 text-green-700 border-0 dark:bg-green-900/30 dark:text-green-400"
-                                  : "bg-primary/10 text-primary border-0"
+                                displayStatus === "SUSPENDED"
+                                  ? "bg-red-100 text-red-700 border-0 dark:bg-red-900/30 dark:text-red-400"
+                                  : displayStatus === "PENDING"
+                                    ? "bg-amber-100 text-amber-700 border-0 dark:bg-amber-900/30 dark:text-amber-400"
+                                    : "bg-green-100 text-green-700 border-0 dark:bg-green-900/30 dark:text-green-400"
                               }
                             >
-                              {user.isVerified ? "Verified" : "Pending"}
+                              {displayStatus === "PENDING" ? "Pending" : displayStatus === "SUSPENDED" ? "Suspended" : "Active"}
                             </Badge>
                           </TableCell>
-                        ) : null}
-                        <TableCell className="text-right">
-                          <div className="flex flex-wrap items-center justify-end gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleView(user.id)}
-                              className="gap-2"
-                            >
-                              <Eye className="h-4 w-4" />
-                              View
-                            </Button>
+                        )}
 
-                            {showFreelancerColumns ? (
-                              user.isVerified ? (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleVerificationChange(user.id, false)}
-                                  disabled={userActionLoading}
-                                  className="gap-2"
-                                >
-                                  {actionLoadingKey === `${user.id}:kyc` ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <ShieldX className="h-4 w-4" />
-                                  )}
-                                  Revoke KYC
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleVerificationChange(user.id, true)}
-                                  disabled={userActionLoading}
-                                  className="gap-2 text-green-600 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
-                                >
-                                  {actionLoadingKey === `${user.id}:kyc` ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <ShieldCheck className="h-4 w-4" />
-                                  )}
-                                  Approve KYC
-                                </Button>
-                              )
+                        {/* Joined & Last Active */}
+                        <TableCell>
+                          <div className="text-xs space-y-0.5">
+                            <p className="text-foreground">
+                              {new Date(user.createdAt).toLocaleDateString()}
+                            </p>
+                            {lastActiveDate ? (
+                              <p className="text-[11px] text-muted-foreground">
+                                Active {new Date(lastActiveDate).toLocaleDateString()}
+                              </p>
                             ) : null}
-
-                            {user.status === "SUSPENDED" ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(user.id, "ACTIVE")}
-                                disabled={userActionLoading}
-                                className="gap-2 text-green-600 hover:border-green-200 hover:bg-green-50 hover:text-green-700"
-                              >
-                                {actionLoadingKey === `${user.id}:status` ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <CheckCircle className="h-4 w-4" />
-                                )}
-                                Activate
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleStatusChange(user.id, "SUSPENDED")}
-                                disabled={userActionLoading}
-                                className="gap-2 text-red-600 hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-                              >
-                                {actionLoadingKey === `${user.id}:status` ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <Ban className="h-4 w-4" />
-                                )}
-                                Suspend
-                              </Button>
-                            )}
                           </div>
+                        </TableCell>
+
+                        {/* Action: Clean View Details */}
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleView(user.id)}
+                            className="gap-1.5 hover:bg-primary hover:text-primary-foreground transition-colors"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View Details
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );

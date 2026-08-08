@@ -94,6 +94,38 @@ export const updateProfileHandler = asyncHandler(async (req, res) => {
   res.json({ data: updatedUser });
 });
 
+export const updateOnboardingProgressHandler = asyncHandler(async (req, res) => {
+  const userId = req.user?.sub || req.user?.id;
+  if (!userId) throw new AppError("Authentication required", 401);
+
+  const {
+    currentStep,
+    currentStepTitle,
+    progressPercentage,
+    totalSteps,
+    currentServiceIndex,
+    isCompleted,
+  } = req.body || {};
+
+  const onboardingProgress = {
+    currentStep: String(currentStep || "welcome"),
+    currentStepTitle: String(currentStepTitle || "Welcome"),
+    progressPercentage: Math.min(Math.max(Number(progressPercentage) || 0, 0), 100),
+    totalSteps: Number(totalSteps) || 1,
+    currentServiceIndex: Number(currentServiceIndex) || 0,
+    isCompleted: Boolean(isCompleted),
+    lastActiveAt: new Date().toISOString(),
+  };
+
+  const updatedUser = await updateUserProfile(userId, {
+    profileDetails: {
+      onboardingProgress,
+    },
+  });
+
+  res.json({ data: updatedUser });
+});
+
 export const forgotPasswordHandler = asyncHandler(async (req, res) => {
   const { email } = req.body;
   const result = await requestPasswordReset(email);

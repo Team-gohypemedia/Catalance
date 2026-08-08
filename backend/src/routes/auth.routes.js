@@ -5,6 +5,7 @@ import {
   googleLoginHandler,
   profileHandler,
   updateProfileHandler,
+  updateOnboardingProgressHandler,
   forgotPasswordHandler,
   verifyResetTokenHandler,
   resetPasswordHandler,
@@ -63,6 +64,7 @@ authRouter.post("/login", validateResource(loginSchema), loginHandler);
 authRouter.post("/google-login", validateResource(googleLoginSchema), googleLoginHandler);
 authRouter.get("/profile", requireAuth, profileHandler);
 authRouter.put("/profile", requireAuth, updateProfileHandler);
+authRouter.post("/onboarding-progress", requireAuth, updateOnboardingProgressHandler);
 
 // Password reset routes
 authRouter.post("/forgot-password", validateResource(forgotPasswordSchema), forgotPasswordHandler);

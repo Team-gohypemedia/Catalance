@@ -20,6 +20,7 @@ import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import FolderOpen from "lucide-react/dist/esm/icons/folder-open";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 
 const isPlainObject = (value) => value && typeof value === "object" && !Array.isArray(value);
 const isPrimitiveValue = (value) =>
@@ -511,6 +512,121 @@ const AdminUserDetails = () => {
             ) : null}
           </div>
         )}
+
+        {/* Real-Time Freelancer Onboarding & Customer Behavior Analytics Card */}
+        {isFreelancer && (() => {
+          const fp = data.user?.freelancerProfile || {};
+          const progressObj = fp?.serviceDetails?.__profileDetails?.onboardingProgress || fp?.serviceDetails?.onboardingProgress || profileDetails.onboardingProgress || data.user?.profileDetails?.onboardingProgress || {};
+          const isComplete = Boolean(data.user?.onboardingComplete || progressObj?.isCompleted);
+          const currentStep = progressObj.currentStep || (isComplete ? "completed" : "welcome");
+          const currentStepTitle = progressObj.currentStepTitle || currentStep;
+          const percentage = isComplete ? 100 : (Number(progressObj.progressPercentage) || (currentStep === "welcome" ? 10 : 35));
+          const lastActive = progressObj.lastActiveAt || fp.updatedAt || data.user.updatedAt;
+
+          const ONBOARDING_FLOW_STEPS = [
+            { id: "welcome", title: "Welcome & Intro", path: "/freelancer/onboarding/welcome", index: 0 },
+            { id: "workPreference", title: "Work Preference", path: "/freelancer/onboarding/workPreference", index: 1 },
+            { id: "basicProfile", title: "Basic Profile", path: "/freelancer/onboarding/basicProfile", index: 2 },
+            { id: "services", title: "Services Selection", path: "/freelancer/onboarding/services", index: 3 },
+            { id: "quickInfo", title: "Service Setup & Quick Info", path: "/freelancer/onboarding/quickInfo", index: 4 },
+            { id: "caseStudy", title: "Case Study & Portfolio", path: "/freelancer/onboarding/caseStudy", index: 5 },
+            { id: "acceptInProgressProjects", title: "Work Availability", path: "/freelancer/onboarding/acceptInProgressProjects", index: 6 },
+            { id: "deliveryPolicy", title: "Policies & Terms", path: "/freelancer/onboarding/deliveryPolicy", index: 7 },
+          ];
+
+          const activeStepIndex = isComplete
+            ? ONBOARDING_FLOW_STEPS.length
+            : ONBOARDING_FLOW_STEPS.findIndex((s) => s.id === currentStep);
+
+          return (
+            <div className="bg-card p-6 rounded-xl border shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Real-Time Onboarding Journey & Customer Behavior</h2>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Track real-time drop-off phase and freelancer navigation in onboarding
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={`px-3 py-1 text-xs font-semibold ${
+                      isComplete
+                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : "border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                    }`}
+                  >
+                    {isComplete ? "Onboarding Completed" : `Backed Up at: ${currentStepTitle} (${percentage}%)`}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Progress Bar & Status */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-muted-foreground">Overall Completion</span>
+                  <span className="font-mono text-primary font-bold">{percentage}%</span>
+                </div>
+                <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      isComplete ? "bg-emerald-500" : percentage > 50 ? "bg-blue-500" : "bg-amber-500"
+                    }`}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
+                {lastActive && (
+                  <p className="text-[11px] text-muted-foreground text-right">
+                    Last activity: {new Date(lastActive).toLocaleString("en-IN")}
+                  </p>
+                )}
+              </div>
+
+              {/* Flow Timeline Steps */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {ONBOARDING_FLOW_STEPS.map((step, idx) => {
+                  const isPassed = isComplete || (activeStepIndex >= 0 && idx < activeStepIndex);
+                  const isCurrent = !isComplete && (activeStepIndex === idx || (activeStepIndex === -1 && idx === 0));
+
+                  return (
+                    <div
+                      key={step.id}
+                      className={`p-3 rounded-lg border text-xs transition-all ${
+                        isCurrent
+                          ? "border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 ring-1 ring-amber-400"
+                          : isPassed
+                            ? "border-emerald-200 bg-emerald-50/30 dark:bg-emerald-950/10"
+                            : "border-muted bg-muted/20 opacity-70"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="font-mono text-[10px] text-muted-foreground">Step {idx + 1}</span>
+                        {isPassed ? (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-300 text-emerald-600 bg-emerald-50">
+                            Passed
+                          </Badge>
+                        ) : isCurrent ? (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-400 text-amber-600 bg-amber-50 animate-pulse">
+                            Backed Up Here
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
+                            Pending
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="font-semibold text-foreground truncate">{step.title}</p>
+                      <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">{step.path}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Main Content Area */}
         <div className={hasSidebarContent ? "grid gap-6 lg:grid-cols-3" : "space-y-6"}>
