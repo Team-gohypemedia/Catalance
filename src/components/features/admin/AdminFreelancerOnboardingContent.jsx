@@ -20,6 +20,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/shared/context/AuthContext";
 import {
@@ -1062,6 +1063,172 @@ const NameListEditor = ({
   );
 };
 
+const MarketplaceCatalog = ({ services = [], niches = [], onNichesChange, onManageService }) => {
+  const normalizedServices = Array.isArray(services) ? services : [];
+  const normalizedNiches = Array.isArray(niches) ? niches : [];
+
+  const handleNicheChange = (index, name) => {
+    onNichesChange(
+      normalizedNiches.map((niche, nicheIndex) =>
+        nicheIndex === index ? { ...niche, name } : niche,
+      ),
+    );
+  };
+
+  const handleAddNiche = () => {
+    onNichesChange([...normalizedNiches, { id: null, name: "" }]);
+  };
+
+  const handleRemoveNiche = (index) => {
+    onNichesChange(normalizedNiches.filter((_, nicheIndex) => nicheIndex !== index));
+  };
+
+  return (
+    <Card className="overflow-hidden rounded-[24px] border border-border bg-card shadow-[0_18px_44px_rgba(0,0,0,0.08)]">
+      <CardHeader className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+            Marketplace data
+          </div>
+          <CardTitle className="mt-3 text-xl font-semibold tracking-tight text-foreground">
+            Marketplace Catalog
+          </CardTitle>
+          <CardDescription className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Review the services available to freelancers and manage the niche options used in case studies.
+          </CardDescription>
+        </div>
+        <Badge variant="outline" className="w-fit rounded-full border-border bg-muted/40 text-muted-foreground">
+          {normalizedServices.length} services · {normalizedNiches.length} niches
+        </Badge>
+      </CardHeader>
+
+      <CardContent className="grid gap-5 p-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.85fr)]">
+        <section className="overflow-hidden rounded-2xl border border-border">
+          <div className="flex items-center justify-between border-b border-border bg-muted/30 px-4 py-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Services</h3>
+              <p className="mt-0.5 text-xs text-muted-foreground">Categories and skills available for each service.</p>
+            </div>
+          </div>
+          <Table>
+            <TableHeader className="bg-muted/20">
+              <TableRow>
+                <TableHead className="px-4">Service</TableHead>
+                <TableHead>Categories</TableHead>
+                <TableHead>Skills</TableHead>
+                <TableHead className="px-4 text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {normalizedServices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="h-24 px-4 text-center text-sm text-muted-foreground">
+                    No marketplace services are available yet.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                normalizedServices.map((service) => {
+                  const categories = Array.isArray(service?.subCategories)
+                    ? service.subCategories
+                    : [];
+                  const skillCount = categories.reduce(
+                    (total, category) =>
+                      total + (Array.isArray(category?.tools) ? category.tools.length : 0),
+                    0,
+                  );
+
+                  return (
+                    <TableRow key={service.id}>
+                      <TableCell className="px-4 font-medium text-foreground">
+                        {service.name || "Untitled service"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{categories.length}</TableCell>
+                      <TableCell className="text-muted-foreground">{skillCount}</TableCell>
+                      <TableCell className="px-4 text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onManageService(service.key)}
+                          className="h-8 text-primary hover:bg-primary/10 hover:text-primary"
+                        >
+                          Manage
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </section>
+
+        <section className="overflow-hidden rounded-2xl border border-border">
+          <div className="flex items-start justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Niches</h3>
+              <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Shown in the freelancer case-study niche dropdown.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleAddNiche}
+              className="h-8 shrink-0 border-border bg-card"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Niche
+            </Button>
+          </div>
+          <Table>
+            <TableHeader className="bg-muted/20">
+              <TableRow>
+                <TableHead className="px-4">Niche name</TableHead>
+                <TableHead className="w-14 px-2 text-right">&nbsp;</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {normalizedNiches.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={2} className="h-24 px-4 text-center text-sm text-muted-foreground">
+                    Add the first niche for case studies.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                normalizedNiches.map((niche, index) => (
+                  <TableRow key={`${niche?.id || "niche"}-${index}`}>
+                    <TableCell className="px-4 py-2">
+                      <Input
+                        value={niche?.name || ""}
+                        onChange={(event) => handleNicheChange(index, event.target.value)}
+                        placeholder="Niche name"
+                        aria-label={`Niche ${index + 1}`}
+                        className="h-9 border-transparent bg-transparent px-0 shadow-none focus-visible:border-primary/40 focus-visible:px-2"
+                      />
+                    </TableCell>
+                    <TableCell className="px-2 text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveNiche(index)}
+                        aria-label={`Remove ${niche?.name || "niche"}`}
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </section>
+      </CardContent>
+    </Card>
+  );
+};
+
 const MarketplaceServiceTaxonomyEditor = ({ service, onChange }) => {
   const subCategories = Array.isArray(service?.subCategories) ? service.subCategories : [];
 
@@ -1778,16 +1945,6 @@ const AdminFreelancerOnboardingContent = () => {
                 onChange={(value) => handleEditorChange("caseStudy.fields.title.placeholder", value)}
               />
             </FieldGrid>
-            <NameListEditor
-              title="Marketplace Niches"
-              description="These niche options come from the real marketplace table and are reused in the onboarding case-study step."
-              items={marketplaceFilters.niches}
-              onChange={handleMarketplaceNichesChange}
-              addLabel="Add Niche"
-              emptyLabel="No niches yet."
-              inputPlaceholder="Niche name"
-            />
-
             <FieldGrid>
               <TextField
                 label="Description Label"
@@ -1940,6 +2097,16 @@ const AdminFreelancerOnboardingContent = () => {
             </div>
           </div>
         </section>
+
+        <MarketplaceCatalog
+          services={marketplaceFilters.services}
+          niches={marketplaceFilters.niches}
+          onNichesChange={handleMarketplaceNichesChange}
+          onManageService={(serviceKey) => {
+            setSelectedServiceKey(serviceKey);
+            setActiveSection("serviceInfo");
+          }}
+        />
 
         <div className="grid items-start gap-5 xl:grid-cols-[290px_340px_minmax(0,1fr)]">
           <Card className="rounded-[24px] border border-border bg-card shadow-[0_18px_44px_rgba(0,0,0,0.08)]">

@@ -532,8 +532,8 @@ const AdminDashboard = () => {
                 ))}
               </div>
 
-              <div className="grid gap-6 lg:grid-cols-3">
-                <div className="space-y-3">
+              <div className="grid min-w-0 gap-6 lg:grid-cols-3">
+                <div className="min-w-0 space-y-3">
                   <h3 className="text-sm font-semibold">Top Pages</h3>
                   {loading ? (
                     [...Array(4)].map((_, index) => (
@@ -545,8 +545,10 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     (aiUsageSummary?.topPages || []).map((page) => (
-                      <div key={page.pagePath} className="rounded-lg border p-4">
-                        <div className="font-medium">{page.pagePath || "Unknown page"}</div>
+                      <div key={page.pagePath} className="min-w-0 rounded-lg border p-4">
+                        <div className="break-words font-medium [overflow-wrap:anywhere]">
+                          {page.pagePath || "Unknown page"}
+                        </div>
                         <div className="mt-1 text-sm text-muted-foreground">
                           {formatCount(page.calls)} calls • {formatCount(page.totalTokens)} tokens
                         </div>
@@ -555,7 +557,7 @@ const AdminDashboard = () => {
                   )}
                 </div>
 
-                <div className="space-y-3">
+                <div className="min-w-0 space-y-3">
                   <h3 className="text-sm font-semibold">Top Users</h3>
                   {loading ? (
                     [...Array(4)].map((_, index) => (
@@ -567,9 +569,13 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     (aiUsageSummary?.topUsers || []).map((user) => (
-                      <div key={user.userId} className="rounded-lg border p-4">
-                        <div className="font-medium">{user.fullName}</div>
-                        <div className="text-xs text-muted-foreground">{user.email}</div>
+                      <div key={user.userId} className="min-w-0 rounded-lg border p-4">
+                        <div className="truncate font-medium" title={user.fullName}>
+                          {user.fullName}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground" title={user.email}>
+                          {user.email}
+                        </div>
                         <div className="mt-1 text-sm text-muted-foreground">
                           {formatCount(user.calls)} calls • {formatCount(user.totalTokens)} tokens
                         </div>
@@ -578,7 +584,7 @@ const AdminDashboard = () => {
                   )}
                 </div>
 
-                <div className="space-y-3">
+                <div className="min-w-0 space-y-3">
                   <h3 className="text-sm font-semibold">Recent AI Activity</h3>
                   {loading ? (
                     [...Array(4)].map((_, index) => (
@@ -590,9 +596,11 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     (aiUsageSummary?.recentUsage || []).slice(0, 5).map((entry) => (
-                      <div key={entry.id} className="rounded-lg border p-4">
-                        <div className="font-medium">{entry.pagePath || entry.featureKey || entry.title || "AI event"}</div>
-                        <div className="text-xs text-muted-foreground">
+                      <div key={entry.id} className="min-w-0 rounded-lg border p-4">
+                        <div className="break-words font-medium [overflow-wrap:anywhere]">
+                          {entry.pagePath || entry.featureKey || entry.title || "AI event"}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground" title={entry.user?.fullName || entry.visitorType}>
                           {entry.user?.fullName || entry.visitorType}
                         </div>
                         <div className="mt-1 text-sm text-muted-foreground">
