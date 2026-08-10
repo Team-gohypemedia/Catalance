@@ -370,11 +370,11 @@ const normalizeSuggestedServiceResponse = (payload = {}, serviceCatalog = {}) =>
             serviceEntry?.servicePricing?.deliveryTimeline || {},
             serviceEntry?.servicePricing?.deliveryTimeline?.value,
           ),
-          priceRange: normalizeServiceFieldSuggestion(
-            serviceEntry?.servicePricing?.priceRange || {},
-            serviceEntry?.servicePricing?.priceRange?.value,
-            { singleMoneyValue: true },
-          ),
+          priceRange: {
+            value: "",
+            confidence: 0,
+            reason: "Starting price is always manually filled by the user.",
+          },
         },
         visuals: {
           keywords: {
@@ -461,6 +461,59 @@ const mapSuggestedServicesFromDiscovery = (payload = {}, serviceCatalog = {}) =>
     .filter(Boolean);
 };
 
+const HIDDEN_SERVICE_NAMES = new Set([
+  "Software Development",
+  "Lead Generation",
+  "Customer Support",
+  "WhatsApp Chatbot",
+  "3D Modeling",
+  "3D Animation/CGI Videos/VFX",
+  "CGI Video Services",
+  "CGI / VFX",
+  "Influencer Marketing",
+  "UGC Marketing",
+  "AI Video Generation",
+  "Voice Agent",
+  "Voice Agent / AI Calling",
+  "Voice AI / AI Calling",
+]);
+
+const HIDDEN_SERVICE_KEYS = new Set([
+  "software_development",
+  "lead_generation",
+  "customer_support",
+  "whatsapp_chatbot",
+  "3d_modeling",
+  "3d_animation_cgi_videos_vfx",
+  "cgi_video_services",
+  "cgi_vfx",
+  "influencer_marketing",
+  "ugc_marketing",
+  "ai_video_generation",
+  "voice_agent",
+]);
+
+const CANONICAL_KEY_BY_SERVICE_NAME = new Map([
+  ["Branding Kit", "branding"],
+  ["Website Development", "web_development"],
+  ["SEO", "seo"],
+  ["SEO / GMB", "seo"],
+  ["Social Media Management", "social_media_marketing"],
+  ["Social Media Marketing", "social_media_marketing"],
+  ["Performance Marketing", "paid_advertising"],
+  ["Paid Advertising", "paid_advertising"],
+  ["App Development", "app_development"],
+  ["Mobile App Development", "app_development"],
+  ["Video Services", "video_services"],
+  ["Writing & Content", "writing_content"],
+  ["AI Automation", "ai_automation"],
+  ["Creative & Design", "creative_design"],
+  ["CRM & ERP", "crm_erp"],
+  ["CRM & ERP Solutions", "crm_erp"],
+  ["Voice Agent", "voice_agent"],
+  ["Voice Agent / AI Calling", "voice_agent"],
+]);
+
 const getResumeAutofillCatalog = async () => {
   const [services, subCategories, niches] = await Promise.all([
     prisma.marketplaceFilterService.findMany({
@@ -500,13 +553,21 @@ const getResumeAutofillCatalog = async () => {
 
   return {
     services: services
-      .filter((service) => service.name !== "Influencer Marketing" && service.name !== "UGC Marketing" && service.name !== "AI Video Generation")
-      .map((service) => ({
-        id: Number(service.id),
-        name: normalizeText(service.name),
-        key: normalizeText(service.name),
-        subCategories: subCategoriesByServiceId.get(Number(service.id)) || [],
-      })),
+      .filter((service) => {
+        const name = normalizeText(service.name);
+        const key = CANONICAL_KEY_BY_SERVICE_NAME.get(name) || name.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+        return !HIDDEN_SERVICE_NAMES.has(name) && !HIDDEN_SERVICE_KEYS.has(key);
+      })
+      .map((service) => {
+        const name = normalizeText(service.name);
+        const key = CANONICAL_KEY_BY_SERVICE_NAME.get(name) || normalizeText(service.name).toLowerCase().replace(/[^a-z0-9]+/g, "_");
+        return {
+          id: Number(service.id),
+          name,
+          key,
+          subCategories: subCategoriesByServiceId.get(Number(service.id)) || [],
+        };
+      }),
     niches: (Array.isArray(niches) ? niches : [])
       .map((entry) => normalizeText(entry?.name))
       .filter(Boolean),
@@ -691,9 +752,7 @@ const requestResumeServiceDetails = async ({
       "Limit customSkillNames to at most 5 concise items per category.",
       "Keep description and case study text concise but specific.",
       "If evidence is weak, omit the field instead of guessing.",
-      "Never use currency symbols in priceRange or budget.",
-      "Always return one single numeric amount for priceRange and budget, never a range.",
-      "Good examples: 500, 1200, 2500. Bad examples: 500-1500, 500 to 1500, starting at 500.",
+      "Never populate priceRange. Always set priceRange value to empty string '' and confidence to 0.0 because starting price is always manually entered by the user.",
       'Return this exact JSON shape: {"suggestedServices":[{"serviceName":"string","confidence":0.0,"reason":"string","serviceInfo":{"title":{"value":"string","confidence":0.0,"reason":"string"},"experience":{"value":"string","confidence":0.0,"reason":"string"},"categories":[{"subCategoryId":123,"label":"string","customSkillNames":["skill"]}]},"servicePricing":{"description":{"value":"string","confidence":0.0,"reason":"string"},"deliveryTimeline":{"value":"string","confidence":0.0,"reason":"string"},"priceRange":{"value":"string","confidence":0.0,"reason":"string"}},"visuals":{"keywords":{"value":["string"],"confidence":0.0,"reason":"string"}},"caseStudy":{"title":{"value":"string","confidence":0.0,"reason":"string"},"description":{"value":"string","confidence":0.0,"reason":"string"},"niche":{"value":"string","confidence":0.0,"reason":"string"},"projectLink":{"value":"string","confidence":0.0,"reason":"string"},"role":{"value":"string","confidence":0.0,"reason":"string"},"timeline":{"value":"string","confidence":0.0,"reason":"string"},"budget":{"value":"string","confidence":0.0,"reason":"string"}}}]}.',
     ],
     payload: {

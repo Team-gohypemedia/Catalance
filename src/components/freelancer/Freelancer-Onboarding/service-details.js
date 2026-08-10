@@ -449,19 +449,53 @@ export const normalizeServiceDraft = (
   };
 };
 
+const CANONICAL_SERVICE_KEY_MAP = {
+  app_development: "app_development",
+  mobile_app_development: "app_development",
+  mobile_app: "app_development",
+  app_dev: "app_development",
+  web_development: "web_development",
+  website_development: "web_development",
+  website_dev: "web_development",
+  web_dev: "web_development",
+  branding_kit: "branding",
+  branding: "branding",
+  seo_gmb: "seo",
+  seo: "seo",
+  social_media_marketing: "social_media_marketing",
+  social_media_management: "social_media_marketing",
+  paid_advertising: "paid_advertising",
+  performance_marketing: "paid_advertising",
+  video_services: "video_services",
+  writing_content: "writing_content",
+  ai_automation: "ai_automation",
+  creative_design: "creative_design",
+  crm_erp: "crm_erp",
+  crm_erp_solutions: "crm_erp",
+  voice_agent: "voice_agent",
+};
+
+export const canonicalizeServiceKey = (key = "") => {
+  const norm = normalizeServiceKey(key);
+  return CANONICAL_SERVICE_KEY_MAP[norm] || norm;
+};
+
 export const resolveServiceCatalogEntry = (services = [], value = "") => {
   const normalizedValue = normalizeServiceKey(value);
+  const canonicalValue = canonicalizeServiceKey(value);
   const rawStringValue = String(value || "").trim();
 
   return (Array.isArray(services) ? services : []).find((service) => {
     const serviceId = String(service?.id || "").trim();
     const serviceKey = normalizeServiceKey(service?.key || service?.value || "");
     const serviceName = normalizeServiceKey(service?.name || service?.label || "");
+    const canonicalKey = canonicalizeServiceKey(serviceKey);
+    const canonicalName = canonicalizeServiceKey(serviceName);
 
     return (
       (rawStringValue && serviceId === rawStringValue) ||
-      (normalizedValue && serviceKey === normalizedValue) ||
-      (normalizedValue && serviceName === normalizedValue)
+      (normalizedValue && (serviceKey === normalizedValue || serviceName === normalizedValue)) ||
+      (canonicalValue && (canonicalKey === canonicalValue || canonicalName === canonicalValue))
     );
   }) || null;
 };
@@ -469,14 +503,14 @@ export const resolveServiceCatalogEntry = (services = [], value = "") => {
 export const resolveServiceKey = (services = [], value = "") => {
   const resolvedService = resolveServiceCatalogEntry(services, value);
   if (resolvedService?.key) {
-    return normalizeServiceKey(resolvedService.key);
+    return canonicalizeServiceKey(resolvedService.key);
   }
 
   if (resolvedService?.name) {
-    return normalizeServiceKey(resolvedService.name);
+    return canonicalizeServiceKey(resolvedService.name);
   }
 
-  return normalizeServiceKey(value);
+  return canonicalizeServiceKey(value);
 };
 
 export const getServiceCatalogMeta = (services = [], value = "") => {

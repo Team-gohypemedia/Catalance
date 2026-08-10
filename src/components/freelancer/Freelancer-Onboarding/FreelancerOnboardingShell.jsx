@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import ProfileImageCropDialog from "@/components/common/ProfileImageCropDialog";
+import AiResumeProcessingOverlay from "./AiResumeProcessingOverlay";
 import Loader from "@/components/common/Loader";
 import { DarkGradientBg } from "@/components/elegant-dark-pattern";
 import {
@@ -2324,7 +2325,20 @@ const FreelancerOnboardingShell = () => {
         availableServices,
         suggestion?.serviceKey || suggestion?.serviceName,
       );
-      if (!resolvedServiceKey) {
+      if (
+        !resolvedServiceKey ||
+        [
+          "software_development",
+          "lead_generation",
+          "customer_support",
+          "whatsapp_chatbot",
+          "3d_modeling",
+          "3d_animation_cgi_videos_vfx",
+          "cgi_video_services",
+          "cgi_vfx",
+          "voice_agent",
+        ].includes(resolvedServiceKey)
+      ) {
         return;
       }
 
@@ -2434,22 +2448,6 @@ const FreelancerOnboardingShell = () => {
         );
         if (nextDeliveryTimeline) {
           draft.deliveryTimeline = nextDeliveryTimeline;
-          appliedCount += 1;
-        }
-      }
-
-      const priceConfidence = normalizeConfidenceValue(
-        suggestion?.servicePricing?.priceRange?.confidence,
-      );
-      if (
-        !hasAutofillableFieldValue(draft.priceRange) &&
-        priceConfidence >= RESUME_AUTOFILL_CONFIDENCE_THRESHOLD
-      ) {
-        const nextPriceRange = String(
-          suggestion?.servicePricing?.priceRange?.value || "",
-        ).trim();
-        if (nextPriceRange) {
-          draft.priceRange = nextPriceRange;
           appliedCount += 1;
         }
       }
@@ -4376,6 +4374,10 @@ const FreelancerOnboardingShell = () => {
         maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
         onApply={handleProfilePhotoCropped}
         onCancel={closeProfileCropDialog}
+      />
+      <AiResumeProcessingOverlay
+        isOpen={isResumeAutofillRunning}
+        fileName={basicProfileForm.resume?.name || ""}
       />
       </main>
     </DarkGradientBg>

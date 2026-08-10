@@ -851,22 +851,22 @@ const CategoryMultiSelect = ({
 
                 {/* Selected Skill Items */}
                 {categorySkills.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
                     {categorySkills.map((entry) => (
                       <div
                         key={`${entry.categoryKey}-${entry.type}-${entry.value}`}
-                        className="flex min-h-[44px] items-center gap-3 rounded-xl border border-border/70 bg-card px-4 py-2 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
+                        className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-xl border border-border/70 bg-card px-3.5 py-1.5 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
                       >
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                        <span className="truncate text-xs sm:text-sm font-medium text-foreground">
                           {entry.label}
                         </span>
                         <button
                           type="button"
                           onClick={() => handleRemoveSkillEntry(entry)}
-                          className="shrink-0 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
+                          className="shrink-0 rounded-lg p-0.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
                           aria-label={`Remove ${entry.label}`}
                         >
-                          <X className="h-4 w-4" />
+                          <X className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ))}
