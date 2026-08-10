@@ -1,0 +1,16 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Disallow private user dashboards and internal routes from indexing
+Disallow: /client/
+Disallow: /freelancer/
+Disallow: /project-manager/
+Disallow: /admin/
+Disallow: /api/
+Disallow: /reset-password
+Disallow: /forgot-password
+
+# Host & Sitemap location
+Host: https://catalance.in/
+Sitemap: https://catalance.in/sitemap.xml
