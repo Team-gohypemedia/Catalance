@@ -63,7 +63,8 @@ const SeoMeta = ({
   canonicalUrl,
   image,
   type = "website",
-  jsonLd = null
+  jsonLd = null,
+  noIndex = false
 }) => {
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
@@ -80,6 +81,7 @@ const SeoMeta = ({
       'meta[name="keywords"]',
       'meta[property="og:image"]',
       'meta[name="twitter:image"]',
+      'meta[name="robots"]',
       'link[rel="canonical"]',
       'script[data-seo-ld="blog"]'
     ];
@@ -169,6 +171,11 @@ const SeoMeta = ({
       ensureScriptTag('script[data-seo-ld="blog"]', JSON.stringify(jsonLd));
     }
 
+    ensureMetaTag('meta[name="robots"]', {
+      name: "robots",
+      content: noIndex ? "noindex, nofollow" : "index, follow"
+    });
+
     return () => {
       document.title = previousTitle;
 
@@ -190,7 +197,7 @@ const SeoMeta = ({
         }
       });
     };
-  }, [canonicalUrl, description, image, jsonLd, keywords, title, type]);
+  }, [canonicalUrl, description, image, jsonLd, keywords, noIndex, title, type]);
 
   return null;
 };

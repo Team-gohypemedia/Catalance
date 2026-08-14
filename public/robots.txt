@@ -8,8 +8,19 @@ Disallow: /freelancer/
 Disallow: /project-manager/
 Disallow: /admin/
 Disallow: /api/
-Disallow: /reset-password
+
+# Disallow auth and account-management pages
+Disallow: /login
+Disallow: /signup
+Disallow: /signin/
+Disallow: /get-started
 Disallow: /forgot-password
+Disallow: /reset-password
+
+# Disallow duplicate and internal routes
+Disallow: /service
+Disallow: /notepad
+Disallow: /ai-demo
 
 # Host & Sitemap location
 Host: https://catalance.in/

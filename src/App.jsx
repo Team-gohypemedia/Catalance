@@ -259,6 +259,17 @@ const DashboardRouteTransitionLoader = () => {
   );
 };
 
+const NoIndexRoute = ({ children }) => {
+  useEffect(() => {
+    const meta = document.createElement("meta");
+    meta.name = "robots";
+    meta.content = "noindex, nofollow";
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, []);
+  return children;
+};
+
 const App = () => {
   const { pathname } = useLocation();
 
@@ -277,7 +288,7 @@ const App = () => {
       <Suspense fallback={<RouteFallback />}>
           <DashboardRouteTransitionLoader />
           <Routes>
-            <Route path="/ai-demo" element={<GuestAIDemo />} />
+            <Route path="/ai-demo" element={<NoIndexRoute><GuestAIDemo /></NoIndexRoute>} />
             <Route
               path="/"
               element={
@@ -303,10 +314,10 @@ const App = () => {
                 </LayoutWithNavbar>
               }
             />
-            <Route path="/get-started" element={<GetStarted />} />
-            <Route path="/signup" element={<PublicRoute><LegacyLoginRedirect /></PublicRoute>} />
-            <Route path="/signin/phone" element={<PublicRoute><PhoneAuthPage /></PublicRoute>} />
-            <Route path="/signin/email" element={<PublicRoute><EmailAuthPage /></PublicRoute>} />
+            <Route path="/get-started" element={<NoIndexRoute><GetStarted /></NoIndexRoute>} />
+            <Route path="/signup" element={<NoIndexRoute><PublicRoute><LegacyLoginRedirect /></PublicRoute></NoIndexRoute>} />
+            <Route path="/signin/phone" element={<NoIndexRoute><PublicRoute><PhoneAuthPage /></PublicRoute></NoIndexRoute>} />
+            <Route path="/signin/email" element={<NoIndexRoute><PublicRoute><EmailAuthPage /></PublicRoute></NoIndexRoute>} />
             <Route
               path={ACCOUNT_ONBOARDING_PATH}
               element={
@@ -415,11 +426,11 @@ const App = () => {
                 </LayoutWithNavbar>
               }
             />
-            <Route path="/login" element={<PublicRoute><LegacyLoginRedirect /></PublicRoute>} />
-            <Route path="/forgot-password" element={<PublicRoute><LayoutWithNavbar><ForgotPasswordPage /></LayoutWithNavbar></PublicRoute>} />
-            <Route path="/reset-password" element={<PublicRoute><LayoutWithNavbar><ResetPasswordPage /></LayoutWithNavbar></PublicRoute>} />
-            <Route path="/project-manager/login" element={<PublicRoute><PMLogin /></PublicRoute>} />
-            <Route path="/project-manager/register" element={<PublicRoute><PMRegister /></PublicRoute>} />
+            <Route path="/login" element={<NoIndexRoute><PublicRoute><LegacyLoginRedirect /></PublicRoute></NoIndexRoute>} />
+            <Route path="/forgot-password" element={<NoIndexRoute><PublicRoute><LayoutWithNavbar><ForgotPasswordPage /></LayoutWithNavbar></PublicRoute></NoIndexRoute>} />
+            <Route path="/reset-password" element={<NoIndexRoute><PublicRoute><LayoutWithNavbar><ResetPasswordPage /></LayoutWithNavbar></PublicRoute></NoIndexRoute>} />
+            <Route path="/project-manager/login" element={<NoIndexRoute><PublicRoute><PMLogin /></PublicRoute></NoIndexRoute>} />
+            <Route path="/project-manager/register" element={<NoIndexRoute><PublicRoute><PMRegister /></PublicRoute></NoIndexRoute>} />
             <Route
               path="/client"
               element={
@@ -629,14 +640,7 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/service"
-              element={
-                <LayoutNavbarOnly>
-                  <GuestAIDemo />
-                </LayoutNavbarOnly>
-              }
-            />
+            <Route path="/service" element={<Navigate replace to="/services" />} />
             <Route
               path="/freelancer"
               element={
@@ -751,8 +755,8 @@ const App = () => {
                 </ProtectedRoute>
               }
             />
-            <Route path="/notepad" element={<NotepadPage />} />
-            <Route path="/admin/login" element={<PublicRoute><AdminLogin /></PublicRoute>} />
+            <Route path="/notepad" element={<NoIndexRoute><NotepadPage /></NoIndexRoute>} />
+            <Route path="/admin/login" element={<NoIndexRoute><PublicRoute><AdminLogin /></PublicRoute></NoIndexRoute>} />
             <Route
               path="/admin"
               element={
