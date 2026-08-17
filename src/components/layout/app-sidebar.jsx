@@ -19,6 +19,7 @@ import MessageSquareCode from "lucide-react/dist/esm/icons/message-square-code";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Layers from "lucide-react/dist/esm/icons/layers";
 import Bot from "lucide-react/dist/esm/icons/bot";
+import Newspaper from "lucide-react/dist/esm/icons/newspaper";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -191,6 +192,12 @@ const navConfigs = {
       title: "Service Questions",
       url: "/admin/service-questions",
       icon: MessageSquare,
+      isActive: true,
+    },
+    {
+      title: "Blogs & SEO",
+      url: "/admin/blogs",
+      icon: Newspaper,
       isActive: true,
     },
     {

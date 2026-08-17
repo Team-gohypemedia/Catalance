@@ -1,20 +1,34 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import BookOpen from "lucide-react/dist/esm/icons/book-open";
+import Calendar from "lucide-react/dist/esm/icons/calendar";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Newspaper from "lucide-react/dist/esm/icons/newspaper";
+import PenSquare from "lucide-react/dist/esm/icons/pen-square";
 import Search from "lucide-react/dist/esm/icons/search";
+import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Star from "lucide-react/dist/esm/icons/star";
+import User from "lucide-react/dist/esm/icons/user";
 
 import SeoMeta from "@/components/common/SeoMeta";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/shared/context/AuthContext";
 import { request } from "@/shared/lib/api-client";
 
-const BLOG_PAGE_TITLE = "Catalance Blog | Freelance Growth, Delivery and SEO Insights";
+const BLOG_PAGE_TITLE = "Catalance Blog | Engineering, Product, Freelance & SEO Insights";
 const BLOG_PAGE_DESCRIPTION =
-  "Catalance articles on freelance growth, delivery systems, pricing, client operations, and SEO-ready execution.";
+  "Practical guides, software architecture insights, hiring strategies, AI workflows, and digital project execution for modern product teams.";
 
 const Blog = () => {
+  const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,39 +36,39 @@ const Blog = () => {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const deferredSearch = useDeferredValue(search);
 
-  useEffect(() => {
-    let ignore = false;
+  const isAdmin = useMemo(() => {
+    if (!user) return false;
+    const role = String(user?.role || "").toUpperCase();
+    const roles = Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toUpperCase()) : [];
+    return role === "ADMIN" || roles.includes("ADMIN") || roles.includes("SEO_TEAM") || roles.includes("BLOG_AUTHOR");
+  }, [user]);
 
-    const loadBlogs = async () => {
+  const loadBlogs = async () => {
+    try {
       setLoading(true);
       setError("");
-      try {
-        const data = await request("/blogs");
-        if (!ignore) {
-          setPosts(Array.isArray(data) ? data : []);
-        }
-      } catch (nextError) {
-        if (!ignore) {
-          console.error("Failed to load blog posts:", nextError);
-          setError(nextError?.message || "Failed to load blogs");
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    };
+      const response = await request("/blogs");
+      const list = Array.isArray(response)
+        ? response
+        : Array.isArray(response?.data)
+        ? response.data
+        : [];
+      setPosts(list);
+    } catch (err) {
+      console.error("Could not fetch published blogs:", err);
+      setError(err?.message || "Failed to load articles.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     void loadBlogs();
-
-    return () => {
-      ignore = true;
-    };
   }, []);
 
   const categories = useMemo(() => {
     const allCategories = posts
-      .map((post) => post.category || "Insights")
+      .map((post) => post.category || "Engineering")
       .filter(Boolean);
     return ["All", ...new Set(allCategories)];
   }, [posts]);
@@ -63,7 +77,7 @@ const Blog = () => {
     const query = String(deferredSearch || "").trim().toLowerCase();
     return posts.filter((post) => {
       const matchesCategory =
-        selectedCategory === "All" || (post.category || "Insights") === selectedCategory;
+        selectedCategory === "All" || (post.category || "Engineering") === selectedCategory;
       if (!matchesCategory) return false;
       if (!query) return true;
       return [post.title, post.excerpt, post.category, post.authorName]
@@ -72,24 +86,24 @@ const Blog = () => {
     });
   }, [deferredSearch, posts, selectedCategory]);
 
-  const featuredPost =
-    filteredPosts.find((post) => post.featured) ||
-    filteredPosts[0] ||
-    null;
-  const supportingPosts = featuredPost
-    ? filteredPosts.filter((post) => post.id !== featuredPost.id)
-    : filteredPosts;
-
   const canonicalUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/blog` : "/blog";
+    typeof window !== "undefined" ? `${window.location.origin}/blog` : "https://catalance.in/blog";
 
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen bg-background text-foreground pt-28 sm:pt-32 pb-24">
       <SeoMeta
         title={BLOG_PAGE_TITLE}
         description={BLOG_PAGE_DESCRIPTION}
         canonicalUrl={canonicalUrl}
         type="website"
+        keywords={[
+          "freelance delivery",
+          "ai talent",
+          "software engineering",
+          "catalance blog",
+          "project scoping",
+          "freelance marketplace"
+        ]}
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "Blog",
@@ -99,184 +113,187 @@ const Blog = () => {
         }}
       />
 
-      <section className="relative overflow-hidden border-b border-border dark:border-white/10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(var(--brand-rgb),0.12),_transparent_32%),linear-gradient(180deg,_rgba(255,255,255,0.02),_transparent_60%)] pointer-events-none" />
-        <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-16 sm:px-6 lg:px-8 lg:pb-16 lg:pt-24">
-          <div className="max-w-3xl">
-            <Badge className="rounded-full bg-primary px-3 py-1 text-primary-foreground hover:bg-primary/90">Catalance Blog</Badge>
-            <h1 className="mt-5 max-w-4xl text-balance text-4xl font-semibold tracking-tight text-foreground dark:text-white sm:text-5xl lg:text-6xl">
-              Articles for teams that want sharper execution, not generic advice.
+      {/* Hero Header Section */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="border-b border-border pb-10">
+          <div className="max-w-3xl space-y-4">
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-1 text-xs font-semibold text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              Catalance Editorial & Knowledge Hub
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground leading-[1.15]">
+              Insights for building high-impact software & products.
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Practical writing on delivery systems, AI implementation, SEO, pricing, and client operations from the Catalance side of the table.
+            <p className="text-base sm:text-lg text-muted-foreground leading-relaxed">
+              In-depth articles on hiring top engineers, project scoping, AI tooling, marketplace delivery, and scaling tech teams.
             </p>
           </div>
+        </div>
 
-          <div className="mt-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="relative w-full max-w-md">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search blog posts"
-                className="h-12 rounded-full border-border bg-card pl-11 text-foreground placeholder:text-muted-foreground dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
-              />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((category) => (
-                <button
-                  key={category}
-                  type="button"
-                  onClick={() => setSelectedCategory(category)}
-                  className={`rounded-full px-4 py-2 text-sm transition ${selectedCategory === category ? "bg-primary text-primary-foreground" : "border border-border bg-card text-muted-foreground hover:bg-muted dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-300 dark:hover:border-white/20 dark:hover:text-white"}`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
+        {/* Search & Category Filter Pills */}
+        <div className="mt-8 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div className="relative w-full lg:max-w-md">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search articles by title, topic, or author..."
+              className="h-11 rounded-2xl border-border bg-card pl-11 text-xs text-foreground placeholder:text-muted-foreground shadow-sm"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            {categories.map((category) => (
+              <button
+                key={category}
+                type="button"
+                onClick={() => setSelectedCategory(category)}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                  selectedCategory === category
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "border border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {category}
+              </button>
+            ))}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+      {/* Main Articles Card Grid */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-10">
         {loading ? (
-          <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            Loading blog posts...
+          <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground text-sm">
+            <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
+            Loading live articles...
           </div>
         ) : error ? (
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 px-6 py-10 text-center text-sm text-red-200">
-            {error}
+          <div className="rounded-3xl border border-destructive/30 bg-destructive/10 p-8 text-center space-y-3">
+            <ShieldAlert className="mx-auto h-8 w-8 text-destructive" />
+            <p className="text-sm font-semibold text-destructive">{error}</p>
+            <Button variant="outline" size="sm" className="rounded-full" onClick={() => void loadBlogs()}>
+              Retry
+            </Button>
           </div>
         ) : filteredPosts.length === 0 ? (
-          <div className="rounded-[2rem] border border-border bg-card px-6 py-16 text-center dark:border-white/10 dark:bg-white/[0.03]">
-            <h2 className="text-2xl font-semibold text-foreground dark:text-white">No posts match this filter</h2>
-            <p className="mt-3 text-sm text-muted-foreground">Try another keyword or clear the category filter.</p>
+          <div className="rounded-[2.5rem] border border-dashed border-border bg-card p-16 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-4">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <h2 className="text-xl font-bold">No articles match your search</h2>
+            <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
+              Try adjusting your search terms or category filter to find published articles.
+            </p>
+            <Button asChild className="mt-6 rounded-full text-xs font-bold px-6">
+              <Link to="/blog/write">
+                <PenSquare className="h-4 w-4 mr-1.5" />
+                Write a New Article
+              </Link>
+            </Button>
           </div>
         ) : (
-          <div className="space-y-10">
-            {featuredPost ? (
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_420px]">
-                <Link
-                  to={`/blog/${featuredPost.slug}`}
-                  className="group overflow-hidden rounded-[2rem] border border-border bg-card transition hover:border-primary/40 dark:border-white/10 dark:bg-[#121212] dark:hover:border-primary/40"
-                >
-                  <div className="grid h-full lg:grid-cols-[minmax(0,1fr)_280px]">
-                    <div className="flex flex-col justify-between p-6 sm:p-8">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                          <Badge variant="outline" className="border-primary/30 text-primary">{featuredPost.category}</Badge>
-                          <span>{featuredPost.publishedLabel}</span>
-                          <span>{featuredPost.readTime}</span>
-                        </div>
-                        <h2 className="mt-5 text-balance text-3xl font-semibold leading-tight text-foreground dark:text-white sm:text-4xl">
-                          {featuredPost.title}
-                        </h2>
-                        <p className="mt-5 max-w-2xl text-base leading-7 text-muted-foreground/90 dark:text-slate-300">
-                          {featuredPost.excerpt}
-                        </p>
-                      </div>
-                      <div className="mt-8 flex items-center gap-4 text-sm">
-                        <span className="text-muted-foreground">{featuredPost.authorName}</span>
-                        <span className="inline-flex items-center gap-2 text-primary">
-                          Read article
-                          
-                        </span>
-                      </div>
-                    </div>
-                    <div className="min-h-[260px] overflow-hidden bg-muted dark:bg-[#1b1b1b]">
-                      {featuredPost.coverImageUrl ? (
-                        <img
-                          src={featuredPost.coverImageUrl}
-                          alt={featuredPost.coverImageAlt || featuredPost.title}
-                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(var(--brand-rgb),0.12),_transparent_35%)] text-sm text-muted-foreground">
-                          Featured article
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-
-                <div className="grid gap-6">
-                  {supportingPosts.slice(0, 2).map((post) => (
-                    <Link
-                      key={post.id}
-                      to={`/blog/${post.slug}`}
-                      className="group rounded-[1.75rem] border border-border bg-card p-5 transition hover:border-primary/20 dark:border-white/10 dark:bg-[#101010] dark:hover:border-white/20"
-                    >
-                      <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                        <span>{post.category}</span>
-                        <span>{post.readTime}</span>
-                      </div>
-                      <h3 className="mt-4 text-xl font-semibold leading-tight text-foreground transition group-hover:text-primary dark:text-white">
-                        {post.title}
-                      </h3>
-                      <p className="mt-3 line-clamp-3 text-sm leading-6 text-muted-foreground">
-                        {post.excerpt}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {supportingPosts.slice(featuredPost ? 2 : 0).map((post) => (
-                <Link
-                  key={post.id}
-                  to={`/blog/${post.slug}`}
-                  className="group overflow-hidden rounded-[1.75rem] border border-border bg-card transition hover:border-primary/30 dark:border-white/10 dark:bg-[#101010] dark:hover:border-[#ffc800]/30"
-                >
-                  <div className="aspect-[16/10] overflow-hidden bg-muted dark:bg-[#171717]">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredPosts.map((post) => (
+              <Link
+                key={post.id}
+                to={`/blog/${post.slug}`}
+                className="group flex flex-col justify-between overflow-hidden rounded-[2rem] border border-border bg-card shadow-sm hover:border-primary/50 hover:shadow-xl transition-all duration-300"
+              >
+                <div>
+                  {/* Card Cover Banner */}
+                  <div className="relative aspect-[16/9] w-full overflow-hidden bg-muted">
                     {post.coverImageUrl ? (
                       <img
                         src={post.coverImageUrl}
                         alt={post.coverImageAlt || post.title}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        loading="lazy"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle,_rgba(var(--brand-rgb),0.12),_transparent_42%)] text-sm text-muted-foreground">
-                        Catalance
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-muted text-primary/40 font-semibold">
+                        <BookOpen className="h-10 w-10 stroke-[1.5]" />
                       </div>
                     )}
-                  </div>
-                  <div className="space-y-4 p-5">
-                    <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                      <Badge variant="outline" className="border-border text-foreground dark:border-white/10 dark:text-white">{post.category}</Badge>
-                      <span>{post.publishedLabel}</span>
+
+                    {/* Category & Status Pills */}
+                    <div className="absolute left-3 top-3 flex items-center gap-1.5">
+                      <Badge className="bg-black/80 backdrop-blur-md text-white font-medium text-[10px] px-2.5 py-0.5 rounded-full border-none">
+                        {post.category || "Engineering"}
+                      </Badge>
                     </div>
-                    <h3 className="text-xl font-semibold leading-tight text-foreground transition group-hover:text-primary dark:text-white">
+
+                    {post.featured ? (
+                      <div className="absolute right-3 top-3">
+                        <Badge className="bg-amber-500 text-black font-bold text-[10px] px-2.5 py-0.5 rounded-full shadow gap-1">
+                          <Star className="h-3 w-3 fill-current" />
+                          Featured
+                        </Badge>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {/* Card Content */}
+                  <div className="p-6 space-y-3">
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <Calendar className="h-3 w-3" />
+                      <span>{post.publishedLabel || "Recent"}</span>
+                      <span>&bull;</span>
+                      <Clock className="h-3 w-3" />
+                      <span>{post.readTime}</span>
+                    </div>
+
+                    <h2 className="text-lg font-bold leading-snug tracking-tight text-foreground group-hover:text-primary transition line-clamp-2">
                       {post.title}
-                    </h3>
-                    <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">
+                    </h2>
+
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                       {post.excerpt}
                     </p>
-                    <div className="flex items-center justify-between pt-2 text-sm">
-                      <span className="text-muted-foreground">{post.authorName}</span>
-                      <span className="inline-flex items-center gap-2 text-primary">
-                        Read
-                        
+                  </div>
+                </div>
+
+                {/* Card Footer */}
+                <div className="px-6 pb-6 pt-0">
+                  <Separator className="mb-4" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar className="h-6 w-6 text-[10px] border border-border">
+                        <AvatarFallback className="font-semibold bg-muted">
+                          {(post.authorName || "C")[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-muted-foreground truncate font-medium max-w-[120px]">
+                        {post.authorName || "Catalance"}
                       </span>
                     </div>
+
+                    <span className="inline-flex items-center gap-1 text-xs font-bold text-primary group-hover:underline">
+                      Read Article
+                      <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
+                    </span>
                   </div>
-                </Link>
-              ))}
-            </div>
+                </div>
+              </Link>
+            ))}
           </div>
         )}
       </section>
 
-      <section className="border-t border-border bg-muted/30 dark:border-white/10 dark:bg-[#0d0d0d]">
-        <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 px-4 py-12 sm:px-6 lg:flex-row lg:items-center lg:px-8">
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-primary">Need execution support?</p>
-            <h2 className="mt-3 text-3xl font-semibold text-foreground dark:text-white">Turn a blog insight into a shipped project.</h2>
+      {/* Bottom CTA Banner */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-20">
+        <div className="rounded-[2.5rem] border border-border bg-gradient-to-r from-primary/10 via-card to-background p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+          <div className="space-y-2 text-center md:text-left">
+            <span className="text-xs uppercase tracking-widest text-primary font-bold">Scale with Catalance</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+              Turn insights into delivered software milestones.
+            </h2>
+            <p className="text-xs sm:text-sm text-muted-foreground max-w-xl">
+              Hire vetted developers, designers, and growth specialists backed by managed milestone protection.
+            </p>
           </div>
-          <Button asChild className="rounded-full bg-primary px-6 text-primary-foreground hover:bg-primary/90">
-            <Link to="/service">Start your Catalance project</Link>
+          <Button asChild className="rounded-full px-8 h-12 text-xs font-bold shadow-md hover:shadow-lg shrink-0">
+            <Link to="/service">Start Your Project</Link>
           </Button>
         </div>
       </section>

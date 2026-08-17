@@ -32,6 +32,10 @@ import {
   sendProjectManagerProjectMessage,
   getFreelancerLimits,
   updateFreelancerLimit,
+  getSeoTeamMembers,
+  createSeoTeamMember,
+  updateSeoTeamMember,
+  deleteSeoTeamMember,
 } from "../controllers/admin.controller.js";
 
 import {
@@ -170,6 +174,11 @@ router.get("/blogs", getAdminBlogs);
 router.get("/blogs/:blogId", getAdminBlogById);
 router.post("/blogs", upsertAdminBlog);
 router.delete("/blogs/:blogId", deleteAdminBlog);
+
+router.get("/seo-team", getSeoTeamMembers);
+router.post("/seo-team", createSeoTeamMember);
+router.patch("/seo-team/:userId", updateSeoTeamMember);
+router.delete("/seo-team/:userId", deleteSeoTeamMember);
 
 router.get("/user-requests", listUserRequests);
 router.patch("/user-requests/:id/approve", approveUserRequest);

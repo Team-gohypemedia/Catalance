@@ -2441,3 +2441,185 @@ export const updateFreelancerLimit = asyncHandler(async (req, res) => {
 
   res.json({ success: true, message: "Freelancer limit updated successfully" });
 });
+
+// ==========================================
+// SEO / CONTENT TEAM CREDENTIALS MANAGEMENT
+// ==========================================
+
+export const getSeoTeamMembers = asyncHandler(async (_req, res) => {
+  const members = await prisma.user.findMany({
+    where: {
+      OR: [
+        { roles: { has: "SEO_TEAM" } },
+        { roles: { has: "BLOG_AUTHOR" } },
+        { role: ADMIN_ROLE }
+      ]
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      roles: true,
+      status: true,
+      phoneNumber: true,
+      isVerified: true,
+      createdAt: true,
+      updatedAt: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  res.json({
+    success: true,
+    data: members
+  });
+});
+
+export const createSeoTeamMember = asyncHandler(async (req, res) => {
+  const fullName = String(req.body?.fullName || "").trim();
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = String(req.body?.password || "");
+  const designation = String(req.body?.designation || "SEO Specialist").trim();
+  const phoneNumber = String(req.body?.phoneNumber || "").trim();
+
+  if (!fullName) {
+    throw new AppError("Full name is required.", 400);
+  }
+
+  if (!email) {
+    throw new AppError("Email ID is required.", 400);
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(email)) {
+    throw new AppError("Please provide a valid email address.", 400);
+  }
+
+  if (!password || password.length < 6) {
+    throw new AppError("Password must be at least 6 characters long.", 400);
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true }
+  });
+
+  if (existingUser) {
+    throw new AppError("An account with this email already exists.", 409);
+  }
+
+  const passwordHash = await hashPassword(password);
+
+  const newMember = await prisma.user.create({
+    data: {
+      fullName,
+      email,
+      passwordHash,
+      role: ADMIN_ROLE,
+      roles: ["SEO_TEAM", "BLOG_AUTHOR", designation],
+      status: "ACTIVE",
+      isVerified: true,
+      onboardingComplete: true,
+      ...(phoneNumber ? { phoneNumber, phone: phoneNumber } : {})
+    },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      roles: true,
+      status: true,
+      isVerified: true,
+      createdAt: true
+    }
+  });
+
+  res.status(201).json({
+    success: true,
+    message: `SEO Team account created for ${fullName}`,
+    data: newMember
+  });
+});
+
+export const updateSeoTeamMember = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const fullName = req.body?.fullName ? String(req.body.fullName).trim() : undefined;
+  const email = req.body?.email ? String(req.body.email).trim().toLowerCase() : undefined;
+  const password = req.body?.password ? String(req.body.password) : undefined;
+  const status = req.body?.status ? String(req.body.status).toUpperCase() : undefined;
+  const designation = req.body?.designation ? String(req.body.designation).trim() : undefined;
+
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true, roles: true }
+  });
+
+  if (!existing) {
+    throw new AppError("User not found.", 404);
+  }
+
+  const updateData = {};
+  if (fullName) updateData.fullName = fullName;
+  if (email && email !== existing.email) {
+    const conflict = await prisma.user.findUnique({ where: { email } });
+    if (conflict) throw new AppError("That email is already in use.", 409);
+    updateData.email = email;
+  }
+  if (password && password.length >= 6) {
+    updateData.passwordHash = await hashPassword(password);
+  }
+  if (status && ["ACTIVE", "SUSPENDED"].includes(status)) {
+    updateData.status = status;
+  }
+  if (designation) {
+    updateData.roles = ["SEO_TEAM", "BLOG_AUTHOR", designation];
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: true,
+      roles: true,
+      status: true,
+      updatedAt: true
+    }
+  });
+
+  res.json({
+    success: true,
+    message: "SEO team credentials updated successfully",
+    data: updated
+  });
+});
+
+export const deleteSeoTeamMember = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, email: true }
+  });
+
+  if (!existing) {
+    throw new AppError("User not found.", 404);
+  }
+
+  // Prevent accidental self-deletion if logged in admin is deleting their own primary root
+  if (req.user?.id === userId) {
+    throw new AppError("You cannot delete your own logged-in admin account.", 400);
+  }
+
+  await prisma.user.delete({
+    where: { id: userId }
+  });
+
+  res.json({
+    success: true,
+    message: "SEO team member deleted successfully"
+  });
+});

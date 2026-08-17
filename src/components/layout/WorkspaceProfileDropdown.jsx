@@ -7,6 +7,7 @@ import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import House from "lucide-react/dist/esm/icons/house";
 import LogOut from "lucide-react/dist/esm/icons/log-out";
+import Newspaper from "lucide-react/dist/esm/icons/newspaper";
 import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 
@@ -58,7 +59,7 @@ const WorkspaceProfileDropdown = ({
   showVerifiedBadge = false,
   portalled = true,
 }) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [open, setOpen] = React.useState(false);
   const {
     canSwitchDashboard,
@@ -158,6 +159,14 @@ const WorkspaceProfileDropdown = ({
               to={profilePath}
               onSelect={closeDropdown}
             />
+            {user?.role === "ADMIN" ? (
+              <ActionLink
+                icon={Newspaper}
+                label="Write / Upload Blog"
+                to="/blog/write"
+                onSelect={closeDropdown}
+              />
+            ) : null}
           </div>
 
           {canSwitchDashboard ? (

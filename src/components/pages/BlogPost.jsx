@@ -3,22 +3,49 @@ import { Link, useParams } from "react-router-dom";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
+import Check from "lucide-react/dist/esm/icons/check";
 import Clock from "lucide-react/dist/esm/icons/clock";
+import Copy from "lucide-react/dist/esm/icons/copy";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import PenSquare from "lucide-react/dist/esm/icons/pen-square";
+import Share2 from "lucide-react/dist/esm/icons/share-2";
 import User from "lucide-react/dist/esm/icons/user";
+import { toast } from "sonner";
 
 import BlogMarkdown from "@/components/blog/BlogMarkdown";
 import SeoMeta from "@/components/common/SeoMeta";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/shared/context/AuthContext";
 import { request } from "@/shared/lib/api-client";
+
+const headingSlug = (text = "") =>
+  String(text || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const cleanHeadingText = (text = "") =>
+  String(text || "")
+    .replace(/^[•\s\d.-]+/, "")
+    .trim();
 
 const BlogPost = () => {
   const { slug } = useParams();
+  const { user } = useAuth();
   const [post, setPost] = useState(null);
-  const [relatedPosts, setRelatedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [relatedPosts, setRelatedPosts] = useState([]);
+
+  const isAdmin = useMemo(() => {
+    if (!user) return false;
+    const role = String(user?.role || "").toUpperCase();
+    const roles = Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toUpperCase()) : [];
+    return role === "ADMIN" || roles.includes("ADMIN") || roles.includes("SEO_TEAM") || roles.includes("BLOG_AUTHOR");
+  }, [user]);
 
   useEffect(() => {
     let ignore = false;
@@ -56,32 +83,67 @@ const BlogPost = () => {
 
   const canonicalUrl = useMemo(() => {
     if (post?.canonicalUrl) return post.canonicalUrl;
-    if (typeof window === "undefined") return `/blog/${slug || ""}`;
+    if (typeof window === "undefined") return `https://catalance.in/blog/${slug || ""}`;
     return `${window.location.origin}/blog/${slug || ""}`;
   }, [post?.canonicalUrl, slug]);
 
-  const jsonLd = post
-    ? {
-        "@context": "https://schema.org",
-        "@type": "BlogPosting",
-        headline: post.title,
-        description: post.seoDescription || post.excerpt,
-        author: {
-          "@type": "Person",
-          name: post.authorName
-        },
-        datePublished: post.publishedAt,
-        dateModified: post.publishedAt,
-        image: post.ogImageUrl || post.coverImageUrl || undefined,
-        mainEntityOfPage: canonicalUrl,
-        articleSection: post.category
+  const jsonLd = useMemo(() => {
+    if (!post) return null;
+    return {
+      "@context": "https://schema.org",
+      "@type": "BlogPosting",
+      headline: post.seoTitle || post.title,
+      description: post.seoDescription || post.excerpt,
+      image: post.ogImageUrl || post.coverImageUrl,
+      datePublished: post.publishedAt,
+      author: {
+        "@type": "Person",
+        name: post.authorName || "Catalance Editorial Team"
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Catalance",
+        logo: {
+          "@type": "ImageObject",
+          url: "https://catalance.in/logo.png"
+        }
+      },
+      mainEntityOfPage: {
+        "@type": "WebPage",
+        "@id": canonicalUrl
       }
-    : null;
+    };
+  }, [canonicalUrl, post]);
+
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: post?.title,
+          text: post?.excerpt,
+          url
+        });
+        return;
+      } catch {
+        // Fallback to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      toast.success("Article link copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Could not copy link");
+    }
+  };
 
   if (loading) {
     return (
-      <main className="flex min-h-[70vh] items-center justify-center bg-[#090909] text-slate-400">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+      <main className="flex min-h-[70vh] items-center justify-center bg-background text-muted-foreground pt-28">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin text-primary" />
         Loading article...
       </main>
     );
@@ -89,15 +151,15 @@ const BlogPost = () => {
 
   if (!post) {
     return (
-      <main className="min-h-[70vh] bg-[#090909] px-6 py-24 text-white">
-        <div className="mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-[2rem] border border-white/10 bg-white/[0.03] p-8">
-          <Badge variant="outline">Blog</Badge>
-          <h1 className="text-3xl font-semibold">Article not found</h1>
-          <p className="text-slate-400">
+      <main className="min-h-[70vh] bg-background px-6 pt-32 pb-24 text-foreground">
+        <div className="mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-[2rem] border border-border bg-card p-8 dark:border-white/10">
+          <Badge variant="outline">Catalance Blog</Badge>
+          <h1 className="text-3xl font-bold">Article not found</h1>
+          <p className="text-muted-foreground">
             {error || "The article you are looking for does not exist or has moved."}
           </p>
-          <Button asChild className="rounded-full bg-[#ffc800] text-black hover:bg-[#ffd84d]">
-            <Link to="/blog">Back to blog</Link>
+          <Button asChild className="rounded-full">
+            <Link to="/blog">Back to all articles</Link>
           </Button>
         </div>
       </main>
@@ -105,7 +167,7 @@ const BlogPost = () => {
   }
 
   return (
-    <main className="bg-[#090909] text-white">
+    <main className="min-h-screen bg-background text-foreground pt-28 sm:pt-32 pb-24">
       <SeoMeta
         title={`${post.seoTitle || post.title} | Catalance`}
         description={post.seoDescription || post.excerpt}
@@ -116,132 +178,199 @@ const BlogPost = () => {
         jsonLd={jsonLd}
       />
 
-      <section className="border-b border-white/10 bg-[radial-gradient(circle_at_top,_rgba(255,200,0,0.16),_transparent_32%)]">
-        <div className="mx-auto max-w-6xl px-4 pb-12 pt-14 sm:px-6 lg:px-8 lg:pb-16 lg:pt-20">
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 border-b border-border pb-10">
+        <div className="flex items-center justify-between gap-4 mb-6">
           <Link
             to="/blog"
-            className="inline-flex items-center text-sm text-slate-400 transition-colors hover:text-white"
+            className="inline-flex items-center text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
             Back to all articles
           </Link>
 
-          <div className="mt-8 max-w-4xl">
-            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400">
-              <Badge className="rounded-full bg-[#ffc800] px-3 py-1 text-black">{post.category}</Badge>
-              <span className="inline-flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {post.publishedLabel}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                {post.readTime}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <User className="h-4 w-4" />
-                {post.authorName}
-              </span>
-            </div>
-            <h1 className="mt-6 text-balance text-4xl font-semibold leading-tight sm:text-5xl">
-              {post.title}
-            </h1>
-            <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-300">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 rounded-full text-xs"
+              onClick={handleShare}
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Share2 className="h-3.5 w-3.5" />}
+              {copied ? "Copied" : "Share"}
+            </Button>
+            {isAdmin ? (
+              <Button asChild size="sm" className="h-8 gap-1.5 rounded-full text-xs font-semibold">
+                <Link to={`/blog/write?edit=${post.id}`}>
+                  <PenSquare className="h-3.5 w-3.5" />
+                  Edit Article
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="max-w-4xl space-y-4">
+          <div className="flex flex-wrap items-center gap-2.5 text-xs text-muted-foreground">
+            <Badge className="rounded-full bg-primary px-3 py-0.5 text-primary-foreground font-semibold text-[11px]">
+              {post.category || "Engineering"}
+            </Badge>
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="h-3.5 w-3.5" />
+              {post.publishedLabel}
+            </span>
+            <span>&bull;</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5" />
+              {post.readTime}
+            </span>
+            <span>&bull;</span>
+            <span className="inline-flex items-center gap-1">
+              <User className="h-3.5 w-3.5" />
+              {post.authorName || "Catalance"}
+            </span>
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-foreground leading-[1.15]">
+            {post.title}
+          </h1>
+
+          {post.excerpt && (
+            <p className="text-base sm:text-lg leading-relaxed text-muted-foreground">
               {post.excerpt}
             </p>
-          </div>
+          )}
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_240px]">
-          <article className="min-w-0">
-            <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-[#111111]">
-              {post.coverImageUrl ? (
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
+          <article className="min-w-0 space-y-8">
+            {post.coverImageUrl ? (
+              <div className="overflow-hidden rounded-[2.25rem] border border-border bg-muted/30 shadow-sm">
                 <img
                   src={post.coverImageUrl}
                   alt={post.coverImageAlt || post.title}
-                  className="h-[260px] w-full object-cover sm:h-[340px] lg:h-[440px]"
+                  className="h-[280px] sm:h-[400px] lg:h-[480px] w-full object-cover"
                 />
-              ) : (
-                <div className="flex h-[260px] items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,200,0,0.2),_transparent_36%)] text-sm text-slate-500 sm:h-[340px] lg:h-[440px]">
-                  Catalance blog
-                </div>
-              )}
-            </div>
+              </div>
+            ) : null}
 
-            <div className="mt-10 rounded-[2rem] border border-white/10 bg-[#101010] px-5 py-8 sm:px-8 lg:px-10">
+            <div className="rounded-[2.25rem] border border-border bg-card p-6 sm:p-10 shadow-sm">
               <BlogMarkdown content={post.content} />
             </div>
           </article>
 
-          <aside className="space-y-5 lg:sticky lg:top-28 lg:h-fit">
-            <div className="rounded-[1.75rem] border border-white/10 bg-[#101010] p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-500">In this article</p>
-              <div className="mt-4 space-y-3">
+          <aside className="space-y-6 lg:sticky lg:top-28">
+            <div className="rounded-[2rem] border border-border bg-card p-5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  Article Contents
+                </p>
+                {(post.headings || []).length > 0 && (
+                  <Badge variant="secondary" className="text-[10px] h-5 px-2 rounded-full">
+                    {post.headings.length}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="space-y-1.5 max-h-[60vh] overflow-y-auto pr-1">
                 {(post.headings || []).length > 0 ? (
-                  post.headings.map((heading) => (
-                    <p key={heading} className="text-sm leading-6 text-slate-300">
-                      {heading}
-                    </p>
-                  ))
+                  post.headings.map((heading, idx) => {
+                    const cleanText = cleanHeadingText(heading);
+                    const anchorId = headingSlug(heading);
+
+                    return (
+                      <a
+                        key={heading}
+                        href={`#${anchorId}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const el = document.getElementById(anchorId);
+                          if (el) {
+                            el.scrollIntoView({ behavior: "smooth" });
+                          }
+                        }}
+                        className="group flex items-start gap-2.5 rounded-xl px-2.5 py-2 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary transition-all leading-snug"
+                      >
+                        <span className="font-mono text-[10px] font-bold text-muted-foreground/60 group-hover:text-primary shrink-0 mt-0.5">
+                          {String(idx + 1).padStart(2, "0")}.
+                        </span>
+                        <span className="font-medium group-hover:font-semibold line-clamp-2">
+                          {cleanText}
+                        </span>
+                      </a>
+                    );
+                  })
                 ) : (
-                  <p className="text-sm text-slate-500">No section outline available.</p>
+                  <p className="text-xs text-muted-foreground italic py-2">
+                    Comprehensive full article
+                  </p>
                 )}
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-white/10 bg-[#121212] p-5">
-              <p className="text-xs uppercase tracking-[0.18em] text-[#ffc800]">Need support?</p>
-              <h2 className="mt-3 text-xl font-semibold">Turn this idea into shipped work.</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-400">
-                Catalance helps clients scope, hire, and deliver with freelancer-first systems.
+            <div className="rounded-[2rem] border border-border bg-gradient-to-br from-primary/10 via-card to-background p-6 shadow-sm space-y-3">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">Need Talented Teams?</span>
+              <h3 className="text-base font-extrabold text-foreground leading-snug">Turn ideas into shipped deliverables.</h3>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Catalance scopes, vets, and manages top freelancers to ensure timely, guaranteed project delivery.
               </p>
-              <Button asChild className="mt-5 w-full rounded-full bg-[#ffc800] text-black hover:bg-[#ffd84d]">
-                <Link to="/get-started">Start a project</Link>
+              <Button asChild className="w-full h-10 rounded-full text-xs font-bold shadow mt-2">
+                <Link to="/service">Start a Project</Link>
               </Button>
             </div>
           </aside>
         </div>
       </section>
-
       {relatedPosts.length > 0 ? (
-        <section className="border-t border-white/10 px-4 py-14 sm:px-6 lg:px-8">
+        <section className="border-t border-border px-4 py-14 sm:px-6 lg:px-8 dark:border-white/10">
           <div className="mx-auto max-w-6xl">
             <div className="mb-8 flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm uppercase tracking-[0.18em] text-[#ffc800]">More from Catalance</p>
-                <h3 className="mt-2 text-3xl font-semibold">Related articles</h3>
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">Keep Reading</p>
+                <h3 className="mt-2 text-2xl font-bold text-foreground sm:text-3xl">Related Articles</h3>
               </div>
+              <Button asChild variant="ghost" size="sm" className="gap-1">
+                <Link to="/blog">
+                  All articles
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
             </div>
             <div className="grid gap-6 md:grid-cols-3">
               {relatedPosts.map((relatedPost) => (
                 <Link
                   key={relatedPost.id}
                   to={`/blog/${relatedPost.slug}`}
-                  className="group overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#101010] transition hover:border-[#ffc800]/30"
+                  className="group flex flex-col overflow-hidden rounded-[1.75rem] border border-border bg-card transition hover:border-primary/40 hover:shadow-md dark:border-white/10 dark:bg-card"
                 >
-                  <div className="aspect-[16/10] overflow-hidden bg-[#171717]">
+                  <div className="aspect-[16/10] overflow-hidden bg-muted">
                     {relatedPost.coverImageUrl ? (
                       <img
                         src={relatedPost.coverImageUrl}
                         alt={relatedPost.coverImageAlt || relatedPost.title}
-                        className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.04]"
+                        className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
                     ) : (
-                      <div className="flex h-full items-center justify-center text-sm text-slate-500">Catalance</div>
+                      <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5 text-xs font-medium text-primary">
+                        Catalance
+                      </div>
                     )}
                   </div>
-                  <div className="space-y-3 p-5">
-                    <Badge variant="outline">{relatedPost.category}</Badge>
-                    <h4 className="text-lg font-semibold transition group-hover:text-[#ffc800]">
-                      {relatedPost.title}
-                    </h4>
-                    <p className="text-sm leading-6 text-slate-400">
-                      {relatedPost.excerpt}
-                    </p>
-                    <span className="inline-flex items-center gap-2 text-sm text-[#ffc800]">
+                  <div className="flex flex-1 flex-col justify-between p-5 space-y-3">
+                    <div>
+                      <Badge variant="outline" className="text-xs font-medium">{relatedPost.category}</Badge>
+                      <h4 className="mt-2 text-base font-bold leading-snug transition group-hover:text-primary">
+                        {relatedPost.title}
+                      </h4>
+                      <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+                        {relatedPost.excerpt}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-primary pt-2">
                       Read article
-                      
+                      <ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
                 </Link>

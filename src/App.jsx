@@ -190,6 +190,8 @@ const EnterpriseSolutions = lazy(
 );
 const Blog = lazy(() => import("@/components/pages/Blog"));
 const BlogPost = lazy(() => import("@/components/pages/BlogPost"));
+const BlogUpload = lazy(() => import("@/components/pages/BlogUpload"));
+const BlogManage = lazy(() => import("@/components/pages/BlogManage"));
 const HelpCenter = lazy(() => import("@/components/pages/HelpCenter"));
 const TermsOfService = lazy(() => import("@/components/pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("@/components/pages/PrivacyPolicy"));
@@ -343,6 +345,46 @@ const App = () => {
               element={
                 <LayoutWithNavbar>
                   <EnterpriseSolutions />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/blog/manage"
+              element={
+                <LayoutWithNavbar>
+                  <BlogManage />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/blog/articles"
+              element={
+                <LayoutWithNavbar>
+                  <BlogManage />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/blog/write"
+              element={
+                <LayoutWithNavbar>
+                  <BlogUpload />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/blog/upload"
+              element={
+                <LayoutWithNavbar>
+                  <BlogUpload />
+                </LayoutWithNavbar>
+              }
+            />
+            <Route
+              path="/blog/new"
+              element={
+                <LayoutWithNavbar>
+                  <BlogUpload />
                 </LayoutWithNavbar>
               }
             />
@@ -968,6 +1010,7 @@ const LayoutNavbarOnly = ({ children }) => (
   <>
     <Navbar />
     {children}
+    <Footer />
   </>
 );
 

@@ -40,12 +40,6 @@ const testimonials = [
     name: 'Sarah Chen',
     role: 'Product Manager',
     image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=150&h=150&q=80',
-  },
-  {
-    quote: 'Found world-class talent within days. The quality of work exceeded all our expectations.',
-    name: 'James Wilson',
-    role: 'Startup Founder',
-    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=150&h=150&q=80',
   }
 ]
 
@@ -402,7 +396,7 @@ const Testimonidals = () => {
         <FloatingAvatar testimonial={testimonials[2]} x="80%" y="15%" delay={0.5} scale={0.9} isDark={isDark} />
         <FloatingAvatar testimonial={testimonials[3]} x="84%" y="45%" delay={1.5} scale={0.75} isDark={isDark} />
         <FloatingAvatar testimonial={testimonials[4]} x="20%" y="65%" delay={2} scale={1.1} isDark={isDark} />
-        <FloatingAvatar testimonial={testimonials[5]} x="76%" y="70%" delay={0.8} scale={1} isDark={isDark} />
+        <FloatingAvatar testimonial={testimonials[4]} x="76%" y="70%" delay={0.8} scale={1} isDark={isDark} />
         <FloatingAvatar testimonial={testimonials[3]} x="50%" y="35%" delay={1.2} scale={1.1} isDark={isDark} />
       </div>
 

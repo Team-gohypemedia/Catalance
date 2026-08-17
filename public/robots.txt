@@ -17,8 +17,7 @@ Disallow: /get-started
 Disallow: /forgot-password
 Disallow: /reset-password
 
-# Disallow duplicate and internal routes
-Disallow: /service
+# Disallow internal scratchpads/demos
 Disallow: /notepad
 Disallow: /ai-demo
 
