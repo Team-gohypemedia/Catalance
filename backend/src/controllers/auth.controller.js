@@ -105,6 +105,10 @@ export const updateOnboardingProgressHandler = asyncHandler(async (req, res) => 
     totalSteps,
     currentServiceIndex,
     isCompleted,
+    usedAiResume,
+    aiResumeDetails,
+    stageStats,
+    draftSnapshot,
   } = req.body || {};
 
   const onboardingProgress = {
@@ -114,15 +118,53 @@ export const updateOnboardingProgressHandler = asyncHandler(async (req, res) => 
     totalSteps: Number(totalSteps) || 1,
     currentServiceIndex: Number(currentServiceIndex) || 0,
     isCompleted: Boolean(isCompleted),
+    usedAiResume: Boolean(usedAiResume || draftSnapshot?.usedAiResume),
+    aiResumeDetails: aiResumeDetails || draftSnapshot?.aiResumeDetails || null,
+    stageStats: stageStats || {},
     lastActiveAt: new Date().toISOString(),
   };
 
-  const updatedUser = await updateUserProfile(userId, {
-    profileDetails: {
-      onboardingProgress,
-    },
-  });
+  const profileDetailsUpdates = {
+    onboardingProgress,
+  };
 
+  if (draftSnapshot && typeof draftSnapshot === "object") {
+    profileDetailsUpdates.onboardingDraft = draftSnapshot;
+
+    if (draftSnapshot.basicProfileForm) {
+      const bpf = draftSnapshot.basicProfileForm;
+      if (bpf.fullName) profileDetailsUpdates.fullName = bpf.fullName;
+      if (bpf.professionalBio) profileDetailsUpdates.professionalBio = bpf.professionalBio;
+      if (bpf.city) profileDetailsUpdates.city = bpf.city;
+      if (bpf.country) profileDetailsUpdates.country = bpf.country;
+      if (bpf.hourlyRate) profileDetailsUpdates.hourlyRate = bpf.hourlyRate;
+      if (bpf.experience) profileDetailsUpdates.experienceLevel = bpf.experience;
+      if (Array.isArray(bpf.skills)) profileDetailsUpdates.skills = bpf.skills;
+    }
+    if (draftSnapshot.selectedWorkPreference) {
+      profileDetailsUpdates.workPreference = draftSnapshot.selectedWorkPreference;
+    }
+    if (Array.isArray(draftSnapshot.selectedServices)) {
+      profileDetailsUpdates.services = draftSnapshot.selectedServices;
+    }
+  }
+
+  const userUpdates = {
+    profileDetails: profileDetailsUpdates,
+  };
+
+  if (draftSnapshot?.selectedServices && Array.isArray(draftSnapshot.selectedServices)) {
+    userUpdates.services = draftSnapshot.selectedServices;
+  }
+  if (draftSnapshot?.basicProfileForm?.fullName) {
+    userUpdates.fullName = draftSnapshot.basicProfileForm.fullName;
+  }
+  if (draftSnapshot?.basicProfileForm?.professionalBio) {
+    userUpdates.professionalBio = draftSnapshot.basicProfileForm.professionalBio;
+    userUpdates.bio = draftSnapshot.basicProfileForm.professionalBio;
+  }
+
+  const updatedUser = await updateUserProfile(userId, userUpdates);
   res.json({ data: updatedUser });
 });
 

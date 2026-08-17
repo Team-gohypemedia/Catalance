@@ -943,6 +943,25 @@ export const autofillProfileFromResume = asyncHandler(async (req, res) => {
     ),
   );
 
+  const basicCount = Array.isArray(result.basicProfileFields) ? result.basicProfileFields.length : 0;
+  const serviceCount = Array.isArray(result.suggestedServices) ? result.suggestedServices.length : 0;
+
+  await updateUserProfile(userId, {
+    profileDetails: {
+      onboardingProgress: {
+        usedAiResume: true,
+        aiResumeDetails: {
+          used: true,
+          fileName: req.file?.originalname || "resume.pdf",
+          timestamp: new Date().toISOString(),
+          extractedFieldsCount: basicCount + serviceCount,
+          basicProfileFieldsCount: basicCount,
+          suggestedServicesCount: serviceCount,
+        },
+      },
+    },
+  }).catch(() => {});
+
   res.json({ data: result });
 });
 

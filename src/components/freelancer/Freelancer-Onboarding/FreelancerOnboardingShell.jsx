@@ -98,7 +98,7 @@ const slideRegistry = {
 
 const AVATAR_UPLOAD_MAX_BYTES = 4.5 * 1024 * 1024;
 const RESUME_UPLOAD_MAX_BYTES = 4.5 * 1024 * 1024;
-const RESUME_AUTOFILL_CONFIDENCE_THRESHOLD = 0.9;
+const RESUME_AUTOFILL_CONFIDENCE_THRESHOLD = 0.5;
 const MIN_USERNAME_LENGTH = 3;
 const RESUME_UPLOAD_ALLOWED_MIME_TYPES = new Set([
   "application/pdf",
@@ -970,6 +970,8 @@ const FreelancerOnboardingShell = () => {
     createInitialResumeAutofillState(),
   );
   const [resumeUploadRequestId, setResumeUploadRequestId] = useState(0);
+  const [usedAiResume, setUsedAiResume] = useState(false);
+  const [aiResumeDetails, setAiResumeDetails] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResettingOnboarding, setIsResettingOnboarding] = useState(false);
   const [isAiHelperExpanded, setIsAiHelperExpanded] = useState(false);
@@ -1041,6 +1043,34 @@ const FreelancerOnboardingShell = () => {
         ((currentSlideIndex + 1) / Math.max(totalSlides, 1)) * 100,
     );
 
+    const basicFields = [
+      Boolean(basicProfileForm?.fullName?.trim()),
+      Boolean(basicProfileForm?.headline?.trim()),
+      Boolean(basicProfileForm?.bio?.trim()),
+      Boolean(basicProfileForm?.city?.trim()),
+      Boolean(basicProfileForm?.experience?.trim()),
+      Boolean(basicProfileForm?.hourlyRate),
+      (basicProfileForm?.skills?.length || 0) > 0,
+      Boolean(basicProfileForm?.resumeUrl || basicProfileForm?.resume),
+    ];
+    const basicFilledCount = basicFields.filter(Boolean).length;
+    const servicesCount = selectedServices?.length || 0;
+
+    const hasCaseStudies = Object.values(serviceDraftsByKey || {}).some(
+      (d) => (d?.caseStudies?.length || 0) > 0 || Boolean(d?.caseStudy?.title),
+    );
+
+    const stageStats = {
+      welcome: { filled: 1, total: 1 },
+      workPreference: { filled: selectedWorkPreference ? 1 : 0, total: 1, value: selectedWorkPreference },
+      basicProfile: { filled: basicFilledCount, total: 8 },
+      services: { filled: servicesCount > 0 ? 1 : 0, total: 1, count: servicesCount },
+      quickInfo: { filled: servicesCount > 0 ? 3 : 0, total: 3 },
+      caseStudy: { filled: hasCaseStudies ? 3 : 0, total: 3 },
+      acceptInProgressProjects: { filled: typeof acceptInProgressProjectsValue === "boolean" ? 1 : 0, total: 1 },
+      deliveryPolicy: { filled: (deliveryPolicyAccepted ? 1 : 0) + (communicationPolicyAccepted ? 1 : 0), total: 2 },
+    };
+
     const payload = {
       currentStep: currentSlide.id,
       currentStepTitle: currentSlide.label || currentSlide.title || currentSlide.id,
@@ -1048,6 +1078,9 @@ const FreelancerOnboardingShell = () => {
       totalSteps: totalSlides,
       currentServiceIndex,
       isCompleted: user?.onboardingComplete || false,
+      usedAiResume: Boolean(usedAiResume || basicProfileForm?.usedAiResume),
+      aiResumeDetails: aiResumeDetails || null,
+      stageStats,
     };
 
     authFetch("/auth/onboarding-progress", {
@@ -1057,7 +1090,23 @@ const FreelancerOnboardingShell = () => {
     }).catch(() => {
       // Silent telemetry failure
     });
-  }, [authFetch, currentServiceIndex, currentSlide, currentSlideIndex, totalSlides, user]);
+  }, [
+    authFetch,
+    currentServiceIndex,
+    currentSlide,
+    currentSlideIndex,
+    totalSlides,
+    user,
+    selectedWorkPreference,
+    basicProfileForm,
+    selectedServices,
+    serviceDraftsByKey,
+    acceptInProgressProjectsValue,
+    deliveryPolicyAccepted,
+    communicationPolicyAccepted,
+    usedAiResume,
+    aiResumeDetails,
+  ]);
 
   const ActiveSlide = slideRegistry[currentSlide.id];
   const progressValue =
@@ -1657,23 +1706,45 @@ const FreelancerOnboardingShell = () => {
     }
 
     const timeoutId = setTimeout(() => {
-      writeStoredOnboardingDraft(
-        onboardingDraftStorageKey,
-        buildOnboardingDraftSnapshot({
-          currentSlideIndex,
-          totalSlides,
-          selectedWorkPreference,
-          basicProfileForm,
-          selectedServices,
-          serviceDraftsByKey,
-          currentServiceIndex,
-          acceptInProgressProjectsValue,
-          deliveryPolicyAccepted,
-          communicationPolicyAccepted,
-          dbServices,
-        }),
-      );
-    }, 150);
+      const draftSnapshot = buildOnboardingDraftSnapshot({
+        currentSlideIndex,
+        totalSlides,
+        selectedWorkPreference,
+        basicProfileForm,
+        selectedServices,
+        serviceDraftsByKey,
+        currentServiceIndex,
+        acceptInProgressProjectsValue,
+        deliveryPolicyAccepted,
+        communicationPolicyAccepted,
+        dbServices,
+      });
+
+      writeStoredOnboardingDraft(onboardingDraftStorageKey, draftSnapshot);
+
+      if (user && user.role === "FREELANCER" && currentSlide) {
+        const progressPercentage = Math.round(
+          currentSlide.progressValue ??
+            ((currentSlideIndex + 1) / Math.max(totalSlides, 1)) * 100,
+        );
+
+        authFetch("/auth/onboarding-progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            currentStep: currentSlide.id,
+            currentStepTitle: currentSlide.label || currentSlide.title || currentSlide.id,
+            progressPercentage,
+            totalSteps: totalSlides,
+            currentServiceIndex,
+            isCompleted: user?.onboardingComplete || false,
+            usedAiResume: Boolean(usedAiResume || basicProfileForm?.usedAiResume),
+            aiResumeDetails: aiResumeDetails || null,
+            draftSnapshot,
+          }),
+        }).catch(() => {});
+      }
+    }, 400);
 
     return () => {
       clearTimeout(timeoutId);
@@ -1684,6 +1755,7 @@ const FreelancerOnboardingShell = () => {
     communicationPolicyAccepted,
     currentServiceIndex,
     currentSlideIndex,
+    currentSlide,
     dbServices,
     deliveryPolicyAccepted,
     hasHydratedFromUser,
@@ -1691,8 +1763,12 @@ const FreelancerOnboardingShell = () => {
     selectedServices,
     selectedWorkPreference,
     serviceDraftsByKey,
-    totalSlides,
     showAgencyFlow,
+    totalSlides,
+    user,
+    authFetch,
+    usedAiResume,
+    aiResumeDetails,
   ]);
 
   useEffect(() => {
@@ -2216,6 +2292,9 @@ const FreelancerOnboardingShell = () => {
     };
     let appliedCount = 0;
 
+    const appliedFieldIds = [];
+    const appliedFieldLabels = [];
+
     normalizedSuggestions.forEach((suggestion) => {
       const fieldId = String(suggestion?.fieldId || "").trim();
       const confidence = Number(suggestion?.confidence);
@@ -2233,9 +2312,6 @@ const FreelancerOnboardingShell = () => {
       }
 
       const currentValue = getBasicProfileFieldValue(nextForm, fieldId);
-      if (hasAutofillableFieldValue(currentValue)) {
-        return;
-      }
 
       const resolvedOptions = normalizeResumeAutofillFieldOptions({
         field: schemaField,
@@ -2277,10 +2353,12 @@ const FreelancerOnboardingShell = () => {
       }
 
       appliedCount += 1;
+      appliedFieldIds.push(fieldId);
+      appliedFieldLabels.push(schemaField.label || fieldId);
     });
 
     if (!appliedCount) {
-      return 0;
+      return { appliedCount: 0, appliedFieldIds: [], appliedFieldLabels: [] };
     }
 
     startTransition(() => {
@@ -2290,7 +2368,7 @@ const FreelancerOnboardingShell = () => {
       );
     });
 
-    return appliedCount;
+    return { appliedCount, appliedFieldIds, appliedFieldLabels };
   };
 
   const applyServiceAutofillSuggestions = ({
@@ -2642,9 +2720,11 @@ const FreelancerOnboardingShell = () => {
       const serviceSuggestions = Array.isArray(data?.data?.suggestedServices)
         ? data.data.suggestedServices
         : [];
-      const basicProfileAppliedCount = applyResumeAutofillSuggestions(
-        basicProfileSuggestions,
-      );
+      const {
+        appliedCount: basicProfileAppliedCount = 0,
+        appliedFieldIds = [],
+        appliedFieldLabels = [],
+      } = applyResumeAutofillSuggestions(basicProfileSuggestions) || {};
       const serviceAutofillSummary = applyServiceAutofillSuggestions({
         suggestions: serviceSuggestions,
         availableServices,
@@ -2654,11 +2734,29 @@ const FreelancerOnboardingShell = () => {
         basicProfileAppliedCount + Number(serviceAutofillSummary?.appliedCount || 0);
       const addedServicesCount = Number(serviceAutofillSummary?.addedServicesCount || 0);
 
+      const allAiFieldIds = [...appliedFieldIds];
+      const allAiFieldLabels = [...appliedFieldLabels];
+
+      if (addedServicesCount > 0) {
+        allAiFieldIds.push("services");
+        allAiFieldLabels.push("Marketplace Services");
+      }
+
       if (totalAppliedCount > 0 || addedServicesCount > 0) {
+        setUsedAiResume(true);
+        setAiResumeDetails({
+          used: true,
+          fileName: file.name,
+          timestamp: new Date().toISOString(),
+          totalAppliedCount,
+          addedServicesCount,
+          aiAutofilledFieldIds: Array.from(new Set(allAiFieldIds)),
+          aiAutofilledFieldLabels: Array.from(new Set(allAiFieldLabels)),
+        });
         setResumeAutofillState({
           tone: "success",
           message:
-            `AI filled ${totalAppliedCount} field${totalAppliedCount === 1 ? "" : "s"} with 90%+ confidence` +
+            `AI filled ${totalAppliedCount} field${totalAppliedCount === 1 ? "" : "s"} with high confidence` +
             (addedServicesCount > 0
               ? ` and added ${addedServicesCount} service${addedServicesCount === 1 ? "" : "s"} from your CV.`
               : ".") +
@@ -3011,6 +3109,7 @@ const FreelancerOnboardingShell = () => {
     const updatePayload = {
       fullName: resolvedFullName,
       profileDetails,
+      services: orderedSelectedServices,
       bio: basicProfileForm.professionalBio.trim(),
       professionalBio: basicProfileForm.professionalBio.trim(),
       location: buildLocationLabel({

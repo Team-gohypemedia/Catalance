@@ -21,6 +21,13 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import FolderOpen from "lucide-react/dist/esm/icons/folder-open";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
+import Bot from "lucide-react/dist/esm/icons/bot";
+import Check from "lucide-react/dist/esm/icons/check";
+import X from "lucide-react/dist/esm/icons/x";
+import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
+import ListChecks from "lucide-react/dist/esm/icons/list-checks";
 
 const isPlainObject = (value) => value && typeof value === "object" && !Array.isArray(value);
 const isPrimitiveValue = (value) =>
@@ -230,6 +237,432 @@ function renderKeyValuePairs(value) {
     </div>
   );
 }
+
+const FreelancerOnboardingTrackingCard = ({ userData }) => {
+  const [expandedSteps, setExpandedSteps] = useState({});
+  const [expandAll, setExpandAll] = useState(false);
+
+  const fp = userData?.freelancerProfile || {};
+  const pd = userData?.profileDetails || fp?.serviceDetails?.__profileDetails || {};
+  const progressObj = pd.onboardingProgress || fp?.serviceDetails?.__profileDetails?.onboardingProgress || fp?.serviceDetails?.onboardingProgress || {};
+
+  const isComplete = Boolean(userData?.onboardingComplete || progressObj?.isCompleted);
+  const currentStep = progressObj.currentStep || (isComplete ? "completed" : "welcome");
+  const currentStepTitle = progressObj.currentStepTitle || currentStep;
+  const percentage = isComplete ? 100 : (Number(progressObj.progressPercentage) || (currentStep === "welcome" ? 10 : 35));
+  const lastActive = progressObj.lastActiveAt || fp.updatedAt || userData?.updatedAt;
+
+  // AI Resume usage check
+  const usedAiResume = Boolean(
+    progressObj?.usedAiResume ||
+    progressObj?.aiResumeDetails?.used ||
+    pd?.usedAiResume ||
+    pd?.aiResumeDetails?.used ||
+    fp?.usedAiResume
+  );
+  const aiResumeDetails = progressObj?.aiResumeDetails || pd?.aiResumeDetails || {};
+
+  const aiAutofilledIds = new Set(
+    aiResumeDetails?.aiAutofilledFieldIds ||
+    progressObj?.aiResumeDetails?.aiAutofilledFieldIds ||
+    pd?.aiResumeDetails?.aiAutofilledFieldIds ||
+    (usedAiResume ? ["fullName", "professionalBio", "country", "state", "languages", "skills", "services"] : [])
+  );
+  const aiAutofilledLabels = aiResumeDetails?.aiAutofilledFieldLabels || (usedAiResume ? ["Full Name", "Professional Bio", "Country & State", "Languages", "Primary Skills", "Marketplace Services"] : []);
+
+  const draft = pd.onboardingDraft || {};
+  const bpf = draft.basicProfileForm || {};
+
+  // Extract field values
+  const workPref = draft.selectedWorkPreference || fp?.workPreference || pd?.workPreference || fp?.serviceDetails?.workPreference || progressObj?.stageStats?.workPreference?.value || "";
+  const fullName = bpf.fullName || userData?.fullName || pd?.fullName || "";
+  const headline = bpf.headline || fp?.headline || pd?.headline || userData?.headline || "";
+  const bio = bpf.professionalBio || bpf.bio || fp?.bio || pd?.bio || userData?.professionalBio || "";
+  const city = bpf.city || fp?.location || pd?.city || pd?.identity?.city || userData?.city || "";
+  const experience = bpf.experience || fp?.experienceLevel || pd?.experienceLevel || (userData?.experienceYears ? `${userData.experienceYears} Years` : "");
+  const hourlyRate = bpf.hourlyRate || fp?.hourlyRate || pd?.hourlyRate || "";
+  const skills = (Array.isArray(bpf.skills) && bpf.skills.length > 0) ? bpf.skills : (fp?.skills || pd?.skills || userData?.skills || []);
+  const resume = bpf.resumeUrl || bpf.resume || fp?.resume || pd?.resume || userData?.resume || "";
+  const services = (Array.isArray(draft.selectedServices) && draft.selectedServices.length > 0)
+    ? draft.selectedServices
+    : (Array.isArray(fp?.services) && fp.services.length > 0)
+      ? fp.services
+      : (Array.isArray(pd?.services) && pd.services.length > 0)
+        ? pd.services
+        : (Array.isArray(userData?.services) && userData.services.length > 0)
+          ? userData.services
+          : (progressObj?.stageStats?.services?.selectedServices || []);
+  const serviceDetails = draft.serviceDraftsByKey || fp?.serviceDetails || pd?.serviceDetails || {};
+  const portfolio = (draft.serviceDraftsByKey ? Object.values(draft.serviceDraftsByKey).flatMap(d => d.caseStudies || (d.caseStudy ? [d.caseStudy] : [])) : []) || fp?.portfolio || pd?.portfolioProjects || fp?.portfolioProjects || userData?.portfolioProjects || [];
+  const acceptInProgress = draft.acceptInProgressProjectsValue ?? fp?.acceptInProgressProjects ?? pd?.acceptInProgressProjects ?? userData?.acceptInProgressProjects;
+  const deliveryPolicy = draft.deliveryPolicyAccepted ?? pd?.deliveryPolicyAccepted ?? (isComplete ? true : false);
+  const commPolicy = draft.communicationPolicyAccepted ?? pd?.communicationPolicyAccepted ?? (isComplete ? true : false);
+
+  const steps = [
+    {
+      id: "welcome",
+      stepNum: 1,
+      title: "Welcome & Intro",
+      path: "/freelancer/onboarding/welcome",
+      fields: [
+        { id: "welcome", label: "Welcome Overview & Intro", isFilled: true, value: "Viewed Intro", isAiAutofilled: false }
+      ]
+    },
+    {
+      id: "workPreference",
+      stepNum: 2,
+      title: "Work Preference",
+      path: "/freelancer/onboarding/workPreference",
+      fields: [
+        { id: "workPreference", label: "Selected Work Preference", isFilled: Boolean(workPref), value: workPref || "Not selected yet", isAiAutofilled: false }
+      ]
+    },
+    {
+      id: "basicProfile",
+      stepNum: 3,
+      title: "Basic Profile",
+      path: "/freelancer/onboarding/basicProfile",
+      fields: [
+        { id: "fullName", label: "Full Name", isFilled: Boolean(fullName), value: fullName || "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("fullName") || Boolean(fullName)) },
+        { id: "headline", label: "Professional Title / Headline", isFilled: Boolean(headline), value: headline || "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("headline") || Boolean(headline)) },
+        { id: "professionalBio", label: "Professional Bio / Summary", isFilled: Boolean(bio), value: bio ? (bio.length > 60 ? bio.slice(0, 60) + "..." : bio) : "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("professionalBio") || aiAutofilledIds.has("bio") || Boolean(bio)) },
+        { id: "country", label: "City / Location", isFilled: Boolean(city), value: city || "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("country") || aiAutofilledIds.has("state") || Boolean(city)) },
+        { id: "experience", label: "Experience Level", isFilled: Boolean(experience), value: experience || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("experience") },
+        { id: "hourlyRate", label: "Hourly Rate", isFilled: Boolean(hourlyRate), value: hourlyRate ? `₹${hourlyRate}/hr` : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("hourlyRate") },
+        { id: "skills", label: "Primary Skills", isFilled: Array.isArray(skills) && skills.length > 0, value: Array.isArray(skills) && skills.length > 0 ? `${skills.length} skills (${skills.slice(0, 3).join(", ")})` : "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("skills") || (Array.isArray(skills) && skills.length > 0)) },
+        { id: "resume", label: "CV / Resume Document", isFilled: Boolean(resume), value: resume ? "Uploaded Resume" : "Missing", isAiAutofilled: false },
+      ]
+    },
+    {
+      id: "services",
+      stepNum: 4,
+      title: "Services Selection",
+      path: "/freelancer/onboarding/services",
+      fields: [
+        { id: "services", label: "Marketplace Services", isFilled: Array.isArray(services) && services.length > 0, value: Array.isArray(services) && services.length > 0 ? `${services.length} service(s): ${services.join(", ")}` : "No services selected", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("services") || (Array.isArray(services) && services.length > 0)) }
+      ]
+    },
+    {
+      id: "quickInfo",
+      stepNum: 5,
+      title: "Service Setup & Quick Info",
+      path: "/freelancer/onboarding/quickInfo",
+      fields: [
+        { id: "serviceTitle", label: "Service Specialization / Title", isFilled: Boolean(fp?.serviceTitle || userData?.serviceTitle || Object.keys(serviceDetails).length > 0), value: fp?.serviceTitle || userData?.serviceTitle || (Object.keys(serviceDetails).length > 0 ? `${Object.keys(serviceDetails).length} configured` : "Missing"), isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceTitle") },
+        { id: "serviceDescription", label: "Service Overview & Scope", isFilled: Boolean(fp?.serviceDescription || userData?.serviceDescription), value: fp?.serviceDescription ? (fp.serviceDescription.length > 40 ? fp.serviceDescription.slice(0, 40) + "..." : fp.serviceDescription) : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceDescription") },
+        { id: "startingPrice", label: "Starting Price Rate", isFilled: Boolean(fp?.startingPrice || userData?.startingPrice), value: (fp?.startingPrice || userData?.startingPrice) ? `₹${fp?.startingPrice || userData?.startingPrice}` : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("startingPrice") },
+        { id: "deliveryTimeline", label: "Delivery Timeline", isFilled: Boolean(fp?.deliveryTimeline || userData?.deliveryTimeline), value: fp?.deliveryTimeline || userData?.deliveryTimeline || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("deliveryTimeline") },
+      ]
+    },
+    {
+      id: "caseStudy",
+      stepNum: 6,
+      title: "Case Study & Portfolio",
+      path: "/freelancer/onboarding/caseStudy",
+      fields: [
+        { id: "caseStudyTitle", label: "Case Study Title", isFilled: Boolean(portfolio[0]?.title || portfolio[0]?.name), value: portfolio[0]?.title || portfolio[0]?.name || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyTitle") },
+        { id: "caseStudyOverview", label: "Case Study Overview", isFilled: Boolean(portfolio[0]?.description || portfolio[0]?.overview), value: portfolio[0]?.description || portfolio[0]?.overview ? "Provided" : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyOverview") },
+        { id: "caseStudyMedia", label: "Case Study Media / Assets", isFilled: Boolean(portfolio[0]?.link || portfolio[0]?.url || portfolio[0]?.media?.length || portfolio[0]?.images?.length), value: portfolio[0]?.link || portfolio[0]?.url || (portfolio[0]?.media?.length ? `${portfolio[0].media.length} media files` : "Missing"), isAiAutofilled: false },
+      ]
+    },
+    {
+      id: "acceptInProgressProjects",
+      stepNum: 7,
+      title: "Work Availability",
+      path: "/freelancer/onboarding/acceptInProgressProjects",
+      fields: [
+        { id: "acceptInProgressProjects", label: "Accept In-Progress Projects", isFilled: typeof acceptInProgress === "boolean" || Boolean(acceptInProgress), value: acceptInProgress === true ? "Yes (Available for active work)" : acceptInProgress === false ? "No (Only new projects)" : "Not answered", isAiAutofilled: false }
+      ]
+    },
+    {
+      id: "deliveryPolicy",
+      stepNum: 8,
+      title: "Policies & Terms",
+      path: "/freelancer/onboarding/deliveryPolicy",
+      fields: [
+        { id: "deliveryPolicy", label: "Delivery Terms & Policy", isFilled: Boolean(deliveryPolicy), value: deliveryPolicy ? "Accepted" : "Not accepted", isAiAutofilled: false },
+        { id: "communicationPolicy", label: "Communication Guidelines", isFilled: Boolean(commPolicy), value: commPolicy ? "Accepted" : "Not accepted", isAiAutofilled: false },
+      ]
+    }
+  ];
+
+  const ONBOARDING_FLOW_STEPS = steps.map(s => ({ id: s.id, title: s.title, path: s.path }));
+  const activeStepIndex = isComplete
+    ? ONBOARDING_FLOW_STEPS.length
+    : ONBOARDING_FLOW_STEPS.findIndex((s) => s.id === currentStep);
+
+  let grandTotalFields = 0;
+  let grandFilledFields = 0;
+  steps.forEach((step) => {
+    step.filledCount = step.fields.filter((f) => f.isFilled).length;
+    step.totalCount = step.fields.length;
+    grandTotalFields += step.totalCount;
+    grandFilledFields += step.filledCount;
+  });
+
+  const grandPercentage = Math.round((grandFilledFields / Math.max(grandTotalFields, 1)) * 100);
+
+  const toggleStep = (id) => {
+    setExpandedSteps((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleToggleAll = () => {
+    const nextState = !expandAll;
+    setExpandAll(nextState);
+    const updated = {};
+    steps.forEach((s) => { updated[s.id] = nextState; });
+    setExpandedSteps(updated);
+  };
+
+  return (
+    <div className="bg-card p-6 rounded-xl border shadow-sm space-y-6">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b pb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold">Real-Time Onboarding Journey & Customer Behavior</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Track drop-off stage, auto-saved progress, and field completion for each onboarding step
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {usedAiResume && (
+            <Badge variant="outline" className="px-3 py-1 text-xs font-semibold border-purple-300 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 flex items-center gap-1.5">
+              <Bot className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+              AI Resume Used
+            </Badge>
+          )}
+          <Badge
+            variant="outline"
+            className={`px-3 py-1 text-xs font-semibold ${
+              isComplete
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
+                : "border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+            }`}
+          >
+            {isComplete ? "Onboarding Completed" : `Backed Off at: ${currentStepTitle}`}
+          </Badge>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleToggleAll}
+            className="text-xs h-8 gap-1.5"
+          >
+            <ListChecks className="h-3.5 w-3.5 text-primary" />
+            {expandAll ? "Collapse All Details" : "View Field Details"}
+          </Button>
+        </div>
+      </div>
+
+      {/* AI Resume Banner */}
+      {usedAiResume && (
+        <div className="p-3.5 rounded-lg border border-purple-200 bg-purple-50/50 dark:bg-purple-950/20 text-xs space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <div className="p-2 rounded-md bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 mt-0.5 sm:mt-0">
+                <Bot className="h-4 w-4" />
+              </div>
+              <div>
+                <p className="font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                  AI Resume Autofill Feature Used
+                </p>
+                <p className="text-[11px] text-purple-700 dark:text-purple-300 mt-0.5">
+                  The freelancer uploaded their CV/Resume to automatically populate basic profile & service options using AI extraction.
+                  {aiResumeDetails?.fileName ? ` File: ${aiResumeDetails.fileName}` : ""}
+                  {aiResumeDetails?.totalAppliedCount ? ` • ${aiResumeDetails.totalAppliedCount} fields auto-filled` : ""}
+                </p>
+              </div>
+            </div>
+            {aiResumeDetails?.timestamp && (
+              <span className="text-[10px] font-mono text-purple-600 dark:text-purple-400 whitespace-nowrap">
+                Parsed: {new Date(aiResumeDetails.timestamp).toLocaleDateString("en-IN")}
+              </span>
+            )}
+          </div>
+
+          {/* AI Autofilled field pills */}
+          {aiAutofilledLabels.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-purple-200/60 dark:border-purple-900/40">
+              <span className="text-[10px] font-semibold text-purple-900 dark:text-purple-200">Autofilled Fields:</span>
+              {aiAutofilledLabels.map((lbl, lIdx) => (
+                <Badge key={lIdx} variant="secondary" className="text-[9px] px-2 py-0.5 bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-200 border-purple-200">
+                  ✨ {lbl}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Progress & Stat Summary Cards */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-muted/30 p-3.5 rounded-lg border">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Overall Completion</p>
+          <div className="flex items-baseline justify-between mt-1">
+            <p className="text-xl font-bold text-foreground font-mono">{percentage}%</p>
+            <span className="text-[11px] text-muted-foreground">Step {Math.min(activeStepIndex + 1, 8)} of 8</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-2">
+            <div
+              className={`h-full transition-all duration-500 ${isComplete ? "bg-emerald-500" : percentage > 50 ? "bg-blue-500" : "bg-amber-500"}`}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="bg-muted/30 p-3.5 rounded-lg border">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Form Fields Completed</p>
+          <div className="flex items-baseline justify-between mt-1">
+            <p className="text-xl font-bold text-foreground font-mono">{grandFilledFields} <span className="text-xs font-normal text-muted-foreground">/ {grandTotalFields} fields</span></p>
+            <span className="text-[11px] font-semibold text-primary font-mono">{grandPercentage}%</span>
+          </div>
+          <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-2">
+            <div
+              className="h-full bg-primary transition-all duration-500"
+              style={{ width: `${grandPercentage}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="bg-muted/30 p-3.5 rounded-lg border">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Drop-off Stage</p>
+          <p className="text-sm font-semibold text-foreground truncate mt-1">
+            {isComplete ? "Fully Completed" : currentStepTitle}
+          </p>
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium truncate mt-1">
+            {isComplete ? "No drop-off detected" : `User stopped at step ${activeStepIndex + 1}`}
+          </p>
+        </div>
+
+        <div className="bg-muted/30 p-3.5 rounded-lg border">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">AI Resume Status</p>
+          <p className="text-sm font-semibold text-foreground mt-1 flex items-center gap-1.5">
+            {usedAiResume ? (
+              <span className="text-purple-600 dark:text-purple-400 font-bold flex items-center gap-1">
+                <Bot className="h-3.5 w-3.5" /> AI Autofill Used
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Manual Entry</span>
+            )}
+          </p>
+          {lastActive && (
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Active: {new Date(lastActive).toLocaleDateString("en-IN")}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* 8-Stage Timeline Grid with Field Breakdown */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Stage-by-Stage Onboarding Breakdown & Auto-Save Telemetry
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step, idx) => {
+            const isPassed = isComplete || (activeStepIndex >= 0 && idx < activeStepIndex);
+            const isCurrent = !isComplete && (activeStepIndex === idx || (activeStepIndex === -1 && idx === 0));
+            const isOpen = expandedSteps[step.id] || expandAll;
+            const stepPercentage = Math.round((step.filledCount / step.totalCount) * 100);
+
+            return (
+              <div
+                key={step.id}
+                className={`p-3.5 rounded-lg border text-xs transition-all flex flex-col justify-between ${
+                  isCurrent
+                    ? "border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 ring-1 ring-amber-400"
+                    : isPassed
+                      ? "border-emerald-200 bg-emerald-50/30 dark:bg-emerald-950/10"
+                      : "border-muted bg-muted/20 opacity-80"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                    <span className="font-mono text-[10px] font-bold text-muted-foreground">Step {idx + 1}</span>
+                    {isPassed ? (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-emerald-300 text-emerald-600 bg-emerald-50">
+                        Passed
+                      </Badge>
+                    ) : isCurrent ? (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-amber-400 text-amber-700 bg-amber-50 font-bold animate-pulse">
+                        Backed Off Here
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0 text-muted-foreground">
+                        Pending
+                      </Badge>
+                    )}
+                  </div>
+
+                  <p className="font-semibold text-foreground truncate">{step.title}</p>
+                  <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">{step.path}</p>
+
+                  {/* Form Field Count & Completion Bar */}
+                  <div className="mt-2.5 pt-2 border-t border-muted/60 space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="text-muted-foreground">Fields Filled:</span>
+                      <span className={`font-mono font-bold ${step.filledCount === step.totalCount ? "text-emerald-600" : step.filledCount > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
+                        {step.filledCount}/{step.totalCount} ({stepPercentage}%)
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full transition-all ${step.filledCount === step.totalCount ? "bg-emerald-500" : "bg-amber-500"}`}
+                        style={{ width: `${stepPercentage}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Toggle details button */}
+                <div className="mt-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleStep(step.id)}
+                    className="w-full text-[11px] h-7 justify-between px-2 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  >
+                    <span>{isOpen ? "Hide Form Fields" : "View Form Fields"}</span>
+                    {isOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  </Button>
+
+                      {isOpen && (
+                        <div className="mt-2 space-y-1.5 pt-2 border-t text-[11px]">
+                          {step.fields.map((f, fIdx) => (
+                            <div key={fIdx} className="p-1.5 rounded bg-card border flex items-start justify-between gap-1.5">
+                              <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                                {f.isFilled ? (
+                                  <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                ) : (
+                                  <X className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-medium text-foreground truncate">{f.label}</p>
+                                  <p className={`text-[10px] truncate ${f.isFilled ? "text-muted-foreground font-mono" : "text-amber-600 italic"}`}>
+                                    {f.value}
+                                  </p>
+                                </div>
+                              </div>
+                              {f.isFilled && f.isAiAutofilled && (
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0.5 border-purple-300 bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 font-medium flex items-center gap-1 shrink-0 mt-0.5">
+                                  <Bot className="h-2.5 w-2.5" /> AI Filled
+                                </Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AdminUserDetails = () => {
   const { userId } = useParams();
@@ -514,119 +947,7 @@ const AdminUserDetails = () => {
         )}
 
         {/* Real-Time Freelancer Onboarding & Customer Behavior Analytics Card */}
-        {isFreelancer && (() => {
-          const fp = data.user?.freelancerProfile || {};
-          const progressObj = fp?.serviceDetails?.__profileDetails?.onboardingProgress || fp?.serviceDetails?.onboardingProgress || profileDetails.onboardingProgress || data.user?.profileDetails?.onboardingProgress || {};
-          const isComplete = Boolean(data.user?.onboardingComplete || progressObj?.isCompleted);
-          const currentStep = progressObj.currentStep || (isComplete ? "completed" : "welcome");
-          const currentStepTitle = progressObj.currentStepTitle || currentStep;
-          const percentage = isComplete ? 100 : (Number(progressObj.progressPercentage) || (currentStep === "welcome" ? 10 : 35));
-          const lastActive = progressObj.lastActiveAt || fp.updatedAt || data.user.updatedAt;
-
-          const ONBOARDING_FLOW_STEPS = [
-            { id: "welcome", title: "Welcome & Intro", path: "/freelancer/onboarding/welcome", index: 0 },
-            { id: "workPreference", title: "Work Preference", path: "/freelancer/onboarding/workPreference", index: 1 },
-            { id: "basicProfile", title: "Basic Profile", path: "/freelancer/onboarding/basicProfile", index: 2 },
-            { id: "services", title: "Services Selection", path: "/freelancer/onboarding/services", index: 3 },
-            { id: "quickInfo", title: "Service Setup & Quick Info", path: "/freelancer/onboarding/quickInfo", index: 4 },
-            { id: "caseStudy", title: "Case Study & Portfolio", path: "/freelancer/onboarding/caseStudy", index: 5 },
-            { id: "acceptInProgressProjects", title: "Work Availability", path: "/freelancer/onboarding/acceptInProgressProjects", index: 6 },
-            { id: "deliveryPolicy", title: "Policies & Terms", path: "/freelancer/onboarding/deliveryPolicy", index: 7 },
-          ];
-
-          const activeStepIndex = isComplete
-            ? ONBOARDING_FLOW_STEPS.length
-            : ONBOARDING_FLOW_STEPS.findIndex((s) => s.id === currentStep);
-
-          return (
-            <div className="bg-card p-6 rounded-xl border shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    <h2 className="text-lg font-semibold">Real-Time Onboarding Journey & Customer Behavior</h2>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Track real-time drop-off phase and freelancer navigation in onboarding
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge
-                    variant="outline"
-                    className={`px-3 py-1 text-xs font-semibold ${
-                      isComplete
-                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                        : "border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                    }`}
-                  >
-                    {isComplete ? "Onboarding Completed" : `Backed Up at: ${currentStepTitle} (${percentage}%)`}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Progress Bar & Status */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-muted-foreground">Overall Completion</span>
-                  <span className="font-mono text-primary font-bold">{percentage}%</span>
-                </div>
-                <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-500 ${
-                      isComplete ? "bg-emerald-500" : percentage > 50 ? "bg-blue-500" : "bg-amber-500"
-                    }`}
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
-                {lastActive && (
-                  <p className="text-[11px] text-muted-foreground text-right">
-                    Last activity: {new Date(lastActive).toLocaleString("en-IN")}
-                  </p>
-                )}
-              </div>
-
-              {/* Flow Timeline Steps */}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {ONBOARDING_FLOW_STEPS.map((step, idx) => {
-                  const isPassed = isComplete || (activeStepIndex >= 0 && idx < activeStepIndex);
-                  const isCurrent = !isComplete && (activeStepIndex === idx || (activeStepIndex === -1 && idx === 0));
-
-                  return (
-                    <div
-                      key={step.id}
-                      className={`p-3 rounded-lg border text-xs transition-all ${
-                        isCurrent
-                          ? "border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 ring-1 ring-amber-400"
-                          : isPassed
-                            ? "border-emerald-200 bg-emerald-50/30 dark:bg-emerald-950/10"
-                            : "border-muted bg-muted/20 opacity-70"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span className="font-mono text-[10px] text-muted-foreground">Step {idx + 1}</span>
-                        {isPassed ? (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-emerald-300 text-emerald-600 bg-emerald-50">
-                            Passed
-                          </Badge>
-                        ) : isCurrent ? (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 border-amber-400 text-amber-600 bg-amber-50 animate-pulse">
-                            Backed Up Here
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] px-1 py-0 text-muted-foreground">
-                            Pending
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="font-semibold text-foreground truncate">{step.title}</p>
-                      <p className="text-[10px] text-muted-foreground font-mono truncate mt-0.5">{step.path}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
+        {isFreelancer && <FreelancerOnboardingTrackingCard userData={data?.user} />}
 
         {/* Main Content Area */}
         <div className={hasSidebarContent ? "grid gap-6 lg:grid-cols-3" : "space-y-6"}>
