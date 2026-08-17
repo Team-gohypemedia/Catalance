@@ -147,6 +147,9 @@ export const updateOnboardingProgressHandler = asyncHandler(async (req, res) => 
     if (Array.isArray(draftSnapshot.selectedServices)) {
       profileDetailsUpdates.services = draftSnapshot.selectedServices;
     }
+    if (draftSnapshot.serviceDraftsByKey && typeof draftSnapshot.serviceDraftsByKey === "object") {
+      profileDetailsUpdates.serviceDetails = draftSnapshot.serviceDraftsByKey;
+    }
   }
 
   const userUpdates = {
