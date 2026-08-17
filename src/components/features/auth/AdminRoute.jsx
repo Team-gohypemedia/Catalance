@@ -26,9 +26,18 @@ const AdminRoute = ({ children }) => {
     return <Navigate to="/admin/login" state={{ redirectTo: location.pathname }} replace />;
   }
 
-  // Only admins can access admin routes
-  if (user?.role !== "ADMIN") {
+  // Role-based verification
+  const roles = Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toUpperCase()) : [];
+  const isSeoUser = roles.includes("SEO_TEAM") || roles.includes("BLOG_AUTHOR");
+
+  // If user has no admin or SEO role, redirect away
+  if (user?.role !== "ADMIN" && !isSeoUser) {
     return <Navigate to={resolveWorkspaceHomePath(user)} replace />;
+  }
+
+  // SEO users are restricted only to the Blog CMS & SEO Studio (/admin/blogs)
+  if (isSeoUser && location.pathname !== "/admin/blogs") {
+    return <Navigate to="/admin/blogs" replace />;
   }
 
   return children;

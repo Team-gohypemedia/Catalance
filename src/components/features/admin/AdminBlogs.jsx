@@ -145,7 +145,7 @@ const parseAuthResponse = async (response, fallbackMessage) => {
 };
 
 const AdminBlogs = () => {
-  const { authFetch } = useAuth();
+  const { user, authFetch } = useAuth();
   const [activeTab, setActiveTab] = useState("blogs"); // "blogs" | "seo-team"
   const [blogs, setBlogs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +153,13 @@ const AdminBlogs = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const deferredSearch = useDeferredValue(search);
+
+  const isSuperAdmin = useMemo(() => {
+    if (!user) return false;
+    const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toUpperCase()) : [];
+    const isSeoRole = roles.includes("SEO_TEAM") || roles.includes("BLOG_AUTHOR");
+    return user.role === "ADMIN" && !isSeoRole;
+  }, [user]);
 
   // Modals / Drawers state
   const [viewingBlog, setViewingBlog] = useState(null); // When non-null, shows full reader/preview modal
@@ -616,15 +623,17 @@ const AdminBlogs = () => {
                 <Newspaper className="h-3.5 w-3.5" />
                 All Articles ({blogs.length})
               </Button>
-              <Button
-                variant={activeTab === "seo-team" ? "default" : "outline"}
-                size="sm"
-                className="rounded-full text-xs font-semibold gap-1.5"
-                onClick={() => setActiveTab("seo-team")}
-              >
-                <Users className="h-3.5 w-3.5" />
-                Author & SEO Logins ({seoMembers.length})
-              </Button>
+              {isSuperAdmin && (
+                <Button
+                  variant={activeTab === "seo-team" ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full text-xs font-semibold gap-1.5"
+                  onClick={() => setActiveTab("seo-team")}
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  Author & SEO Logins ({seoMembers.length})
+                </Button>
+              )}
             </div>
 
             {activeTab === "blogs" && (

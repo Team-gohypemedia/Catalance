@@ -487,6 +487,13 @@ export const resolveWorkspaceHomePath = (
     return getDashboardEntryPath(user, dashboard);
   }
 
+  const roles = Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toUpperCase()) : [];
+  const isSeoUser = roles.includes("SEO_TEAM") || roles.includes("BLOG_AUTHOR");
+
+  if (isSeoUser) {
+    return "/admin/blogs";
+  }
+
   const primaryRole = normalizeRoleToken(user?.role);
 
   if (primaryRole === "ADMIN") {

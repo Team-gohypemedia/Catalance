@@ -21,6 +21,10 @@ import Layers from "lucide-react/dist/esm/icons/layers";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import Newspaper from "lucide-react/dist/esm/icons/newspaper";
 
+import BookOpen from "lucide-react/dist/esm/icons/book-open";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import PenSquare from "lucide-react/dist/esm/icons/pen-square";
+
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
 import { TeamSwitcher } from "@/components/layout/team-switcher";
@@ -60,6 +64,11 @@ const brandPresets = {
     name: "Admin Portal",
     plan: "System Administration",
     logoText: "AD",
+  },
+  SEO_TEAM: {
+    name: "SEO & Content Studio",
+    plan: "Blog & Content Portal",
+    logoText: "SEO",
   },
 };
 
@@ -273,6 +282,32 @@ const navConfigs = {
       isActive: true,
     },
   ],
+  SEO_TEAM: [
+    {
+      title: "Blogs & SEO",
+      url: "/admin/blogs",
+      icon: Newspaper,
+      isActive: true,
+    },
+    {
+      title: "Write New Blog",
+      url: "/blog/write",
+      icon: PenSquare,
+      isActive: true,
+    },
+    {
+      title: "Article Cards Hub",
+      url: "/blog/manage",
+      icon: BookOpen,
+      isActive: true,
+    },
+    {
+      title: "Public Blog Page",
+      url: "/blog",
+      icon: Globe,
+      isActive: true,
+    },
+  ],
 };
 
 export function AppSidebar({ ...props }) {
@@ -295,9 +330,16 @@ export function AppSidebar({ ...props }) {
 
   const userRole = sessionUser?.role ?? "FREELANCER";
 
+  const isSeoUser = (user) => {
+    if (!user) return false;
+    const roles = Array.isArray(user.roles) ? user.roles.map((r) => String(r).toUpperCase()) : [];
+    return roles.includes("SEO_TEAM") || roles.includes("BLOG_AUTHOR");
+  };
+
   // Determine which dashboard we're viewing based on URL path
   // This allows the switcher to work correctly
   const getActiveRole = () => {
+    if (isSeoUser(sessionUser)) return "SEO_TEAM";
     if (location.pathname.startsWith("/freelancer")) return "FREELANCER";
     if (location.pathname.startsWith("/client")) return "CLIENT";
     if (location.pathname.startsWith("/project-manager")) return "PROJECT_MANAGER";

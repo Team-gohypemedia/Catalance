@@ -9,6 +9,8 @@ import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 
 import ProfilePhotoCameraDialog from "@/components/common/ProfilePhotoCameraDialog";
+import gsap from "gsap";
+import AiAutofillModal from "../AiAutofillModal";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -155,9 +157,64 @@ const FreelancerBasicProfileSlide = ({
 }) => {
   const deviceInputRef = useRef(null);
   const resumeInputRef = useRef(null);
+  const slideContainerRef = useRef(null);
+  const resumeCardRef = useRef(null);
+  const resumeSparkleRef = useRef(null);
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [photoLoadError, setPhotoLoadError] = useState(false);
+
+  // GSAP Entrance & Attention Animation
+  useEffect(() => {
+    if (!slideContainerRef.current) return;
+    const ctx = gsap.context(() => {
+      // Main container smooth entrance
+      gsap.fromTo(
+        slideContainerRef.current,
+        { opacity: 0, y: 22, scale: 0.98 },
+        { opacity: 1, y: 0, scale: 1, duration: 0.6, ease: "power3.out" }
+      );
+
+      // AI Autofill CV Section popup highlight animation
+      if (resumeCardRef.current) {
+        const tl = gsap.timeline({ delay: 0.2 });
+        tl.fromTo(
+          resumeCardRef.current,
+          { opacity: 0, scale: 0.88, y: 16 },
+          {
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            duration: 0.65,
+            ease: "back.out(1.7)",
+          }
+        ).to(
+          resumeCardRef.current,
+          {
+            boxShadow: "0 0 24px rgba(234, 88, 12, 0.35)",
+            duration: 0.6,
+            yoyo: true,
+            repeat: 1,
+            ease: "power2.inOut",
+          },
+          "-=0.1"
+        );
+      }
+
+      // Sparkle rotation
+      if (resumeSparkleRef.current) {
+        gsap.to(resumeSparkleRef.current, {
+          rotation: 360,
+          duration: 9,
+          repeat: -1,
+          ease: "linear",
+        });
+      }
+    }, slideContainerRef);
+
+    return () => ctx.revert();
+  }, []);
+
   const content =
     onboardingContent || DEFAULT_FREELANCER_ONBOARDING_CONTENT;
   const resolvedFields = useMemo(
@@ -221,6 +278,18 @@ const FreelancerBasicProfileSlide = ({
     languageOptions,
     languageField?.placeholder || "Select language",
   );
+
+  const [isAutofillModalOpen, setIsAutofillModalOpen] = useState(false);
+
+  // Auto-open AI Autofill popup on initial page load if no resume is attached yet
+  useEffect(() => {
+    if (!hasResume) {
+      const timer = setTimeout(() => {
+        setIsAutofillModalOpen(true);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     setPhotoLoadError(false);
@@ -520,53 +589,57 @@ const FreelancerBasicProfileSlide = ({
         </div>
 
         <div
+          ref={resumeCardRef}
+          onClick={() => {
+            if (!hasResume && !isResumeAutofillRunning) {
+              setIsAutofillModalOpen(true);
+            }
+          }}
           className={cn(
-            "flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-[12px] border border-dashed border-primary/40 bg-primary/5 px-4 py-3 sm:px-5 sm:py-3.5",
+            "relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-[14px] border border-dashed border-primary/50 bg-gradient-to-r from-primary/10 via-primary/5 to-background px-4 py-3 sm:px-5 sm:py-3.5 shadow-sm hover:border-primary transition-all duration-300 cursor-pointer",
             fieldError && "border-destructive/70 bg-destructive/5",
           )}
         >
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+            <div
+              ref={resumeSparkleRef}
+              className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary shadow-inner"
+            >
               <Sparkles className="size-4" />
             </div>
             <div className="flex min-w-0 flex-col text-left">
-              <span className="truncate text-sm font-medium text-foreground">
-                {hasResume ? resumeLabel : "AI Autofill"}
-              </span>
-              <span className="truncate text-xs text-muted-foreground">
-                {hasResume ? "Resume attached" : resumeSupportingText}
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-sm font-bold text-foreground">
+                  {hasResume ? resumeLabel : "AI Autofill"}
+                </span>
+                {!hasResume && (
+                  <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                    Instant
+                  </span>
+                )}
+              </div>
+              <span className="truncate text-xs text-muted-foreground font-medium">
+                {hasResume ? "Resume attached & verified" : resumeSupportingText}
               </span>
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
-            <label className="inline-flex">
-              <input
-                ref={resumeInputRef}
-                type="file"
-                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                className="hidden"
-                disabled={isResumeAutofillRunning}
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) {
-                    onResumeSelect(file);
-                  }
-                  event.target.value = "";
-                  event.target.blur();
-                }}
-              />
-              <span className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90">
-                {isResumeAutofillRunning ? (
-                  <Loader2 className="size-3.5 animate-spin text-primary-foreground" />
-                ) : (
-                  <Upload className="size-3.5 text-primary-foreground" />
-                )}
-                {isResumeAutofillRunning
-                  ? field.loadingLabel || "Reading..."
-                  : field.browseLabel || "Browse"}
-              </span>
-            </label>
+          <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              disabled={isResumeAutofillRunning}
+              onClick={() => setIsAutofillModalOpen(true)}
+              className="inline-flex h-8 cursor-pointer items-center justify-center gap-2 rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 hover:scale-105 active:scale-95"
+            >
+              {isResumeAutofillRunning ? (
+                <Loader2 className="size-3.5 animate-spin text-primary-foreground" />
+              ) : (
+                <Upload className="size-3.5 text-primary-foreground" />
+              )}
+              {isResumeAutofillRunning
+                ? field.loadingLabel || "Reading..."
+                : field.browseLabel || "Browse"}
+            </button>
 
             {hasResume ? (
               <button
@@ -795,7 +868,10 @@ const FreelancerBasicProfileSlide = ({
   const remainingFields = visibleFields.filter((field) => !renderedFieldIds.has(field.id));
 
   return (
-    <section className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5 mt-[10px] mt-[20px] sm:mt-0">
+    <section
+      ref={slideContainerRef}
+      className="mx-auto flex min-h-[68vh] w-full max-w-4xl flex-col items-center justify-center gap-5 mt-[10px] mt-[20px] sm:mt-0"
+    >
       <div className="w-full max-w-2xl text-center">
         <h1 className="mb-1 text-xl font-medium text-foreground md:mb-2 md:text-4xl lg:mb-2 lg:text-5xl">
           {renderTitle(slideTitle)}
@@ -847,6 +923,13 @@ const FreelancerBasicProfileSlide = ({
           </div>
         ) : null}
       </div>
+
+      <AiAutofillModal
+        isOpen={isAutofillModalOpen}
+        onClose={() => setIsAutofillModalOpen(false)}
+        onFileSelect={onResumeSelect}
+        isProcessing={isResumeAutofillRunning}
+      />
     </section>
   );
 };
