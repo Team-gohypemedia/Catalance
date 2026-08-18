@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import BookOpen from "lucide-react/dist/esm/icons/book-open";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
@@ -81,8 +81,22 @@ const BlogManage = () => {
   const [loginPassword, setLoginPassword] = useState("");
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  const isAuthorizedAuthor = useMemo(() => {
+    if (!user) return false;
+    const role = String(user?.role || "").toUpperCase();
+    const roles = Array.isArray(user?.roles) ? user.roles.map((r) => String(r).toUpperCase()) : [];
+    return (
+      role === "ADMIN" ||
+      role === "SEO_TEAM" ||
+      role === "BLOG_AUTHOR" ||
+      roles.includes("ADMIN") ||
+      roles.includes("SEO_TEAM") ||
+      roles.includes("BLOG_AUTHOR")
+    );
+  }, [user]);
+
   const loadArticles = async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !isAuthorizedAuthor) return;
     setLoading(true);
     try {
       const res = await authFetch("/blogs/manage/all");
@@ -97,12 +111,12 @@ const BlogManage = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && isAuthorizedAuthor) {
       void loadArticles();
     } else {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isAuthorizedAuthor]);
 
   const handleInlineLogin = async (e) => {
     e.preventDefault();
@@ -112,8 +126,23 @@ const BlogManage = () => {
         email: loginEmail.trim().toLowerCase(),
         password: loginPassword
       });
-      setAuthSession(authPayload?.user, authPayload?.accessToken);
-      toast.success(`Welcome back, ${authPayload?.user?.fullName || "Author"}!`);
+      const loggedUser = authPayload?.user;
+      const role = String(loggedUser?.role || "").toUpperCase();
+      const roles = Array.isArray(loggedUser?.roles) ? loggedUser.roles.map((r) => String(r).toUpperCase()) : [];
+      const hasAccess = (
+        role === "ADMIN" ||
+        role === "SEO_TEAM" ||
+        role === "BLOG_AUTHOR" ||
+        roles.includes("ADMIN") ||
+        roles.includes("SEO_TEAM") ||
+        roles.includes("BLOG_AUTHOR")
+      );
+      if (!hasAccess) {
+        toast.error("Access denied. Only Administrators and authorized blog authors can manage articles. Please use admin credentials.");
+        return;
+      }
+      setAuthSession(loggedUser, authPayload?.accessToken);
+      toast.success(`Welcome back, ${loggedUser?.fullName || "Author"}!`);
     } catch (err) {
       toast.error(err?.message || "Sign in failed. Check your email and password.");
     } finally {
@@ -122,6 +151,10 @@ const BlogManage = () => {
   };
 
   const handleDeleteArticle = async (id, title) => {
+    if (!isAuthorizedAuthor) {
+      toast.error("You are not authorized to delete articles.");
+      return;
+    }
     if (!window.confirm(`Are you sure you want to delete "${title}"?`)) return;
     setDeletingId(id);
     try {
@@ -167,28 +200,25 @@ const BlogManage = () => {
     featured: articles.filter((b) => b.featured).length
   }), [articles]);
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !isAuthorizedAuthor) {
     return (
       <main className="min-h-[85vh] pt-28 pb-16 bg-background text-foreground flex items-center justify-center p-4">
-        <SeoMeta title="Author Sign In | Catalance Blog" description="Sign in to view and manage your articles." />
+        <SeoMeta title="Admin & Author Sign In | Catalance Blog" description="Sign in with admin credentials to manage articles." />
         <Card className="w-full max-w-md rounded-[2.25rem] border border-border shadow-2xl overflow-hidden">
-          <CardHeader className="text-center space-y-3 pb-6 pt-8 px-6">
+          <CardHeader className="text-center space-y-2 pb-6 pt-8 px-6">
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-              <PenSquare className="h-7 w-7" />
+              <Lock className="h-7 w-7" />
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight">Author Sign In</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Sign in with your Catalance account to manage your live and draft articles.
-            </CardDescription>
+            <CardTitle className="text-2xl font-bold tracking-tight">Admin & Author Sign In</CardTitle>
           </CardHeader>
           <CardContent className="px-6 pb-8">
             <form onSubmit={handleInlineLogin} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="login-email" className="text-xs font-semibold">Email ID</Label>
+                <Label htmlFor="login-email" className="text-xs font-semibold">Admin / Author Email ID</Label>
                 <Input
                   id="login-email"
                   type="email"
-                  placeholder="author@catalance.in"
+                  placeholder="admin@catalance.in"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
                   className="rounded-2xl h-11 text-xs"
@@ -209,12 +239,15 @@ const BlogManage = () => {
               </div>
               <Button type="submit" className="w-full h-11 rounded-full text-xs font-bold gap-2 mt-2 shadow-sm" disabled={isLoggingIn}>
                 {isLoggingIn ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-                Sign In to View Articles
+                Sign In with Admin Credentials
               </Button>
             </form>
-            <div className="mt-6 border-t border-border pt-4 text-center">
-              <Link to="/blog" className="text-xs text-muted-foreground hover:text-foreground">
-                &larr; Back to Public Blog
+            <div className="mt-6 border-t border-border pt-4 flex items-center justify-between text-xs text-muted-foreground">
+              <Link to="/blog" className="hover:text-foreground">
+                &larr; Public Blog
+              </Link>
+              <Link to="/" className="hover:text-foreground">
+                Go to Home &rarr;
               </Link>
             </div>
           </CardContent>

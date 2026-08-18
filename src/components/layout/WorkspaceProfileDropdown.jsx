@@ -159,7 +159,14 @@ const WorkspaceProfileDropdown = ({
               to={profilePath}
               onSelect={closeDropdown}
             />
-            {user?.role === "ADMIN" ? (
+            {Boolean(
+              user?.role === "ADMIN" ||
+              user?.role === "SEO_TEAM" ||
+              user?.role === "BLOG_AUTHOR" ||
+              user?.roles?.includes("ADMIN") ||
+              user?.roles?.includes("SEO_TEAM") ||
+              user?.roles?.includes("BLOG_AUTHOR")
+            ) ? (
               <ActionLink
                 icon={Newspaper}
                 label="Write / Upload Blog"

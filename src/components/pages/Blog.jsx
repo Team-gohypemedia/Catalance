@@ -6,7 +6,6 @@ import Calendar from "lucide-react/dist/esm/icons/calendar";
 import Clock from "lucide-react/dist/esm/icons/clock";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Newspaper from "lucide-react/dist/esm/icons/newspaper";
-import PenSquare from "lucide-react/dist/esm/icons/pen-square";
 import Search from "lucide-react/dist/esm/icons/search";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
@@ -185,12 +184,6 @@ const Blog = () => {
             <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
               Try adjusting your search terms or category filter to find published articles.
             </p>
-            <Button asChild className="mt-6 rounded-full text-xs font-bold px-6">
-              <Link to="/blog/write">
-                <PenSquare className="h-4 w-4 mr-1.5" />
-                Write a New Article
-              </Link>
-            </Button>
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
