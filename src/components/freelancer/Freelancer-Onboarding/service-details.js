@@ -963,6 +963,7 @@ const resolveServiceVisualKind = (entry) => {
 
 export const isServiceVisualsUploadValid = (mediaFiles = []) => {
   const entries = Array.isArray(mediaFiles) ? mediaFiles : [];
+  if (entries.length === 0) return true;
   let imageCount = 0;
   let videoCount = 0;
 
@@ -983,7 +984,6 @@ export const isServiceVisualsUploadValid = (mediaFiles = []) => {
   }
 
   return (
-    entries.length > 0 &&
     imageCount <= 2 &&
     videoCount <= 1
   );
@@ -1001,10 +1001,12 @@ const buildServiceVisualsValidationErrors = (normalizedDraft, fields = []) => {
 
   if (
     mediaField?.visible !== false &&
-    mediaField?.required !== false &&
+    mediaField?.required === true &&
     !hasValidUpload
   ) {
     errors.mediaFiles = "Please add up to 2 images and 1 video before continuing.";
+  } else if (!hasValidUpload) {
+    errors.mediaFiles = "You can add up to 2 images and 1 video.";
   }
 
   return {

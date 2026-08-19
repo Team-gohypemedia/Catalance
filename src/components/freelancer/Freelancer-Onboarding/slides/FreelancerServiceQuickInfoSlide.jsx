@@ -13,6 +13,7 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import Tag from "lucide-react/dist/esm/icons/tag";
 import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
 import Lock from "lucide-react/dist/esm/icons/lock";
+import Search from "lucide-react/dist/esm/icons/search";
 import { toast } from "sonner";
 import { resolveAvatarUrl } from "@/components/freelancer/Freelancer-Profile/freelancerProfileUtils";
 import {
@@ -482,7 +483,7 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-foreground")}>Uploaded Media ({totalCount}/{maxTotal})</p>
+        <p className={cn(ONBOARDING_FIELD_LABEL_CLASS, "text-foreground")}>Uploaded Media (Optional) ({totalCount}/{maxTotal})</p>
       </div>
 
       {/* Empty State */}
@@ -537,8 +538,8 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
             )}
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">Upload images or video</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
+            <p className="text-sm font-semibold text-foreground">Upload images or video (Optional)</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.</p>
           </div>
         </div>
       ) : (
@@ -606,7 +607,7 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
       {uploadError && <p className="text-xs text-destructive">{uploadError}</p>}
 
       <p className={cn("text-xs text-center", hasError ? "text-destructive/80" : "text-muted-foreground")}>
-        Upload 1 file to start, then add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total.
+        Add up to {MAX_IMAGES} images and {MAX_VIDEOS} video total (optional).
       </p>
 
       {/* Hidden File Inputs */}
@@ -690,6 +691,8 @@ const FreelancerServiceQuickInfoSlide = ({
   const [isServiceToolsLoading, setIsServiceToolsLoading] = useState(false);
   const [serviceToolFetchError, setServiceToolFetchError] = useState("");
   const [isToolsOpen, setIsToolsOpen] = useState(false);
+  const [serviceToolSearchQuery, setServiceToolSearchQuery] = useState("");
+  const serviceToolsContainerRef = useRef(null);
   const toolOptionsCacheRef = useRef(new Map());
   const toolFetchRequestIdRef = useRef(0);
 
@@ -788,6 +791,30 @@ const FreelancerServiceQuickInfoSlide = ({
     () => new Set(selectedServiceToolIds),
     [selectedServiceToolIds],
   );
+  const filteredServiceToolOptions = useMemo(() => {
+    const query = serviceToolSearchQuery.trim().toLowerCase();
+    if (!query) return serviceToolOptions;
+    return serviceToolOptions.filter(
+      (opt) =>
+        opt.label.toLowerCase().includes(query) ||
+        (opt.name && opt.name.toLowerCase().includes(query)),
+    );
+  }, [serviceToolOptions, serviceToolSearchQuery]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        serviceToolsContainerRef.current &&
+        !serviceToolsContainerRef.current.contains(event.target)
+      ) {
+        setIsToolsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   const resolvedServiceKey = useMemo(
     () =>
       resolveServiceKey(
@@ -1166,6 +1193,7 @@ const FreelancerServiceQuickInfoSlide = ({
     });
   };
 
+
   const renderInputField = (field, value, error, onChange, { numeric = false } = {}) => (
     <div className="space-y-0">
       <label className={cn(ONBOARDING_FIELD_LABEL_CLASS, "mb-1 block")}>
@@ -1317,6 +1345,7 @@ const FreelancerServiceQuickInfoSlide = ({
                   </div>
                 )}
 
+                {/* Service Tools (Optional) */}
                 {(isServiceToolsLoading || serviceToolFetchError || serviceToolOptions.length > 0) && (
                   <div className="space-y-2">
                     <div className="space-y-1">
@@ -1339,71 +1368,98 @@ const FreelancerServiceQuickInfoSlide = ({
                         ))}
                       </div>
                     ) : serviceToolOptions.length > 0 ? (
-                      <div className="space-y-3">
-                        <Popover open={isToolsOpen} onOpenChange={setIsToolsOpen}>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
+                      <div className="space-y-3 relative" ref={serviceToolsContainerRef}>
+                        {/* Interactive Search & Select Trigger */}
+                        <div
+                          className={cn(
+                            "relative flex h-11 w-full items-center rounded-xl border bg-card px-3.5 shadow-2xs transition-all",
+                            isToolsOpen
+                              ? "border-primary ring-2 ring-primary/20"
+                              : "border-border hover:border-primary/40"
+                          )}
+                        >
+                          <Search className="h-4 w-4 text-muted-foreground shrink-0 mr-2" aria-hidden="true" />
+                          <input
+                            type="text"
+                            value={serviceToolSearchQuery}
+                            onChange={(e) => {
+                              setServiceToolSearchQuery(e.target.value);
+                              if (!isToolsOpen) setIsToolsOpen(true);
+                            }}
+                            onFocus={() => setIsToolsOpen(true)}
+                            placeholder="Search and select tools..."
+                            className="h-full w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIsToolsOpen((prev) => !prev)}
+                            className="p-1 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                            aria-label="Toggle tool options"
+                          >
+                            <ChevronDown
                               className={cn(
-                                "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
-                                isToolsOpen ? "border-primary/50 ring-1 ring-primary/20" : "border-border"
+                                "h-4 w-4 transition-transform duration-200",
+                                isToolsOpen && "rotate-180"
                               )}
-                            >
-                              <span className="text-muted-foreground">Search and select tools...</span>
-                              <ChevronDown className="h-4 w-4 opacity-50" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                            <Command>
-                              <CommandInput placeholder="Search tools..." />
-                              <CommandList>
-                                <CommandEmpty>No tools found.</CommandEmpty>
-                                <CommandGroup>
-                                  {serviceToolOptions.map((toolOption) => {
-                                    const isSelected = selectedServiceToolIdSet.has(toolOption.id);
-                                    return (
-                                      <CommandItem
-                                        key={toolOption.id}
-                                        value={toolOption.label}
-                                        onSelect={() => {
-                                          handleServiceToolToggle(toolOption);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            isSelected ? "opacity-100 text-primary" : "opacity-0"
-                                          )}
-                                        />
-                                        {toolOption.label}
-                                      </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                            />
+                          </button>
+                        </div>
+
+                        {/* Full-width Dropdown Options attached directly underneath */}
+                        {isToolsOpen && (
+                          <div
+                            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-2xl shadow-black/15 dark:shadow-black/50 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {filteredServiceToolOptions.length === 0 ? (
+                              <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                                No tools found.
+                              </div>
+                            ) : (
+                              filteredServiceToolOptions.map((toolOption) => {
+                                const isSelected = selectedServiceToolIdSet.has(toolOption.id);
+                                return (
+                                  <button
+                                    key={toolOption.id}
+                                    type="button"
+                                    onClick={() => handleServiceToolToggle(toolOption)}
+                                    className={cn(
+                                      "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
+                                      isSelected
+                                        ? "bg-primary/10 text-primary font-medium"
+                                        : "text-foreground hover:bg-muted"
+                                    )}
+                                  >
+                                    <span className="truncate min-w-0 flex-1">{toolOption.label}</span>
+                                    {isSelected ? (
+                                      <Check className="ml-2 h-4 w-4 text-primary shrink-0" />
+                                    ) : (
+                                      <span className="ml-2 h-4 w-4 rounded border border-border bg-background shrink-0" />
+                                    )}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
 
                         {/* Selected Pills */}
                         {selectedServiceToolIds.length > 0 && (
-                          <div className="flex flex-wrap gap-2 pt-1">
+                          <div className="flex flex-wrap gap-1.5 pt-1">
                             {selectedServiceToolIds.map((toolId) => {
-                              const toolOption = serviceToolOptions.find(opt => opt.id === toolId);
+                              const toolOption = serviceToolOptions.find((opt) => opt.id === toolId);
                               if (!toolOption) return null;
                               return (
                                 <div
                                   key={toolId}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/10 px-2.5 text-xs font-medium text-primary shadow-2xs"
                                 >
                                   <span>{toolOption.label}</span>
                                   <button
                                     type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleServiceToolToggle(toolOption);
-                                    }}
-                                    className="ml-1 rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                                    onClick={() => handleServiceToolToggle(toolOption)}
+                                    className="rounded-md p-0.5 text-primary/70 hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer"
+                                    aria-label={`Remove ${toolOption.label}`}
                                   >
                                     <X className="h-3 w-3" />
                                   </button>
@@ -1420,7 +1476,6 @@ const FreelancerServiceQuickInfoSlide = ({
                     ) : null}
                   </div>
                 )}
-
                 {/* Service Description */}
                 {pricingFieldMap.description?.visible !== false && (
                   <div className="space-y-1">
@@ -1583,7 +1638,7 @@ const FreelancerServiceQuickInfoSlide = ({
                 number="3"
                 icon={LayoutGrid}
                 title="Enhance your service"
-                description="Add media for better visibility and trust."
+                description="Add media for better visibility and trust (Optional)."
                 isCollapsible
                 isExpanded={expandedSections[3]}
                 onToggle={() => toggleSection(3)}

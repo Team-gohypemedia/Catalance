@@ -170,10 +170,8 @@ describe("service step validation", () => {
     ).toBe("Please enter a starting price.");
   });
 
-  it("requires media before continuing visuals", () => {
-    expect(getServiceStepValidationMessage({}, "serviceVisuals")).toBe(
-      "Please add up to 2 images and 1 video before continuing.",
-    );
+  it("allows empty media for optional visuals", () => {
+    expect(getServiceStepValidationMessage({}, "serviceVisuals")).toBe("");
   });
 
   it("accepts a single image before continuing visuals", () => {

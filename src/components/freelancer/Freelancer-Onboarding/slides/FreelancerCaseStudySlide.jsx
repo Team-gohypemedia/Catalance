@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Link2 from "lucide-react/dist/esm/icons/link-2";
+import Eye from "lucide-react/dist/esm/icons/eye";
 import Info from "lucide-react/dist/esm/icons/info";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
@@ -1071,227 +1072,219 @@ const FreelancerCaseStudySlide = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeInOut" }}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 text-foreground"
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 dark:bg-black/75 backdrop-blur-sm p-4 text-foreground"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 24 }}
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 24 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{
                 type: "spring",
-                stiffness: 280,
-                damping: 26,
-                mass: 0.9
+                stiffness: 320,
+                damping: 28,
               }}
-              className="relative w-full max-w-[760px] md:w-[70%] lg:w-[48vw] max-h-[80vh] md:max-h-[72vh] flex flex-col rounded-3xl border border-border bg-card p-4 shadow-[0_28px_100px_rgba(0,0,0,0.16)] dark:shadow-[0_28px_100px_rgba(0,0,0,0.45)] overflow-hidden"
+              className="relative w-full max-w-[480px] max-h-[92vh] overflow-y-auto rounded-2xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#09090b] p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_25px_70px_rgba(0,0,0,0.85)] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden flex flex-col justify-between"
             >
-              
               {/* Close Button */}
               <button
                 onClick={handleCloseModal}
-                className="absolute right-4 top-4 p-2 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer z-10"
+                className="absolute right-3.5 top-3.5 sm:right-4 sm:top-4 size-7 sm:size-8 rounded-full bg-slate-100 dark:bg-white/10 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/20 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer z-20"
                 aria-label="Close dialog"
               >
                 <X className="h-4 w-4" />
               </button>
 
-              {/* Modal Title */}
-              <div className="text-center mb-2 shrink-0 pr-8">
-                <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                  Get Discovered. Rank Higher.
-                </h2>
-              </div>
+              <div>
+                {/* ━━━ Header Section: Rocket + Title + 3D Podium ━━━ */}
+                <div className="flex items-start justify-between gap-2 pt-0.5">
+                  <div className="flex-1 min-w-0 pr-1">
+                    <span className="text-2xl sm:text-3xl block mb-1 select-none" role="img" aria-label="Rocket">
+                      🚀
+                    </span>
+                    <h2 className="text-2xl sm:text-[26px] font-black tracking-tight text-slate-900 dark:text-white leading-[1.1]">
+                      Stand Out.
+                      <br />
+                      <span className="text-primary">Rank Higher.</span>
+                    </h2>
+                    <p className="text-xs sm:text-[13px] text-slate-500 dark:text-slate-400 mt-1.5 leading-snug">
+                      Freelancers with case studies get more visibility and win trust.
+                    </p>
+                  </div>
 
-              {/* Scrollable Content */}
-              <div 
-                ref={infoModalScrollRef}
-                className="flex-1 overflow-y-auto pr-1 py-1 space-y-3"
-                style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.15) transparent' }}
-              >
-                {/* Modal Grid Content */}
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
-                  
-                  {/* Left Column: Top Rated Freelancer list */}
-                  <div className="md:col-span-6 bg-muted/40 rounded-2xl p-3 border border-border/50 space-y-1.5 flex flex-col justify-center order-1 md:order-1">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-base">👑</span>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Top Rated Freelancers
+                  {/* 3D Podium Graphic (Transparent PNG) */}
+                  <div className="shrink-0 -mr-1 -mt-2">
+                    <img
+                      src="/assets/onboarding/podium-leaderboard.png"
+                      alt="Top Rated Podium"
+                      className="w-32 sm:w-36 h-auto object-contain select-none pointer-events-none drop-shadow-md"
+                    />
+                  </div>
+                </div>
+
+                {/* ━━━ Top Rated Freelancers Leaderboard Card ━━━ */}
+                <div className="mt-3.5 rounded-xl border border-slate-100 dark:border-white/[0.08] bg-slate-50/70 dark:bg-[#131316] p-2.5 sm:p-3 space-y-1.5">
+                  <div className="flex items-center gap-1.5 mb-1 px-1">
+                    <div className="size-4.5 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center text-xs">
+                      🏆
+                    </div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                      Top Rated Freelancers
+                    </span>
+                  </div>
+
+                  {/* Row 1: Your Profile (Highlighted Active Row - Yellow Theme) */}
+                  <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg border border-primary/40 bg-gradient-to-r from-primary/15 via-primary/10 to-transparent dark:from-primary/20 dark:via-primary/10 dark:to-transparent shadow-2xs">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className="text-xs sm:text-sm font-black text-primary w-3.5 shrink-0">1</span>
+                      <div className="relative shrink-0">
+                        <img
+                          src="/assets/onboarding/top-rated-avatar.png"
+                          alt="Your Profile"
+                          className="size-7 sm:size-8 rounded-full object-cover border border-primary/50 shadow-2xs"
+                        />
+                        <span className="absolute -top-1.5 -right-1 text-[11px] select-none rotate-[15deg]">
+                          👑
+                        </span>
+                      </div>
+                      <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                        Your Profile
+                      </span>
+                      <span className="shrink-0 px-1.5 py-0.5 rounded border border-primary/40 bg-primary/20 text-[8px] sm:text-[9px] font-bold tracking-wider text-primary uppercase">
+                        TOP RATED
                       </span>
                     </div>
 
-                    {/* Row 1: Your Profile (Highlighted) */}
-                    <div className="flex items-center justify-between gap-1.5 py-1.5 px-2 rounded-xl border border-primary/45 bg-primary/5 dark:bg-primary/10 shadow-sm min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-xs font-bold text-primary shrink-0">1</span>
-                        {user?.avatar || user?.profilePhoto || user?.profileDetails?.identity?.profilePhoto ? (
-                          <img
-                            src={user?.avatar || user?.profilePhoto || user?.profileDetails?.identity?.profilePhoto}
-                            alt=""
-                            className="size-6 rounded-full object-cover shrink-0"
-                          />
-                        ) : (
-                          <div className="size-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                            <span className="text-[9px] font-semibold text-primary">YP</span>
-                          </div>
-                        )}
-                        <span className="text-xs font-semibold truncate text-foreground min-w-0 flex-1">Your Profile</span>
-                        <span className="shrink-0 bg-primary/10 text-primary border border-primary/20 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider">
-                          Top Rated
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
-                        <span className="text-amber-500">★</span>
-                        <span>5.0</span>
-                        <span className="text-[10px] text-muted-foreground font-normal ml-0.5">(128)</span>
-                      </div>
+                    <div className="flex items-center gap-1 text-xs font-bold text-slate-900 dark:text-white shrink-0">
+                      <span className="text-amber-400 text-sm leading-none">★</span>
+                      <span>5.0</span>
                     </div>
-
-                    {/* Row 2: Dummy Freelancer */}
-                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-xs font-bold text-muted-foreground shrink-0">2</span>
-                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="h-1 w-12 bg-muted-foreground/30 rounded" />
-                          <div className="h-1 w-8 bg-muted-foreground/20 rounded" />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
-                        <span className="text-amber-500">★</span>
-                        <span>4.9</span>
-                      </div>
-                    </div>
-
-                    {/* Row 3: Dummy Freelancer */}
-                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-xs font-bold text-muted-foreground shrink-0">3</span>
-                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="h-1 w-16 bg-muted-foreground/30 rounded" />
-                          <div className="h-1 w-6 bg-muted-foreground/20 rounded" />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
-                        <span className="text-amber-500">★</span>
-                        <span>4.8</span>
-                      </div>
-                    </div>
-
-                    {/* Row 4: Dummy Freelancer */}
-                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-xs font-bold text-muted-foreground shrink-0">4</span>
-                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="h-1 w-10 bg-muted-foreground/30 rounded" />
-                          <div className="h-1 w-8 bg-muted-foreground/20 rounded" />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
-                        <span className="text-amber-500">★</span>
-                        <span>4.7</span>
-                      </div>
-                    </div>
-
-                    {/* Row 5: Dummy Freelancer */}
-                    <div className="flex items-center justify-between gap-1.5 py-1 px-2 rounded-xl opacity-60 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-xs font-bold text-muted-foreground shrink-0">5</span>
-                        <div className="size-6 rounded-full bg-muted flex items-center justify-center shrink-0" />
-                        <div className="space-y-0.5 min-w-0 flex-1">
-                          <div className="h-1 w-12 bg-muted-foreground/30 rounded" />
-                          <div className="h-1 w-8 bg-muted-foreground/20 rounded" />
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-0.5 shrink-0 text-xs font-semibold text-foreground">
-                        <span className="text-amber-500">★</span>
-                        <span>4.6</span>
-                      </div>
-                    </div>
-
                   </div>
 
-                  {/* Right Column: Case study info points */}
-                  <div className="md:col-span-6 space-y-3 flex flex-col justify-between order-2 md:order-2">
-                    <div>
-                      <h3 className="text-sm md:text-base font-bold text-foreground whitespace-nowrap md:whitespace-normal">
-                        Complete Case Studies, <span className="text-primary">Get More Visibility</span>
-                      </h3>
-                      <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
-                        Freelancers with complete case studies are more likely to rank higher and win client trust.
+                  {/* Rows 2 to 5 (Dummy Skeleton Rows) */}
+                  {[
+                    { rank: 2, rating: "4.9", barWidth: "w-28 sm:w-36" },
+                    { rank: 3, rating: "4.8", barWidth: "w-24 sm:w-28" },
+                    { rank: 4, rating: "4.7", barWidth: "w-20 sm:w-24" },
+                    { rank: 5, rating: "4.6", barWidth: "w-16 sm:w-20" },
+                  ].map((row) => (
+                    <div
+                      key={`top-ranked-${row.rank}`}
+                      className="flex items-center justify-between gap-2 px-2.5 py-0.5 rounded-md opacity-60 dark:opacity-40"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 w-3.5 shrink-0">
+                          {row.rank}
+                        </span>
+                        <div className="size-5.5 sm:size-6 rounded-full bg-slate-200 dark:bg-white/10 shrink-0" />
+                        <div className={cn("h-1.5 bg-slate-200 dark:bg-white/10 rounded-full", row.barWidth)} />
+                      </div>
+                      <div className="flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-400 shrink-0">
+                        <span className="text-amber-400 text-xs">★</span>
+                        <span>{row.rating}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ━━━ Why Case Studies Matter Section ━━━ */}
+                <div className="mt-3.5">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <span className="text-amber-400 font-bold text-xs sm:text-sm tracking-tighter select-none">ˏˋ</span>
+                    <h3 className="text-xs sm:text-[13px] font-extrabold text-slate-900 dark:text-white tracking-tight">
+                      Why Case Studies Matter
+                    </h3>
+                    <span className="text-amber-400 font-bold text-xs sm:text-sm tracking-tighter select-none">ˎˊ</span>
+                  </div>
+
+                  {/* 3 Value Prop Cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Card 1: More Visibility */}
+                    <div className="rounded-xl border border-purple-100 dark:border-purple-500/20 bg-gradient-to-b from-purple-50/60 to-white dark:from-purple-950/25 dark:to-[#131316] p-2 text-center flex flex-col items-center justify-start min-h-[96px] shadow-2xs">
+                      <div className="size-7 sm:size-8 rounded-full bg-[#8b5cf6] text-white flex items-center justify-center shadow-xs mb-1 shrink-0">
+                        <Eye className="size-3.5 sm:size-4 stroke-[2.5]" />
+                      </div>
+                      <h4 className="text-[10px] sm:text-[11px] font-bold text-[#6d28d9] dark:text-purple-300 leading-tight">
+                        More Visibility
+                      </h4>
+                      <p className="text-[8.5px] sm:text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        Rank higher in search and marketplace
                       </p>
                     </div>
 
-                    {/* Features */}
-                    <div className="space-y-2.5 pt-0.5">
-                      {/* Feature 1 */}
-                      <div className="flex gap-2.5 items-start">
-                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <TrendingUp className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold text-foreground">Higher Visibility</h4>
-                          <p className="text-[10px] text-muted-foreground leading-normal">
-                            Better rankings in search results and marketplace.
-                          </p>
-                        </div>
+                    {/* Card 2: Build Trust */}
+                    <div className="rounded-xl border border-blue-100 dark:border-blue-500/20 bg-gradient-to-b from-blue-50/60 to-white dark:from-blue-950/25 dark:to-[#131316] p-2 text-center flex flex-col items-center justify-start min-h-[96px] shadow-2xs">
+                      <div className="size-7 sm:size-8 rounded-full bg-[#3b82f6] text-white flex items-center justify-center shadow-xs mb-1 shrink-0">
+                        <ShieldCheck className="size-3.5 sm:size-4 stroke-[2.5]" />
                       </div>
-
-                      {/* Feature 2 */}
-                      <div className="flex gap-2.5 items-start">
-                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold text-foreground">Build Trust</h4>
-                          <p className="text-[10px] text-muted-foreground leading-normal">
-                            Clients feel more confident hiring proven professionals.
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Feature 3 */}
-                      <div className="flex gap-2.5 items-start">
-                        <div className="flex size-7 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <Briefcase className="h-3.5 w-3.5" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <h4 className="text-xs font-bold text-foreground">Win More Projects</h4>
-                          <p className="text-[10px] text-muted-foreground leading-normal">
-                            Strong case studies lead to more inquiries and successful projects.
-                          </p>
-                        </div>
-                      </div>
+                      <h4 className="text-[10px] sm:text-[11px] font-bold text-[#1d4ed8] dark:text-blue-300 leading-tight">
+                        Build Trust
+                      </h4>
+                      <p className="text-[8.5px] sm:text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        Clients feel confident hiring proven experts
+                      </p>
                     </div>
 
+                    {/* Card 3: Win More Projects */}
+                    <div className="rounded-xl border border-emerald-100 dark:border-emerald-500/20 bg-gradient-to-b from-emerald-50/60 to-white dark:from-emerald-950/25 dark:to-[#131316] p-2 text-center flex flex-col items-center justify-start min-h-[96px] shadow-2xs">
+                      <div className="size-7 sm:size-8 rounded-full bg-[#10b981] text-white flex items-center justify-center shadow-xs mb-1 shrink-0">
+                        <TrendingUp className="size-3.5 sm:size-4 stroke-[2.5]" />
+                      </div>
+                      <h4 className="text-[10px] sm:text-[11px] font-bold text-[#047857] dark:text-emerald-300 leading-tight">
+                        Win More Projects
+                      </h4>
+                      <p className="text-[8.5px] sm:text-[9.5px] text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
+                        More inquiries and successful projects
+                      </p>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Tip Box */}
-                <div className="rounded-xl border border-primary/10 bg-primary/5 p-2 flex gap-2 items-start">
-                  <span className="text-xs shrink-0">💡</span>
-                  <p className="text-[10px] text-foreground leading-normal">
-                    <span className="font-semibold">Tip:</span> Add detailed case studies with outcomes, screenshots, and results for best impact.
-                  </p>
+              {/* ━━━ Footer Section: CTA Button + Arrow + 3D Folder ━━━ */}
+              <div className="mt-3.5 pt-2 flex items-center justify-between gap-2 relative">
+                <div className="flex-1">
+                  <button
+                    onClick={handleCloseModal}
+                    className="h-10 sm:h-11 px-5 sm:px-6 rounded-xl bg-gradient-to-r from-[#f97316] to-[#ea580c] dark:from-primary dark:to-primary text-white dark:text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-[0_6px_20px_rgba(249,115,22,0.35)] dark:shadow-[0_6px_20px_rgba(249,217,73,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                  >
+                    <div className="size-5 rounded-full bg-white/25 dark:bg-black/15 flex items-center justify-center text-white dark:text-black shrink-0">
+                      <Plus className="size-3.5 stroke-[3] stroke-white dark:stroke-black text-white dark:text-black" />
+                    </div>
+                    <span className="font-extrabold text-white dark:text-slate-950">
+                      Add Case Study
+                    </span>
+                  </button>
+                  <span className="text-[10px] sm:text-[11px] text-slate-400 dark:text-slate-400 mt-1.5 block">
+                    You can edit or update anytime.
+                  </span>
+                </div>
+
+                {/* Playful curved arrow */}
+                <svg
+                  className="w-9 h-7 text-primary/80 -mb-2 shrink-0 hidden sm:block select-none pointer-events-none"
+                  viewBox="0 0 48 32"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M4 8C14 4 28 8 36 24M36 24L36 16"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+
+                {/* 3D Case Study Folder (Transparent PNG) */}
+                <div className="shrink-0 -mb-1">
+                  <img
+                    src="/assets/onboarding/case-study-folder.png"
+                    alt="Case Study Folder"
+                    className="w-18 sm:w-20 h-auto object-contain select-none pointer-events-none drop-shadow-md"
+                  />
                 </div>
               </div>
-
-              {/* Start Button */}
-              <div className="mt-3 flex flex-col items-center justify-center border-t border-border pt-3 shrink-0">
-                <button
-                  onClick={handleCloseModal}
-                  className="inline-flex h-9 items-center justify-center rounded-xl bg-primary px-6 text-xs font-semibold text-white keep-white dark:text-black hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors cursor-pointer"
-                >
-                  Start Adding Case Studies
-                </button>
-                <span className="text-[9px] text-muted-foreground mt-1 text-center">
-                  You can edit or update case studies anytime.
-                </span>
-              </div>
-
             </motion.div>
           </motion.div>
         )}

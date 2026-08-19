@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
-import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import { createPortal } from "react-dom";
+import Sparkle from "lucide-react/dist/esm/icons/sparkle";
 import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 import gsap from "gsap";
@@ -80,7 +81,7 @@ export default function AiAutofillModal({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal((
     <div
       ref={backdropRef}
       className="fixed inset-0 z-[9990] flex items-center justify-center bg-transparent backdrop-blur-[2px] p-4 sm:p-6"
@@ -104,7 +105,7 @@ export default function AiAutofillModal({
         <div className="flex flex-col items-center text-center">
           {/* Sparkle Icon */}
           <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Sparkles className="h-7 w-7" />
+            <Sparkle className="h-7 w-7" />
           </div>
 
           <h3 className="text-2xl font-bold text-foreground sm:text-[26px]">
@@ -169,5 +170,5 @@ export default function AiAutofillModal({
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }

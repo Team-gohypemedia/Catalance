@@ -48,6 +48,7 @@ const CategoryMultiSelect = ({
   const [popupStyle, setPopupStyle] = useState(null);
   const [allPreFetchedTools, setAllPreFetchedTools] = useState({});
   const [requestingType, setRequestingType] = useState("");
+  const [expandedCategoryKeys, setExpandedCategoryKeys] = useState(() => new Set());
 
   const containerRef = useRef(null);
   const triggerRowRef = useRef(null);
@@ -615,6 +616,203 @@ const CategoryMultiSelect = ({
     );
   };
 
+  const toggleCategoryExpand = (categoryKey) => {
+    const key = String(categoryKey || "").trim();
+    if (!key) return;
+    setExpandedCategoryKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+    onActiveCategoryChange?.(key);
+  };
+
+  const getToolsForCategory = (option) => {
+    const subCatId =
+      toPositiveInteger(option?.subCategoryId) ||
+      (String(option?.value || "").startsWith("catalog:")
+        ? toPositiveInteger(String(option.value).split(":")[1])
+        : null) ||
+      toPositiveInteger(option?.value);
+
+    const fromProps = subCatId ? toolOptionsByCategory[String(subCatId)] : null;
+    const fromPreFetch =
+      allPreFetchedTools[option?.value] ||
+      (subCatId ? allPreFetchedTools[String(subCatId)] : null);
+    const tools =
+      Array.isArray(fromProps) && fromProps.length > 0
+        ? fromProps
+        : Array.isArray(fromPreFetch)
+          ? fromPreFetch
+          : [];
+
+    return tools
+      .map((tool) => ({
+        id: toPositiveInteger(tool?.id),
+        label: String(tool?.label || tool?.name || "").trim(),
+      }))
+      .filter((t) => t.id && t.label);
+  };
+
+  const getSuggestedSkillsForCategory = (optionValue) => {
+    const rawSkills = skillSuggestionsByCategory?.[optionValue];
+    return normalizeStringArray(
+      (Array.isArray(rawSkills) ? rawSkills : []).map(
+        (entry) => entry?.label || entry?.value || entry,
+      ),
+    );
+  };
+
+  const getSelectedForCategory = (categoryKey) => {
+    const currentSub = (
+      Array.isArray(selectedSubcategories) ? selectedSubcategories : []
+    ).find((sub) => getSubcategorySelectionKey(sub) === categoryKey);
+    const toolIds = (
+      Array.isArray(currentSub?.selectedToolIds) ? currentSub.selectedToolIds : []
+    )
+      .map((val) => toPositiveInteger(val))
+      .filter(Boolean);
+    const customSkills = normalizeStringArray(currentSub?.customSkillNames);
+    return { toolIds: new Set(toolIds), toolIdsList: toolIds, customSkills };
+  };
+
+  const handleToggleToolForCategory = (categoryKey, toolId) => {
+    const normalizedToolId = toPositiveInteger(toolId);
+    if (!categoryKey || !normalizedToolId || !onSubcategorySkillChange) return;
+    const currentSub = (
+      Array.isArray(selectedSubcategories) ? selectedSubcategories : []
+    ).find((sub) => getSubcategorySelectionKey(sub) === categoryKey);
+    const currentToolIds = (
+      Array.isArray(currentSub?.selectedToolIds)
+        ? currentSub.selectedToolIds
+        : []
+    )
+      .map((val) => toPositiveInteger(val))
+      .filter(Boolean);
+    const currentCustomSkills = normalizeStringArray(
+      currentSub?.customSkillNames,
+    );
+
+    const isSelected = currentToolIds.includes(normalizedToolId);
+    const nextToolIds = isSelected
+      ? currentToolIds.filter((id) => id !== normalizedToolId)
+      : [...currentToolIds, normalizedToolId];
+
+    if (!selectedSet.has(categoryKey) && !isSelected) {
+      onChange?.([...normalizedSelected, categoryKey]);
+    }
+
+    onSubcategorySkillChange(categoryKey, {
+      selectedToolIds: nextToolIds,
+      customSkillNames: currentCustomSkills,
+    });
+  };
+
+  const handleToggleCustomSkillForCategory = (categoryKey, skillName) => {
+    const normalizedSkill = String(skillName || "").trim();
+    if (!categoryKey || !normalizedSkill || !onSubcategorySkillChange) return;
+    const currentSub = (
+      Array.isArray(selectedSubcategories) ? selectedSubcategories : []
+    ).find((sub) => getSubcategorySelectionKey(sub) === categoryKey);
+    const currentToolIds = (
+      Array.isArray(currentSub?.selectedToolIds)
+        ? currentSub.selectedToolIds
+        : []
+    )
+      .map((val) => toPositiveInteger(val))
+      .filter(Boolean);
+    const currentCustomSkills = normalizeStringArray(
+      currentSub?.customSkillNames,
+    );
+
+    const isSelected = currentCustomSkills.some(
+      (s) => s.toLowerCase() === normalizedSkill.toLowerCase(),
+    );
+    const nextCustomSkills = isSelected
+      ? currentCustomSkills.filter(
+          (s) => s.toLowerCase() !== normalizedSkill.toLowerCase(),
+        )
+      : [...currentCustomSkills, normalizedSkill];
+
+    if (!selectedSet.has(categoryKey) && !isSelected) {
+      onChange?.([...normalizedSelected, categoryKey]);
+    }
+
+    onSubcategorySkillChange(categoryKey, {
+      selectedToolIds: currentToolIds,
+      customSkillNames: nextCustomSkills,
+    });
+  };
+
+  const handleInlineSkillSelect = (entry) => {
+    if (!entry) return;
+    const { categoryValue, toolId, label } = entry;
+    if (!categoryValue) return;
+
+    if (typeof toolId === "number") {
+      handleToggleToolForCategory(categoryValue, toolId);
+    } else if (typeof toolId === "string" && toolId.startsWith("custom-")) {
+      handleToggleCustomSkillForCategory(categoryValue, label);
+    } else if (label) {
+      handleToggleCustomSkillForCategory(categoryValue, label);
+    }
+  };
+
+  const filteredBrowseAccordionOptions = useMemo(() => {
+    const query = String(browseSearchQuery || "").trim().toLowerCase();
+    const customOptions = customSelections.map((opt) => ({ ...opt, isCustom: true }));
+    const allOptions = [...options, ...customOptions].filter(
+      (opt) => opt.value !== "_unassigned_skills_",
+    );
+
+    if (!query) {
+      return allOptions.map((opt) => ({
+        option: opt,
+        matchingTools: getToolsForCategory(opt),
+        matchingSuggested: getSuggestedSkillsForCategory(String(opt.value)),
+        isMatchBySkill: false,
+      }));
+    }
+
+    return allOptions
+      .map((opt) => {
+        const catLabel = String(opt?.label || "").toLowerCase();
+        const isCatMatch = catLabel.includes(query);
+        const tools = getToolsForCategory(opt);
+        const suggested = getSuggestedSkillsForCategory(String(opt.value));
+        const matchingTools = tools.filter((t) =>
+          t.label.toLowerCase().includes(query),
+        );
+        const matchingSuggested = suggested.filter((s) =>
+          s.toLowerCase().includes(query),
+        );
+        const isSkillMatch =
+          matchingTools.length > 0 || matchingSuggested.length > 0;
+
+        if (isCatMatch || isSkillMatch) {
+          return {
+            option: opt,
+            matchingTools: isCatMatch ? tools : matchingTools,
+            matchingSuggested: isCatMatch ? suggested : matchingSuggested,
+            isMatchBySkill: isSkillMatch,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+  }, [
+    options,
+    customSelections,
+    browseSearchQuery,
+    allPreFetchedTools,
+    toolOptionsByCategory,
+    skillSuggestionsByCategory,
+  ]);
+
   const handleToggleSuggestedSkill = (skillName) => {
     const normalizedSkillName = String(skillName || "").trim();
     if (!normalizedSkillName) return;
@@ -831,58 +1029,57 @@ const CategoryMultiSelect = ({
             const categorySkills = selectedSkillsByCategory.get(option.value) || [];
 
             return (
-              <div key={option.value} className="space-y-2">
-                {/* Category Breadcrumb Header matching Meta Ads Detailed Targeting */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-primary">
-                    <span className="truncate hover:underline cursor-pointer">{displayedServiceLabel}</span>
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-primary/70" aria-hidden="true" />
-                    <span className="truncate hover:underline cursor-pointer">{option.label}</span>
+              <div key={option.value} className="space-y-2 rounded-xl border border-border/50 bg-muted/[0.15] p-2.5 sm:p-3 transition-colors">
+                {/* Category Header */}
+                <div className="flex items-center justify-between gap-2 pb-1">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1 text-xs sm:text-sm font-semibold">
+                    <span className="text-muted-foreground truncate font-medium">{displayedServiceLabel}</span>
+                    <ChevronRight className="h-3 w-3 shrink-0 text-muted-foreground/50" aria-hidden="true" />
+                    <span className="text-foreground truncate font-semibold">{option.label}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => removeOption(option.value)}
-                    className="rounded-md px-1.5 py-0.5 text-[11px] font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
+                    className="shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 cursor-pointer whitespace-nowrap"
                     aria-label={`Remove ${option.label} category`}
                   >
-                    Remove {option.label}
+                    <span>Remove</span>
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
 
                 {/* Selected Skill Items */}
                 {categorySkills.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {categorySkills.map((entry) => (
                       <div
                         key={`${entry.categoryKey}-${entry.type}-${entry.value}`}
-                        className="inline-flex min-h-[38px] max-w-full items-center gap-2 rounded-xl border border-border/70 bg-card px-3.5 py-1.5 shadow-2xs transition-all hover:border-primary/40 hover:shadow-xs"
+                        className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border border-border/80 bg-card px-2.5 text-xs sm:text-sm font-medium text-foreground shadow-2xs transition-all hover:border-primary/40"
                       >
-                        <span className="truncate text-xs sm:text-sm font-medium text-foreground">
-                          {entry.label}
-                        </span>
+                        <span className="truncate">{entry.label}</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveSkillEntry(entry)}
-                          className="shrink-0 rounded-lg p-0.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30"
+                          className="shrink-0 rounded-md p-0.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30 cursor-pointer"
                           aria-label={`Remove ${entry.label}`}
                         >
-                          <X className="h-3.5 w-3.5" />
+                          <X className="h-3 w-3" />
                         </button>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="flex min-h-[40px] items-center justify-between rounded-xl border border-dashed border-border/70 bg-card/60 px-4 py-2 text-xs text-muted-foreground">
-                    <span>Choose a skill for this category below.</span>
+                  <div className="flex min-h-[36px] items-center justify-between rounded-lg border border-dashed border-border/70 bg-card/60 px-3 py-1.5 text-xs text-muted-foreground">
+                    <span className="truncate">Choose skills for this category.</span>
                     <button
                       type="button"
                       onClick={() => {
                         setIsBrowseOpen(true);
                         setShouldFocusBrowseSearch(true);
                       }}
-                      className="text-xs font-semibold text-primary hover:underline"
+                      className="shrink-0 text-xs font-semibold text-primary hover:underline ml-2 cursor-pointer"
                     >
-                      Select skills
+                      Browse skills
                     </button>
                   </div>
                 )}
@@ -934,26 +1131,26 @@ const CategoryMultiSelect = ({
             setSearchQuery("");
           }}
           className={cn(
-            "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+            "flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 cursor-pointer",
             isBrowseOpen
-              ? "bg-primary text-primary-foreground shadow-2xs"
+              ? "bg-primary !text-white shadow-2xs"
               : "text-foreground hover:bg-muted hover:text-primary",
           )}
           title="Browse all categories & skills"
           aria-expanded={isBrowseOpen}
           aria-haspopup="dialog"
         >
-          <span>Browse</span>
+          <span className={cn(isBrowseOpen ? "!text-white" : "")}>Browse</span>
           <ChevronDown
             className={cn(
               "h-3.5 w-3.5 transition-transform duration-200",
-              isBrowseOpen && "rotate-180",
+              isBrowseOpen ? "rotate-180 !text-white" : "",
             )}
           />
         </button>
 
-        {/* Inline search results dropdown */}
-        {isSearchOpen ? (
+        {/* Inline search results dropdown (when typing search query without browse mode) */}
+        {isSearchOpen && !isBrowseOpen ? (
           <div data-onboarding-popup="true" className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-60 overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-2xl shadow-black/15 subtle-scrollbar dark:shadow-black/50">
             {!hasSearchResults ? (
               <div className="space-y-3 px-4 py-3">
@@ -967,7 +1164,7 @@ const CategoryMultiSelect = ({
                         void submitMissingOptionRequest("category");
                       }}
                       disabled={Boolean(requestingType)}
-                      className="rounded-md border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-md border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                     >
                       {requestingType === "category" ? "Sending..." : `Request category "${normalizedSearchRequest}"`}
                     </button>
@@ -978,7 +1175,7 @@ const CategoryMultiSelect = ({
                         void submitMissingOptionRequest("skill");
                       }}
                       disabled={Boolean(requestingType)}
-                      className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+                      className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60 cursor-pointer"
                     >
                       {requestingType === "skill" ? "Sending..." : `Request skill "${normalizedSearchRequest}"`}
                     </button>
@@ -993,29 +1190,35 @@ const CategoryMultiSelect = ({
                       Skills
                     </p>
                     {searchResults.skills.map((entry) => {
-                      const parentEntry = (Array.isArray(selectedSubcategories)
-                        ? selectedSubcategories
-                        : []).find(
-                        (e) => getSubcategorySelectionKey(e) === entry.categoryValue,
+                      const parentEntry = (Array.isArray(selectedSubcategories) ? selectedSubcategories : []).find(
+                        (sub) => getSubcategorySelectionKey(sub) === entry.categoryValue
                       );
-                      const isSelected =
-                        Boolean(parentEntry) &&
-                        (Array.isArray(parentEntry.selectedToolIds)
-                          ? parentEntry.selectedToolIds
-                          : []
-                        )
-                          .map(toPositiveInteger)
-                          .includes(entry.toolId);
+                      const isToolSelected =
+                        typeof entry.toolId === "number" &&
+                        Array.isArray(parentEntry?.selectedToolIds) &&
+                        parentEntry.selectedToolIds.map(toPositiveInteger).includes(entry.toolId);
+                      const isCustomSelected =
+                        typeof entry.toolId === "string" &&
+                        entry.toolId.startsWith("custom-") &&
+                        normalizeStringArray(parentEntry?.customSkillNames).some(
+                          (skill) => skill.toLowerCase() === entry.label.toLowerCase()
+                        );
+                      const isSelected = isToolSelected || isCustomSelected;
+
                       return (
                         <button
-                          key={`${entry.categoryValue}-${entry.toolId}`}
+                          key={`search-skill-${entry.categoryValue}-${entry.toolId || entry.label}`}
                           type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            handleSelectSearchResult(entry);
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            void handleInlineSkillSelect(entry);
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            void handleInlineSkillSelect(entry);
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
                             isSelected
                               ? "bg-primary/10 text-primary font-medium"
                               : "text-foreground hover:bg-muted",
@@ -1030,7 +1233,7 @@ const CategoryMultiSelect = ({
                             {isSelected && <Check className="h-3 w-3 !text-white" />}
                           </span>
                           <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
-                          <span className="shrink-0 text-[11px] text-muted-foreground bg-muted px-2 py-0.5 rounded font-normal">
+                          <span className="shrink-0 text-[11px] text-muted-foreground">
                             {entry.categoryLabel}
                           </span>
                         </button>
@@ -1038,6 +1241,7 @@ const CategoryMultiSelect = ({
                     })}
                   </div>
                 )}
+
                 {searchResults.categories.length > 0 && (
                   <div>
                     <p className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -1047,14 +1251,14 @@ const CategoryMultiSelect = ({
                       const isSelected = selectedSet.has(entry.categoryValue);
                       return (
                         <button
-                          key={entry.categoryValue}
+                          key={`search-cat-${entry.categoryValue}`}
                           type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            handleSelectSearchResult(entry);
+                          onMouseDown={(event) => {
+                            event.preventDefault();
+                            toggleOption(entry.categoryValue);
                           }}
                           className={cn(
-                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                            "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
                             isSelected
                               ? "bg-primary/10 text-primary font-medium"
                               : "text-foreground hover:bg-muted",
@@ -1081,310 +1285,216 @@ const CategoryMultiSelect = ({
             )}
           </div>
         ) : null}
-      </div>
 
-      {/* Browse panel (two-column portal) */}
-        {isBrowseOpen && typeof document !== "undefined"
-          ? createPortal(
-              <div
-                ref={popupRef}
-                data-onboarding-popup="true"
-                role="dialog"
-                aria-label="Choose categories and skills"
-                className="z-[70] flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-black/15 dark:shadow-black/40"
-                style={popupStyle || undefined}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="border-b border-border bg-muted/35 px-3 py-3 sm:px-4">
-                  <div className="mb-2.5 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">Build your skill set</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">
-                        Add a category first, then select the skills you use.
-                      </p>
-                    </div>
-                    {selectedOptions.length > 0 ? (
-                      <span className="shrink-0 rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary">
-                        {selectedOptions.length} selected
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
-                    <input
-                      ref={browseSearchInputRef}
-                      type="text"
-                      value={browseSearchQuery}
-                      onChange={(event) => setBrowseSearchQuery(event.target.value)}
-                      placeholder="Search categories or skills..."
-                      className="h-9 w-full rounded-lg border border-border bg-card py-2 pl-8 pr-3 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
-                    />
-                  </div>
-                </div>
+        {/* Browse Accordion Dropdown directly attached under the input */}
+        {isBrowseOpen && (
+          <div
+            data-onboarding-popup="true"
+            className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-[360px] sm:max-h-[400px] overflow-y-auto rounded-xl border border-border bg-card p-2 sm:p-2.5 shadow-2xl shadow-black/15 dark:shadow-black/50 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden space-y-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {isLoading ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                {loadingMessage}
+              </div>
+            ) : options.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                {emptyMessage}
+              </div>
+            ) : filteredBrowseAccordionOptions.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-muted-foreground">
+                {noResultsMessage}
+              </div>
+            ) : (
+              filteredBrowseAccordionOptions.map(
+                ({ option, matchingTools, matchingSuggested }) => {
+                  const categoryKey = String(option.value);
+                  const isSearching = Boolean(searchQuery.trim());
+                  const isExpanded =
+                    isSearching || expandedCategoryKeys.has(categoryKey);
+                  const isSelected = selectedSet.has(categoryKey);
+                  const {
+                    toolIds: selectedToolIdsSet,
+                    customSkills: selectedCustomSkills,
+                  } = getSelectedForCategory(categoryKey);
+                  const selectedCount =
+                    selectedToolIdsSet.size + selectedCustomSkills.length;
+                  const hasSkills =
+                    matchingTools.length > 0 || matchingSuggested.length > 0;
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-                  {/* Categories column */}
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col border-b border-border md:border-r md:border-b-0">
-                    <div className="shrink-0 border-b border-border px-3 py-2 sm:px-4">
-                      <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                          Categories
-                        </p>
-                        <p className="text-[10px] text-muted-foreground/80">
-                          Step 1
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden px-2 py-2 sm:px-3">
-                      {isLoading ? (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground/60">
-                          {loadingMessage}
-                        </div>
-                      ) : options.length === 0 ? (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground/60">
-                          {emptyMessage}
-                        </div>
-                      ) : filteredBrowseOptions.length === 0 ? (
-                        <div className="px-2 py-1.5 text-xs text-muted-foreground/60">
-                          {noResultsMessage}
-                        </div>
-                      ) : (
-                        filteredBrowseOptions.map((option) => {
-                          const isSelected = selectedSet.has(String(option.value));
-                          const isActive = activeCategoryValue === String(option.value);
-                          return (
-                            <div key={option.value} className="relative mb-1 w-full last:mb-0">
-                              <button
-                                type="button"
-                                onClick={() => toggleOption(option.value)}
-                                className={cn(
-                                  "flex min-w-0 w-full items-center gap-2 rounded-xl border px-2.5 py-2 pr-8 text-left text-xs transition-[background-color,border-color,color]",
-                                  isActive
-                                    ? "border-primary bg-primary text-primary-foreground shadow-[0_4px_12px_rgba(var(--brand-rgb),0.18)]"
-                                    : isSelected
-                                      ? "border-primary/35 bg-primary/[0.08] text-foreground hover:border-primary/60 hover:bg-primary/[0.12]"
-                                      : "border-border/70 bg-card text-foreground hover:border-primary/35 hover:bg-primary/[0.05]",
-                                )}
-                                aria-pressed={isSelected}
-                              >
-                                <span
-                                  className={cn(
-                                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors",
-                                    isSelected
-                                      ? isActive
-                                        ? "border-primary-foreground/70 bg-primary-foreground/15"
-                                        : "border-primary bg-primary text-primary-foreground"
-                                      : "border-border bg-card",
-                                  )}
-                                >
-                                  {isSelected ? <Check className="h-2.5 w-2.5" /> : null}
-                                </span>
-                                <span className="min-w-0 flex-1 truncate">
-                                  {option.label}
-                                </span>
-                              </button>
-                              {isSelected ? (
-                                <button
-                                  type="button"
-                                  onClick={() => removeOption(option.value)}
-                                  className={cn(
-                                    "absolute right-1 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-lg bg-transparent shadow-none transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
-                                    isActive
-                                      ? "text-primary-foreground hover:bg-primary-foreground/15 hover:text-primary-foreground/90"
-                                      : "text-primary hover:bg-primary/10 hover:text-foreground",
-                                  )}
-                                  aria-label={`Remove ${option.label}`}
-                                >
-                                  <X className="h-3 w-3 stroke-[2.5]" />
-                                </button>
-                              ) : null}
-                            </div>
-                          );
-                        })
+                  return (
+                    <div
+                      key={categoryKey}
+                      className={cn(
+                        "rounded-xl border transition-all duration-200 overflow-hidden",
+                        isExpanded
+                          ? "border-primary/40 bg-card shadow-xs"
+                          : isSelected
+                            ? "border-primary/30 bg-primary/[0.03]"
+                            : "border-border/70 bg-card hover:border-border",
                       )}
-                    </div>
-                  </div>
+                    >
+                      {/* Category Header Row (Click to toggle dropdown) */}
+                      <div
+                        onClick={() => toggleCategoryExpand(categoryKey)}
+                        className="flex items-center justify-between gap-2.5 px-3 py-2.5 sm:px-3.5 sm:py-2.5 cursor-pointer select-none hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleOption(option.value);
+                            }}
+                            className={cn(
+                              "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors cursor-pointer",
+                              isSelected
+                                ? "border-primary bg-primary text-primary-foreground"
+                                : "border-border bg-background hover:border-primary/60",
+                            )}
+                            aria-label={`Select category ${option.label}`}
+                          >
+                            {isSelected ? (
+                              <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            ) : null}
+                          </button>
 
-                  {/* Skills column */}
-                  <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                    {activeCategoryValue ? (
-                      <>
-                        <div className="shrink-0 border-b border-border bg-primary/[0.045] px-3 py-2 sm:px-4">
-                          <div className="flex items-center justify-between">
-                            <div className="min-w-0">
-                              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-                                Skills for
-                              </p>
-                              <p className="truncate text-xs font-semibold text-foreground">
-                                {activeCategoryLabel}
-                              </p>
-                            </div>
-                            <p className="shrink-0 text-[10px] text-muted-foreground/80">
-                              {activeSelectionCount} selected
-                            </p>
-                          </div>
+                          <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                            {option.label}
+                          </span>
+
+                          {selectedCount > 0 && (
+                            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary shrink-0">
+                              {selectedCount} skill{selectedCount > 1 ? "s" : ""}
+                            </span>
+                          )}
                         </div>
 
-                        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-2 py-2 sm:px-3">
-                          <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden pr-0">
-                            <div className="flex flex-col gap-1">
-                              {isToolsLoading &&
-                              filteredActiveToolOptions.length === 0 &&
-                              filteredActiveSuggestedSkills.length === 0 &&
-                              filteredActiveVisibleCustomSkills.length === 0 ? (
-                                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">Loading skills...</p>
-                              ) : filteredActiveToolOptions.length > 0 ||
-                                filteredActiveVisibleCustomSkills.length > 0 ? (
-                                <>
-                                  {filteredActiveVisibleCustomSkills.length > 0 ? (
-                                    <div className="space-y-1">
-                                      <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                                        Resume Skills
-                                      </p>
-                                      {filteredActiveVisibleCustomSkills.map((skill) => (
-                                        <button
-                                          key={skill}
-                                          type="button"
-                                          onClick={() => handleToggleSuggestedSkill(skill)}
-                                          className="flex w-full items-center justify-between rounded-xl border border-primary/45 bg-primary/10 px-3 py-2 text-left text-xs text-primary transition-colors hover:bg-primary/15"
-                                          aria-pressed
-                                        >
-                                          <span className="min-w-0 flex-1 truncate">
-                                            {skill}
-                                          </span>
-                                          <Check className="ml-2 h-3 w-3 shrink-0 text-primary" />
-                                        </button>
-                                      ))}
-                                    </div>
-                                  ) : null}
-                                  {filteredActiveToolOptions.length > 0 ? (
-                                    <div className="space-y-1">
-                                      {filteredActiveVisibleCustomSkills.length > 0 ? (
-                                        <p className="px-1 pt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                                          Preset Skills
-                                        </p>
-                                      ) : null}
-                                      {filteredActiveToolOptions.map((tool) => {
-                                        const isSelected = activeSelectedToolIds.includes(
-                                          tool.id,
-                                        );
-                                        return (
-                                          <button
-                                            key={tool.id}
-                                            type="button"
-                                            onClick={() => handleToggleTool(tool.id)}
-                                            className={cn(
-                                              "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-[background-color,border-color,color]",
-                                              isSelected
-                                                ? "border-primary/55 bg-primary/10 text-primary"
-                                                : "border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/[0.05]",
-                                            )}
-                                            aria-pressed={isSelected}
-                                          >
-                                            <span className="min-w-0 flex-1 truncate">
-                                              {tool.label}
-                                            </span>
-                                            {isSelected && (
-                                              <Check className="ml-2 h-3 w-3 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
-                                            )}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                  ) : null}
-                                </>
-                              ) : filteredActiveSuggestedSkills.length > 0 ? (
-                                filteredActiveSuggestedSkills.map((skill) => {
-                                  const isSelected = activeSelectedCustomSkills.some(
-                                    (value) => value.toLowerCase() === skill.toLowerCase(),
-                                  );
+                        <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
+                          <span className="text-[11px] font-medium hidden sm:inline text-muted-foreground/80">
+                            {hasSkills
+                              ? `${matchingTools.length + matchingSuggested.length} skills`
+                              : ""}
+                          </span>
+                          <span
+                            className={cn(
+                              "p-0.5 rounded-md transition-transform duration-200",
+                              isExpanded && "rotate-180",
+                            )}
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Dropdown Skills Section */}
+                      {isExpanded && (
+                        <div className="border-t border-border/60 bg-muted/20 px-3 py-2.5 sm:px-3.5 sm:py-3 space-y-2">
+                          {/* Suggested / Resume Skills */}
+                          {matchingSuggested.length > 0 && (
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                                Suggested Skills
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {matchingSuggested.map((skill) => {
+                                  const isSkillSelected =
+                                    selectedCustomSkills.some(
+                                      (s) =>
+                                        s.toLowerCase() ===
+                                        skill.toLowerCase(),
+                                    );
                                   return (
                                     <button
                                       key={skill}
                                       type="button"
-                                      onClick={() => handleToggleSuggestedSkill(skill)}
+                                      onClick={() =>
+                                        handleToggleCustomSkillForCategory(
+                                          categoryKey,
+                                          skill,
+                                        )
+                                      }
                                       className={cn(
-                                        "flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs transition-[background-color,border-color,color]",
-                                        isSelected
-                                          ? "border-primary/55 bg-primary/10 text-primary"
-                                          : "border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/[0.05]",
+                                        "flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium transition-all cursor-pointer",
+                                        isSkillSelected
+                                          ? "border-primary bg-primary/15 text-primary shadow-xs"
+                                          : "border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/[0.04]",
                                       )}
-                                      aria-pressed={isSelected}
                                     >
-                                      <span className="min-w-0 flex-1 truncate">
-                                        {skill}
+                                      <span className="truncate">{skill}</span>
+                                      {isSkillSelected ? (
+                                        <Check className="h-3 w-3 text-primary" />
+                                      ) : null}
+                                    </button>
+                                  );
+                                })}
+                                </div>
+                            </div>
+                          )}
+
+                          {/* Preset Tools / Skills */}
+                          {matchingTools.length > 0 ? (
+                            <div className="space-y-1.5">
+                              {matchingSuggested.length > 0 && (
+                                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                                  Skills
+                                </p>
+                              )}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                {matchingTools.map((tool) => {
+                                  const isToolSelected =
+                                    selectedToolIdsSet.has(tool.id);
+                                  return (
+                                    <button
+                                      key={tool.id}
+                                      type="button"
+                                      onClick={() =>
+                                        handleToggleToolForCategory(
+                                          categoryKey,
+                                          tool.id,
+                                        )
+                                      }
+                                      className={cn(
+                                        "flex items-center justify-between rounded-lg border px-2.5 py-1.5 text-left text-xs transition-all cursor-pointer",
+                                        isToolSelected
+                                          ? "border-primary/60 bg-primary/10 text-primary font-medium shadow-xs"
+                                          : "border-border/70 bg-card text-foreground hover:border-primary/40 hover:bg-primary/[0.04]",
+                                      )}
+                                    >
+                                      <span className="truncate min-w-0 flex-1">
+                                        {tool.label}
                                       </span>
-                                      {isSelected && (
-                                        <Check className="ml-2 h-3 w-3 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
+                                      {isToolSelected ? (
+                                        <Check className="ml-2 h-3.5 w-3.5 shrink-0 text-primary animate-in fade-in zoom-in-75 duration-100" />
+                                      ) : (
+                                        <span className="ml-2 h-3.5 w-3.5 shrink-0 rounded border border-border/80 bg-background" />
                                       )}
                                     </button>
                                   );
-                                })
-                              ) : (
-                                <p className="rounded-lg border border-dashed border-border px-3 py-3 text-xs text-muted-foreground">
-                                  {browseSearchQuery.trim()
-                                    ? "No matching skills in this category."
-                                    : activeToolOptions.length === 0
-                                      ? toolFetchError || "No preset skills found for this category."
-                                      : "No matching skills found."}
-                                </p>
-                              )}
+                                })}
+                              </div>
                             </div>
-                          </div>
-
-                          <div className="shrink-0 border-t border-border pt-2.5">
-                            <div className="flex flex-wrap gap-2">
-                              {activeSelectedToolEntries.map((tool) => (
-                                <span
-                                  key={tool.id}
-                                  className="flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-                                >
-                                  {tool.label}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleTool(tool.id)}
-                                    className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </span>
-                              ))}
-                              {activeSelectedCustomSkills.map((skill) => (
-                                <span
-                                  key={skill}
-                                  className="flex items-center gap-1 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-                                >
-                                  {skill}
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveCustomSkill(skill)}
-                                    className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                </span>
-                              ))}
-                            </div>
-                          </div>
+                          ) : isToolsLoading ? (
+                            <p className="py-1.5 text-xs text-muted-foreground">
+                              Loading skills...
+                            </p>
+                          ) : matchingSuggested.length === 0 ? (
+                            <p className="py-1.5 text-xs text-muted-foreground italic">
+                              No skills found for this category.
+                            </p>
+                          ) : null}
                         </div>
-                      </>
-                    ) : (
-                      <div className="flex items-center justify-center px-6 py-8 text-center text-sm text-muted-foreground">
-                        Choose a category on the left to reveal its skills here.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>,
-              document.body,
-            )
-          : null}
+                      )}
+                    </div>
+                  );
+                },
+              )
+            )}
+          </div>
+        )}
       </div>
+    </div>
   );
 };
 
-
 export default CategoryMultiSelect;
-
-

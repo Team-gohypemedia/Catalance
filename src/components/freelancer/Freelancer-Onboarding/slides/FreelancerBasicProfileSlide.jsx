@@ -596,7 +596,7 @@ const FreelancerBasicProfileSlide = ({
             }
           }}
           className={cn(
-            "relative overflow-hidden flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-[14px] border border-dashed border-primary/50 bg-gradient-to-r from-primary/10 via-primary/5 to-background px-4 py-3 sm:px-5 sm:py-3.5 shadow-sm hover:border-primary transition-all duration-300 cursor-pointer",
+            "relative flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-3 rounded-[14px] border border-dashed border-primary/50 bg-gradient-to-r from-primary/10 via-primary/5 to-background px-4 py-3 sm:px-5 sm:py-3.5 shadow-sm hover:border-primary transition-all duration-300 cursor-pointer",
             fieldError && "border-destructive/70 bg-destructive/5",
           )}
         >

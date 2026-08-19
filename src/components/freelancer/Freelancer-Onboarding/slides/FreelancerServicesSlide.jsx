@@ -1,3 +1,4 @@
+import React from "react";
 import Layers from "lucide-react/dist/esm/icons/layers";
 
 import { cn } from "@/shared/lib/utils";
@@ -139,7 +140,7 @@ const renderTitle = (title) => {
     const after = title.slice(index + target.length);
     return (
       <>
-        {before}
+        {before.trimEnd()}<br className="sm:hidden" />
         <span className="font-serif italic font-light text-primary text-[1.05em] select-none">{target}</span>
         {after}
       </>
@@ -188,13 +189,13 @@ const FreelancerServicesSlide = ({
     : [];
 
   return (
-    <section className="mx-auto flex w-full max-w-[340px] flex-col items-center mt-[10px] sm:max-w-[600px] md:max-w-[780px] md:px-0 mt-[20px] sm:mt-0">
+    <section className="mx-auto flex w-full max-w-[360px] sm:max-w-[600px] md:max-w-[780px] flex-col items-center mt-[10px] sm:mt-0">
       <div className="w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-[20px] sm:text-2xl md:text-4xl lg:text-5xl font-medium text-foreground mb-4 md:mb-5 lg:mb-6 text-center">
+          <h1 className="text-[20px] sm:text-2xl md:text-4xl lg:text-5xl font-medium text-foreground mb-3 md:mb-5 lg:mb-6 text-center">
             {renderTitle(slide.title)}
           </h1>
-           <p className="text-muted-foreground font-regular text-xs md:text-base lg:text-sm">
+          <p className="text-muted-foreground font-normal text-[11px] min-[390px]:text-xs sm:text-sm md:text-base whitespace-nowrap text-center">
             {slide.description}
           </p>
         </div>

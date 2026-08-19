@@ -1635,7 +1635,7 @@ const AdminBlogs = () => {
                           <Input
                             value={newSeoName}
                             onChange={(e) => setNewSeoName(e.target.value)}
-                            placeholder="e.g. Piyush Sharma"
+                            placeholder="Enter author full name"
                             className="rounded-2xl h-11 pl-10 text-xs"
                             required
                           />
@@ -1651,7 +1651,7 @@ const AdminBlogs = () => {
                             type="email"
                             value={newSeoEmail}
                             onChange={(e) => setNewSeoEmail(e.target.value)}
-                            placeholder="e.g. piyush@catalance.in"
+                            placeholder="author@catalance.in"
                             className="rounded-2xl h-11 pl-10 text-xs"
                             required
                           />

@@ -170,15 +170,50 @@ const resolveServiceImagePreviews = (mediaFiles = []) => {
 };
 
 const resolveProfilePhotoPreview = (profilePhoto) => {
-  const remoteUrl = String(
-    profilePhoto?.uploadedUrl || profilePhoto?.url || profilePhoto || "",
-  ).trim();
+  if (!profilePhoto) return null;
 
-  if (remoteUrl) {
-    return { url: remoteUrl, revoke: null };
+  if (typeof profilePhoto === "string") {
+    const trimmed = profilePhoto.trim();
+    if (
+      trimmed &&
+      trimmed !== "[object Object]" &&
+      (trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("blob:") ||
+        trimmed.startsWith("data:") ||
+        trimmed.startsWith("/"))
+    ) {
+      return { url: trimmed, revoke: null };
+    }
+    return null;
   }
 
-  return buildObjectPreview(profilePhoto, (value) => value?.file);
+  if (typeof profilePhoto === "object") {
+    const candidate =
+      profilePhoto?.uploadedUrl ||
+      profilePhoto?.url ||
+      profilePhoto?.preview;
+    if (
+      typeof candidate === "string" &&
+      candidate.trim() &&
+      candidate !== "[object Object]" &&
+      (candidate.startsWith("http://") ||
+        candidate.startsWith("https://") ||
+        candidate.startsWith("blob:") ||
+        candidate.startsWith("data:") ||
+        candidate.startsWith("/"))
+    ) {
+      return { url: candidate.trim(), revoke: null };
+    }
+
+    return buildObjectPreview(profilePhoto, (value) =>
+      typeof File !== "undefined" && value instanceof File
+        ? value
+        : value?.file,
+    );
+  }
+
+  return null;
 };
 
 const resolveStartingPriceDisplay = (value = "") => {
@@ -459,7 +494,13 @@ const AgencyServiceReviewSlide = ({
     user,
   ]);
 
-  const avatarFallbackInitial = freelancerName.charAt(0).toUpperCase() || "F";
+  const avatarFallbackInitial = useMemo(() => {
+    const name = String(freelancerName || "").trim();
+    return name ? name.charAt(0).toUpperCase() : "A";
+  }, [freelancerName]);
+
+  const [hasProfilePhotoError, setHasProfilePhotoError] = useState(false);
+  const [photoLoaded, setPhotoLoaded] = useState(false);
 
   useEffect(() => {
     if (!resolvedServiceId) {
@@ -562,6 +603,8 @@ const AgencyServiceReviewSlide = ({
   useEffect(() => {
     const preview = resolveProfilePhotoPreview(basicProfileForm?.profilePhoto);
     setProfilePhotoPreview(preview);
+    setHasProfilePhotoError(false);
+    setPhotoLoaded(false);
     return () => {
       preview?.revoke?.();
     };
@@ -924,17 +967,32 @@ const AgencyServiceReviewSlide = ({
           <h2 className={`${SECTION_TITLE_CLASS} leading-tight`}>{reviewTitle}</h2>
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-4 py-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
-                {profilePhotoPreview?.url ? (
-                  <img
-                    src={profilePhotoPreview.url}
-                    alt={`${serviceName} profile`}
-                    className="h-full w-full object-cover"
-                  />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-gradient-to-tr from-amber-400/20 via-primary/20 to-amber-500/10 text-primary font-bold select-none relative">
+                {profilePhotoPreview?.url && !hasProfilePhotoError ? (
+                  <>
+                    <img
+                      src={profilePhotoPreview.url}
+                      alt=""
+                      onLoad={() => setPhotoLoaded(true)}
+                      onError={() => {
+                        setPhotoLoaded(false);
+                        setHasProfilePhotoError(true);
+                      }}
+                      className={cn(
+                        "h-full w-full object-cover",
+                        photoLoaded ? "block" : "hidden",
+                      )}
+                    />
+                    {!photoLoaded && (
+                      <span className="text-base font-bold text-foreground">
+                        {avatarFallbackInitial}
+                      </span>
+                    )}
+                  </>
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-muted-foreground">
+                  <span className="text-base font-bold text-foreground">
                     {avatarFallbackInitial}
-                  </div>
+                  </span>
                 )}
               </div>
 
@@ -1040,62 +1098,45 @@ const AgencyServiceReviewSlide = ({
                 </div>
               ) : null}
 
-              <div className="space-y-4">
-                <div className="group relative overflow-hidden rounded-[30px] border border-border bg-neutral-950 shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
-                  {mediaPreview?.url ? (
+              {mediaPreview?.url ? (
+                <div className="space-y-4">
+                  <div className="group relative overflow-hidden rounded-[30px] border border-border bg-neutral-950 shadow-[0_20px_80px_rgba(0,0,0,0.45)] dark-card">
                     <img
                       src={mediaPreview.url}
                       alt={`${serviceName} preview`}
                       className="aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.015]"
                     />
-                  ) : (
-                    <div className="relative aspect-[16/10] w-full overflow-hidden bg-[radial-gradient(circle_at_20%_20%,rgba(255,214,10,0.12),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.06),transparent_22%),linear-gradient(135deg,#090909,#131313_55%,#111111)] dark-card keep-white">
-                      <div className="absolute inset-y-0 left-[30%] w-px bg-white/10 keep-white" />
-                      <div className="absolute inset-y-0 right-[30%] w-px bg-white/10 keep-white" />
-                      <div className="absolute left-1/2 top-1/2 h-48 w-48 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/35 shadow-[0_0_60px_rgba(var(--brand-rgb),0.1)] keep-white" />
-                      <div className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/20 keep-white" />
-                      <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-primary/25 keep-white" />
-                      <div className="absolute inset-x-0 bottom-0 h-28 bg-[linear-gradient(180deg,transparent,rgba(0,0,0,0.78))] keep-white" />
-                      <div className="absolute inset-x-6 top-6 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 backdrop-blur-sm keep-white">
-                        <p className="text-xs uppercase tracking-[0.2em] keep-white" style={{ color: "rgba(255, 255, 255, 0.65)" }}>
-                          Visual Preview
-                        </p>
-                        <p className="mt-2 max-w-sm text-sm keep-white" style={{ color: "rgba(255, 255, 255, 0.85)" }}>
-                          Add service images in the media step to replace this placeholder.
-                        </p>
-                      </div>
-                    </div>
-                  )}
 
-                  {hasMultipleMediaPreviews ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={handlePreviousMediaPreview}
-                        className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
-                        aria-label="Show previous image"
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </button>
+                    {hasMultipleMediaPreviews ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePreviousMediaPreview}
+                          className="absolute left-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
+                          aria-label="Show previous image"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={handleNextMediaPreview}
-                        className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
-                        aria-label="Show next image"
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={handleNextMediaPreview}
+                          className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/12 bg-black/55 text-white/90 backdrop-blur-md transition-colors hover:border-white/20 hover:bg-black/70 keep-white"
+                          aria-label="Show next image"
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
 
-                      <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-                        <span className="rounded-full border border-white/12 bg-black/55 px-3 py-1 text-xs font-medium text-white/86 backdrop-blur-md keep-white">
-                          {activeMediaPreviewIndex + 1} / {mediaPreviews.length}
-                        </span>
-                      </div>
-                    </>
-                  ) : null}
+                        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+                          <span className="rounded-full border border-white/12 bg-black/55 px-3 py-1 text-xs font-medium text-white/86 backdrop-blur-md keep-white">
+                            {activeMediaPreviewIndex + 1} / {mediaPreviews.length}
+                          </span>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               {/* Description Card */}
               <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -1185,17 +1226,17 @@ const AgencyServiceReviewSlide = ({
             </aside>
 
             {/* Part 2: Case Studies */}
-            <div className="space-y-7 lg:col-start-1 lg:col-end-2">
-              {/* Case Studies Card */}
-              <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                <div className="border-b border-border p-5">
-                  <p className={CARD_LABEL_CLASS}>Case Studies</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Portfolio projects added in the case-study step.
-                  </p>
-                </div>
+            {resolvedCaseStudyCards.length > 0 ? (
+              <div className="space-y-7 lg:col-start-1 lg:col-end-2">
+                {/* Case Studies Card */}
+                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                  <div className="border-b border-border p-5">
+                    <p className={CARD_LABEL_CLASS}>Case Studies</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Portfolio projects added in the case-study step.
+                    </p>
+                  </div>
 
-                {resolvedCaseStudyCards.length > 0 ? (
                   <div className="p-5">
                     <div className="grid gap-4 xl:grid-cols-2">
                       {resolvedCaseStudyCards.map((caseStudy) => (
@@ -1322,13 +1363,9 @@ const AgencyServiceReviewSlide = ({
                       ))}
                     </div>
                   </div>
-                ) : (
-                  <div className="m-5 rounded-xl border border-dashed border-border bg-muted/40 px-4 py-5 text-sm text-muted-foreground">
-                    Add at least one case study in the case-study step to show it here.
-                  </div>
-                )}
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </div>
