@@ -1878,7 +1878,7 @@ const Marketplace = () => {
   );
 
   return (
-    <div className={cn("relative min-h-screen bg-background text-foreground", category !== "all" && "pt-28")}>
+    <div className={cn("relative min-h-screen bg-background text-foreground", category !== "all" && "pt-16 sm:pt-20 md:pt-28")}>
       {/* Full Screen Hero Section */}
       {category === "all" && (
         <section className="relative flex w-full flex-col items-center justify-start overflow-hidden bg-background pt-24 pb-0">
@@ -2181,20 +2181,20 @@ const Marketplace = () => {
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] } }}
             exit={{ opacity: 0, y: 16 }}
-            className="relative z-20 mx-auto w-full max-w-[1280px] px-4 pt-4 sm:px-6 lg:px-8"
+            className="relative z-20 mx-auto w-full max-w-[1280px] px-4 pt-1 sm:pt-4 sm:px-6 lg:px-8"
           >
             {/* Active category header */}
-            <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div className="space-y-1.5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
+            <div className="mb-4 sm:mb-8 md:mb-12 flex flex-col items-center sm:items-start text-center sm:text-left gap-3 sm:gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-1 sm:space-y-1.5 flex flex-col items-center sm:items-start w-full sm:w-auto">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.25em] text-primary">
                   {isProjectsView ? (isOpportunityView ? "Live Proposals" : "Live Projects") : "Specialists"}
                 </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="text-3xl font-bold tracking-tight text-foreground dark:text-white sm:text-4xl">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 sm:gap-3">
+                  <h3 className="text-2xl font-bold tracking-tight text-foreground dark:text-white sm:text-3xl md:text-4xl text-center sm:text-left">
                     {activeBrowseService?.label || activeService?.label || (isOpportunityView && isProjectsView ? "All Proposals" : "All Services")}
                   </h3>
                   {!loading && !projectLoading && (
-                    <Badge variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-[12px] font-bold text-primary hover:bg-primary/20">
+                    <Badge variant="secondary" className="rounded-full bg-primary/10 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-[12px] font-bold text-primary hover:bg-primary/20">
                       {(isProjectsView ? projectTotal : total)} result{(isProjectsView ? projectTotal : total) === 1 ? "" : "s"}
                     </Badge>
                   )}

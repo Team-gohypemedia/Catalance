@@ -222,6 +222,17 @@ const ProfileHeroCard = ({
           className="absolute right-4 top-4 z-10 flex items-center gap-2"
           onClick={(e) => e.stopPropagation()}
         >
+          {resolvedCoverImage && (
+            <button
+              type="button"
+              onClick={removeCoverImage}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-destructive/30 bg-destructive/90 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-destructive sm:h-9 sm:w-9 cursor-pointer"
+              title="Delete cover image"
+              aria-label="Delete cover image"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => openEditPersonalModal()}

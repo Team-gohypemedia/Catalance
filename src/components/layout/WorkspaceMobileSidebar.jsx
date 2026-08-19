@@ -43,9 +43,11 @@ const iconMap = {
   payments: WalletCards,
   profile: UserRound,
   home: House,
+  opportunity: Store,
   marketplace: Store,
   service: Layers,
   contact: PhoneCall,
+  blog: FileText,
 };
 
 const WorkspaceBrandMark = () => (

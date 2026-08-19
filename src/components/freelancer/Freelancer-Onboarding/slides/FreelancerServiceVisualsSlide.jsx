@@ -132,12 +132,12 @@ const UploadSlot = ({ onClick, isUploading, label = "Add" }) => (
 /* ─── Media Thumbnail Card ─── */
 
 const MediaCard = ({ item, previewUrl, index, onRemove }) => (
-  <div className="group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-border bg-black shadow-sm transition-all duration-200 hover:shadow-md dark-card">
+  <div className="group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-border/80 bg-muted/20 shadow-sm transition-all duration-200 hover:shadow-md">
     {previewUrl ? (
       item.isVideo ? (
         <video
           src={previewUrl}
-          className="h-full w-full object-contain"
+          className="h-full w-full object-cover"
           muted
           playsInline
           autoPlay
@@ -148,7 +148,7 @@ const MediaCard = ({ item, previewUrl, index, onRemove }) => (
         <img
           src={previewUrl}
           alt={item.name}
-          className="h-full w-full object-contain"
+          className="h-full w-full object-cover"
         />
       )
     ) : (
@@ -157,11 +157,8 @@ const MediaCard = ({ item, previewUrl, index, onRemove }) => (
       </div>
     )}
 
-    {/* Gradient overlay */}
-    <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.5)_100%)] keep-white" />
-
     {/* Index badge */}
-    <div className="absolute left-2 top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black/50 px-1.5 text-[10px] font-semibold text-white backdrop-blur-sm keep-white">
+    <div className="absolute left-2 top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-black/60 px-1.5 text-[10px] font-semibold text-white backdrop-blur-md">
       {index + 1}
     </div>
 

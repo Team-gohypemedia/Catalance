@@ -244,39 +244,50 @@ const getMediaItemId = (entry, index) => {
 };
 
 const CompactMediaCard = ({ item, previewUrl, index, onRemove }) => (
-  <div className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-border bg-black shadow-sm">
+  <div className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-border/80 bg-muted/20 shadow-sm transition-all hover:border-primary/40">
     {previewUrl ? (
       item.isVideo ? (
-        <video src={previewUrl} className="h-full w-full object-contain" muted playsInline autoPlay loop preload="metadata" />
+        <video src={previewUrl} className="h-full w-full object-cover" muted playsInline autoPlay loop preload="metadata" />
       ) : (
-        <img src={previewUrl} alt={item.name} className="h-full w-full object-contain" />
+        <img src={previewUrl} alt={item.name} className="h-full w-full object-cover" />
       )
     ) : (
       <div className="flex h-full w-full items-center justify-center bg-card text-muted-foreground/50">
         {item.isVideo ? <Play className="h-5 w-5" /> : <Image className="h-5 w-5" />}
       </div>
     )}
-    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.5)_100%)] keep-white" />
+
+    {/* Top left type badge */}
+    <div className="absolute left-1.5 top-1.5 z-10 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white backdrop-blur-md">
+      <span>{item.isVideo ? "Video" : "Image"}</span>
+    </div>
+
+    {/* Delete / Remove button - clearly visible and easily tapable on mobile */}
     <button
       type="button"
-      onClick={() => onRemove(item.id)}
-      className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-background text-foreground border border-border hover:bg-muted shadow-md transition-all duration-200 hover:scale-105"
-      aria-label={`Remove ${item.name}`}
+      onClick={(e) => {
+        e.stopPropagation();
+        onRemove(item.id);
+      }}
+      className="absolute right-1.5 top-1.5 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground hover:bg-destructive shadow-md backdrop-blur-md transition-all duration-200 active:scale-90 cursor-pointer"
+      title={`Delete ${item.name}`}
+      aria-label={`Delete ${item.name}`}
     >
-      <X className="h-3 w-3" />
+      <Trash2 className="h-3.5 w-3.5 text-white" />
     </button>
+
+    {/* Video Play Overlay */}
     {item.isVideo && (
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/60 bg-black/30 backdrop-blur-sm keep-white">
-          <Play className="h-3 w-3 text-white keep-white" />
+        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-white/60 bg-black/40 backdrop-blur-sm">
+          <Play className="h-3.5 w-3.5 text-white fill-white ml-0.5" />
         </div>
       </div>
     )}
-    <div className="absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-2 p-2">
-      <div className="min-w-0 rounded-lg bg-black/60 px-2 py-1 text-left backdrop-blur-sm">
-        <p className="truncate text-[10px] font-medium text-white">{item.name}</p>
-        <p className="text-[9px] text-white/75">{[item.isVideo ? "Video" : "Image", item.fileSize].filter(Boolean).join(" • ")}</p>
-      </div>
+
+    {/* Subtle bottom caption */}
+    <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-1.5 pt-4">
+      <p className="truncate text-[10px] font-medium text-white drop-shadow-sm">{item.name}</p>
     </div>
   </div>
 );
