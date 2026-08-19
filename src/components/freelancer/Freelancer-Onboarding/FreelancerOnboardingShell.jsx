@@ -2686,6 +2686,25 @@ const FreelancerOnboardingShell = () => {
     });
 
     try {
+      // In parallel, upload resume so its persisted URL is immediately available
+      uploadResumeFile(file)
+        .then((uploadedUrl) => {
+          if (uploadedUrl) {
+            setBasicProfileForm((currentForm) => ({
+              ...currentForm,
+              resume: {
+                name: file.name,
+                file,
+                url: uploadedUrl,
+              },
+              resumeUrl: uploadedUrl,
+            }));
+          }
+        })
+        .catch((uploadErr) => {
+          console.warn("Could not pre-upload resume during AI extraction:", uploadErr);
+        });
+
       const [availableServices, availableNiches] = await Promise.all([
         ensureMarketplaceServicesLoaded(),
         ensureMarketplaceNichesLoaded(),
@@ -3095,12 +3114,22 @@ const FreelancerOnboardingShell = () => {
         languages: Array.isArray(basicProfileForm.languages)
           ? basicProfileForm.languages.filter(Boolean)
           : [],
+        resume:
+          resolvedResumeUrl ||
+          extractResumeUrl(basicProfileForm.resume) ||
+          currentIdentity.resume ||
+          null,
         profilePhoto:
           resolvedAvatarUrl ||
           extractProfilePhotoUrl(basicProfileForm.profilePhoto) ||
           currentIdentity.profilePhoto ||
           null,
       },
+      resume:
+        resolvedResumeUrl ||
+        extractResumeUrl(basicProfileForm.resume) ||
+        currentProfileDetails.resume ||
+        null,
     };
 
     delete profileDetails.serviceSubcategorySkills;

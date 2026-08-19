@@ -137,8 +137,10 @@ const mergePortfolioProjectResponses = (...collections) => {
 const buildLocationFromIdentity = (identity = {}) => {
   if (!identity || typeof identity !== "object") return "";
 
-  const city = String(identity.city || "").trim();
+  const city = String(identity.city || identity.state || "").trim();
   const country = String(identity.country || "").trim();
+  const directLocation = String(identity.location || "").trim();
+  if (directLocation) return directLocation;
   return [city, country].filter(Boolean).join(", ");
 };
 
@@ -631,7 +633,10 @@ export const getProfile = asyncHandler(async (req, res) => {
       : profileAvatar;
 
   // Fix Location " 0" issue and fallback
-  let userLocation = identityLocation || "";
+  let userLocation =
+    identityLocation ||
+    ([freelancerProfile.city, freelancerProfile.country].filter(Boolean).join(", ")) ||
+    "";
   if (userLocation && userLocation.endsWith(" 0")) {
     userLocation = userLocation.slice(0, -2);
   }
@@ -696,6 +701,14 @@ export const getProfile = asyncHandler(async (req, res) => {
     data: {
       personal: {
         name: user.fullName ?? "",
+        username:
+          freelancerProfile.username ||
+          profileDetails?.identity?.username ||
+          profileDetails?.username ||
+          profileDetails?.onboardingDraft?.basicProfileForm?.username ||
+          user.username ||
+          (user.email ? user.email.split("@")[0] : "") ||
+          "",
         email: user.email,
         phone: userPhone,
         location: userLocation,
@@ -716,7 +729,15 @@ export const getProfile = asyncHandler(async (req, res) => {
         portfolioUrl: profileDetails?.identity?.portfolioUrl ?? "",
         linkedinUrl: profileDetails?.identity?.linkedinUrl ?? "",
         githubUrl: profileDetails?.identity?.githubUrl ?? "",
-        resume: freelancerProfile.resume ?? "",
+        resume:
+          freelancerProfile.resume ||
+          profileDetails?.identity?.resume ||
+          profileDetails?.resume ||
+          profileDetails?.onboardingDraft?.basicProfileForm?.resumeUrl ||
+          (typeof profileDetails?.onboardingDraft?.basicProfileForm?.resume === "string"
+            ? profileDetails.onboardingDraft.basicProfileForm.resume
+            : profileDetails?.onboardingDraft?.basicProfileForm?.resume?.url) ||
+          "",
       },
       portfolioProjects: mergedPortfolioProjects,
       socialMediaLinks: freelancerProfile.socialMediaLinks || {},
@@ -746,6 +767,10 @@ const buildSaveProfileUpdates = (payload = {}) => {
     updates.fullName = personal.name;
   }
 
+  if (hasOwn(personal, "username")) {
+    updates.username = personal.username;
+  }
+
   if (hasOwn(personal, "phone")) {
     updates.phoneNumber = personal.phone;
   }
@@ -756,6 +781,14 @@ const buildSaveProfileUpdates = (payload = {}) => {
 
   if (hasOwn(personal, "experienceYears")) {
     updates.experienceYears = personal.experienceYears;
+  }
+
+  if (hasOwn(personal, "location")) {
+    updates.location = personal.location;
+  }
+
+  if (hasOwn(personal, "languages")) {
+    updates.languages = personal.languages;
   }
 
   if (hasOwn(personal, "openToWork")) {

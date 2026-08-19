@@ -236,6 +236,13 @@ const FreelancerDashboard = () => {
                   </section>
                 )}
 
+                {!model.metricsLoading && (
+                  <RecommendedProjects
+                    liveProjects={model.liveProjects}
+                    userServices={model.userServices}
+                  />
+                )}
+
                 {!model.metricsLoading && !hasRunningProjects && model.pendingProposalRows.length === 0 && (
                   <FreelancerWelcomeHub
                     profileCompletionPercent={model.profileCompletionPercent}
@@ -245,20 +252,6 @@ const FreelancerDashboard = () => {
                     onOpenProfile={model.onOpenProfile}
                   />
                 )}
-
-                {shouldShowProfileProgressPanel ? (
-                  model.showProfileCompletionSkeleton ? (
-                    <FreelancerProfileCompletionSkeleton />
-                  ) : (
-                    <ProfileCompletionPanel
-                      completionPercent={model.profileCompletionPercent}
-                      isComplete={model.profileCompletionComplete}
-                      onOpenProfile={model.onOpenProfile}
-                      missingDetails={model.profileCompletionMissingDetails}
-                      completionMessage={model.profileCompletionMessage}
-                    />
-                  )
-                ) : null}
 
                 {model.metricsLoading ? (
                   <FreelancerActiveProjectsSkeleton />
@@ -317,12 +310,7 @@ const FreelancerDashboard = () => {
                           model.activeProjectRedirectCardClassName
                         }
                       />
-                    ) : (
-                      <RecommendedProjects
-                        liveProjects={model.liveProjects}
-                        userServices={model.userServices}
-                      />
-                    )}
+                    ) : null}
 
                     {model.metricsLoading ? (
                       <FreelancerRecentActivitySkeleton />
@@ -332,11 +320,6 @@ const FreelancerDashboard = () => {
                         onOpenViewAll={model.onOpenNotificationSheet}
                         className="flex-1"
                       />
-                    )}
-
-                    {/* Fill empty space with recommended projects if they already have active/pending projects */}
-                    {!model.metricsLoading && (hasRunningProjects || model.pendingProposalRows.length > 0) && (
-                      <RecommendedProjects liveProjects={model.liveProjects} userServices={model.userServices} />
                     )}
                   </div>
 

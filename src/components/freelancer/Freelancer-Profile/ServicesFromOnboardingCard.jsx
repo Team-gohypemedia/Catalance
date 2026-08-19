@@ -585,52 +585,52 @@ const ServiceDetailArticle = ({
         )}
       </div>
 
-      <div className="mt-auto mb-6 flex items-center gap-4 sm:gap-6">
-        <div className="flex items-center gap-3">
+      <div className="mt-auto mb-6 flex items-center justify-between gap-2.5 sm:justify-start sm:gap-6">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:flex-initial sm:gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Briefcase className="size-4" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
               {labels.serviceExperienceLabel || "Experience Level"}
             </span>
-            <span className="text-sm font-semibold text-foreground">
+            <span className="truncate text-xs font-semibold text-foreground sm:text-sm">
               {experienceItem?.value || labels.emptyValue}
             </span>
           </div>
         </div>
 
-        <div className="h-10 w-px shrink-0 bg-border/60" />
+        <div className="h-9 w-px shrink-0 bg-border/60" />
 
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:flex-initial sm:gap-3">
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <IndianRupee className="size-4" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
               {labels.startingPriceLabel || "Starting Price"}
             </span>
-            <span className="text-sm font-semibold text-foreground">
+            <span className="truncate text-xs font-semibold text-foreground sm:text-sm">
               {priceItem?.value || labels.emptyValue}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-border/50 pt-5">
-        <div className="flex items-center gap-2">
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+      <div className="flex items-center justify-between border-t border-border/50 pt-4 sm:pt-5">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Layers3 className="size-4" />
           </div>
-          <span className="text-[14px] font-semibold text-foreground">
-            {categoriesCount} {categoriesCount === 1 ? "CATEGORY" : "CATEGORIES"}{" "}
+          <span className="truncate text-xs sm:text-sm font-semibold text-foreground">
+            {categoriesCount} {categoriesCount === 1 ? "CATEGORY" : "CATEGORIES"}
           </span>
         </div>
 
         <button
           type="button"
           onClick={() => onViewDetails?.(cardData)}
-          className="inline-flex items-center gap-1 rounded-lg border border-primary bg-transparent px-2 py-1 text-[12px] font-semibold text-primary transition-colors hover:bg-primary/5"
+          className="inline-flex items-center gap-1 rounded-lg border border-primary bg-transparent px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/5 cursor-pointer shrink-0"
         >
           View Details
           <ArrowUpRight className="size-3.5" />

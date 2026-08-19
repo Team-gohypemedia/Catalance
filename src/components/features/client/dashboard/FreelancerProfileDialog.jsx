@@ -541,10 +541,15 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
       profileDetails?.hourlyRate ??
       profileDetails?.rate,
   );
+  const identityLocation = [
+    profileDetails?.identity?.city || profileDetails?.identity?.state || profileDetails?.city || profileDetails?.state || viewingFreelancer?.city,
+    profileDetails?.identity?.country || profileDetails?.country || viewingFreelancer?.country
+  ].filter(Boolean).join(", ");
   const locationLabel = firstNonEmptyText(
     viewingFreelancer?.location,
     profileDetails?.location,
     userDetails?.location,
+    identityLocation,
   );
   const profileHeadline = firstNonEmptyText(
     viewingFreelancer?.headline,

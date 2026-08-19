@@ -29,7 +29,7 @@ const FreelancerWelcomeHub = ({
       isCompleted: profileCompletionPercent >= 90,
       badgeText: "Required",
       actionLabel: "Update Profile",
-      onClick: onOpenProfile || (() => navigate("/freelancer/profile")),
+      onClick: () => navigate("/freelancer/profile?focus=completion"),
     },
     {
       id: "quest",
@@ -49,7 +49,7 @@ const FreelancerWelcomeHub = ({
       isCompleted: profileCompletionPercent >= 50,
       badgeText: "Highly Recommended",
       actionLabel: "Configure Services",
-      onClick: onOpenProfile || (() => navigate("/freelancer/profile")),
+      onClick: () => navigate("/freelancer/profile#services"),
     },
     {
       id: "availability",
@@ -59,7 +59,7 @@ const FreelancerWelcomeHub = ({
       isCompleted: openToWork,
       badgeText: "Instant Visibility",
       actionLabel: "View Settings",
-      onClick: onOpenProfile || (() => navigate("/freelancer/profile")),
+      onClick: () => navigate("/freelancer/profile#availability"),
     },
   ];
 

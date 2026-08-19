@@ -135,11 +135,32 @@ export const updateOnboardingProgressHandler = asyncHandler(async (req, res) => 
       const bpf = draftSnapshot.basicProfileForm;
       if (bpf.fullName) profileDetailsUpdates.fullName = bpf.fullName;
       if (bpf.professionalBio) profileDetailsUpdates.professionalBio = bpf.professionalBio;
-      if (bpf.city) profileDetailsUpdates.city = bpf.city;
+      const bpfCity = bpf.city || bpf.state;
+      if (bpfCity) profileDetailsUpdates.city = bpfCity;
+      if (bpf.state) profileDetailsUpdates.state = bpf.state;
       if (bpf.country) profileDetailsUpdates.country = bpf.country;
       if (bpf.hourlyRate) profileDetailsUpdates.hourlyRate = bpf.hourlyRate;
       if (bpf.experience) profileDetailsUpdates.experienceLevel = bpf.experience;
       if (Array.isArray(bpf.skills)) profileDetailsUpdates.skills = bpf.skills;
+      if (Array.isArray(bpf.languages)) profileDetailsUpdates.languages = bpf.languages;
+
+      const bpfResume =
+        typeof bpf.resume === "string"
+          ? bpf.resume
+          : bpf.resume?.url || bpf.resumeUrl || "";
+      if (bpfResume) {
+        profileDetailsUpdates.resume = bpfResume;
+      }
+
+      profileDetailsUpdates.identity = {
+        ...(profileDetailsUpdates.identity || {}),
+        ...(bpf.fullName ? { fullName: bpf.fullName } : {}),
+        ...(bpf.username ? { username: bpf.username } : {}),
+        ...(bpfCity ? { city: bpfCity } : {}),
+        ...(bpf.country ? { country: bpf.country } : {}),
+        ...(Array.isArray(bpf.languages) ? { languages: bpf.languages } : {}),
+        ...(bpfResume ? { resume: bpfResume } : {}),
+      };
     }
     if (draftSnapshot.selectedWorkPreference) {
       profileDetailsUpdates.workPreference = draftSnapshot.selectedWorkPreference;
@@ -165,6 +186,18 @@ export const updateOnboardingProgressHandler = asyncHandler(async (req, res) => 
   if (draftSnapshot?.basicProfileForm?.professionalBio) {
     userUpdates.professionalBio = draftSnapshot.basicProfileForm.professionalBio;
     userUpdates.bio = draftSnapshot.basicProfileForm.professionalBio;
+  }
+  if (draftSnapshot?.basicProfileForm) {
+    const bpf = draftSnapshot.basicProfileForm;
+    if (bpf.city || bpf.state) userUpdates.city = bpf.city || bpf.state;
+    if (bpf.country) userUpdates.country = bpf.country;
+    if (bpf.username) userUpdates.username = bpf.username;
+    if (Array.isArray(bpf.languages)) userUpdates.languages = bpf.languages;
+    const bpfResume =
+      typeof bpf.resume === "string"
+        ? bpf.resume
+        : bpf.resume?.url || bpf.resumeUrl || "";
+    if (bpfResume) userUpdates.resume = bpfResume;
   }
 
   const updatedUser = await updateUserProfile(userId, userUpdates);

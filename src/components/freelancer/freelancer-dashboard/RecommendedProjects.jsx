@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Clock from "lucide-react/dist/esm/icons/clock";
@@ -6,7 +6,8 @@ import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import { cn } from "@/shared/lib/utils";
-import { FreelancerDashboardPanel } from "./shared.jsx";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { FreelancerDashboardPanel, FreelancerCarouselDots } from "./shared.jsx";
 
 const MOCK_RECOMMENDED_PROJECTS = [
   {
@@ -55,7 +56,7 @@ const RecommendedProjectCard = ({ item }) => {
   const tags = Array.isArray(item.tags) ? item.tags : [serviceName];
 
   return (
-    <FreelancerDashboardPanel className="flex flex-col p-5 bg-card border border-border/55 dark:border-white/[0.06] hover:border-[#D9692A]/30 dark:hover:border-[#F9D949]/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden group">
+    <FreelancerDashboardPanel className="flex h-full flex-col p-5 bg-card border border-border/55 dark:border-white/[0.06] hover:border-[#D9692A]/30 dark:hover:border-[#F9D949]/30 transition-all duration-300 hover:-translate-y-1 hover:shadow-md relative overflow-hidden group">
       {/* Sparkle decorative element on hover */}
       <div className="absolute top-3 right-3 text-[#D9692A]/40 dark:text-[#F9D949]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
         <Sparkles className="size-4 animate-pulse" />
@@ -111,11 +112,11 @@ const RecommendedProjectCard = ({ item }) => {
       </div>
 
       {/* Apply Action Button */}
-      <div className="mt-5 pt-3 border-t border-border/45 dark:border-white/[0.04]">
+      <div className="mt-auto pt-4">
         <button
           type="button"
           onClick={() => navigate("/marketplace/web_development")}
-          className="w-full flex items-center justify-center gap-1.5 h-10 rounded-full text-xs font-bold bg-transparent border border-[#D9692A] text-[#D9692A] hover:bg-[#D9692A] hover:text-white dark:border-[#F9D949] dark:text-[#F9D949] dark:hover:bg-[#F9D949] dark:hover:text-[#1C1B1F] transition-all duration-200"
+          className="w-full flex items-center justify-center gap-1.5 h-10 rounded-full text-xs font-bold bg-transparent border border-[#D9692A] text-[#D9692A] hover:bg-[#D9692A] hover:text-white dark:border-[#F9D949] dark:text-[#F9D949] dark:hover:bg-[#F9D949] dark:hover:text-[#1C1B1F] transition-all duration-200 cursor-pointer"
         >
           <span>View & Apply</span>
           <ArrowUpRight className="size-3.5" />
@@ -127,6 +128,10 @@ const RecommendedProjectCard = ({ item }) => {
 
 const RecommendedProjects = ({ liveProjects = [], userServices = [], className = "" }) => {
   const navigate = useNavigate();
+  const [carouselApi, setCarouselApi] = useState(null);
+  const [activeSnap, setActiveSnap] = useState(0);
+  const [snapCount, setSnapCount] = useState(0);
+
   const filterByServices = (projects) => {
     if (!userServices || userServices.length === 0) return projects;
     
@@ -161,6 +166,19 @@ const RecommendedProjects = ({ liveProjects = [], userServices = [], className =
   const projectsToDisplay = validLive.length > 0
     ? validLive.slice(0, 3)
     : validMocks.slice(0, 3);
+
+  useEffect(() => {
+    if (!carouselApi) return;
+    setSnapCount(carouselApi.scrollSnapList().length);
+    setActiveSnap(carouselApi.selectedScrollSnap());
+    const onSelect = () => {
+      setActiveSnap(carouselApi.selectedScrollSnap());
+    };
+    carouselApi.on("select", onSelect);
+    return () => {
+      carouselApi.off("select", onSelect);
+    };
+  }, [carouselApi]);
 
   if (projectsToDisplay.length === 0) {
     return (
@@ -206,11 +224,39 @@ const RecommendedProjects = ({ liveProjects = [], userServices = [], className =
         </button>
       </div>
 
-      {/* Grid container for cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {projectsToDisplay.map((project) => (
-          <RecommendedProjectCard key={project.id} item={project} />
-        ))}
+      {/* Horizontal Carousel (Left/Right swipe on mobile and responsive layout) */}
+      <div className="w-full">
+        <Carousel
+          setApi={setCarouselApi}
+          opts={{
+            align: "start",
+            containScroll: "trimSnaps",
+            slidesToScroll: 1,
+            duration: 30,
+          }}
+          className="w-full"
+        >
+          <CarouselContent className="-ml-3 sm:-ml-4 md:-ml-5 items-stretch">
+            {projectsToDisplay.map((project) => (
+              <CarouselItem
+                key={project.id}
+                className="pl-3 sm:pl-4 md:pl-5 basis-[88%] sm:basis-[70%] md:basis-1/2 lg:basis-1/3 flex flex-col"
+              >
+                <RecommendedProjectCard item={project} />
+              </CarouselItem>
+            ))}
+          </CarouselContent>
+        </Carousel>
+
+        {snapCount > 1 && (
+          <FreelancerCarouselDots
+            count={snapCount}
+            activeIndex={activeSnap}
+            onSelect={(index) => carouselApi?.scrollTo(index)}
+            ariaLabel="Recommended projects pagination"
+            getDotLabel={(index) => `Go to recommended project ${index + 1}`}
+          />
+        )}
       </div>
     </section>
   );

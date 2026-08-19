@@ -80,12 +80,15 @@ const ProfileHeroCard = ({
   setPersonal,
   initials,
   uploadingImage,
+  uploadingCoverImage = false,
   uploadingResume,
   handleImageUpload,
   handleCoverImageUpload,
   handleResumeUpload,
   handleResumeDelete,
+  removeCoverImage,
   coverImageUrl,
+  displayHeadline,
   displayBio,
   displayLocation,
   isVerified = false,
@@ -98,10 +101,36 @@ const ProfileHeroCard = ({
   onToggleAvailability,
   availabilitySaving,
 }) => {
-  const username = String(onboardingIdentity?.username || freelancerUsername || "").trim();
-  const spokenLanguages = Array.isArray(onboardingLanguages)
-    ? onboardingLanguages.slice(0, 3)
-    : [];
+  const profileName = String(personal.name || "").trim() || "Your Name";
+  const nameSlug = profileName && profileName !== "Your Name"
+    ? profileName.toLowerCase().replace(/[^a-z0-9]+/g, "")
+    : "";
+  const username =
+    String(
+      onboardingIdentity?.username ||
+      freelancerUsername ||
+      personal?.username ||
+      ""
+    ).trim() || nameSlug;
+  const profileHandle = username ? `@${username}` : "@add-username";
+
+  const rawLanguages = (Array.isArray(onboardingLanguages) && onboardingLanguages.length > 0)
+    ? onboardingLanguages
+    : (Array.isArray(onboardingIdentity?.languages) && onboardingIdentity.languages.length > 0)
+      ? onboardingIdentity.languages
+      : (Array.isArray(personal?.languages) && personal.languages.length > 0)
+        ? personal.languages
+        : (typeof personal?.languages === "string" && personal.languages.trim())
+          ? personal.languages.split(",").map((s) => s.trim()).filter(Boolean)
+          : [];
+  const spokenLanguages = rawLanguages.slice(0, 3);
+
+  const resolvedLocation =
+    String(displayLocation || personal?.location || "").trim() ||
+    ([onboardingIdentity?.city || onboardingIdentity?.state, onboardingIdentity?.country]
+      .filter(Boolean)
+      .join(", ") ||
+      "");
 
   const resolvedLinks = {
     linkedin: normalizeProfileLink(profileLinks?.linkedin),
@@ -111,8 +140,6 @@ const ProfileHeroCard = ({
   };
 
   const resolvedBio = String(displayBio || personal.bio || "").trim();
-  const profileName = String(personal.name || "").trim() || "Your Name";
-  const profileHandle = username ? `@${username}` : "@add-username";
   const isOpenToWorkActive =
     typeof personal.openToWork === "boolean"
       ? personal.openToWork
@@ -148,27 +175,57 @@ const ProfileHeroCard = ({
 
   return (
     <section className="relative rounded-2xl border border-border/60 bg-card text-foreground shadow-sm">
-      <div className="relative h-36 w-full sm:h-44 md:h-64 rounded-t-2xl overflow-hidden">
+      <div
+        className="group/cover relative h-36 w-full sm:h-44 md:h-64 rounded-t-2xl overflow-hidden cursor-pointer select-none"
+        onClick={() => coverInputRef?.current?.click()}
+      >
         {resolvedCoverImage ? (
-          <img
-            src={resolvedCoverImage}
-            alt={`${personal.name || "Freelancer"} profile cover`}
-            className="h-full w-full object-cover"
-            onError={() => setHasCoverImageError(true)}
-          />
+          <>
+            <img
+              src={resolvedCoverImage}
+              alt={`${personal.name || "Freelancer"} profile cover`}
+              className="h-full w-full object-cover"
+              onError={() => setHasCoverImageError(true)}
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 transition-opacity group-hover/cover:opacity-100">
+              <div className="flex items-center gap-2 rounded-full bg-background/90 px-3.5 py-1.5 text-xs font-medium text-foreground shadow-md backdrop-blur-sm">
+                {uploadingCoverImage ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    <span>Updating cover...</span>
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-3.5 w-3.5 text-primary" />
+                    <span>Change cover image</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </>
         ) : (
-          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-background px-6 py-8 text-center bg-muted/20">
-            <span className="text-[22px] font-semibold tracking-[-0.05em] text-muted-foreground/30 sm:text-[28px] md:text-[32px]">
-              Cover Image
-            </span>
+          <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-muted/20 px-6 py-8 text-center transition-colors group-hover/cover:bg-muted/30">
+            {uploadingCoverImage ? (
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>Uploading cover...</span>
+              </div>
+            ) : (
+              <span className="text-[22px] font-semibold tracking-[-0.05em] text-muted-foreground/30 sm:text-[28px] md:text-[32px]">
+                Cover Image
+              </span>
+            )}
           </div>
         )}
 
-        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+        <div
+          className="absolute right-4 top-4 z-10 flex items-center gap-2"
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             onClick={() => openEditPersonalModal()}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-muted sm:h-9 sm:w-9"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/70 bg-background/90 text-foreground shadow-sm backdrop-blur-sm transition-colors hover:bg-muted sm:h-9 sm:w-9 cursor-pointer"
             title="Edit profile"
             aria-label="Edit profile"
           >
@@ -177,6 +234,7 @@ const ProfileHeroCard = ({
         </div>
 
         <input
+          id="profile-cover-upload-input"
           type="file"
           ref={coverInputRef}
           className="hidden"
@@ -287,23 +345,36 @@ const ProfileHeroCard = ({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1 text-xs text-muted-foreground sm:gap-x-4 sm:text-sm">
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="h-4 w-4 text-primary" aria-hidden="true" />
-              {displayLocation || "Location not set"}
+              {resolvedLocation ? (
+                <span>{resolvedLocation}</span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openEditPersonalModal()}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground cursor-pointer"
+                >
+                  <span>Location not set</span>
+                  <span className="inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted">
+                    Add
+                  </span>
+                </button>
+              )}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <Languages className="h-4 w-4 text-primary" aria-hidden="true" />
               {spokenLanguages.length > 0 ? (
                 spokenLanguages.join(", ")
               ) : (
-                <>
+                <button
+                  type="button"
+                  onClick={() => openEditPersonalModal()}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground cursor-pointer"
+                >
                   <span>Languages not set</span>
-                  <button
-                    type="button"
-                    onClick={() => openEditPersonalModal()}
-                    className="inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted"
-                  >
+                  <span className="inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted">
                     Add
-                  </button>
-                </>
+                  </span>
+                </button>
               )}
             </span>
             <span className="inline-flex min-w-0 items-center">
@@ -331,12 +402,26 @@ const ProfileHeroCard = ({
                       </a>
                     );
                   })}
+                  <button
+                    type="button"
+                    onClick={() => openEditPersonalModal()}
+                    className="inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted cursor-pointer"
+                  >
+                    Edit
+                  </button>
                 </span>
               ) : (
-                <span className="flex items-center ml-1.5 text-muted-foreground">
-                  <Link className="h-3 w-3 mr-1.5 text-primary" />
-                  Links not set
-                </span>
+                <button
+                  type="button"
+                  onClick={() => openEditPersonalModal()}
+                  className="inline-flex items-center gap-1.5 transition-colors hover:text-foreground cursor-pointer"
+                >
+                  <Link className="h-3.5 w-3.5 text-primary" />
+                  <span>Links not set</span>
+                  <span className="inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[11px] font-medium text-foreground transition-colors hover:bg-muted">
+                    Add
+                  </span>
+                </button>
               )}
             </span>
           </div>

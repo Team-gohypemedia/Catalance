@@ -58,7 +58,7 @@ import {
   EXPERIENCE_YEARS_OPTIONS,
   SERVICE_OPTIONS,
 } from "@/components/features/freelancer/onboarding/constants";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import {
   EducationModalContent,
@@ -384,9 +384,49 @@ const getLocalTimeZoneLabel = () => {
 
 const FreelancerProfile = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, authFetch, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } =
     useNotifications();
+
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    if (profileLoading) return;
+
+    const params = new URLSearchParams(location.search);
+    const focus = params.get("focus");
+    const hash = location.hash;
+
+    const scrollTargetId =
+      focus === "completion" || hash === "#completion"
+        ? "profile-completion-section"
+        : hash === "#services"
+          ? "services-section"
+          : hash === "#availability"
+            ? "availability-section"
+            : null;
+
+    if (!scrollTargetId) return;
+
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts += 1;
+      const targetElement = document.getElementById(scrollTargetId);
+      if (targetElement) {
+        clearInterval(interval);
+        targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+        targetElement.classList.add("ring-2", "ring-primary", "rounded-2xl", "transition-all", "duration-500");
+        setTimeout(() => {
+          targetElement.classList.remove("ring-2", "ring-primary");
+        }, 2500);
+      } else if (attempts > 30) {
+        clearInterval(interval);
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [profileLoading, location.search, location.hash]);
   const [modalType, setModalType] = useState(null);
   const [skills, setSkills] = useState([]); // [{ name }]
   const [workExperience, setWorkExperience] = useState([]); // {title, period, description}
@@ -402,6 +442,7 @@ const FreelancerProfile = () => {
 
   const [personal, setPersonal] = useState({
     name: "",
+    username: "",
     email: "",
     phone: "",
     location: "",
@@ -455,7 +496,6 @@ const FreelancerProfile = () => {
   const [projectCoverUploadingIndex, setProjectCoverUploadingIndex] =
     useState(null);
   const [newProjectLoading, setNewProjectLoading] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingCoverImage, setUploadingCoverImage] = useState(false);
   const [uploadingResume, setUploadingResume] = useState(false);
@@ -621,6 +661,12 @@ const FreelancerProfile = () => {
           ...payload,
           personal: {
             ...payload.personal,
+            username:
+              payload.personal?.username ||
+              payload.username ||
+              normalizedProfileDetails?.identity?.username ||
+              payload.freelancerProfile?.username ||
+              "",
             avatar: personalAvatar,
             coverImage: personalCoverImage,
             location: location || identityLocation,
@@ -634,7 +680,18 @@ const FreelancerProfile = () => {
             portfolioUrl: existingPortfolio.portfolioUrl || "",
             linkedinUrl: existingPortfolio.linkedinUrl || "",
             githubUrl: existingPortfolio.githubUrl || "",
-            resume: existingPortfolio.resume || payload.resume || "",
+            resume:
+              existingPortfolio.resume ||
+              payload.resume ||
+              payload.portfolio?.resume ||
+              normalizedProfileDetails?.identity?.resume ||
+              normalizedProfileDetails?.resume ||
+              payload.freelancerProfile?.resume ||
+              normalizedProfileDetails?.onboardingDraft?.basicProfileForm?.resumeUrl ||
+              (typeof normalizedProfileDetails?.onboardingDraft?.basicProfileForm?.resume === "string"
+                ? normalizedProfileDetails.onboardingDraft.basicProfileForm.resume
+                : normalizedProfileDetails?.onboardingDraft?.basicProfileForm?.resume?.url) ||
+              "",
           },
           profileDetails: normalizedProfileDetails,
         };
@@ -652,6 +709,11 @@ const FreelancerProfile = () => {
       return {
         personal: {
           name: payload.fullName ?? payload.name ?? "",
+          username:
+            payload.username ??
+            normalizedProfileDetails?.identity?.username ??
+            payload.freelancerProfile?.username ??
+            "",
           email: payload.email ?? "",
           phone: payload.phone ?? payload.phoneNumber ?? "",
           location: rawLocation,
@@ -680,10 +742,20 @@ const FreelancerProfile = () => {
         workExperience: Array.isArray(payload.workExperience) ? payload.workExperience : [],
         services: Array.isArray(payload.services) ? payload.services : [],
         portfolio: {
-          portfolioUrl: payload.portfolio ?? "",
-          linkedinUrl: payload.linkedin ?? "",
-          githubUrl: payload.github ?? "",
-          resume: payload.resume ?? "",
+          portfolioUrl: payload.portfolio || "",
+          linkedinUrl: payload.linkedin || "",
+          githubUrl: payload.github || "",
+          resume:
+            payload.resume ||
+            payload.portfolio?.resume ||
+            normalizedProfileDetails?.identity?.resume ||
+            normalizedProfileDetails?.resume ||
+            payload.freelancerProfile?.resume ||
+            normalizedProfileDetails?.onboardingDraft?.basicProfileForm?.resumeUrl ||
+            (typeof normalizedProfileDetails?.onboardingDraft?.basicProfileForm?.resume === "string"
+              ? normalizedProfileDetails.onboardingDraft.basicProfileForm.resume
+              : normalizedProfileDetails?.onboardingDraft?.basicProfileForm?.resume?.url) ||
+            "",
         },
         portfolioProjects: payload.portfolioProjects ?? [],
         profileDetails: normalizedProfileDetails,
@@ -790,6 +862,13 @@ const FreelancerProfile = () => {
 
         const loadedPersonal = {
           name: normalized.personal?.name ?? user?.fullName ?? user?.name ?? "",
+          username:
+            normalized.personal?.username ||
+            user?.username ||
+            user?.freelancerProfile?.username ||
+            normalizedProfileDetails?.identity?.username ||
+            (user?.email ? user.email.split("@")[0] : "") ||
+            "",
           email:
             normalized.personal?.email ??
             resolveUserSecondaryLabel(user) ??
@@ -941,6 +1020,11 @@ const FreelancerProfile = () => {
         if (active) {
           const fallbackPersonal = {
             name: user?.fullName ?? user?.name ?? "",
+            username:
+              user?.username ||
+              user?.freelancerProfile?.username ||
+              (user?.email ? user.email.split("@")[0] : "") ||
+              "",
             email: resolveUserSecondaryLabel(user) ?? "",
             phone: "",
             location: "",
@@ -1410,7 +1494,7 @@ const FreelancerProfile = () => {
         ...existingIdentity,
         city: nextIdentityLocation.city,
         country: nextIdentityLocation.country,
-        username: String(existingIdentity.username || "").trim(),
+        username: String(currentPersonal.username || existingIdentity.username || "").trim(),
         languages: Array.isArray(existingIdentity.languages)
           ? existingIdentity.languages
           : [],
@@ -1438,6 +1522,7 @@ const FreelancerProfile = () => {
     const fullPayload = {
       personal: {
         name: currentPersonal.name,
+        username: currentPersonal.username,
         email: currentPersonal.email,
         phone: currentPersonal.phone,
         location: currentPersonal.location,
@@ -1464,6 +1549,7 @@ const FreelancerProfile = () => {
       profileSection: "personal",
       personal: {
         name: currentPersonal.name,
+        username: currentPersonal.username,
         email: currentPersonal.email,
         location: currentPersonal.location,
         bio: bioText,
@@ -1480,7 +1566,7 @@ const FreelancerProfile = () => {
         identity: {
           city: nextIdentityLocation.city,
           country: nextIdentityLocation.country,
-          username: String(existingIdentity.username || "").trim(),
+          username: String(currentPersonal.username || existingIdentity.username || "").trim(),
           languages: Array.isArray(existingIdentity.languages)
             ? existingIdentity.languages
             : [],
@@ -1675,9 +1761,21 @@ const FreelancerProfile = () => {
     }
   };
 
-  // ----- Personal Details Edit (Name, Headline, Phone, Location) -----
   const openEditPersonalModal = (section = PERSONAL_EDITOR_SECTIONS.ALL) => {
     setPersonalEditorSection(section);
+    setPersonal((prev) => {
+      const resolvedUsername =
+        prev?.username ||
+        user?.username ||
+        user?.freelancerProfile?.username ||
+        profileDetails?.identity?.username ||
+        (user?.email ? user.email.split("@")[0] : "") ||
+        "";
+      return {
+        ...prev,
+        username: resolvedUsername,
+      };
+    });
     setModalType("personal");
   };
 
@@ -1718,6 +1816,7 @@ const FreelancerProfile = () => {
       .replace(/[^a-z0-9]/g, "")
       .slice(0, 20);
 
+    setPersonal((prev) => ({ ...prev, username: normalizedUsername }));
     updateProfileIdentityFields({ username: normalizedUsername });
   }, [updateProfileIdentityFields]);
 
@@ -3352,7 +3451,35 @@ const FreelancerProfile = () => {
     ...(Array.isArray(onboardingIdentity?.languages)
       ? onboardingIdentity.languages
       : []),
+    ...(Array.isArray(profileDetails?.languages)
+      ? profileDetails.languages
+      : []),
+    ...(Array.isArray(personal?.languages)
+      ? personal.languages
+      : []),
+    ...(Array.isArray(user?.freelancerProfile?.languages)
+      ? user.freelancerProfile.languages
+      : []),
+    ...(Array.isArray(user?.languages)
+      ? user.languages
+      : []),
+    ...(Array.isArray(user?.profileDetails?.identity?.languages)
+      ? user.profileDetails.identity.languages
+      : []),
+    ...(Array.isArray(user?.profileDetails?.languages)
+      ? user.profileDetails.languages
+      : []),
+    ...(typeof onboardingIdentity?.languages === "string"
+      ? parseDelimitedValues(onboardingIdentity.languages)
+      : []),
+    ...(typeof profileDetails?.languages === "string"
+      ? parseDelimitedValues(profileDetails.languages)
+      : []),
+    ...(typeof personal?.languages === "string"
+      ? parseDelimitedValues(personal.languages)
+      : []),
     onboardingIdentity?.otherLanguage || "",
+    profileDetails?.otherLanguage || "",
   ]);
   const onboardingAvailability =
     profileDetails?.availability && typeof profileDetails.availability === "object"
@@ -3432,7 +3559,20 @@ const FreelancerProfile = () => {
     fallbackLinkedinLink;
   const resolvedGithubLink =
     normalizePresenceLink(portfolio.githubUrl) || fallbackGithubLink;
-  const resolvedResumeLink = normalizePresenceLink(portfolio.resume);
+  const resolvedResumeLink =
+    normalizePresenceLink(portfolio.resume) ||
+    normalizePresenceLink(onboardingIdentity?.resume) ||
+    normalizePresenceLink(profileDetails?.identity?.resume) ||
+    normalizePresenceLink(profileDetails?.resume) ||
+    normalizePresenceLink(user?.freelancerProfile?.resume) ||
+    normalizePresenceLink(user?.resume) ||
+    normalizePresenceLink(profileDetails?.onboardingDraft?.basicProfileForm?.resumeUrl) ||
+    normalizePresenceLink(
+      typeof profileDetails?.onboardingDraft?.basicProfileForm?.resume === "string"
+        ? profileDetails.onboardingDraft.basicProfileForm.resume
+        : profileDetails?.onboardingDraft?.basicProfileForm?.resume?.url
+    ) ||
+    "";
   const onboardingServiceEntries = useMemo(() => normalizeServiceStorageKeys([
     ...onboardingServices,
     ...Object.keys(onboardingServiceDetailMap),
@@ -3590,7 +3730,17 @@ const FreelancerProfile = () => {
 
     return map;
   }, [onboardingServiceDetailMap]);
-  const onboardingIdentityLocation = buildLocationFromIdentity(onboardingIdentity);
+  const onboardingIdentityLocation =
+    buildLocationFromIdentity(onboardingIdentity) ||
+    buildLocationFromIdentity(profileDetails?.identity) ||
+    (profileDetails?.city && profileDetails?.country
+      ? `${profileDetails.city}, ${profileDetails.country}`
+      : profileDetails?.city || profileDetails?.country || profileDetails?.location) ||
+    (user?.freelancerProfile?.city && user?.freelancerProfile?.country
+      ? `${user.freelancerProfile.city}, ${user.freelancerProfile.country}`
+      : user?.freelancerProfile?.city || user?.freelancerProfile?.country) ||
+    user?.location ||
+    "";
   const displayHeadline =
     String(personal.headline || "").trim() ||
     String(onboardingIdentity?.professionalTitle || "").trim() ||
@@ -3599,7 +3749,10 @@ const FreelancerProfile = () => {
     String(profileDetails?.professionalBio || "").trim() ||
     normalizeBioValue(personal.bio) ||
     "";
-  const displayLocation = personal.location || onboardingIdentityLocation || "";
+  const displayLocation =
+    String(personal.location || "").trim() ||
+    onboardingIdentityLocation ||
+    "";
   const effectiveWorkExperience = workExperience;
   const normalizedWorkExperience = normalizeWorkExperienceEntries(
     effectiveWorkExperience
@@ -3961,7 +4114,13 @@ const FreelancerProfile = () => {
     profileCompletionMissingDetails.push({
       label: "Profile cover",
       detail: "Add a cover image to strengthen your profile header.",
-      onClick: () => openEditPersonalModal(),
+      onClick: () => {
+        if (coverInputRef.current) {
+          coverInputRef.current.click();
+        } else {
+          document.getElementById("profile-cover-upload-input")?.click();
+        }
+      },
     });
   }
 
@@ -4193,7 +4352,15 @@ const FreelancerProfile = () => {
             displayLocation={displayLocation}
             isVerified={Boolean(personal.isVerified)}
             onboardingIdentity={onboardingIdentity}
-            freelancerUsername={user?.freelancerProfile?.username || ""}
+            freelancerUsername={
+              personal?.username ||
+              onboardingIdentity?.username ||
+              profileDetails?.identity?.username ||
+              profileDetails?.username ||
+              user?.freelancerProfile?.username ||
+              user?.username ||
+              ""
+            }
             onboardingLanguages={onboardingLanguages}
             openEditPersonalModal={openEditPersonalModal}
             openPortfolioModal={openPortfolioModal}
@@ -4239,7 +4406,7 @@ const FreelancerProfile = () => {
               />
             </div>
 
-            <div className="space-y-5 lg:sticky lg:top-40 lg:self-start">
+            <div id="profile-completion-section" className="space-y-5 lg:sticky lg:top-40 lg:self-start scroll-mt-28">
               <ProfileSummaryCards
                 profileCompletionPercent={profileCompletionPercent}
                 completedCompletionSections={completedCompletionSections}
@@ -4255,7 +4422,7 @@ const FreelancerProfile = () => {
 
           </div>
 
-          <div className="mt-5">
+          <div id="services-section" className="mt-5 scroll-mt-28">
             <ServicesFromOnboardingCard
               onboardingServiceEntries={onboardingServiceEntries}
               portfolioProjects={displayPortfolioProjects}

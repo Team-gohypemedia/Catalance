@@ -39,6 +39,7 @@ const PersonalDetailsModalContent = ({
   portfolio,
   setPortfolio,
   onboardingIdentity,
+  onboardingLanguages = [],
   handlePersonalChange,
   handlePersonalUsernameChange,
   handlePersonalLanguagesChange,
@@ -241,7 +242,7 @@ const PersonalDetailsModalContent = ({
               @
             </span>
             <Input
-              value={String(onboardingIdentity?.username || "")}
+              value={String(personal?.username || onboardingIdentity?.username || "")}
               onChange={handlePersonalUsernameChange}
               placeholder="username"
               className="h-9 bg-background/70 pl-7 text-sm"
@@ -270,9 +271,15 @@ const PersonalDetailsModalContent = ({
           </Label>
           <Input
             value={
-              Array.isArray(onboardingIdentity?.languages)
+              Array.isArray(onboardingIdentity?.languages) && onboardingIdentity.languages.length > 0
                 ? onboardingIdentity.languages.join(", ")
-                : ""
+                : Array.isArray(onboardingLanguages) && onboardingLanguages.length > 0
+                  ? onboardingLanguages.join(", ")
+                  : Array.isArray(personal?.languages) && personal.languages.length > 0
+                    ? personal.languages.join(", ")
+                    : typeof personal?.languages === "string"
+                      ? personal.languages
+                      : ""
             }
             onChange={handlePersonalLanguagesChange}
             placeholder="English, Hindi"

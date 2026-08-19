@@ -14,6 +14,7 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import Tag from "lucide-react/dist/esm/icons/tag";
 import LayoutGrid from "lucide-react/dist/esm/icons/layout-grid";
 import Lock from "lucide-react/dist/esm/icons/lock";
+import Search from "lucide-react/dist/esm/icons/search";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -41,6 +42,7 @@ import {
   resolveServiceKey,
 } from "../../Freelancer-Onboarding/service-details";
 
+import CategoryMultiSelect from "../../Freelancer-Onboarding/slides/shared/CategoryMultiSelect";
 import {
   CustomSelect,
   ServiceTitleTooltip,
@@ -258,6 +260,33 @@ const AddEditServiceWizard = ({
   const [isServiceToolsLoading, setIsServiceToolsLoading] = useState(false);
   const [serviceToolFetchError, setServiceToolFetchError] = useState("");
   const [isServiceToolsOpen, setIsServiceToolsOpen] = useState(false);
+  const [serviceToolSearchQuery, setServiceToolSearchQuery] = useState("");
+  const serviceToolsContainerRef = useRef(null);
+
+  const filteredServiceToolOptions = useMemo(() => {
+    const query = serviceToolSearchQuery.trim().toLowerCase();
+    if (!query) return serviceToolOptions;
+    return serviceToolOptions.filter(
+      (opt) =>
+        (opt.label && opt.label.toLowerCase().includes(query)) ||
+        (opt.name && opt.name.toLowerCase().includes(query)),
+    );
+  }, [serviceToolOptions, serviceToolSearchQuery]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        serviceToolsContainerRef.current &&
+        !serviceToolsContainerRef.current.contains(event.target)
+      ) {
+        setIsServiceToolsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const serviceKey = serviceProfileForm.serviceKey;
   const [marketplaceServices, setMarketplaceServices] = useState([]);
@@ -1069,27 +1098,30 @@ const AddEditServiceWizard = ({
                   <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                     Select Skill
                   </label>
-                  <CategorySkillBrowser
-                    categories={allCategoryOptions}
-                    selectedCategoryKeys={selectedCategoryKeys}
-                    selectedSubcategories={selectedSubcategories}
+                  <CategoryMultiSelect
+                    selected={selectedCategoryKeys}
+                    onChange={handleSelectedCategoriesChange}
+                    options={allCategoryOptions}
+                    serviceLabel={headerServiceLabel}
+                    placeholder={isCategoriesLoading ? "Loading..." : "Search or select a skill"}
+                    searchPlaceholder="Search skills..."
+                    isLoading={isCategoriesLoading}
                     activeCategoryKey={activeSkillCategoryId}
-                    toolOptionsByCategory={toolOptionsByCategory}
-                    isCategoriesLoading={isCategoriesLoading}
-                    isToolsLoading={isToolsLoading}
-                    onCategoriesChange={handleSelectedCategoriesChange}
                     onActiveCategoryChange={(value) =>
                       setServiceProfileForm((prev) => ({
                         ...prev,
-                        activeSkillCategory: value,
+                        activeSkillCategory: value || null,
                       }))
                     }
-                    onSkillChange={handleSubcategorySkillChange}
+                    selectedSubcategories={selectedSubcategories}
+                    toolOptionsByCategory={toolOptionsByCategory}
+                    onSubcategorySkillChange={handleSubcategorySkillChange}
+                    isToolsLoading={isToolsLoading}
                   />
                 </div>
 
                 {(isServiceToolsLoading || serviceToolFetchError || serviceToolOptions.length > 0) && (
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="space-y-1">
                       <label className="text-xs font-bold uppercase tracking-[0.16em] text-foreground">
                         Service Tools
@@ -1112,99 +1144,112 @@ const AddEditServiceWizard = ({
                         ))}
                       </div>
                     ) : serviceToolOptions.length > 0 ? (
-                      <div className="space-y-3">
-                        <Popover
-                          open={isServiceToolsOpen}
-                          onOpenChange={setIsServiceToolsOpen}
+                      <div className="space-y-3 relative" ref={serviceToolsContainerRef}>
+                        {/* Interactive Search & Select Trigger */}
+                        <div
+                          className={cn(
+                            "relative flex h-11 w-full items-center rounded-xl border bg-card px-3.5 shadow-2xs transition-all",
+                            isServiceToolsOpen
+                              ? "border-primary ring-2 ring-primary/20"
+                              : "border-border hover:border-primary/40"
+                          )}
                         >
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              className={cn(
-                                "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-3 py-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-50",
-                                isServiceToolsOpen
-                                  ? "border-primary/50 ring-1 ring-primary/20"
-                                  : "border-border"
-                              )}
-                            >
-                              <span className="text-muted-foreground">
-                                Search and select tools...
-                              </span>
-                              <ChevronDown className="h-4 w-4 opacity-50" />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className="w-[--radix-popover-trigger-width] p-0"
-                            align="start"
+                          <Search className="h-4 w-4 text-muted-foreground shrink-0 mr-2" aria-hidden="true" />
+                          <input
+                            type="text"
+                            value={serviceToolSearchQuery}
+                            onChange={(e) => {
+                              setServiceToolSearchQuery(e.target.value);
+                              if (!isServiceToolsOpen) setIsServiceToolsOpen(true);
+                            }}
+                            onFocus={() => setIsServiceToolsOpen(true)}
+                            placeholder="Search and select tools..."
+                            className="h-full w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setIsServiceToolsOpen((prev) => !prev)}
+                            className="p-1 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
+                            aria-label="Toggle tool options"
                           >
-                            <Command>
-                              <CommandInput placeholder="Search tools..." />
-                              <CommandList>
-                                <CommandEmpty>No tools found.</CommandEmpty>
-                                <CommandGroup>
-                                  {serviceToolOptions.map((toolOption) => {
-                                    const isSelected =
-                                      selectedServiceToolIdSet.has(toolOption.id);
-                                    return (
-                                      <CommandItem
-                                        key={toolOption.id}
-                                        value={toolOption.label}
-                                        onSelect={() => {
-                                          handleServiceToolToggle(toolOption);
-                                        }}
-                                      >
-                                        <Check
-                                          className={cn(
-                                            "mr-2 h-4 w-4",
-                                            isSelected
-                                              ? "opacity-100 text-primary"
-                                              : "opacity-0"
-                                          )}
-                                        />
-                                        {toolOption.label}
-                                      </CommandItem>
-                                    );
-                                  })}
-                                </CommandGroup>
-                              </CommandList>
-                            </Command>
-                          </PopoverContent>
-                        </Popover>
+                            <ChevronDown
+                              className={cn(
+                                "h-4 w-4 transition-transform duration-200",
+                                isServiceToolsOpen && "rotate-180"
+                              )}
+                            />
+                          </button>
+                        </div>
 
-                        {selectedServiceToolIds.length > 0 ? (
-                          <div className="flex flex-wrap gap-2 pt-1">
+                        {/* Full-width Dropdown Options attached directly underneath */}
+                        {isServiceToolsOpen && (
+                          <div
+                            className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-card p-1 shadow-2xl shadow-black/15 dark:shadow-black/50 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:!hidden"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {filteredServiceToolOptions.length === 0 ? (
+                              <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                                No tools found.
+                              </div>
+                            ) : (
+                              filteredServiceToolOptions.map((toolOption) => {
+                                const isSelected = selectedServiceToolIdSet.has(toolOption.id);
+                                return (
+                                  <button
+                                    key={toolOption.id}
+                                    type="button"
+                                    onClick={() => handleServiceToolToggle(toolOption)}
+                                    className={cn(
+                                      "flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
+                                      isSelected
+                                        ? "bg-primary/10 text-primary font-medium"
+                                        : "text-foreground hover:bg-muted"
+                                    )}
+                                  >
+                                    <span className="truncate min-w-0 flex-1">{toolOption.label}</span>
+                                    {isSelected ? (
+                                      <Check className="ml-2 h-4 w-4 text-primary shrink-0" />
+                                    ) : (
+                                      <span className="ml-2 h-4 w-4 rounded border border-border bg-background shrink-0" />
+                                    )}
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+
+                        {/* Selected Pills */}
+                        {selectedServiceToolIds.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
                             {selectedServiceToolIds.map((toolId) => {
                               const toolOption = serviceToolOptions.find(
-                                (option) => option.id === toolId
+                                (opt) => opt.id === toolId
                               );
                               if (!toolOption) return null;
-
                               return (
                                 <div
                                   key={toolId}
-                                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary"
+                                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/25 bg-primary/10 px-2.5 text-xs font-medium text-primary shadow-2xs"
                                 >
                                   <span>{toolOption.label}</span>
                                   <button
                                     type="button"
-                                    onClick={(event) => {
-                                      event.stopPropagation();
-                                      handleServiceToolToggle(toolOption);
-                                    }}
-                                    className="ml-1 rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                                    onClick={() => handleServiceToolToggle(toolOption)}
+                                    className="text-primary/70 hover:text-primary transition-colors cursor-pointer"
+                                    aria-label={`Remove ${toolOption.label}`}
                                   >
-                                    <X className="h-3 w-3" />
+                                    <X className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
                               );
                             })}
                           </div>
-                        ) : null}
+                        )}
                       </div>
                     ) : null}
-
                     {serviceToolFetchError ? (
-                      <p className="text-xs text-destructive">
+                      <p className="text-xs text-destructive mt-1">
                         {serviceToolFetchError}
                       </p>
                     ) : null}
@@ -2627,227 +2672,5 @@ const CategorySkillBrowser = ({
     </div>
   );
 };
-const CategoryMultiSelect = ({
-  options = [],
-  selected = [],
-  onChange,
-  isLoading,
-  placeholder = "Select sub-categories",
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) setIsOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selectedSet = useMemo(
-    () => new Set((Array.isArray(selected) ? selected : []).map((value) => String(value))),
-    [selected]
-  );
-  const selectedOptions = useMemo(
-    () => options.filter((option) => selectedSet.has(String(option.value))),
-    [options, selectedSet]
-  );
-  const summaryText = useMemo(() => {
-    if (isLoading) {
-      return "Loading...";
-    }
-
-    if (selectedOptions.length === 0) {
-      return placeholder;
-    }
-
-    if (selectedOptions.length <= 2) {
-      return selectedOptions.map((option) => option.label).join(", ");
-    }
-
-    return `${selectedOptions
-      .slice(0, 2)
-      .map((option) => option.label)
-      .join(", ")} +${selectedOptions.length - 2} more`;
-  }, [isLoading, placeholder, selectedOptions]);
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "flex h-10 w-full items-center justify-between rounded-xl border bg-card px-4 text-sm transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/20",
-          selectedOptions.length > 0
-            ? "border-primary/25 text-foreground"
-            : "border-border text-foreground/40"
-        )}
-      >
-        <span className="truncate text-left">{summaryText}</span>
-        <ChevronDown
-          className={cn(
-            "h-4 w-4 transition-transform duration-200",
-            selectedOptions.length > 0 ? "text-primary" : "text-foreground/40",
-            isOpen && "rotate-180"
-          )}
-        />
-      </button>
-
-      {selectedOptions.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {selectedOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() =>
-                onChange(
-                  selected.filter((value) => String(value) !== String(option.value))
-                )
-              }
-              className="inline-flex items-center gap-2 rounded-full border border-primary/45 bg-primary/12 px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/18"
-            >
-              <span>{option.label}</span>
-              <X className="h-3.5 w-3.5" />
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {isOpen && (
-        <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-black/40 animate-in fade-in zoom-in-95 duration-200">
-          <div className="flex max-h-56 flex-col gap-1 overflow-y-auto p-2">
-            {options.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-foreground/40">
-                {isLoading ? "Loading sub-categories..." : "No sub-categories available"}
-              </div>
-            ) : (
-              options.map(option => {
-                const isSelected = selectedSet.has(String(option.value));
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      if (isSelected) {
-                        onChange(selected.filter((value) => String(value) !== String(option.value)));
-                      } else {
-                        onChange([...selected, option.value]);
-                      }
-                    }}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-lg border px-4 py-3 text-left text-sm transition-colors",
-                      isSelected
-                        ? "border-primary/60 bg-primary text-primary-foreground shadow-[0_0_0_1px_rgba(255,199,0,0.25)]"
-                        : "border-transparent text-foreground/80 hover:border-border hover:bg-muted"
-                    )}
-                  >
-                    <span className="min-w-0 truncate font-medium">{option.label}</span>
-                    {isSelected ? (
-                      <Check className="ml-1 h-4 w-4 shrink-0 text-primary-foreground" />
-                    ) : null}
-                  </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const TechnologiesInput = ({ toolOptions, selectedToolIds, customSkillNames, onChange, isLoading }) => {
-  const [query, setQuery] = useState("");
-
-  const addCustom = () => {
-    if (!query.trim()) return;
-    if (customSkillNames.includes(query.trim())) return;
-    onChange('customSkillNames', [...customSkillNames, query.trim()]);
-    setQuery("");
-  };
-
-  const toggleTool = (id) => {
-    if (selectedToolIds.includes(id)) {
-      onChange('selectedToolIds', selectedToolIds.filter(v => v !== id));
-    } else {
-      onChange('selectedToolIds', [...selectedToolIds, id]);
-    }
-  };
-
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustom())}
-          placeholder="Add custom skill..."
-          className="h-10 rounded-xl border-border bg-card px-4 text-sm text-foreground placeholder:text-foreground/40 focus:border-primary/50"
-        />
-        <Button
-          type="button"
-          onClick={addCustom}
-          variant="secondary"
-          className="h-10 rounded-xl px-6"
-        >
-          Add
-        </Button>
-      </div>
-
-      <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto subtle-scrollbar pr-2">
-        {toolOptions.map(tool => {
-          const isSelected = selectedToolIds.includes(tool.id);
-          const toolName = String(tool.name || tool.label || "").trim();
-          return (
-            <button
-              key={tool.id}
-              type="button"
-              onClick={() => toggleTool(tool.id)}
-              className={cn(
-                "rounded-full border px-4 py-1.5 text-xs font-medium transition-all",
-                isSelected ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground/50 hover:border-white/20 hover:text-foreground"
-              )}
-            >
-              {toolName}
-            </button>
-          );
-        })}
-        {isLoading ? (
-          <p className="text-[10px] text-foreground/20">Syncing tools...</p>
-        ) : toolOptions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No preset skills found. Add a custom skill above.
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap gap-2 border-t border-border pt-3">
-        {selectedToolIds.map(id => {
-          const tool = toolOptions.find(o => o.id === id);
-          const name = tool?.name || tool?.label || "Tool";
-          return (
-             <span key={id} className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-               {name}
-               <button type="button" onClick={() => toggleTool(id)}>
-                 <X className="h-3 w-3 opacity-60 hover:opacity-100" />
-               </button>
-             </span>
-          );
-        })}
-        {customSkillNames.map(name => (
-           <span key={name} className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
-             {name}
-             <button type="button" onClick={() => onChange('customSkillNames', customSkillNames.filter(n => n !== name))}>
-               <X className="h-3 w-3 opacity-60 hover:opacity-100" />
-             </button>
-           </span>
-        ))}
-      </div>
-    </div>
-  );
-};
 
 export default AddEditServiceWizard;
-

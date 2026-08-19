@@ -2827,84 +2827,84 @@ const Marketplace = () => {
           if (!open) setSelectedProjectDetail(null);
         }}
       >
-        <DialogContent aria-describedby={undefined} className="w-[90vw] max-w-[840px] rounded-[12px] border border-border bg-card p-0 shadow-2xl sm:w-[840px] overflow-hidden flex flex-col max-h-[90vh]">
+        <DialogContent aria-describedby={undefined} className="w-[94vw] max-w-[840px] rounded-[22px] sm:rounded-[28px] border border-border bg-card p-0 shadow-2xl sm:w-[840px] overflow-hidden flex flex-col max-h-[92dvh] sm:max-h-[88vh]">
           {selectedProjectDetail && (
             <>
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-border px-8 py-5 shrink-0 bg-background/50">
-                <div className="flex items-center gap-3">
-                  <DialogTitle className="text-xl font-bold tracking-tight text-foreground truncate max-w-[400px]">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-8 sm:py-5 shrink-0 bg-background/80 backdrop-blur-md">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 pr-2">
+                  <DialogTitle className="text-base sm:text-xl font-bold tracking-tight text-foreground truncate max-w-[160px] sm:max-w-[380px]">
                     {selectedProjectDetail.title || "Untitled project"}
                   </DialogTitle>
                   {selectedProjectDetail.proposalStatus === "REJECTED" ? (
-                    <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                    <div className="inline-flex shrink-0 items-center justify-center rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400">
                       Rejected
                     </div>
                   ) : (
-                    <div className="inline-flex items-center justify-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
+                    <div className="inline-flex shrink-0 items-center justify-center rounded-full px-2 sm:px-2.5 py-0.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-[#FFF0EA] text-[#FF6A39] dark:bg-primary/10 dark:text-primary">
                       {selectedProjectDetail.hasSubmittedProposal ? "Applied" : "Open"}
                     </div>
                   )}
                 </div>
                 
-                <div className="flex items-center gap-4">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-6">
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider mr-6 sm:mr-7">
                     {formatProjectDate(selectedProjectDetail.postedAt || selectedProjectDetail.createdAt)}
                   </span>
                 </div>
               </div>
 
               {/* Body */}
-              <div className="flex-1 overflow-y-auto p-8 space-y-10 no-scrollbar bg-card">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 sm:space-y-8 no-scrollbar bg-card">
                 
                 {/* 01 SUMMARY */}
                 <section>
-                  <div className="mb-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground mb-1">01 Project Summary</p>
-                    <h4 className="text-xl font-bold tracking-tight text-foreground">Start with the essentials</h4>
-                    <p className="text-sm text-muted-foreground mt-1">Review the project details, service, and budget before diving into the full scope.</p>
+                  <div className="mb-3.5 sm:mb-4">
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/80 mb-0.5 sm:mb-1">01 Project Summary</p>
+                    <h4 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">Start with the essentials</h4>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1 leading-relaxed">Review the project details, service, and budget before diving into the full scope.</p>
                   </div>
                   
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Project Title</p>
-                      <p className="text-sm font-medium text-foreground truncate">{selectedProjectDetail.title || "Untitled"}</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                    <div className="rounded-[14px] sm:rounded-[16px] border border-border/60 bg-background p-3 sm:p-4 flex flex-col justify-center min-w-0">
+                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-1">Project Title</p>
+                      <p className="text-xs sm:text-sm font-semibold text-foreground break-words line-clamp-2 leading-snug">{selectedProjectDetail.title || "Untitled"}</p>
                     </div>
-                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Client Name</p>
-                      <p className="text-sm font-medium text-foreground truncate">{selectedProjectDetail.clientName || selectedProjectDetail.companyName || "Unknown"}</p>
+                    <div className="rounded-[14px] sm:rounded-[16px] border border-border/60 bg-background p-3 sm:p-4 flex flex-col justify-center min-w-0">
+                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-1">Client Name</p>
+                      <p className="text-xs sm:text-sm font-semibold text-foreground break-words line-clamp-2 leading-snug">{selectedProjectDetail.clientName || selectedProjectDetail.companyName || "Unknown"}</p>
                     </div>
-                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Service Type</p>
-                      <p className="text-sm font-medium text-foreground truncate">{selectedProjectDetail.serviceName || "General"}</p>
+                    <div className="rounded-[14px] sm:rounded-[16px] border border-border/60 bg-background p-3 sm:p-4 flex flex-col justify-center min-w-0">
+                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-1">Service Type</p>
+                      <p className="text-xs sm:text-sm font-semibold text-foreground break-words line-clamp-2 leading-snug">{selectedProjectDetail.serviceName || "General"}</p>
                     </div>
-                    <div className="rounded-[16px] border border-border/60 bg-background p-4">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-foreground/80 mb-1">Budget</p>
-                      <p className="text-sm font-medium text-foreground truncate">{formatProjectBudget(selectedProjectDetail)}</p>
+                    <div className="rounded-[14px] sm:rounded-[16px] border border-border/60 bg-background p-3 sm:p-4 flex flex-col justify-center min-w-0">
+                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.1em] text-muted-foreground mb-1">Budget</p>
+                      <p className="text-xs sm:text-sm font-semibold text-foreground break-words line-clamp-2 leading-snug">{formatProjectBudget(selectedProjectDetail)}</p>
                     </div>
                   </div>
                 </section>
 
                 {/* 02 SCOPE */}
                 <section>
-                  <div className="mb-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground mb-1">02 Project Scope & Details</p>
-                    <h4 className="text-xl font-bold tracking-tight text-foreground">What the project includes</h4>
+                  <div className="mb-3.5 sm:mb-4">
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.2em] text-foreground/80 mb-0.5 sm:mb-1">02 Project Scope & Details</p>
+                    <h4 className="text-lg sm:text-xl font-bold tracking-tight text-foreground">What the project includes</h4>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.45fr)_minmax(280px,0.95fr)] gap-5">
+                  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1.45fr)_minmax(260px,0.95fr)] gap-4 sm:gap-5">
                     {/* Left Column: Parsed Sections */}
-                    <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-3.5 sm:gap-4">
                       {(() => {
                         const parsedContent = parseProposalContent(selectedProjectDetail.description || selectedProjectDetail.content || selectedProjectDetail.summary || "");
                         return parsedContent?.sections?.map((section) => (
-                          <div key={section.key} className="rounded-[20px] border border-border/60 bg-background p-6">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-3">{section.title}</p>
+                          <div key={section.key} className="rounded-[16px] sm:rounded-[20px] border border-border/60 bg-background p-4 sm:p-6">
+                            <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-2.5 sm:mb-3">{section.title}</p>
                             
                             <div className="space-y-3">
                               {section.lines.length > 0 && (
                                 <div className="space-y-2">
                                   {section.lines.map((line, index) => (
-                                    <p key={`${section.key}-line-${index}`} className="text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                                    <p key={`${section.key}-line-${index}`} className="text-xs sm:text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
                                       {line}
                                     </p>
                                   ))}
@@ -2912,10 +2912,10 @@ const Marketplace = () => {
                               )}
                               
                               {section.list.length > 0 && (
-                                <ul className="flex flex-col gap-2.5 mt-3">
+                                <ul className="flex flex-col gap-2 mt-2.5 sm:mt-3">
                                   {section.list.map((item, index) => (
-                                    <li key={`${section.key}-list-${index}`} className="flex items-start gap-2 text-[13px] text-muted-foreground">
-                                      <div className="h-1.5 w-1.5 rounded-full bg-[#FF6A39] shrink-0 mt-[6px]" />
+                                    <li key={`${section.key}-list-${index}`} className="flex items-start gap-2 text-xs sm:text-[13px] text-muted-foreground">
+                                      <div className="h-1.5 w-1.5 rounded-full bg-[#FF6A39] shrink-0 mt-[5px]" />
                                       <span className="leading-relaxed">{item}</span>
                                     </li>
                                   ))}
@@ -2928,9 +2928,9 @@ const Marketplace = () => {
                       
                       {/* Fallback if no sections parsed */}
                       {(!parseProposalContent(selectedProjectDetail.description || selectedProjectDetail.content || selectedProjectDetail.summary || "")?.sections?.length) && (
-                        <div className="rounded-[20px] border border-border/60 bg-background p-6">
-                           <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-3">Project Overview</p>
-                           <div className="text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                        <div className="rounded-[16px] sm:rounded-[20px] border border-border/60 bg-background p-4 sm:p-6">
+                           <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-2.5 sm:mb-3">Project Overview</p>
+                           <div className="text-xs sm:text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">
                              {selectedProjectDetail.description || selectedProjectDetail.content || selectedProjectDetail.summary || "No description provided."}
                            </div>
                         </div>
@@ -2938,16 +2938,16 @@ const Marketplace = () => {
                     </div>
 
                     {/* Right Column: Project Details box */}
-                    <div className="flex flex-col gap-4 h-fit sticky top-0">
-                      <div className="rounded-[20px] border border-border/60 bg-background p-6 flex flex-col gap-5">
+                    <div className="flex flex-col gap-4 h-fit md:sticky md:top-0">
+                      <div className="rounded-[16px] sm:rounded-[20px] border border-border/60 bg-background p-4 sm:p-6 flex flex-col gap-4 sm:gap-5">
                         <div>
-                          <p className="text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Project Details</p>
+                          <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Project Details</p>
                           <p className="text-xs text-muted-foreground leading-relaxed">Keep track of the delivery window and proposal state.</p>
                         </div>
-                        <div className="space-y-4 pt-4 border-t border-border/40">
+                        <div className="space-y-3 sm:space-y-4 pt-3.5 sm:pt-4 border-t border-border/40">
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Current Status</p>
-                            <p className="text-sm font-medium text-foreground">
+                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-0.5 sm:mb-1">Current Status</p>
+                            <p className="text-xs sm:text-sm font-semibold text-foreground">
                               {selectedProjectDetail.proposalStatus === "REJECTED"
                                 ? "Rejected"
                                 : selectedProjectDetail.hasSubmittedProposal
@@ -2956,12 +2956,12 @@ const Marketplace = () => {
                             </p>
                           </div>
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Launch Timeline</p>
-                            <p className="text-sm font-medium text-foreground">{selectedProjectDetail.timeline || selectedProjectDetail.duration || "Asap"}</p>
+                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-0.5 sm:mb-1">Launch Timeline</p>
+                            <p className="text-xs sm:text-sm font-semibold text-foreground">{selectedProjectDetail.timeline || selectedProjectDetail.duration || "Asap"}</p>
                           </div>
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-foreground/80 mb-1">Last Updated</p>
-                            <p className="text-sm font-medium text-foreground">{formatProjectDate(selectedProjectDetail.postedAt || selectedProjectDetail.createdAt)}</p>
+                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground mb-0.5 sm:mb-1">Last Updated</p>
+                            <p className="text-xs sm:text-sm font-semibold text-foreground">{formatProjectDate(selectedProjectDetail.postedAt || selectedProjectDetail.createdAt)}</p>
                           </div>
                         </div>
                       </div>
@@ -2971,25 +2971,25 @@ const Marketplace = () => {
               </div>
               
               {/* Footer */}
-              <div className="border-t border-border p-4 bg-muted/20 flex justify-end gap-3 shrink-0">
-                <Button variant="ghost" className="h-10 rounded-full px-5 hover:bg-muted" onClick={() => setSelectedProjectDetail(null)}>
+              <div className="border-t border-border p-3 sm:p-4 px-4 sm:px-6 bg-background/90 backdrop-blur-md flex items-center justify-between sm:justify-end gap-2.5 sm:gap-3 shrink-0">
+                <Button variant="ghost" className="h-10 rounded-full px-4 sm:px-5 hover:bg-muted text-xs sm:text-sm font-semibold flex-1 sm:flex-initial" onClick={() => setSelectedProjectDetail(null)}>
                   Close
                 </Button>
                 {resolveProjectCardCta(selectedProjectDetail).to ? (
                   <Link
                     to={resolveProjectCardCta(selectedProjectDetail).to}
-                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold !text-white transition-colors hover:bg-primary/90 shadow-sm"
+                    className="flex h-10 flex-1 sm:flex-initial items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 sm:px-6 text-xs sm:text-sm font-bold !text-white transition-colors hover:bg-primary/90 shadow-sm"
                   >
-                    <Send className="size-4 !text-white" />
+                    <Send className="size-3.5 sm:size-4 !text-white" />
                     <span className="!text-white">{resolveProjectCardCta(selectedProjectDetail).label}</span>
                   </Link>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setAcceptProjectConfirm(selectedProjectDetail)}
-                    className="flex h-10 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 text-sm font-bold !text-white transition-colors hover:bg-primary/90 shadow-sm cursor-pointer"
+                    className="flex h-10 flex-1 sm:flex-initial items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-4 sm:px-6 text-xs sm:text-sm font-bold !text-white transition-colors hover:bg-primary/90 shadow-sm cursor-pointer"
                   >
-                    <Check className="size-4 !text-white" />
+                    <Check className="size-3.5 sm:size-4 !text-white" />
                     <span className="!text-white">{resolveProjectCardCta(selectedProjectDetail).label}</span>
                   </button>
                 )}

@@ -303,8 +303,10 @@ export const buildSkillLevelsByKey = (rawSkills = []) =>
 export const buildLocationFromIdentity = (identity = {}) => {
   if (!identity || typeof identity !== "object") return "";
 
-  const city = String(identity.city || "").trim();
+  const city = String(identity.city || identity.state || "").trim();
   const country = String(identity.country || "").trim();
+  const directLocation = String(identity.location || "").trim();
+  if (directLocation) return directLocation;
   return [city, country].filter(Boolean).join(", ");
 };
 

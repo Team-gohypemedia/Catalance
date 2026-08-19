@@ -1070,8 +1070,10 @@ const normalizeServiceMedia = (media, { max = 3 } = {}) => {
 const buildLocationFromIdentity = (identity = {}) => {
   if (!identity || typeof identity !== "object") return "";
 
-  const city = String(identity.city || "").trim();
+  const city = String(identity.city || identity.state || "").trim();
   const country = String(identity.country || "").trim();
+  const directLocation = String(identity.location || "").trim();
+  if (directLocation) return directLocation;
   return [city, country].filter(Boolean).join(", ");
 };
 
@@ -2629,9 +2631,15 @@ export const listUsers = async (filters = {}) => {
 export const updateUserProfile = async (userId, updates) => {
   const allowedUpdates = [
     "fullName",
+    "username",
     "email",
     "phone",
     "phoneNumber",
+    "location",
+    "city",
+    "state",
+    "country",
+    "languages",
     "professionalBio",
     "avatar",
     "profileDetails",
@@ -2671,6 +2679,24 @@ export const updateUserProfile = async (userId, updates) => {
         }
       } else if (key === "phone" || key === "phoneNumber") {
         cleanUpdates.phoneNumber = normalizeOptionalText(updates[key]);
+      } else if (key === "location") {
+        const normalizedLocation = normalizeOptionalText(updates[key]);
+        cleanUpdates.location = normalizedLocation;
+        if (normalizedLocation && !cleanUpdates.city && !cleanUpdates.country) {
+          const parts = normalizedLocation.split(",").map((s) => s.trim()).filter(Boolean);
+          if (parts.length >= 2) {
+            cleanUpdates.city = parts[0];
+            cleanUpdates.country = parts[parts.length - 1];
+          } else if (parts.length === 1) {
+            cleanUpdates.country = parts[0];
+          }
+        }
+      } else if (key === "city" || key === "state") {
+        cleanUpdates.city = normalizeOptionalText(updates[key]);
+      } else if (key === "country") {
+        cleanUpdates.country = normalizeOptionalText(updates[key]);
+      } else if (key === "languages") {
+        cleanUpdates.languages = normalizeStringList(updates[key], { max: 20 });
       } else if (key === "serviceKeywords") {
         cleanUpdates[key] = normalizeStringList(updates[key], { max: 5 });
       } else if (key === "serviceMedia") {
@@ -2818,6 +2844,16 @@ export const updateUserProfile = async (userId, updates) => {
     }
     freelancerProfileUpdates[key] = value;
   });
+
+  if (freelancerProfileUpdates.state) {
+    if (!freelancerProfileUpdates.city) {
+      freelancerProfileUpdates.city = freelancerProfileUpdates.state;
+    }
+    delete freelancerProfileUpdates.state;
+  }
+  if (freelancerProfileUpdates.location) {
+    delete freelancerProfileUpdates.location;
+  }
 
   const hasProfileDetailsUpdate = Object.prototype.hasOwnProperty.call(
     freelancerProfileUpdates,
@@ -4059,6 +4095,11 @@ export const sanitizeUser = (user) => {
 
   return {
     ...safeUser,
+    username:
+      resolvedFreelancerProfile.username ||
+      normalizeOptionalText(resolvedProfileDetails?.identity?.username) ||
+      safeUser.username ||
+      null,
     bio:
       resolvedFreelancerProfile.professionalBio ||
       normalizeOptionalText(resolvedProfileDetails?.professionalBio) ||
