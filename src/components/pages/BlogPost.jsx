@@ -246,11 +246,11 @@ const BlogPost = () => {
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_300px] items-start">
           <article className="min-w-0 space-y-8">
             {post.coverImageUrl ? (
-              <div className="overflow-hidden rounded-[2.25rem] border border-border bg-muted/30 shadow-sm">
+              <div className="flex flex-col items-center justify-center">
                 <img
                   src={post.coverImageUrl}
                   alt={post.coverImageAlt || post.title}
-                  className="h-[280px] sm:h-[400px] lg:h-[480px] w-full object-cover"
+                  className="w-full h-auto max-h-[620px] object-contain rounded-2xl sm:rounded-3xl shadow-sm"
                 />
               </div>
             ) : null}

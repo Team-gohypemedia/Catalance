@@ -164,15 +164,14 @@ const BlogMarkdown = ({ content = "", className = "" }) => {
           ),
           hr: ({ ...props }) => <hr {...props} className="my-8 border-border" />,
           img: ({ src, alt, ...props }) => (
-            <div className="my-8 overflow-hidden rounded-3xl border border-border bg-muted/30 shadow-sm">
+            <div className="my-8 flex flex-col items-center justify-center">
               <img
                 {...props}
                 src={src}
                 alt={alt || "Blog visual"}
-                className="h-auto w-full object-cover"
+                className="h-auto w-full max-h-[620px] object-contain rounded-2xl sm:rounded-3xl"
                 loading="lazy"
               />
-              {alt && <p className="p-3 text-center text-xs text-muted-foreground italic border-t border-border/50">{alt}</p>}
             </div>
           ),
           code: ({ node: _node, inline, className: codeClassName, children, ...props }) => {

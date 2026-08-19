@@ -43,7 +43,6 @@ const buildNavItems = ({
     link: isFreelancer ? "/opportunity" : "/marketplace",
   },
   ...(isFreelancer ? [{ name: "Growth Hub", link: "/freelancer/growth-quest" }] : []),
-  { name: "Blog", link: "/blog" },
   { name: "Contact", link: "/contact" },
 ];
 
@@ -63,7 +62,6 @@ const buildMobileMarketingNavItems = ({
   ...(isFreelancer
     ? [{ label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" }]
     : []),
-  { label: "Blog", key: "blog", to: "/blog" },
   { label: "Contact", key: "contact", to: "/contact" },
 ];
 
