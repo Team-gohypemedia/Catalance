@@ -189,6 +189,9 @@ export const updateOnboardingProgressHandler = asyncHandler(async (req, res) => 
     profileDetails: profileDetailsUpdates,
   };
 
+  if (draftSnapshot?.selectedWorkPreference) {
+    userUpdates.workPreference = draftSnapshot.selectedWorkPreference;
+  }
   if (draftSnapshot?.selectedServices && Array.isArray(draftSnapshot.selectedServices)) {
     userUpdates.services = draftSnapshot.selectedServices;
   }

@@ -103,6 +103,155 @@ const buildSummaryCards = (summary = {}, roleFilter) => {
   return items;
 };
 
+const computeUserOnboardingStats = (user) => {
+  if (!user) return { percentage: 0, stepTitle: "Welcome & Intro", stepId: "welcome", isComplete: false };
+
+  const fp = user.freelancerProfile || {};
+  let pd = {};
+  if (typeof user.profileDetails === "string") {
+    try { pd = JSON.parse(user.profileDetails); } catch { pd = {}; }
+  } else if (user.profileDetails && typeof user.profileDetails === "object") {
+    pd = user.profileDetails;
+  } else if (fp?.serviceDetails?.__profileDetails) {
+    pd = fp.serviceDetails.__profileDetails;
+  }
+  const draft = pd.onboardingDraft || {};
+  const progressObj = pd.onboardingProgress || fp?.serviceDetails?.__profileDetails?.onboardingProgress || fp?.serviceDetails?.onboardingProgress || {};
+
+  const isComplete = Boolean(user.onboardingComplete || progressObj?.isCompleted);
+  if (isComplete) {
+    return { percentage: 100, stepTitle: "Completed", stepId: "completed", isComplete: true };
+  }
+
+  // Work Preference
+  const workPref = draft.selectedWorkPreference || pd.workPreference || fp.workPreference || user.workPreference;
+
+  // Basic Profile (8 fields)
+  const photo = user.avatar || fp.profilePhoto || draft.basicProfilePhoto;
+  const fullName = user.fullName;
+  const username = user.username || fp.username || draft.basicProfileUsername;
+  const bio = user.bio || fp.bio || pd.bio || draft.basicProfileBio;
+  const country = user.country || pd.country || draft.basicProfileCountry;
+  const stateVal = user.location || pd.state || draft.basicProfileState;
+  const languages = pd.languages || draft.basicProfileLanguages || [];
+  const resume = pd.resumeUrl || pd.resume || draft.basicProfileResume;
+
+  // Services
+  const services = user.services || pd.services || fp.services || draft.selectedServices || [];
+
+  // Service entries
+  const serviceDraftsByKey = draft.serviceDraftsByKey || pd?.serviceDetails || fp?.serviceDetails || {};
+  const serviceEntries = Object.entries(serviceDraftsByKey)
+    .filter(([k]) => k !== "__profileDetails" && k !== "onboardingProgress")
+    .map(([k, v]) => ({ key: k, ...(typeof v === "object" ? v : {}) }));
+
+  // Case Studies
+  const allCaseStudies = [
+    ...(serviceEntries.flatMap(s => s?.caseStudies || (s?.caseStudy ? [s.caseStudy] : []))),
+    ...(Array.isArray(fp?.portfolio) ? fp.portfolio : []),
+    ...(Array.isArray(pd?.portfolioProjects) ? pd.portfolioProjects : []),
+    ...(Array.isArray(fp?.portfolioProjects) ? fp.portfolioProjects : []),
+    ...(Array.isArray(user?.portfolioProjects) ? user.portfolioProjects : [])
+  ].filter(c => c && typeof c === "object" && (c.title || c.name || c.description || c.projectLink || c.link));
+
+  const acceptInProgress = draft.acceptInProgressProjectsValue ?? fp?.acceptInProgressProjects ?? pd?.acceptInProgressProjects ?? user?.acceptInProgressProjects;
+  const deliveryPolicy = draft.deliveryPolicyAccepted ?? pd?.deliveryPolicyAccepted;
+  const commPolicy = draft.communicationPolicyAccepted ?? pd?.communicationPolicyAccepted;
+
+  // Calculate fields filled / total
+  let total = 0;
+  let filled = 0;
+
+  // Step 1: Welcome (1 field)
+  total += 1; filled += 1;
+
+  // Step 2: Work Preference (1 field)
+  total += 1; if (workPref) filled += 1;
+
+  // Step 3: Basic Profile (8 fields)
+  const basicFields = [photo, fullName, username, bio, country, stateVal, (Array.isArray(languages) && languages.length > 0), resume];
+  total += 8;
+  filled += basicFields.filter(Boolean).length;
+
+  // Step 4: Services (1 field)
+  total += 1; if (Array.isArray(services) && services.length > 0) filled += 1;
+
+  // Step 5: Quick Info per service
+  if (serviceEntries.length > 0) {
+    serviceEntries.forEach(srv => {
+      total += 7;
+      if (srv.title || srv.serviceTitle || srv.key) filled += 1;
+      if ((srv.subcategories?.length || srv.skills?.length || 0) > 0) filled += 1;
+      if ((srv.serviceTools?.length || srv.tools?.length || 0) > 0) filled += 1;
+      if (srv.description || srv.serviceDescription) filled += 1;
+      if (srv.experience || srv.serviceExperience) filled += 1;
+      if (srv.startingPrice || srv.price) filled += 1;
+      if (srv.serviceMedia?.length || srv.visuals?.length || srv.images?.length || srv.media?.length) filled += 1;
+    });
+  } else {
+    total += 7;
+    if (fp?.serviceTitle || user?.serviceTitle) filled += 1;
+    if (Array.isArray(fp?.skills) && fp.skills.length > 0) filled += 1;
+    if (fp?.serviceDescription) filled += 1;
+    if (fp?.experienceLevel || user?.experienceYears) filled += 1;
+    if (fp?.startingPrice || user?.startingPrice) filled += 1;
+  }
+
+  // Step 6: Case Study per project
+  if (allCaseStudies.length > 0) {
+    allCaseStudies.forEach(cs => {
+      total += 9;
+      if (cs.title || cs.caseStudyTitle || cs.name) filled += 1;
+      if (cs.description || cs.overview) filled += 1;
+      if (cs.niche || cs.category) filled += 1;
+      if (cs.projectLink || cs.link || cs.url) filled += 1;
+      if (cs.role || cs.yourRole) filled += 1;
+      if (cs.timeline || cs.projectTimeline || cs.duration) filled += 1;
+      if (cs.budget || cs.price || cs.projectBudget) filled += 1;
+      if (cs.projectFile || cs.file || cs.documentUrl) filled += 1;
+      if (cs.bannerImage || cs.image || cs.coverImage || cs.media?.length) filled += 1;
+    });
+  } else {
+    total += 9;
+  }
+
+  // Step 7: Availability (1 field)
+  total += 1; if (typeof acceptInProgress === "boolean" || Boolean(acceptInProgress)) filled += 1;
+
+  // Step 8: Policies (2 fields)
+  total += 2;
+  if (deliveryPolicy) filled += 1;
+  if (commPolicy) filled += 1;
+
+  const grandPercentage = Math.round((filled / Math.max(total, 1)) * 100);
+  const percentage = Math.max(grandPercentage, Number(progressObj.progressPercentage) || 0);
+
+  // Step titles list
+  const STEP_TITLES = [
+    { id: "welcome", title: "Welcome & Intro", hasFields: true },
+    { id: "workPreference", title: "Work Preference", hasFields: Boolean(workPref) },
+    { id: "basicProfile", title: "Basic Profile", hasFields: basicFields.some(Boolean) },
+    { id: "services", title: "Services Selection", hasFields: Array.isArray(services) && services.length > 0 },
+    { id: "quickInfo", title: "Service Setup & Quick Info", hasFields: serviceEntries.some(s => s.title || s.description) },
+    { id: "caseStudy", title: "Case Study & Portfolio", hasFields: allCaseStudies.length > 0 },
+    { id: "acceptInProgressProjects", title: "Work Availability", hasFields: typeof acceptInProgress === "boolean" || Boolean(acceptInProgress) },
+    { id: "deliveryPolicy", title: "Policies & Terms", hasFields: Boolean(deliveryPolicy || commPolicy) },
+  ];
+
+  const lastActiveStepIndex = STEP_TITLES.findLastIndex(s => s.hasFields);
+  const serverStepIndex = STEP_TITLES.findIndex(s => s.id === progressObj.currentStep);
+  const activeIndex = Math.max(0, serverStepIndex, lastActiveStepIndex);
+
+  const activeStep = STEP_TITLES[activeIndex] || STEP_TITLES[0];
+
+  return {
+    percentage: Math.min(percentage, 100),
+    stepTitle: activeStep.title,
+    stepId: activeStep.id,
+    isComplete: percentage >= 100
+  };
+};
+
 const AdminUsers = ({ roleFilter }) => {
   const { authFetch } = useAuth();
   const navigate = useNavigate();
@@ -429,14 +578,14 @@ const AdminUsers = ({ roleFilter }) => {
                   users.map((user) => {
                     const displayStatus = getDisplayStatus(user);
                     const fp = user.freelancerProfile || {};
-                    const progressObj = fp?.serviceDetails?.__profileDetails?.onboardingProgress || fp?.serviceDetails?.onboardingProgress || user?.profileDetails?.onboardingProgress || {};
-                    const isComplete = Boolean(user.onboardingComplete || progressObj?.isCompleted);
-                    const stepId = progressObj.currentStep || (isComplete ? "completed" : "welcome");
-                    const stepTitle = progressObj.currentStepTitle || stepId;
-                    const percentage = isComplete ? 100 : (Number(progressObj.progressPercentage) || (stepId === "welcome" ? 10 : 35));
-                    const servicesList = Array.isArray(fp.services) ? fp.services : [];
+                    const stats = computeUserOnboardingStats(user);
+                    const isComplete = stats.isComplete;
+                    const stepId = stats.stepId;
+                    const stepTitle = stats.stepTitle;
+                    const percentage = stats.percentage;
+                    const servicesList = Array.isArray(fp.services) ? fp.services : (Array.isArray(user.services) ? user.services : []);
                     const primaryService = servicesList[0] ? String(servicesList[0]).replace(/[_-]+/g, " ") : "Not set";
-                    const lastActiveDate = progressObj.lastActiveAt || fp.updatedAt || user.updatedAt || user.createdAt;
+                    const lastActiveDate = fp.updatedAt || user.updatedAt || user.createdAt;
 
                     return (
                       <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">

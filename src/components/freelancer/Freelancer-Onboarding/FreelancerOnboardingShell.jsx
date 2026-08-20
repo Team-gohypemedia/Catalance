@@ -1044,29 +1044,53 @@ const FreelancerOnboardingShell = () => {
     );
 
     const basicFields = [
+      Boolean(basicProfileForm?.profilePhoto),
       Boolean(basicProfileForm?.fullName?.trim()),
-      Boolean(basicProfileForm?.headline?.trim()),
-      Boolean(basicProfileForm?.bio?.trim()),
-      Boolean(basicProfileForm?.city?.trim()),
-      Boolean(basicProfileForm?.experience?.trim()),
-      Boolean(basicProfileForm?.hourlyRate),
-      (basicProfileForm?.skills?.length || 0) > 0,
+      Boolean(basicProfileForm?.username?.trim()),
+      Boolean(basicProfileForm?.professionalBio?.trim() || basicProfileForm?.bio?.trim()),
+      Boolean(basicProfileForm?.country?.trim()),
+      Boolean(basicProfileForm?.state?.trim() || basicProfileForm?.city?.trim()),
+      Array.isArray(basicProfileForm?.languages) && basicProfileForm.languages.length > 0,
       Boolean(basicProfileForm?.resumeUrl || basicProfileForm?.resume),
     ];
     const basicFilledCount = basicFields.filter(Boolean).length;
     const servicesCount = selectedServices?.length || 0;
 
-    const hasCaseStudies = Object.values(serviceDraftsByKey || {}).some(
-      (d) => (d?.caseStudies?.length || 0) > 0 || Boolean(d?.caseStudy?.title),
-    );
+    const activeDrafts = Object.values(serviceDraftsByKey || {});
+    const quickInfoFieldsFilled = activeDrafts.reduce((acc, draft) => {
+      let count = 0;
+      if (draft?.title || draft?.serviceTitle) count++;
+      if ((draft?.subcategories?.length || draft?.skills?.length || 0) > 0) count++;
+      if (draft?.description || draft?.serviceDescription) count++;
+      if (draft?.experience || draft?.serviceExperience) count++;
+      if (draft?.startingPrice || draft?.price) count++;
+      if ((draft?.serviceTools?.length || draft?.tools?.length || 0) > 0) count++;
+      if ((draft?.serviceMedia?.length || draft?.visuals?.length || draft?.images?.length || 0) > 0) count++;
+      return Math.max(acc, count);
+    }, 0);
+
+    const caseStudiesList = activeDrafts.flatMap((d) => d?.caseStudies || (d?.caseStudy ? [d.caseStudy] : []));
+    const caseStudyFieldsFilled = caseStudiesList.reduce((acc, cs) => {
+      let count = 0;
+      if (cs?.title || cs?.caseStudyTitle || cs?.name) count++;
+      if (cs?.description || cs?.overview) count++;
+      if (cs?.niche || cs?.category) count++;
+      if (cs?.role || cs?.yourRole) count++;
+      if (cs?.timeline || cs?.projectTimeline) count++;
+      if (cs?.budget || cs?.price) count++;
+      if (cs?.projectLink || cs?.link) count++;
+      if (cs?.projectFile || cs?.file) count++;
+      if (cs?.bannerImage || cs?.image || cs?.coverImage) count++;
+      return Math.max(acc, count);
+    }, 0);
 
     const stageStats = {
       welcome: { filled: 1, total: 1 },
       workPreference: { filled: selectedWorkPreference ? 1 : 0, total: 1, value: selectedWorkPreference },
       basicProfile: { filled: basicFilledCount, total: 8 },
       services: { filled: servicesCount > 0 ? 1 : 0, total: 1, count: servicesCount },
-      quickInfo: { filled: servicesCount > 0 ? 3 : 0, total: 3 },
-      caseStudy: { filled: hasCaseStudies ? 3 : 0, total: 3 },
+      quickInfo: { filled: quickInfoFieldsFilled, total: 7 },
+      caseStudy: { filled: caseStudyFieldsFilled, total: 9 },
       acceptInProgressProjects: { filled: typeof acceptInProgressProjectsValue === "boolean" ? 1 : 0, total: 1 },
       deliveryPolicy: { filled: (deliveryPolicyAccepted ? 1 : 0) + (communicationPolicyAccepted ? 1 : 0), total: 2 },
     };
@@ -1273,42 +1297,66 @@ const FreelancerOnboardingShell = () => {
     }
 
     const storedDraft = readStoredOnboardingDraft(onboardingDraftStorageKey);
+    const profileDetails =
+      typeof user.profileDetails === "string"
+        ? (function() { try { return JSON.parse(user.profileDetails); } catch { return {}; } })()
+        : (user.profileDetails && typeof user.profileDetails === "object" ? user.profileDetails : {});
+    const serverDraft = profileDetails.onboardingDraft || {};
+    const serverServiceDrafts = serverDraft.serviceDraftsByKey || profileDetails.serviceDetails || {};
+    const mergedServiceDraftsSource = {
+      ...serverServiceDrafts,
+      ...(storedDraft?.serviceDraftsByKey || {})
+    };
+
     if (storedDraft) {
       const storedWorkPreference = String(
-        storedDraft.selectedWorkPreference || "",
+        storedDraft.selectedWorkPreference || serverDraft.selectedWorkPreference || profileDetails.workPreference || user.workPreference || "",
       ).trim();
       const normalizedStoredWorkPreference =
-        storedWorkPreference === "individual" && Number(storedDraft.currentSlideIndex) > 1
+        storedWorkPreference === "individual" || storedWorkPreference === "agency"
           ? storedWorkPreference
           : "";
       const storedSlides = getOnboardingSlideSet(normalizedStoredWorkPreference);
+      const rawStoredServices = (Array.isArray(storedDraft.selectedServices) && storedDraft.selectedServices.length > 0)
+        ? storedDraft.selectedServices
+        : (Array.isArray(serverDraft.selectedServices) && serverDraft.selectedServices.length > 0)
+          ? serverDraft.selectedServices
+          : (Array.isArray(profileDetails.services) && profileDetails.services.length > 0)
+            ? profileDetails.services
+            : Array.isArray(user.services) && user.services.length > 0
+              ? user.services
+              : Object.keys(serverServiceDrafts);
+
       const nextServices = normalizeDraftSkillList(
-        (Array.isArray(storedDraft.selectedServices)
-          ? storedDraft.selectedServices
-          : []
-        ).map((serviceKey) => resolveServiceKey(dbServices, serviceKey)),
+        rawStoredServices.map((serviceKey) => resolveServiceKey(dbServices, serviceKey)),
       );
 
-      navigateToSlideIndex(
-        clampSlideIndex(storedDraft.currentSlideIndex, storedSlides.length),
-      );
+      // Only navigate slide if URL is at root /welcome or not specified
+      if (location.pathname === "/freelancer/onboarding/welcome" || location.pathname === "/freelancer/onboarding") {
+        navigateToSlideIndex(
+          clampSlideIndex(storedDraft.currentSlideIndex, storedSlides.length),
+        );
+      }
+
       setSelectedWorkPreference(normalizedStoredWorkPreference);
       const storedBasicProfileForm = sanitizeBasicProfileFormForDraft(
-        storedDraft.basicProfileForm,
+        storedDraft.basicProfileForm || serverDraft.basicProfileForm,
       );
       setBasicProfileForm({
         ...storedBasicProfileForm,
         fullName: storedBasicProfileForm.fullName || resolveBasicProfileFullName(user),
+        professionalBio: storedBasicProfileForm.professionalBio || profileDetails.professionalBio || user.bio || "",
       });
       setSelectedServices(nextServices);
       setServiceDraftsByKey(() =>
         Object.fromEntries(
           nextServices.map((serviceKey) => {
             const serviceMeta = getServiceCatalogMeta(dbServices, serviceKey);
+            const sourceDraft = mergedServiceDraftsSource[serviceKey] || {};
             return [
               serviceKey,
               sanitizeServiceDraftForStorage(
-                storedDraft.serviceDraftsByKey?.[serviceKey],
+                sourceDraft,
                 {
                   serviceKey,
                   serviceId: serviceMeta.serviceId,
@@ -1322,22 +1370,18 @@ const FreelancerOnboardingShell = () => {
         clampServiceIndex(storedDraft.currentServiceIndex, nextServices.length),
       );
       setAcceptInProgressProjectsValue(
-        parseBooleanChoice(storedDraft.acceptInProgressProjectsValue),
+        parseBooleanChoice(storedDraft.acceptInProgressProjectsValue ?? serverDraft.acceptInProgressProjectsValue ?? profileDetails.acceptInProgressProjects ?? user.acceptInProgressProjects),
       );
       setDeliveryPolicyAccepted(
-        parseBooleanChoice(storedDraft.deliveryPolicyAccepted) ?? false,
+        parseBooleanChoice(storedDraft.deliveryPolicyAccepted ?? serverDraft.deliveryPolicyAccepted ?? profileDetails.deliveryPolicyAccepted ?? user.deliveryPolicyAccepted) ?? false,
       );
       setCommunicationPolicyAccepted(
-        parseBooleanChoice(storedDraft.communicationPolicyAccepted) ?? false,
+        parseBooleanChoice(storedDraft.communicationPolicyAccepted ?? serverDraft.communicationPolicyAccepted ?? profileDetails.communicationPolicyAccepted ?? user.communicationPolicyAccepted) ?? false,
       );
       setHasHydratedFromUser(true);
       return;
     }
 
-    const profileDetails =
-      user.profileDetails && typeof user.profileDetails === "object"
-        ? user.profileDetails
-        : {};
     const identity =
       profileDetails.identity && typeof profileDetails.identity === "object"
         ? profileDetails.identity
@@ -1418,9 +1462,16 @@ const FreelancerOnboardingShell = () => {
           ? currentCustomFieldValues
           : currentForm.customFields,
     }));
+    const extractedWorkPref = String(
+      profileDetails.workPreference ||
+      profileDetails.onboardingDraft?.selectedWorkPreference ||
+      user.workPreference ||
+      profileDetails.role ||
+      ""
+    ).trim();
     setSelectedWorkPreference(
-      String(profileDetails.role || "").trim() === "individual" && currentSlideIndex > 1
-        ? "individual"
+      extractedWorkPref === "individual" || extractedWorkPref === "agency"
+        ? extractedWorkPref
         : "",
     );
     setAcceptInProgressProjectsValue(hydratedAcceptInProgressProjects);

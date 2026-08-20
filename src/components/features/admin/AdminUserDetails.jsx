@@ -247,9 +247,9 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
   const progressObj = pd.onboardingProgress || fp?.serviceDetails?.__profileDetails?.onboardingProgress || fp?.serviceDetails?.onboardingProgress || {};
 
   const isComplete = Boolean(userData?.onboardingComplete || progressObj?.isCompleted);
-  const currentStep = progressObj.currentStep || (isComplete ? "completed" : "welcome");
-  const currentStepTitle = progressObj.currentStepTitle || currentStep;
-  const percentage = isComplete ? 100 : (Number(progressObj.progressPercentage) || (currentStep === "welcome" ? 10 : 35));
+  const rawCurrentStep = progressObj.currentStep || (isComplete ? "completed" : "welcome");
+  const rawCurrentStepTitle = progressObj.currentStepTitle || rawCurrentStep;
+  const percentage = isComplete ? 100 : (Number(progressObj.progressPercentage) || (rawCurrentStep === "welcome" ? 10 : 35));
   const lastActive = progressObj.lastActiveAt || fp.updatedAt || userData?.updatedAt;
 
   // AI Resume usage check
@@ -274,15 +274,20 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
   const bpf = draft.basicProfileForm || {};
 
   // Extract field values
-  const workPref = draft.selectedWorkPreference || fp?.workPreference || pd?.workPreference || fp?.serviceDetails?.workPreference || progressObj?.stageStats?.workPreference?.value || "";
-  const fullName = bpf.fullName || userData?.fullName || pd?.fullName || "";
-  const headline = bpf.headline || fp?.headline || pd?.headline || userData?.headline || "";
+  const rawWorkPref = draft.selectedWorkPreference || fp?.workPreference || pd?.workPreference || fp?.serviceDetails?.workPreference || progressObj?.stageStats?.workPreference?.value || userData?.workPreference || "";
+  const workPref = rawWorkPref === "individual" ? "Individual Freelancer" : rawWorkPref === "agency" ? "Agency / Team" : rawWorkPref;
+  const fullName = bpf.fullName || userData?.fullName || pd?.fullName || pd?.identity?.fullName || "";
+  const username = bpf.username || userData?.username || pd?.username || pd?.identity?.username || "";
   const bio = bpf.professionalBio || bpf.bio || fp?.bio || pd?.bio || userData?.professionalBio || "";
-  const city = bpf.city || fp?.location || pd?.city || pd?.identity?.city || userData?.city || "";
+  const country = bpf.country || pd?.identity?.country || userData?.country || "India";
+  const stateVal = bpf.state || bpf.city || fp?.location || pd?.city || pd?.identity?.city || userData?.city || "";
+  const languages = (Array.isArray(bpf.languages) && bpf.languages.length > 0) ? bpf.languages : (Array.isArray(pd?.identity?.languages) ? pd.identity.languages : (Array.isArray(userData?.languages) ? userData.languages : []));
+  const photo = bpf.profilePhoto || fp?.profilePhoto || pd?.identity?.profilePhoto || userData?.avatar || userData?.profilePhoto || "";
+  const resume = bpf.resumeUrl || bpf.resume || fp?.resume || pd?.resume || userData?.resume || "";
+  const headline = bpf.headline || fp?.headline || pd?.headline || userData?.headline || "";
   const experience = bpf.experience || fp?.experienceLevel || pd?.experienceLevel || (userData?.experienceYears ? `${userData.experienceYears} Years` : "");
   const hourlyRate = bpf.hourlyRate || fp?.hourlyRate || pd?.hourlyRate || "";
   const skills = (Array.isArray(bpf.skills) && bpf.skills.length > 0) ? bpf.skills : (fp?.skills || pd?.skills || userData?.skills || []);
-  const resume = bpf.resumeUrl || bpf.resume || fp?.resume || pd?.resume || userData?.resume || "";
   const services = (Array.isArray(draft.selectedServices) && draft.selectedServices.length > 0)
     ? draft.selectedServices
     : (Array.isArray(fp?.services) && fp.services.length > 0)
@@ -316,6 +321,85 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
   const deliveryPolicy = draft.deliveryPolicyAccepted ?? pd?.deliveryPolicyAccepted ?? (isComplete ? true : false);
   const commPolicy = draft.communicationPolicyAccepted ?? pd?.communicationPolicyAccepted ?? (isComplete ? true : false);
 
+  const formatSkillItem = (sk) => {
+    if (!sk) return "";
+    if (typeof sk === "string") return sk;
+    if (typeof sk === "object") {
+      const main = sk.name || sk.title || sk.category || sk.subcategory || sk.label || sk.id || "";
+      const subs = Array.isArray(sk.subcategories) ? sk.subcategories.map(s => typeof s === "object" ? (s.name || s.title || s.label || s.id || "") : s).filter(Boolean).join(", ") : (Array.isArray(sk.items) ? sk.items.map(s => typeof s === "object" ? (s.name || s.title || s.label || s.id || "") : s).filter(Boolean).join(", ") : "");
+      if (main && subs) return `${main}: ${subs}`;
+      return main || subs || "";
+    }
+    return String(sk);
+  };
+
+  const quickInfoFields = serviceEntries.length > 0
+    ? serviceEntries.flatMap((srv, sIdx) => {
+        const srvName = srv.title || srv.serviceTitle || srv.key.replace(/_/g, " ");
+        const tag = `[Service ${sIdx + 1}: ${srvName}]`;
+        const skillsList = (srv.subcategories || srv.skills || []).map(formatSkillItem).filter(Boolean);
+        const toolsList = (srv.serviceTools || srv.tools || []).map(formatSkillItem).filter(Boolean);
+        const hasMedia = Boolean(srv.serviceMedia?.length || srv.visuals?.length || srv.images?.length || srv.media?.length);
+        const desc = srv.description || srv.serviceDescription || "";
+        const price = srv.startingPrice || srv.price || "";
+        const exp = srv.experience || srv.serviceExperience || "";
+
+        return [
+          { id: `serviceTitle_${sIdx}`, label: `${tag} Service Title`, isFilled: Boolean(srv.title || srv.serviceTitle || srv.key), value: srv.title || srv.serviceTitle || srv.key || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceTitle") },
+          { id: `skills_${sIdx}`, label: `${tag} Selected Skills & Subcategories`, isFilled: skillsList.length > 0, value: skillsList.length > 0 ? skillsList.join(", ") : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("skills") },
+          { id: `serviceTools_${sIdx}`, label: `${tag} Service Tools (Optional)`, isFilled: toolsList.length > 0, value: toolsList.length > 0 ? toolsList.join(", ") : "Optional / None", isAiAutofilled: false },
+          { id: `serviceDescription_${sIdx}`, label: `${tag} Service Description`, isFilled: Boolean(desc), value: desc ? (desc.length > 60 ? desc.slice(0, 60) + "..." : desc) : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceDescription") },
+          { id: `experience_${sIdx}`, label: `${tag} Experience Level`, isFilled: Boolean(exp), value: exp || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("experience") },
+          { id: `startingPrice_${sIdx}`, label: `${tag} Starting Price`, isFilled: Boolean(price), value: price ? `₹${price}` : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("startingPrice") },
+          { id: `serviceMedia_${sIdx}`, label: `${tag} Uploaded Media (Optional)`, isFilled: hasMedia, value: hasMedia ? "Media Uploaded" : "Optional / None", isAiAutofilled: false },
+        ];
+      })
+    : [
+        { id: "serviceTitle", label: "Service Title", isFilled: hasServiceTitle || hasConfiguredServices, value: serviceEntries.map(s => s.title || s.serviceTitle || s.key).filter(Boolean).join(", ") || fp?.serviceTitle || userData?.serviceTitle || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceTitle") },
+        { id: "skills", label: "Selected Skills & Subcategories", isFilled: serviceEntries.some(s => (s.subcategories?.length || s.skills?.length || 0) > 0) || (Array.isArray(fp?.skills) && fp.skills.length > 0), value: serviceEntries.map(s => (s.subcategories || s.skills || []).map(formatSkillItem).slice(0, 3).join(", ")).filter(Boolean).join(" | ") || (Array.isArray(fp?.skills) ? fp.skills.slice(0, 5).join(", ") : "Missing"), isAiAutofilled: usedAiResume && aiAutofilledIds.has("skills") },
+        { id: "serviceTools", label: "Service Tools (Optional)", isFilled: serviceEntries.some(s => (s.serviceTools?.length || s.tools?.length || 0) > 0), value: serviceEntries.map(s => (s.serviceTools || s.tools || []).slice(0, 4).join(", ")).filter(Boolean).join(" | ") || "Optional / None", isAiAutofilled: false },
+        { id: "serviceDescription", label: "Service Description", isFilled: hasServiceDesc, value: serviceEntries.map(s => (s.description || s.serviceDescription) ? (s.description || s.serviceDescription).slice(0, 50) + "..." : "").filter(Boolean).join(" | ") || (fp?.serviceDescription ? fp.serviceDescription.slice(0, 50) + "..." : "Missing"), isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceDescription") },
+        { id: "experience", label: "Experience Level", isFilled: serviceEntries.some(s => Boolean(s.experience || s.serviceExperience)) || Boolean(fp?.experienceLevel || userData?.experienceYears), value: serviceEntries.map(s => s.experience || s.serviceExperience).filter(Boolean).join(", ") || fp?.experienceLevel || (userData?.experienceYears ? `${userData.experienceYears} Years` : "Missing"), isAiAutofilled: usedAiResume && aiAutofilledIds.has("experience") },
+        { id: "startingPrice", label: "Starting Price", isFilled: hasServicePrice, value: serviceEntries.map(s => s.startingPrice || s.price ? `₹${s.startingPrice || s.price}` : "").filter(Boolean).join(", ") || (fp?.startingPrice || userData?.startingPrice ? `₹${fp?.startingPrice || userData?.startingPrice}` : "Missing"), isAiAutofilled: usedAiResume && aiAutofilledIds.has("startingPrice") },
+        { id: "serviceMedia", label: "Uploaded Media (Optional)", isFilled: serviceEntries.some(s => Boolean(s.serviceMedia?.length || s.visuals?.length || s.images?.length || s.media?.length)), value: serviceEntries.some(s => Boolean(s.serviceMedia?.length || s.visuals?.length || s.images?.length || s.media?.length)) ? "Media Uploaded" : "Optional / None", isAiAutofilled: false },
+      ];
+
+  const caseStudyFields = allCaseStudies.length > 0
+    ? allCaseStudies.flatMap((cs, cIdx) => {
+        const csName = cs.title || cs.caseStudyTitle || cs.name || `Case Study #${cIdx + 1}`;
+        const tag = `[${csName}]`;
+        const desc = cs.description || cs.overview || "";
+        const link = cs.projectLink || cs.link || cs.url || "";
+        const role = cs.role || cs.yourRole || "";
+        const timeline = cs.timeline || cs.projectTimeline || cs.duration || "";
+        const budget = cs.budget || cs.price || cs.projectBudget || "";
+        const file = cs.projectFile || cs.file || cs.documentUrl || "";
+        const banner = cs.bannerImage || cs.image || cs.coverImage || (cs.media?.length ? "Attached" : "");
+
+        return [
+          { id: `caseStudyTitle_${cIdx}`, label: `${tag} Case Study Title`, isFilled: Boolean(cs.title || cs.caseStudyTitle || cs.name), value: cs.title || cs.caseStudyTitle || cs.name || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyTitle") },
+          { id: `caseStudyDescription_${cIdx}`, label: `${tag} Description`, isFilled: Boolean(desc), value: desc ? (desc.length > 60 ? desc.slice(0, 60) + "..." : desc) : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyDescription") },
+          { id: `caseStudyNiche_${cIdx}`, label: `${tag} Niche`, isFilled: Boolean(cs.niche || cs.category), value: cs.niche || cs.category || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyNiche") },
+          { id: `caseStudyLink_${cIdx}`, label: `${tag} Project Link (Optional)`, isFilled: Boolean(link), value: link || "Optional / None", isAiAutofilled: false },
+          { id: `caseStudyRole_${cIdx}`, label: `${tag} Your Role`, isFilled: Boolean(role), value: role || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyRole") },
+          { id: `caseStudyTimeline_${cIdx}`, label: `${tag} Timeline`, isFilled: Boolean(timeline), value: timeline || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyTimeline") },
+          { id: `caseStudyBudget_${cIdx}`, label: `${tag} Budget`, isFilled: Boolean(budget), value: budget ? `₹${budget}` : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyBudget") },
+          { id: `caseStudyFile_${cIdx}`, label: `${tag} Project File (Optional)`, isFilled: Boolean(file), value: file ? "File attached" : "Optional / None", isAiAutofilled: false },
+          { id: `caseStudyBanner_${cIdx}`, label: `${tag} Banner Image (Optional)`, isFilled: Boolean(banner), value: banner ? "Banner uploaded" : "Optional / None", isAiAutofilled: false },
+        ];
+      })
+    : [
+        { id: "caseStudyTitle", label: "Case Study Title", isFilled: false, value: "Missing", isAiAutofilled: false },
+        { id: "caseStudyDescription", label: "Description", isFilled: false, value: "Missing", isAiAutofilled: false },
+        { id: "caseStudyNiche", label: "Niche", isFilled: false, value: "Missing", isAiAutofilled: false },
+        { id: "caseStudyLink", label: "Project Link (Optional)", isFilled: false, value: "Optional / None", isAiAutofilled: false },
+        { id: "caseStudyRole", label: "Your Role", isFilled: false, value: "Missing", isAiAutofilled: false },
+        { id: "caseStudyTimeline", label: "Timeline", isFilled: false, value: "Missing", isAiAutofilled: false },
+        { id: "caseStudyBudget", label: "Budget", isFilled: false, value: "Missing", isAiAutofilled: false },
+        { id: "caseStudyFile", label: "Project File (Optional)", isFilled: false, value: "Optional / None", isAiAutofilled: false },
+        { id: "caseStudyBanner", label: "Banner Image (Optional)", isFilled: false, value: "Optional / None", isAiAutofilled: false },
+      ];
+
   const steps = [
     {
       id: "welcome",
@@ -341,14 +425,14 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
       title: "Basic Profile",
       path: "/freelancer/onboarding/basicProfile",
       fields: [
+        { id: "profilePhoto", label: "Profile Photo", isFilled: Boolean(photo), value: photo ? "Uploaded Photo" : "Not uploaded", isAiAutofilled: false },
         { id: "fullName", label: "Full Name", isFilled: Boolean(fullName), value: fullName || "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("fullName") || Boolean(fullName)) },
-        { id: "headline", label: "Professional Title / Headline", isFilled: Boolean(headline), value: headline || "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("headline") || Boolean(headline)) },
-        { id: "professionalBio", label: "Professional Bio / Summary", isFilled: Boolean(bio), value: bio ? (bio.length > 60 ? bio.slice(0, 60) + "..." : bio) : "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("professionalBio") || aiAutofilledIds.has("bio") || Boolean(bio)) },
-        { id: "country", label: "City / Location", isFilled: Boolean(city), value: city || "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("country") || aiAutofilledIds.has("state") || Boolean(city)) },
-        { id: "experience", label: "Experience Level", isFilled: Boolean(experience), value: experience || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("experience") },
-        { id: "hourlyRate", label: "Hourly Rate", isFilled: Boolean(hourlyRate), value: hourlyRate ? `₹${hourlyRate}/hr` : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("hourlyRate") },
-        { id: "skills", label: "Primary Skills", isFilled: Array.isArray(skills) && skills.length > 0, value: Array.isArray(skills) && skills.length > 0 ? `${skills.length} skills (${skills.slice(0, 3).join(", ")})` : "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("skills") || (Array.isArray(skills) && skills.length > 0)) },
-        { id: "resume", label: "CV / Resume Document", isFilled: Boolean(resume), value: resume ? "Uploaded Resume" : "Missing", isAiAutofilled: false },
+        { id: "username", label: "Username", isFilled: Boolean(username), value: username ? `@${username}` : "Missing", isAiAutofilled: false },
+        { id: "professionalBio", label: "Professional Bio", isFilled: Boolean(bio), value: bio ? (bio.length > 60 ? bio.slice(0, 60) + "..." : bio) : "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("professionalBio") || aiAutofilledIds.has("bio") || Boolean(bio)) },
+        { id: "country", label: "Country", isFilled: Boolean(country), value: country || "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("country") },
+        { id: "state", label: "State / Location", isFilled: Boolean(stateVal), value: stateVal || "Missing", isAiAutofilled: usedAiResume && (aiAutofilledIds.has("state") || aiAutofilledIds.has("country")) },
+        { id: "languages", label: "Languages", isFilled: Array.isArray(languages) && languages.length > 0, value: Array.isArray(languages) && languages.length > 0 ? languages.join(", ") : "Missing", isAiAutofilled: usedAiResume && aiAutofilledIds.has("languages") },
+        { id: "resume", label: "CV / Resume Document", isFilled: Boolean(resume), value: resume ? "Uploaded Resume" : "Not uploaded", isAiAutofilled: false },
       ]
     },
     {
@@ -365,75 +449,14 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
       stepNum: 5,
       title: "Service Setup & Quick Info",
       path: "/freelancer/onboarding/quickInfo",
-      fields: [
-        {
-          id: "serviceTitle",
-          label: "Service Specialization / Title",
-          isFilled: hasServiceTitle || hasConfiguredServices,
-          value: hasConfiguredServices
-            ? `${serviceEntries.length} service(s) configured (${serviceEntries.map(s => s.title || s.key).slice(0, 3).join(", ")})`
-            : fp?.serviceTitle || userData?.serviceTitle || "Missing",
-          isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceTitle")
-        },
-        {
-          id: "serviceDescription",
-          label: "Service Overview & Scope",
-          isFilled: hasServiceDesc,
-          value: hasServiceDesc
-            ? `${serviceEntries.filter(s => s.description || s.serviceDescription).length}/${serviceEntries.length || 1} services have scope overview`
-            : fp?.serviceDescription ? (fp.serviceDescription.length > 40 ? fp.serviceDescription.slice(0, 40) + "..." : fp.serviceDescription) : "Missing",
-          isAiAutofilled: usedAiResume && aiAutofilledIds.has("serviceDescription")
-        },
-        {
-          id: "startingPrice",
-          label: "Starting Price Rate",
-          isFilled: hasServicePrice,
-          value: hasServicePrice
-            ? `${serviceEntries.filter(s => s.startingPrice || s.price).length}/${serviceEntries.length || 1} services priced`
-            : (fp?.startingPrice || userData?.startingPrice) ? `₹${fp?.startingPrice || userData?.startingPrice}` : "Missing",
-          isAiAutofilled: usedAiResume && aiAutofilledIds.has("startingPrice")
-        },
-        {
-          id: "deliveryTimeline",
-          label: "Delivery Timeline",
-          isFilled: hasDeliveryTimeline,
-          value: hasDeliveryTimeline
-            ? `${serviceEntries.filter(s => s.deliveryTimeline).length}/${serviceEntries.length || 1} timelines set`
-            : fp?.deliveryTimeline || userData?.deliveryTimeline || "Missing",
-          isAiAutofilled: usedAiResume && aiAutofilledIds.has("deliveryTimeline")
-        },
-      ]
+      fields: quickInfoFields
     },
     {
       id: "caseStudy",
       stepNum: 6,
       title: "Case Study & Portfolio",
       path: "/freelancer/onboarding/caseStudy",
-      fields: [
-        {
-          id: "caseStudyTitle",
-          label: "Case Study Title",
-          isFilled: allCaseStudies.length > 0,
-          value: allCaseStudies.length > 0
-            ? `${allCaseStudies.length} case study project(s): ${allCaseStudies.map(c => c.title || c.name || "Untitled").filter(Boolean).slice(0, 2).join(", ")}`
-            : "Missing",
-          isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyTitle")
-        },
-        {
-          id: "caseStudyOverview",
-          label: "Case Study Overview",
-          isFilled: allCaseStudies.some(c => Boolean(c.description || c.overview)),
-          value: allCaseStudies.some(c => Boolean(c.description || c.overview)) ? "Overview provided" : "Missing",
-          isAiAutofilled: usedAiResume && aiAutofilledIds.has("caseStudyOverview")
-        },
-        {
-          id: "caseStudyMedia",
-          label: "Case Study Media & Links",
-          isFilled: allCaseStudies.some(c => Boolean(c.projectLink || c.link || c.media?.length || c.images?.length)),
-          value: allCaseStudies.some(c => Boolean(c.projectLink || c.link || c.media?.length || c.images?.length)) ? "Assets/Links attached" : "Missing",
-          isAiAutofilled: false
-        },
-      ]
+      fields: caseStudyFields
     },
     {
       id: "acceptInProgressProjects",
@@ -456,11 +479,6 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
     }
   ];
 
-  const ONBOARDING_FLOW_STEPS = steps.map(s => ({ id: s.id, title: s.title, path: s.path }));
-  const activeStepIndex = isComplete
-    ? ONBOARDING_FLOW_STEPS.length
-    : ONBOARDING_FLOW_STEPS.findIndex((s) => s.id === currentStep);
-
   let grandTotalFields = 0;
   let grandFilledFields = 0;
   steps.forEach((step) => {
@@ -471,6 +489,15 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
   });
 
   const grandPercentage = Math.round((grandFilledFields / Math.max(grandTotalFields, 1)) * 100);
+  const ONBOARDING_FLOW_STEPS = steps.map(s => ({ id: s.id, title: s.title, path: s.path }));
+  const lastStepWithFieldsIndex = steps.findLastIndex((s) => s.filledCount > 0);
+  const serverStepIndex = ONBOARDING_FLOW_STEPS.findIndex((s) => s.id === progressObj.currentStep);
+  const activeStepIndex = isComplete
+    ? ONBOARDING_FLOW_STEPS.length
+    : Math.max(0, serverStepIndex, lastStepWithFieldsIndex);
+  
+  const overallPercentage = isComplete ? 100 : Math.max(grandPercentage, Number(progressObj.progressPercentage) || 0);
+  const currentStepTitle = isComplete ? "Completed" : (steps[activeStepIndex]?.title || progressObj.currentStepTitle || "welcome");
 
   const toggleStep = (id) => {
     setExpandedSteps((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -571,13 +598,13 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
         <div className="bg-muted/30 p-3.5 rounded-lg border">
           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">Overall Completion</p>
           <div className="flex items-baseline justify-between mt-1">
-            <p className="text-xl font-bold text-foreground font-mono">{percentage}%</p>
+            <p className="text-xl font-bold text-foreground font-mono">{overallPercentage}%</p>
             <span className="text-[11px] text-muted-foreground">Step {Math.min(activeStepIndex + 1, 8)} of 8</span>
           </div>
           <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden mt-2">
             <div
-              className={`h-full transition-all duration-500 ${isComplete ? "bg-emerald-500" : percentage > 50 ? "bg-blue-500" : "bg-amber-500"}`}
-              style={{ width: `${percentage}%` }}
+              className={`h-full transition-all duration-500 ${isComplete ? "bg-emerald-500" : overallPercentage > 50 ? "bg-blue-500" : "bg-amber-500"}`}
+              style={{ width: `${overallPercentage}%` }}
             />
           </div>
         </div>
@@ -725,16 +752,57 @@ const FreelancerOnboardingTrackingCard = ({ userData }) => {
 
                           {/* Per-service breakdown for Step 5 */}
                           {step.id === "quickInfo" && serviceEntries.length > 0 && (
-                            <div className="mt-2 pt-2 border-t space-y-1.5">
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Per-Service Setup:</p>
-                              {serviceEntries.map((srv, sIdx) => (
-                                <div key={sIdx} className="p-1.5 rounded bg-muted/40 border text-[10px] space-y-0.5">
-                                  <div className="flex items-center justify-between font-bold text-foreground">
-                                    <span className="capitalize">{srv.title || srv.key.replace(/_/g, " ")}</span>
-                                    {srv.startingPrice && <span className="text-emerald-600 font-mono">₹{srv.startingPrice}</span>}
+                            <div className="mt-3 pt-2.5 border-t space-y-2">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                Service-by-Service Setup Overview ({serviceEntries.length}):
+                              </p>
+                              {serviceEntries.map((srv, sIdx) => {
+                                const srvTitle = srv.title || srv.serviceTitle || srv.key.replace(/_/g, " ");
+                                const skillsList = (srv.subcategories || srv.skills || []).map(formatSkillItem).filter(Boolean);
+                                const toolsList = (srv.serviceTools || srv.tools || []).map(formatSkillItem).filter(Boolean);
+                                return (
+                                  <div key={sIdx} className="p-2 rounded-lg bg-card border text-[11px] space-y-1 shadow-sm">
+                                    <div className="flex items-center justify-between font-bold text-foreground border-b pb-1">
+                                      <span className="text-primary truncate">Service {sIdx + 1}: {srvTitle}</span>
+                                      {srv.startingPrice && <span className="text-emerald-600 font-mono shrink-0">₹{srv.startingPrice}</span>}
+                                    </div>
+                                    {skillsList.length > 0 && (
+                                      <p className="text-muted-foreground"><strong className="text-foreground">Skills:</strong> {skillsList.join(", ")}</p>
+                                    )}
+                                    {toolsList.length > 0 && (
+                                      <p className="text-muted-foreground"><strong className="text-foreground">Tools:</strong> {toolsList.join(", ")}</p>
+                                    )}
+                                    {srv.description && (
+                                      <p className="text-muted-foreground line-clamp-2 italic"><strong className="text-foreground font-normal">Desc:</strong> "{srv.description}"</p>
+                                    )}
+                                    {srv.experience && (
+                                      <p className="text-muted-foreground font-mono"><strong className="text-foreground font-normal">Exp:</strong> {srv.experience}</p>
+                                    )}
                                   </div>
-                                  {srv.description && <p className="text-muted-foreground line-clamp-2 italic">{srv.description}</p>}
-                                  {srv.deliveryTimeline && <p className="text-muted-foreground font-mono">Timeline: {srv.deliveryTimeline}</p>}
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Per-case-study breakdown for Step 6 */}
+                          {step.id === "caseStudy" && allCaseStudies.length > 0 && (
+                            <div className="mt-3 pt-2.5 border-t space-y-2">
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+                                Case Studies & Portfolio Projects Breakdown ({allCaseStudies.length}):
+                              </p>
+                              {allCaseStudies.map((cs, cIdx) => (
+                                <div key={cIdx} className="p-2 rounded-lg bg-card border text-[11px] space-y-1 shadow-sm">
+                                  <div className="flex items-center justify-between font-bold text-foreground border-b pb-1">
+                                    <span className="text-primary truncate">{cs.title || cs.caseStudyTitle || cs.name || `Case Study #${cIdx + 1}`}</span>
+                                    {cs.budget && <span className="text-emerald-600 font-mono shrink-0">₹{cs.budget}</span>}
+                                  </div>
+                                  {cs.description && <p className="text-muted-foreground line-clamp-2 italic">"{cs.description}"</p>}
+                                  <div className="grid grid-cols-2 gap-x-2 text-[10px] text-muted-foreground pt-0.5">
+                                    {cs.niche && <span><strong>Niche:</strong> {cs.niche}</span>}
+                                    {cs.role && <span><strong>Role:</strong> {cs.role}</span>}
+                                    {cs.timeline && <span><strong>Timeline:</strong> {cs.timeline}</span>}
+                                    {cs.projectLink && <span className="truncate"><strong>Link:</strong> {cs.projectLink}</span>}
+                                  </div>
                                 </div>
                               ))}
                             </div>

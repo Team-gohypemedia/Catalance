@@ -2948,9 +2948,14 @@ export const updateUserProfile = async (userId, updates) => {
 
     const existingFreelancerProfile = resolveFreelancerProfileRecord(user);
     const nextFreelancerProfileUpdates = { ...freelancerProfileUpdates };
-    let resolvedProfileDetails = hasProfileDetailsUpdate
-      ? nextFreelancerProfileUpdates.profileDetails
-      : existingFreelancerProfile.profileDetails;
+    let resolvedProfileDetails = normalizeFreelancerProfileDetails(existingFreelancerProfile.profileDetails);
+    if (hasProfileDetailsUpdate) {
+      resolvedProfileDetails = mergeProfileDetailsPatch(
+        resolvedProfileDetails,
+        nextFreelancerProfileUpdates.profileDetails
+      );
+      nextFreelancerProfileUpdates.profileDetails = resolvedProfileDetails;
+    }
     const shouldApplyProfileDetailsPatch =
       hasProfileDetailsPatch && isPlainObject(profileDetailsPatch);
     if (shouldApplyProfileDetailsPatch) {
