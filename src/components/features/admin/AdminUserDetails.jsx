@@ -85,6 +85,19 @@ const normalizeUrl = (value) => {
   return trimmed.startsWith("http") ? trimmed : `https://${trimmed}`;
 };
 
+const formatFriendlyText = (str) => {
+  if (!str || typeof str !== "string") return str;
+  const s = str.trim();
+  if (s === "4_6_weeks") return "4-6 Weeks";
+  if (s === "8_12_weeks") return "8-12 Weeks";
+  if (s === "1_2_weeks") return "1-2 Weeks";
+  if (s === "2_4_weeks") return "2-4 Weeks";
+  if (s === "full_execution") return "Full Execution (Lead & Build)";
+  if (s === "project") return "Fixed Project Rate";
+  if (s.startsWith("catalog:")) return `Category #${s.replace("catalog:", "")}`;
+  return s.replace(/_/g, " ");
+};
+
 const pickFirstValue = (...values) => values.find((value) => hasDisplayValue(value));
 
 const normalizeCaseStudies = (detail = {}) => {
@@ -99,10 +112,10 @@ const normalizeCaseStudies = (detail = {}) => {
     .map((entry) => ({
       title: String(entry.title || entry.name || "").trim(),
       description: String(entry.description || "").trim(),
-      niche: String(entry.niche || "").trim(),
-      role: String(entry.role || "").trim(),
-      timeline: String(entry.timeline || "").trim(),
-      budget: String(entry.budget || "").trim(),
+      niche: String(entry.niche || entry.category || "").trim(),
+      role: formatFriendlyText(String(entry.role || entry.yourRole || "").trim()),
+      timeline: formatFriendlyText(String(entry.timeline || entry.projectTimeline || "").trim()),
+      budget: String(entry.budget || entry.price || "").trim(),
       link: normalizeUrl(entry.projectLink || entry.link || entry.url || ""),
       image: normalizeUrl(entry.coverImage || entry.image || entry.fileUrl || entry?.file?.url || ""),
     }))
@@ -1396,14 +1409,43 @@ const AdminUserDetails = () => {
                             )}
 
                             {additionalEntries.length > 0 && (
-                              <details className="rounded-lg border bg-muted/5 p-3 group transition-all">
-                                <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-muted-foreground group-open:mb-3">
-                                  Additional Metadata
-                                </summary>
-                                <div className="mt-2 text-xs">
-                                  {renderKeyValuePairs(Object.fromEntries(additionalEntries))}
+                              <div className="rounded-xl border bg-muted/10 p-4 space-y-3">
+                                <div className="flex items-center gap-2 border-b pb-2.5">
+                                  <Wrench className="h-4 w-4 text-primary" />
+                                  <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                                    Service Search & Configuration Metadata
+                                  </h4>
                                 </div>
-                              </details>
+
+                                <div className="grid gap-3 sm:grid-cols-2 text-xs">
+                                  {additionalEntries.map(([key, val]) => {
+                                    const displayKey = toDisplayLabel(key);
+                                    if (key.toLowerCase() === "keywords") {
+                                      const keywordList = (typeof val === "string" ? val.split(",") : Array.isArray(val) ? val : []).map(k => String(k).trim()).filter(Boolean);
+                                      return (
+                                        <div key={key} className="sm:col-span-2 space-y-1.5">
+                                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Search Keywords & Focus Tags:</p>
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {keywordList.map((kw, kwIdx) => (
+                                              <Badge key={kwIdx} variant="outline" className="text-xs bg-primary/5 text-primary border-primary/20 hover:bg-primary/10 transition-colors">
+                                                ✨ {kw}
+                                              </Badge>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      );
+                                    }
+
+                                    const formattedVal = formatFriendlyText(String(val));
+                                    return (
+                                      <div key={key} className="p-2.5 rounded-lg bg-card border shadow-2xs">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{displayKey}</p>
+                                        <p className="font-semibold text-foreground mt-0.5 capitalize">{formattedVal}</p>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
                             )}
                           </div>
 
@@ -1438,23 +1480,37 @@ const AdminUserDetails = () => {
                             {/* Case Studies */}
                             {caseStudies.length > 0 && (
                               <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Case Studies</p>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Case Studies & Showcase</p>
                                 <div className="space-y-3">
                                   {caseStudies.map((entry, index) => (
-                                    <div key={`${entry.title || "case"}-${index}`} className="rounded-xl border bg-muted/5 p-4 space-y-2">
+                                    <div key={`${entry.title || "case"}-${index}`} className="rounded-xl border bg-card p-4 space-y-3 shadow-xs hover:border-primary/30 transition-colors">
                                       <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
-                                        <h4 className="text-xs font-bold text-foreground">{entry.title || "Case Study"}</h4>
-                                        {entry.timeline && (
-                                          <Badge variant="outline" className="text-[10px] py-0">{entry.timeline}</Badge>
+                                        <h4 className="text-xs font-bold text-foreground leading-snug">{entry.title || "Case Study"}</h4>
+                                        {entry.budget && (
+                                          <span className="text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs">
+                                            ₹{Number(entry.budget) ? Number(entry.budget).toLocaleString("en-IN") : entry.budget}
+                                          </span>
                                         )}
                                       </div>
                                       {entry.description && (
-                                        <p className="text-xs text-muted-foreground leading-relaxed">{entry.description}</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed italic">"{entry.description}"</p>
                                       )}
-                                      <div className="grid gap-1 text-[10px] text-muted-foreground">
-                                        {entry.role && <div><span className="font-medium text-foreground">Role:</span> {entry.role}</div>}
-                                        {entry.niche && <div><span className="font-medium text-foreground">Niche:</span> {entry.niche}</div>}
-                                        {entry.budget && <div><span className="font-medium text-foreground">Budget:</span> {entry.budget}</div>}
+                                      <div className="flex flex-wrap gap-1.5 pt-1 text-[10px]">
+                                        {entry.timeline && (
+                                          <Badge variant="outline" className="border-blue-200 bg-blue-50/50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300">
+                                            ⏱️ {entry.timeline}
+                                          </Badge>
+                                        )}
+                                        {entry.role && (
+                                          <Badge variant="outline" className="border-purple-200 bg-purple-50/50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-300">
+                                            👤 {entry.role}
+                                          </Badge>
+                                        )}
+                                        {entry.niche && (
+                                          <Badge variant="outline" className="border-amber-200 bg-amber-50/50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                                            🏷️ {entry.niche}
+                                          </Badge>
+                                        )}
                                       </div>
                                       {entry.link && (
                                         <a href={entry.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-medium hover:underline inline-flex items-center gap-1 pt-1">
