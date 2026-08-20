@@ -172,7 +172,7 @@ const MediaCard = ({ item, previewUrl, index, onRemove }) => (
     {/* Remove button (always visible, using theme colors for contrast) */}
     <button
       type="button"
-      onClick={() => onRemove(item.id)}
+      onClick={() => onRemove(index)}
       className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-md transition-all duration-200 hover:scale-105 hover:bg-destructive/90"
       aria-label={`Remove ${item.name}`}
     >
@@ -427,14 +427,13 @@ const UploadArea = ({
   );
 
   const removeFile = useCallback(
-    (id) => {
-      const nextFiles = filesRef.current.filter(
-        (entry, index) => getMediaItemId(entry, index) !== id,
-      );
+    (indexToRemove) => {
+      const currentFiles = Array.isArray(files) ? files : [];
+      const nextFiles = currentFiles.filter((_, index) => index !== indexToRemove);
       filesRef.current = nextFiles;
       onChange(nextFiles);
     },
-    [onChange],
+    [files, onChange],
   );
 
   const handleDrop = (e) => {

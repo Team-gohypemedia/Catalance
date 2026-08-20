@@ -267,7 +267,7 @@ const CompactMediaCard = ({ item, previewUrl, index, onRemove }) => (
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        onRemove(item.id);
+        onRemove(index);
       }}
       className="absolute right-1.5 top-1.5 z-30 flex h-7 w-7 items-center justify-center rounded-full bg-destructive/90 text-destructive-foreground hover:bg-destructive shadow-md backdrop-blur-md transition-all duration-200 active:scale-90 cursor-pointer"
       title={`Delete ${item.name}`}
@@ -484,11 +484,12 @@ const CompactUploadArea = ({ files, onChange, onUploadFile, hasError = false }) 
     }
   }, [imageCount, isUploading, onChange, uploadSingleFile, videoCount]);
 
-  const removeFile = useCallback((id) => {
-    const nextFiles = filesRef.current.filter((entry, index) => getMediaItemId(entry, index) !== id);
+  const removeFile = useCallback((indexToRemove) => {
+    const currentFiles = Array.isArray(files) ? files : [];
+    const nextFiles = currentFiles.filter((_, index) => index !== indexToRemove);
     filesRef.current = nextFiles;
     onChange(nextFiles);
-  }, [onChange]);
+  }, [files, onChange]);
 
   return (
     <div className="space-y-3">
