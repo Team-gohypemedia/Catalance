@@ -560,48 +560,96 @@ export const getProfile = asyncHandler(async (req, res) => {
   // Prevent caching
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, private');
 
-  const user = await prisma.user.findUnique({
-    where: tokenUserId ? { id: tokenUserId } : { email: tokenEmail },
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      phone: true,
-      phoneNumber: true,
-      role: true,
-      roles: true,
-      status: true,
-      avatar: true,
-      marketplace: {
+  let user = tokenUserId
+    ? await prisma.user.findUnique({
+        where: { id: tokenUserId },
         select: {
-          serviceKey: true,
-          service: true,
-          serviceDetails: true,
-        },
-      },
-      freelancerProjects: {
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-        select: {
-          serviceKey: true,
-          serviceName: true,
-          title: true,
-          description: true,
-          link: true,
-          fileUrl: true,
-          fileName: true,
+          id: true,
+          fullName: true,
+          email: true,
+          phone: true,
+          phoneNumber: true,
           role: true,
-          timeline: true,
-          budget: true,
-          tags: true,
-          techStack: true,
-          sortOrder: true,
+          roles: true,
+          status: true,
+          avatar: true,
+          marketplace: {
+            select: {
+              serviceKey: true,
+              service: true,
+              serviceDetails: true,
+            },
+          },
+          freelancerProjects: {
+            orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+            select: {
+              serviceKey: true,
+              serviceName: true,
+              title: true,
+              description: true,
+              link: true,
+              fileUrl: true,
+              fileName: true,
+              role: true,
+              timeline: true,
+              budget: true,
+              tags: true,
+              techStack: true,
+              sortOrder: true,
+            }
+          },
+          freelancerProfile: {
+            select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+          }
         }
-      },
-      freelancerProfile: {
-        select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+      })
+    : null;
+
+  if (!user && tokenEmail) {
+    user = await prisma.user.findUnique({
+      where: { email: tokenEmail },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        phoneNumber: true,
+        role: true,
+        roles: true,
+        status: true,
+        avatar: true,
+        marketplace: {
+          select: {
+            serviceKey: true,
+            service: true,
+            serviceDetails: true,
+          },
+        },
+        freelancerProjects: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            serviceKey: true,
+            serviceName: true,
+            title: true,
+            description: true,
+            link: true,
+            fileUrl: true,
+            fileName: true,
+            role: true,
+            timeline: true,
+            budget: true,
+            tags: true,
+            techStack: true,
+            sortOrder: true,
+          }
+        },
+        freelancerProfile: {
+          select: FREELANCER_PROFILE_WITH_PROFILE_DETAILS_SELECT
+        }
       }
-    }
-  });
+    });
+  }
+
   if (!user) {
     throw new AppError("User not found", 404);
   }

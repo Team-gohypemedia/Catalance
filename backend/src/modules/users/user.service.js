@@ -2822,6 +2822,22 @@ export const updateUserProfile = async (userId, updates) => {
     }
   }
 
+  if (
+    !cleanUpdates.resume &&
+    cleanUpdates.profileDetails
+  ) {
+    const derivedResume =
+      cleanUpdates.profileDetails.resume ||
+      cleanUpdates.profileDetails.identity?.resume ||
+      cleanUpdates.profileDetails.onboardingDraft?.basicProfileForm?.resumeUrl ||
+      (typeof cleanUpdates.profileDetails.onboardingDraft?.basicProfileForm?.resume === "string"
+        ? cleanUpdates.profileDetails.onboardingDraft.basicProfileForm.resume
+        : cleanUpdates.profileDetails.onboardingDraft?.basicProfileForm?.resume?.url);
+    if (derivedResume && typeof derivedResume === "string") {
+      cleanUpdates.resume = derivedResume.trim();
+    }
+  }
+
   const userUpdateKeys = new Set([
     "fullName",
     "email",
@@ -3872,6 +3888,30 @@ export const getUserById = async (id) => {
 
   if (!user) {
     throw new AppError("User not found", 404);
+  }
+
+  return sanitizeUser(user);
+};
+
+export const getUserByEmail = async (email) => {
+  if (!email) return null;
+  const user = await prisma.user.findUnique(
+    withFreelancerProfileInclude({
+      where: { email: String(email).trim().toLowerCase() },
+      include: {
+        marketplace: {
+          select: {
+            serviceKey: true,
+            service: true,
+            serviceDetails: true,
+          },
+        },
+      },
+    })
+  );
+
+  if (!user) {
+    return null;
   }
 
   return sanitizeUser(user);

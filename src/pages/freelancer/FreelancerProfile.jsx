@@ -803,17 +803,15 @@ const FreelancerProfile = () => {
       try {
         let data = null;
 
-        if (user?.email) {
-          const response = await authFetch(
-            `/profile?_t=${Date.now()}`
-          );
+        const response = await authFetch(
+          `/profile?_t=${Date.now()}`
+        );
 
-          if (response.ok) {
-            const payload = await response.json();
-            data = payload?.data ?? null;
-          } else {
-            console.warn("Profile GET not ok:", response.status);
-          }
+        if (response.ok) {
+          const payload = await response.json();
+          data = payload?.data ?? null;
+        } else {
+          console.warn("Profile GET not ok:", response.status);
         }
 
         if (!data) {

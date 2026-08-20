@@ -2285,11 +2285,8 @@ const FreelancerOnboardingShell = () => {
         (fieldOrder.get(String(left?.fieldId || "").trim()) ?? Number.MAX_SAFE_INTEGER) -
         (fieldOrder.get(String(right?.fieldId || "").trim()) ?? Number.MAX_SAFE_INTEGER),
     );
-    const nextCustomFields = { ...(basicProfileForm.customFields || {}) };
-    let nextForm = {
-      ...basicProfileForm,
-      customFields: nextCustomFields,
-    };
+    const systemFieldUpdates = {};
+    const customFieldUpdates = {};
     let appliedCount = 0;
 
     const appliedFieldIds = [];
@@ -2311,15 +2308,10 @@ const FreelancerOnboardingShell = () => {
         return;
       }
 
-      const currentValue = getBasicProfileFieldValue(nextForm, fieldId);
-
       const resolvedOptions = normalizeResumeAutofillFieldOptions({
         field: schemaField,
         countryOptions,
-        stateOptions:
-          schemaField.id === "state" && nextForm.country
-            ? resolveStateOptionsForCountry(nextForm.country)
-            : stateOptions,
+        stateOptions,
         languageOptions,
       });
 
@@ -2344,12 +2336,14 @@ const FreelancerOnboardingShell = () => {
       }
 
       if (SYSTEM_BASIC_PROFILE_FIELD_IDS.has(fieldId)) {
-        nextForm =
-          fieldId === "country"
-            ? { ...nextForm, country: nextValue, state: "" }
-            : { ...nextForm, [fieldId]: nextValue };
+        if (fieldId === "country") {
+          systemFieldUpdates.country = nextValue;
+          systemFieldUpdates.state = "";
+        } else {
+          systemFieldUpdates[fieldId] = nextValue;
+        }
       } else {
-        nextCustomFields[fieldId] = nextValue;
+        customFieldUpdates[fieldId] = nextValue;
       }
 
       appliedCount += 1;
@@ -2362,10 +2356,20 @@ const FreelancerOnboardingShell = () => {
     }
 
     startTransition(() => {
-      setBasicProfileForm(nextForm);
-      syncBasicProfileValidationErrors(
-        buildBasicProfileValidationErrors(nextForm, basicProfileFields),
-      );
+      setBasicProfileForm((currentForm) => {
+        const mergedForm = {
+          ...currentForm,
+          ...systemFieldUpdates,
+          customFields: {
+            ...(currentForm.customFields || {}),
+            ...customFieldUpdates,
+          },
+        };
+        syncBasicProfileValidationErrors(
+          buildBasicProfileValidationErrors(mergedForm, basicProfileFields),
+        );
+        return mergedForm;
+      });
     });
 
     return { appliedCount, appliedFieldIds, appliedFieldLabels };
@@ -2686,8 +2690,8 @@ const FreelancerOnboardingShell = () => {
     });
 
     try {
-      // In parallel, upload resume so its persisted URL is immediately available
-      uploadResumeFile(file)
+      // In parallel, start upload resume so its persisted URL is immediately available
+      const uploadPromise = uploadResumeFile(file)
         .then((uploadedUrl) => {
           if (uploadedUrl) {
             setBasicProfileForm((currentForm) => ({
@@ -2696,13 +2700,16 @@ const FreelancerOnboardingShell = () => {
                 name: file.name,
                 file,
                 url: uploadedUrl,
+                uploadedUrl,
               },
               resumeUrl: uploadedUrl,
             }));
           }
+          return uploadedUrl;
         })
         .catch((uploadErr) => {
           console.warn("Could not pre-upload resume during AI extraction:", uploadErr);
+          return null;
         });
 
       const [availableServices, availableNiches] = await Promise.all([
@@ -2716,10 +2723,26 @@ const FreelancerOnboardingShell = () => {
         JSON.stringify(buildResumeAutofillSchemaPayload(availableNiches)),
       );
 
-      const response = await authFetch("/profile/resume-autofill", {
-        method: "POST",
-        body: payload,
-      });
+      const [response, uploadedResumeUrl] = await Promise.all([
+        authFetch("/profile/resume-autofill", {
+          method: "POST",
+          body: payload,
+        }),
+        uploadPromise,
+      ]);
+
+      if (uploadedResumeUrl) {
+        setBasicProfileForm((currentForm) => ({
+          ...currentForm,
+          resume: {
+            name: file.name,
+            file,
+            url: uploadedResumeUrl,
+            uploadedUrl: uploadedResumeUrl,
+          },
+          resumeUrl: uploadedResumeUrl,
+        }));
+      }
 
       if (!response.ok) {
         const errorPayload = await response
@@ -3118,6 +3141,9 @@ const FreelancerOnboardingShell = () => {
           resolvedResumeUrl ||
           extractResumeUrl(basicProfileForm.resume) ||
           currentIdentity.resume ||
+          currentProfileDetails.resume ||
+          user?.freelancerProfile?.resume ||
+          user?.resume ||
           null,
         profilePhoto:
           resolvedAvatarUrl ||
@@ -3129,11 +3155,23 @@ const FreelancerOnboardingShell = () => {
         resolvedResumeUrl ||
         extractResumeUrl(basicProfileForm.resume) ||
         currentProfileDetails.resume ||
+        currentIdentity.resume ||
+        user?.freelancerProfile?.resume ||
+        user?.resume ||
         null,
     };
 
     delete profileDetails.serviceSubcategorySkills;
     delete profileDetails.serviceActiveSkillCategory;
+
+    const finalResume =
+      resolvedResumeUrl ||
+      extractResumeUrl(basicProfileForm.resume) ||
+      currentProfileDetails.resume ||
+      currentIdentity.resume ||
+      user?.freelancerProfile?.resume ||
+      user?.resume ||
+      null;
 
     const updatePayload = {
       fullName: resolvedFullName,
@@ -3145,7 +3183,7 @@ const FreelancerOnboardingShell = () => {
         state: basicProfileForm.state.trim(),
         country: basicProfileForm.country.trim(),
       }),
-      resume: resolvedResumeUrl || null,
+      ...(finalResume ? { resume: finalResume } : {}),
     };
 
     if (resolvedAvatarUrl) {

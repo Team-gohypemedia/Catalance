@@ -2001,7 +2001,7 @@ const AgencyOnboardingShell = ({
         (fieldOrder.get(String(left?.fieldId || "").trim()) ?? Number.MAX_SAFE_INTEGER) -
         (fieldOrder.get(String(right?.fieldId || "").trim()) ?? Number.MAX_SAFE_INTEGER),
     );
-    let nextForm = { ...basicProfileForm };
+    const systemFieldUpdates = {};
     let appliedCount = 0;
 
     normalizedSuggestions.forEach((suggestion) => {
@@ -2020,18 +2020,10 @@ const AgencyOnboardingShell = ({
         return;
       }
 
-      const currentValue = getBasicProfileFieldValue(nextForm, fieldId);
-      if (hasAutofillableFieldValue(currentValue)) {
-        return;
-      }
-
       const resolvedOptions = normalizeResumeAutofillFieldOptions({
         field: schemaField,
         countryOptions,
-        stateOptions:
-          schemaField.id === "state" && nextForm.country
-            ? resolveStateOptionsForCountry(nextForm.country)
-            : stateOptions,
+        stateOptions,
         languageOptions,
       });
 
@@ -2056,10 +2048,12 @@ const AgencyOnboardingShell = ({
       }
 
       if (SYSTEM_BASIC_PROFILE_FIELD_IDS.has(fieldId)) {
-        nextForm =
-          fieldId === "country"
-            ? { ...nextForm, country: nextValue, state: "" }
-            : { ...nextForm, [fieldId]: nextValue };
+        if (fieldId === "country") {
+          systemFieldUpdates.country = nextValue;
+          systemFieldUpdates.state = "";
+        } else {
+          systemFieldUpdates[fieldId] = nextValue;
+        }
         appliedCount += 1;
       }
     });
@@ -2069,8 +2063,14 @@ const AgencyOnboardingShell = ({
     }
 
     startTransition(() => {
-      setBasicProfileForm(nextForm);
-      syncBasicProfileValidationErrors(buildBasicProfileValidationErrors(nextForm));
+      setBasicProfileForm((currentForm) => {
+        const mergedForm = {
+          ...currentForm,
+          ...systemFieldUpdates,
+        };
+        syncBasicProfileValidationErrors(buildBasicProfileValidationErrors(mergedForm));
+        return mergedForm;
+      });
     });
 
     return appliedCount;
@@ -2391,6 +2391,27 @@ const AgencyOnboardingShell = ({
     });
 
     try {
+      const uploadPromise = uploadResumeFile(file)
+        .then((uploadedUrl) => {
+          if (uploadedUrl) {
+            setBasicProfileForm((currentForm) => ({
+              ...currentForm,
+              resume: {
+                name: file.name,
+                file,
+                url: uploadedUrl,
+                uploadedUrl,
+              },
+              resumeUrl: uploadedUrl,
+            }));
+          }
+          return uploadedUrl;
+        })
+        .catch((uploadErr) => {
+          console.warn("Could not pre-upload resume during AI extraction:", uploadErr);
+          return null;
+        });
+
       const [availableServices, availableNiches] = await Promise.all([
         ensureMarketplaceServicesLoaded(),
         ensureMarketplaceNichesLoaded(),
@@ -2402,10 +2423,26 @@ const AgencyOnboardingShell = ({
         JSON.stringify(buildResumeAutofillSchemaPayload(availableNiches)),
       );
 
-      const response = await authFetch("/profile/resume-autofill", {
-        method: "POST",
-        body: payload,
-      });
+      const [response, uploadedResumeUrl] = await Promise.all([
+        authFetch("/profile/resume-autofill", {
+          method: "POST",
+          body: payload,
+        }),
+        uploadPromise,
+      ]);
+
+      if (uploadedResumeUrl) {
+        setBasicProfileForm((currentForm) => ({
+          ...currentForm,
+          resume: {
+            name: file.name,
+            file,
+            url: uploadedResumeUrl,
+            uploadedUrl: uploadedResumeUrl,
+          },
+          resumeUrl: uploadedResumeUrl,
+        }));
+      }
 
       if (!response.ok) {
         const errorPayload = await response
@@ -2763,12 +2800,28 @@ const AgencyOnboardingShell = ({
         languages: Array.isArray(basicProfileForm.languages)
           ? basicProfileForm.languages.filter(Boolean)
           : [],
+        resume:
+          resolvedResumeUrl ||
+          extractResumeUrl(basicProfileForm.resume) ||
+          currentIdentity.resume ||
+          currentProfileDetails.resume ||
+          user?.freelancerProfile?.resume ||
+          user?.resume ||
+          null,
         profilePhoto:
           resolvedAvatarUrl ||
           extractProfilePhotoUrl(basicProfileForm.profilePhoto) ||
           currentIdentity.profilePhoto ||
           null,
       },
+      resume:
+        resolvedResumeUrl ||
+        extractResumeUrl(basicProfileForm.resume) ||
+        currentProfileDetails.resume ||
+        currentIdentity.resume ||
+        user?.freelancerProfile?.resume ||
+        user?.resume ||
+        null,
     };
 
     if (!isAgencyRole) {
@@ -2780,6 +2833,15 @@ const AgencyOnboardingShell = ({
     delete profileDetails.serviceSubcategorySkills;
     delete profileDetails.serviceActiveSkillCategory;
 
+    const finalResume =
+      resolvedResumeUrl ||
+      extractResumeUrl(basicProfileForm.resume) ||
+      currentProfileDetails.resume ||
+      currentIdentity.resume ||
+      user?.freelancerProfile?.resume ||
+      user?.resume ||
+      null;
+
     const updatePayload = {
       fullName: resolvedFullName,
       profileDetails,
@@ -2789,7 +2851,7 @@ const AgencyOnboardingShell = ({
         state: basicProfileForm.state.trim(),
         country: basicProfileForm.country.trim(),
       }),
-      resume: resolvedResumeUrl || null,
+      ...(finalResume ? { resume: finalResume } : {}),
     };
 
     if (isAgencyRole) {

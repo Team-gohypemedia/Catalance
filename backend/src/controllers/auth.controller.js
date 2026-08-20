@@ -1,9 +1,9 @@
-
 import { asyncHandler } from "../utils/async-handler.js";
 import {
   authenticateUser,
   authenticateWithGoogle,
   getUserById,
+  getUserByEmail,
   registerUser,
   requestPasswordReset,
   verifyResetToken,
@@ -75,12 +75,24 @@ export const googleLoginHandler = asyncHandler(async (req, res) => {
 
 export const profileHandler = asyncHandler(async (req, res) => {
   const userId = req.user?.sub || req.user?.id;
+  const userEmail = req.user?.email;
 
-  if (!userId) {
+  if (!userId && !userEmail) {
     throw new AppError("Authentication required", 401);
   }
 
-  const user = await getUserById(userId);
+  let user = null;
+  if (userId) {
+    user = await getUserById(userId).catch(() => null);
+  }
+  if (!user && userEmail) {
+    user = await getUserByEmail(userEmail).catch(() => null);
+  }
+
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
   const tokenRole = req.user?.role;
   const payload = tokenRole ? { ...user, role: tokenRole } : user;
   res.json({ data: payload });

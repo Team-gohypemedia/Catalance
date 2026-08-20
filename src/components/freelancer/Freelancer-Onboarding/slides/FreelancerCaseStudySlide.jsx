@@ -1246,12 +1246,12 @@ const FreelancerCaseStudySlide = ({
                 <div className="flex-1">
                   <button
                     onClick={handleCloseModal}
-                    className="h-10 sm:h-11 px-5 sm:px-6 rounded-xl bg-gradient-to-r from-[#f97316] to-[#ea580c] dark:from-primary dark:to-primary text-white dark:text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-[0_6px_20px_rgba(249,115,22,0.35)] dark:shadow-[0_6px_20px_rgba(249,217,73,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                    className="keep-white h-10 sm:h-11 px-5 sm:px-6 rounded-xl bg-gradient-to-r from-[#f97316] to-[#ea580c] dark:from-primary dark:to-primary !text-white dark:!text-slate-950 font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-[0_6px_20px_rgba(249,115,22,0.35)] dark:shadow-[0_6px_20px_rgba(249,217,73,0.3)] hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                   >
-                    <div className="size-5 rounded-full bg-white/25 dark:bg-black/15 flex items-center justify-center text-white dark:text-black shrink-0">
-                      <Plus className="size-3.5 stroke-[3] stroke-white dark:stroke-black text-white dark:text-black" />
+                    <div className="keep-white size-5 rounded-full bg-white/25 dark:bg-black/15 flex items-center justify-center !text-white dark:!text-black shrink-0">
+                      <Plus className="keep-white size-3.5 stroke-[3] !stroke-white dark:!stroke-black !text-white dark:!text-black" />
                     </div>
-                    <span className="font-extrabold text-white dark:text-slate-950">
+                    <span className="keep-white font-extrabold !text-white dark:!text-slate-950">
                       Add Case Study
                     </span>
                   </button>
