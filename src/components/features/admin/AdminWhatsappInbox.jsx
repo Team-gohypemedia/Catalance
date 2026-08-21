@@ -36,10 +36,11 @@ export default function AdminWhatsappInbox() {
     if (!silent) setLoadingConvs(true);
     try {
       const res = await authFetch("/admin/whatsapp/conversations");
-      if (res?.success) {
-        setConversations(res.conversations || []);
-        if (!selectedPhone && res.conversations?.length > 0) {
-          setSelectedPhone(res.conversations[0].phone);
+      const data = await res.json();
+      if (data?.success) {
+        setConversations(data.conversations || []);
+        if (!selectedPhone && data.conversations?.length > 0) {
+          setSelectedPhone(data.conversations[0].phone);
         }
       }
     } catch (err) {
@@ -54,8 +55,9 @@ export default function AdminWhatsappInbox() {
     if (!silent) setLoadingMsgs(true);
     try {
       const res = await authFetch(`/admin/whatsapp/conversations/${phone}`);
-      if (res?.success) {
-        setMessages(res.messages || []);
+      const data = await res.json();
+      if (data?.success) {
+        setMessages(data.messages || []);
       }
     } catch (err) {
       if (!silent) toast.error("Failed to load messages for this conversation");
@@ -103,12 +105,14 @@ export default function AdminWhatsappInbox() {
         })
       });
 
-      if (res?.success) {
+      const data = await res.json();
+
+      if (data?.success) {
         toast.success("Message sent to WhatsApp!");
         fetchMessages(selectedPhone, true);
         fetchConversations(true);
       } else {
-        toast.error(res?.message || "Failed to send WhatsApp message");
+        toast.error(data?.message || "Failed to send WhatsApp message");
         setReplyText(textToSend);
       }
     } catch (err) {
@@ -118,6 +122,7 @@ export default function AdminWhatsappInbox() {
       setSending(false);
     }
   };
+
 
   const filteredConversations = conversations.filter(
     (c) =>
