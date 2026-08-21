@@ -79,9 +79,20 @@ whatsappWebhookRouter.post("/", async (req, res) => {
           });
 
           console.log(`[WhatsApp Webhook] Recorded incoming message from ${fromPhone} (${senderName || 'Unknown'}): ${body}`);
+
+          // Trigger AI Chatbot processor asynchronously
+          const buttonId = msg.button?.payload || msg.interactive?.button_reply?.id || null;
+          import("../services/whatsapp-bot.service.js").then(({ processIncomingWhatsappBotMessage }) => {
+            processIncomingWhatsappBotMessage({
+              fromPhone,
+              userText: body,
+              buttonId
+            }).catch((botErr) => console.error("[WhatsApp Webhook] Bot processing error:", botErr));
+          }).catch((importErr) => console.error("[WhatsApp Webhook] Bot import error:", importErr));
         }
       }
     } else if (status) {
+
       console.log(`[WhatsApp Webhook] Status update: ${status.status} for ${status.recipient_id}. ID: ${status.id}`);
       if (status.id && status.status) {
         await prisma.whatsAppMessage.updateMany({
