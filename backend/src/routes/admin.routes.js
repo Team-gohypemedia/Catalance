@@ -39,6 +39,12 @@ import {
 } from "../controllers/admin.controller.js";
 
 import {
+  getWhatsappConversations,
+  getWhatsappMessagesByPhone,
+  sendWhatsappReply,
+} from "../controllers/adminWhatsapp.controller.js";
+
+import {
   archiveFreelancerOnboardingSubmission,
   createFreelancerOnboardingSubmission,
   getFreelancerOnboardingSubmission,
@@ -198,5 +204,11 @@ router.post("/marketplace-filters/tools", createAdminTool);
 router.put("/marketplace-filters/tools/:id", updateAdminTool);
 router.delete("/marketplace-filters/tools/:id", deleteAdminTool);
 
+// WhatsApp Inbox Dashboard Routes
+router.get("/whatsapp/conversations", getWhatsappConversations);
+router.get("/whatsapp/conversations/:phone", getWhatsappMessagesByPhone);
+router.post("/whatsapp/send", sendWhatsappReply);
+
 export default router;
+
 

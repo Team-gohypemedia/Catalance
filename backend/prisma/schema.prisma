@@ -1214,3 +1214,25 @@ model ProjectAudit {
   @@index([projectId])
 }
 
+model WhatsAppMessage {
+  id          String   @id @default(cuid())
+  fromPhone   String   // Sender phone (e.g. "918882855425")
+  senderName  String?  // Contact profile name from Meta
+  toPhone     String   @default("918882855425")
+  wamid       String?  @unique // Meta WhatsApp Message ID for deduplication
+  messageType String   @default("text") // text, image, document, location, etc.
+  body        String?  @db.Text
+  mediaUrl    String?
+  direction   String   @default("INBOUND") // INBOUND or OUTBOUND
+  status      String   @default("RECEIVED") // RECEIVED, READ, REPLIED, DELIVERED
+  rawPayload  Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([fromPhone, createdAt])
+  @@index([direction, createdAt])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
+}
+
+

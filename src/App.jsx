@@ -151,7 +151,11 @@ const AdminApprovals = lazy(
 const AdminUserRequests = lazy(
   () => import("@/components/features/admin/AdminUserRequests"),
 );
+const AdminWhatsappInbox = lazy(
+  () => import("@/components/features/admin/AdminWhatsappInbox"),
+);
 const AdminFreelancerOnboarding = lazy(
+
   () => import("@/components/features/admin/AdminFreelancerOnboarding"),
 );
 const AdminFreelancerLimits = lazy(
@@ -844,6 +848,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminFreelancerOnboarding />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/whatsapp-inbox"
+              element={
+                <AdminRoute>
+                  <AdminWhatsappInbox />
                 </AdminRoute>
               }
             />

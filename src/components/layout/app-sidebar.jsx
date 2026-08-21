@@ -186,6 +186,12 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "WhatsApp Inbox",
+      url: "/admin/whatsapp-inbox",
+      icon: MessageSquare,
+      isActive: true,
+    },
+    {
       title: "Services",
       url: "/admin/services",
       icon: Briefcase,
