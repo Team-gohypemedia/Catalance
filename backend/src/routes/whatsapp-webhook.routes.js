@@ -94,6 +94,17 @@ whatsappWebhookRouter.post("/", async (req, res) => {
     console.error("[WhatsApp Webhook] Error processing webhook:", error);
   }
 
+  // Dual Webhook Forwarding to Staging / NeonDB (if configured in .env as FORWARD_WEBHOOK_URL)
+  const forwardUrl = process.env.FORWARD_WEBHOOK_URL || process.env.STAGING_WEBHOOK_URL;
+  if (forwardUrl) {
+    fetch(forwardUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req.body)
+    }).catch((err) => console.error("[WhatsApp Webhook Forward Error]:", err.message));
+  }
+
   return res.sendStatus(200);
 });
+
 
