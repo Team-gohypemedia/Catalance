@@ -3,10 +3,8 @@ import { env } from "../config/env.js";
 import { AppError } from "../utils/app-error.js";
 
 
-// Fetch list of all active chat conversations grouped by customer phone number
 export const getWhatsappConversations = async (req, res, next) => {
   try {
-    // Fetch latest message per fromPhone
     const allMessages = await prisma.whatsAppMessage.findMany({
       orderBy: { createdAt: "desc" }
     });
@@ -18,7 +16,7 @@ export const getWhatsappConversations = async (req, res, next) => {
       if (!conversationMap.has(phone)) {
         conversationMap.set(phone, {
           phone,
-          senderName: msg.senderName || "WhatsApp User",
+          senderName: null,
           lastMessage: msg.body,
           lastMessageType: msg.messageType,
           direction: msg.direction,
@@ -28,18 +26,42 @@ export const getWhatsappConversations = async (req, res, next) => {
         });
       }
 
+      const conv = conversationMap.get(phone);
+
+      // Track the customer's name if present in any message
+      if (!conv.senderName && msg.senderName) {
+        conv.senderName = msg.senderName;
+      }
+
       if (msg.direction === "INBOUND" && msg.status === "RECEIVED") {
-        const conv = conversationMap.get(phone);
         conv.unreadCount += 1;
       }
     }
 
+    // Fallback search in registered Users table by phone number if senderName is missing
     const conversations = Array.from(conversationMap.values());
+    for (const conv of conversations) {
+      if (!conv.senderName) {
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { phoneNumber: { contains: conv.phone.slice(-10) } },
+              { phone: { contains: conv.phone.slice(-10) } }
+            ]
+          },
+          select: { fullName: true }
+        }).catch(() => null);
+
+        conv.senderName = user?.fullName || `Contact +${conv.phone}`;
+      }
+    }
+
     return res.json({ success: true, conversations });
   } catch (error) {
     next(error);
   }
 };
+
 
 // Fetch full chat thread for a given phone number
 export const getWhatsappMessagesByPhone = async (req, res, next) => {
