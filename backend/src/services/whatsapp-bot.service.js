@@ -130,7 +130,11 @@ Recent Conversation History: ${JSON.stringify(conversationHistory)}
 
   try {
     const openRouterApiKey = env.OPENROUTER_API_KEY || env.OPENAI_API_KEY;
-    const modelToUse = env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+    // Fallback to valid models if model in env is invalid (e.g. gpt-5.1)
+    let modelToUse = env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+    if (modelToUse.includes("5.1")) {
+      modelToUse = "openai/gpt-4o-mini";
+    }
 
     if (!openRouterApiKey) {
       return "Thank you for contacting Catalance. How can we assist you with your project today?";
@@ -155,12 +159,16 @@ Recent Conversation History: ${JSON.stringify(conversationHistory)}
 
     const data = await res.json().catch(() => null);
     const aiText = data?.choices?.[0]?.message?.content?.trim();
-    return aiText || "Thank you for reaching out to Catalance. How can we help with your project today?";
+    if (aiText) return aiText;
+    
+    console.warn("[WhatsApp Bot] OpenRouter API warning payload:", data);
+    return "Thank you for reaching out to Catalance. How can we help with your project today?";
   } catch (err) {
     console.error("[WhatsApp Bot] AI generation error:", err);
     return "Thank you for reaching out to Catalance. How can we help with your project today?";
   }
 };
+
 
 
 // Main Bot Processor Logic
@@ -178,11 +186,13 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
 
   const cleanText = (userText || "").trim().toLowerCase();
 
-  // 1. First Greeting / Menu trigger
+  // ----------------------------------------------------
+  // 1. FIRST GREETING / MAIN MENU
+  // ----------------------------------------------------
   if (buttonId === "btn_menu" || ["hi", "hello", "hey", "start", "menu", "help"].includes(cleanText)) {
     return sendWhatsappInteractiveMenu({
       to: fromPhone,
-      bodyText: "Welcome to Catalance. How can we help you today? Please choose an option below:",
+      bodyText: "Welcome to Catalance. How can we help you today? Please select an option below:",
       buttons: [
         { id: "btn_project_help", title: "Project Help" },
         { id: "btn_new_services", title: "New Services" },
@@ -191,51 +201,152 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
     });
   }
 
-  // 2. Button Action: Project Help
-  if (buttonId === "btn_project_help" || cleanText.includes("project help")) {
+  // ----------------------------------------------------
+  // 2. LEVEL 1: MAIN CATEGORIES
+  // ----------------------------------------------------
+  // Choice 1: Project Help
+  if (buttonId === "btn_project_help" || cleanText === "project help") {
     return sendWhatsappInteractiveMenu({
       to: fromPhone,
-      bodyText: "Project Help: We can help you track project progress, milestone payments, or freelancer updates. Please choose what you need help with:",
+      bodyText: "Project Help: Please select what you need assistance with:",
       buttons: [
-        { id: "btn_track_status", title: "Track Progress" },
-        { id: "btn_hire_freelancer", title: "Hire Freelancer" },
-        { id: "btn_contact_team", title: "Contact Team" }
+        { id: "step2_ongoing_project", title: "Ongoing Project" },
+        { id: "step2_milestone_payment", title: "Milestone Payment" },
+        { id: "step2_freelancer_issue", title: "Freelancer Issue" }
       ]
     });
   }
 
-  // 3. Button Action: New Services
-  if (buttonId === "btn_new_services" || cleanText.includes("new services")) {
+  // Choice 2: New Services
+  if (buttonId === "btn_new_services" || cleanText === "new services") {
     return sendWhatsappInteractiveMenu({
       to: fromPhone,
-      bodyText: "Catalance Services: We offer top vetted freelancers for Web & Mobile Apps, AI Agents, UI/UX Design, and Marketing. What would you like to build?",
+      bodyText: "New Services: What kind of project would you like to build with Catalance?",
       buttons: [
-        { id: "btn_web_app", title: "Web or App Dev" },
-        { id: "btn_ai_agents", title: "AI & Automation" },
-        { id: "btn_design_seo", title: "Design & SEO" }
+        { id: "step2_web_app", title: "Web or App Dev" },
+        { id: "step2_ai_automation", title: "AI & Automation" },
+        { id: "step2_design_seo", title: "Design & Marketing" }
       ]
     });
   }
 
-  // 4. Button Action: Contact Team / Hire / Details
-  if (
-    buttonId === "btn_contact_team" ||
-    buttonId === "btn_track_status" ||
-    buttonId === "btn_hire_freelancer" ||
-    buttonId === "btn_web_app" ||
-    buttonId === "btn_ai_agents" ||
-    buttonId === "btn_design_seo"
-  ) {
+  // Choice 3: Contact Team
+  if (buttonId === "btn_contact_team" || cleanText === "contact team") {
     return sendWhatsappInteractiveMenu({
       to: fromPhone,
-      bodyText: "Thank you for selecting. Our Admin Team has been notified of your request. An admin will review your message and reply directly to this chat shortly.",
+      bodyText: "Contact Team: How can our support team assist you today?",
+      buttons: [
+        { id: "step2_urgent_support", title: "Urgent Support" },
+        { id: "step2_general_inquiry", title: "General Inquiry" },
+        { id: "step2_book_call", title: "Book a Call" }
+      ]
+    });
+  }
+
+  // ----------------------------------------------------
+  // 3. LEVEL 2: SUB-CATEGORY QUESTIONS
+  // ----------------------------------------------------
+  // Sub-questions for Project Help
+  if (buttonId === "step2_ongoing_project") {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "Ongoing Project: What specific assistance do you require?",
+      buttons: [
+        { id: "final_track_status", title: "Track Progress" },
+        { id: "final_scope_update", title: "Scope Update" },
+        { id: "final_speak_manager", title: "Speak to Manager" }
+      ]
+    });
+  }
+
+  if (buttonId === "step2_milestone_payment") {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "Milestone Payment: What payment assistance do you need?",
+      buttons: [
+        { id: "final_release_payment", title: "Release Payment" },
+        { id: "final_payment_error", title: "Payment Issue" },
+        { id: "final_invoice_req", title: "Invoice Request" }
+      ]
+    });
+  }
+
+  if (buttonId === "step2_freelancer_issue") {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "Freelancer Issue: What freelancer assistance do you need?",
+      buttons: [
+        { id: "final_reassign_freelancer", title: "Reassign Developer" },
+        { id: "final_quality_review", title: "Quality Review" },
+        { id: "final_communication_issue", title: "Communication" }
+      ]
+    });
+  }
+
+  // Sub-questions for New Services
+  if (buttonId === "step2_web_app") {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "Web or App Development: Select your project requirements:",
+      buttons: [
+        { id: "final_custom_website", title: "Custom Website" },
+        { id: "final_mobile_app", title: "Mobile App" },
+        { id: "final_fullstack_dev", title: "Full Stack System" }
+      ]
+    });
+  }
+
+  if (buttonId === "step2_ai_automation") {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "AI & Automation: Select your AI requirements:",
+      buttons: [
+        { id: "final_ai_chatbot", title: "AI Chatbot" },
+        { id: "final_ai_agents", title: "AI Agents / RAG" },
+        { id: "final_workflow_auto", title: "Workflow Auto" }
+      ]
+    });
+  }
+
+  if (buttonId === "step2_design_seo") {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "Design & Marketing: Select your creative service requirement:",
+      buttons: [
+        { id: "final_ui_ux", title: "UI/UX Design" },
+        { id: "final_branding", title: "Brand Identity" },
+        { id: "final_seo_growth", title: "SEO & Growth" }
+      ]
+    });
+  }
+
+  // Sub-questions for Contact Team
+  if (buttonId === "step2_urgent_support" || buttonId === "step2_general_inquiry" || buttonId === "step2_book_call") {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "Thank you for reaching out. Our team has received your priority notification and will reach out to you quickly.",
       buttons: [
         { id: "btn_menu", title: "Main Menu" }
       ]
     });
   }
 
-  // 5. General AI Conversation Engine
+  // ----------------------------------------------------
+  // 4. LEVEL 3: FINAL THANK YOU & TEAM REACH OUT CONFIRMATION
+  // ----------------------------------------------------
+  if (buttonId && buttonId.startsWith("final_")) {
+    return sendWhatsappInteractiveMenu({
+      to: fromPhone,
+      bodyText: "Thank you for providing details. Your request has been recorded and our team will reach out to you quickly.",
+      buttons: [
+        { id: "btn_menu", title: "Main Menu" }
+      ]
+    });
+  }
+
+  // ----------------------------------------------------
+  // 5. DYNAMIC AI CONVERSATION (FOR ANY OTHER FREEFORM TEXT)
+  // ----------------------------------------------------
   const recentMsgs = await prisma.whatsAppMessage.findMany({
     where: { fromPhone },
     orderBy: { createdAt: "desc" },
@@ -247,9 +358,14 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
     text: m.body
   }));
 
-  const aiReply = await generateAiChatbotResponse(userText || buttonId || "Hi", history);
-  
-  // Deliver AI reply with interactive Main Menu button
+  // Try AI model response first
+  let aiReply = await generateAiChatbotResponse(userText || buttonId || "Hi", history);
+
+  // If AI is empty or failed, fallback to team reach out message
+  if (!aiReply || aiReply.includes("Thank you for contacting Catalance")) {
+    aiReply = "Thank you for reaching out to Catalance. Your message has been received and our team will reach out to you quickly.";
+  }
+
   return sendWhatsappInteractiveMenu({
     to: fromPhone,
     bodyText: aiReply,
@@ -258,4 +374,6 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
     ]
   });
 };
+
+
 
