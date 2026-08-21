@@ -81,7 +81,12 @@ whatsappWebhookRouter.post("/", async (req, res) => {
           console.log(`[WhatsApp Webhook] Recorded incoming message from ${fromPhone} (${senderName || 'Unknown'}): ${body}`);
 
           // Trigger AI Chatbot processor asynchronously
-          const buttonId = msg.button?.payload || msg.interactive?.button_reply?.id || null;
+          const buttonId =
+            msg.interactive?.button_reply?.id ||
+            msg.button?.payload ||
+            msg.interactive?.button_reply?.title ||
+            null;
+
           import("../services/whatsapp-bot.service.js").then(({ processIncomingWhatsappBotMessage }) => {
             processIncomingWhatsappBotMessage({
               fromPhone,
@@ -89,6 +94,7 @@ whatsappWebhookRouter.post("/", async (req, res) => {
               buttonId
             }).catch((botErr) => console.error("[WhatsApp Webhook] Bot processing error:", botErr));
           }).catch((importErr) => console.error("[WhatsApp Webhook] Bot import error:", importErr));
+
         }
       }
     } else if (status) {

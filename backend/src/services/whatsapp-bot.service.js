@@ -121,8 +121,8 @@ Your Goal:
 - Have an easy, natural, polite, and clear conversation with the user.
 - Do NOT use any emojis in your responses.
 - Keep responses short, concise, and engaging (2 to 4 sentences maximum).
-- If they ask about services, explain how Catalance works and how they can post a project or hire freelancers.
-- If they ask for human support, reassure them that an admin has been notified and will message them shortly.
+- Help the user with project questions, hiring freelancers, pricing, or getting started.
+- If they ask for human support or contacting team, reassure them that an admin has been notified.
 
 User Message: "${userMessage}"
 Recent Conversation History: ${JSON.stringify(conversationHistory)}
@@ -130,6 +130,8 @@ Recent Conversation History: ${JSON.stringify(conversationHistory)}
 
   try {
     const openRouterApiKey = env.OPENROUTER_API_KEY || env.OPENAI_API_KEY;
+    const modelToUse = env.OPENROUTER_MODEL || "openai/gpt-4o-mini";
+
     if (!openRouterApiKey) {
       return "Thank you for contacting Catalance. How can we assist you with your project today?";
     }
@@ -141,12 +143,12 @@ Recent Conversation History: ${JSON.stringify(conversationHistory)}
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: modelToUse,
         messages: [
           { role: "system", content: "You are the AI support assistant for Catalance. Do not use any emojis in your output." },
           { role: "user", content: prompt }
         ],
-        max_tokens: 250,
+        max_tokens: 300,
         temperature: 0.7
       })
     });
@@ -159,6 +161,7 @@ Recent Conversation History: ${JSON.stringify(conversationHistory)}
     return "Thank you for reaching out to Catalance. How can we help with your project today?";
   }
 };
+
 
 // Main Bot Processor Logic
 export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, buttonId }) => {
