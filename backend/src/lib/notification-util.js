@@ -1,7 +1,7 @@
 import { sendSocketNotification } from "./socket-manager.js";
 import { prisma } from "./prisma.js";
-
 import { sendEmail } from "./email-service.js";
+import { sendWhatsappNotification } from "./whatsapp.js";
 
 let sendPushNotificationImpl = null;
 
@@ -70,7 +70,7 @@ const enrichNotificationPayload = (recipientUserId, notification = {}) => {
   };
 };
 
-// Send a notification to a specific user via DB, Firebase Push AND Socket.io
+// Send a notification to a specific user via DB, Firebase Push, Socket.io AND WhatsApp!
 export const sendNotificationToUser = async (userId, notification, shouldEmail = true) => {
   if (!userId) {
     console.log(`[NotificationUtil] ❌ Cannot send - no userId provided`);
@@ -79,15 +79,15 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
 
   const notificationPayload = enrichNotificationPayload(userId, notification);
 
-  // Fetch user to get email and settings
+  // Fetch user to get email, phone number, and name
   let user = null;
   try {
       user = await prisma.user.findUnique({
           where: { id: userId },
-          select: { email: true, fullName: true }
+          select: { email: true, fullName: true, phoneNumber: true, phone: true }
       });
   } catch (e) {
-      console.warn(`[NotificationUtil] Failed to fetch user ${userId} for email`);
+      console.warn(`[NotificationUtil] Failed to fetch user ${userId} details`);
   }
 
   console.log(`[NotificationUtil] 📤 Sending to user: ${userId} (${user?.email})`);
@@ -144,7 +144,23 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
     console.log(`[NotificationUtil] ℹ️ Email skipped - shouldEmail: ${shouldEmail}, email: ${user?.email || 'none'}`);
   }
 
-  // 3. Send via Socket.io
+  // 3. Send via WhatsApp (if user has phone number)
+  const userPhone = user?.phoneNumber || user?.phone;
+  if (userPhone) {
+    try {
+      console.log(`[NotificationUtil] 📲 Attempting to send WhatsApp notification to: ${userPhone}`);
+      sendWhatsappNotification({
+        to: userPhone,
+        userName: user.fullName || "User",
+        title: notificationPayload.title || "Catalance Alert",
+        message: notificationPayload.message || notificationPayload.body || "New update on Catalance"
+      }).catch((waErr) => console.error(`[NotificationUtil] ⚠️ WhatsApp error:`, waErr));
+    } catch (waErr) {
+      console.error(`[NotificationUtil] ⚠️ WhatsApp dispatch error:`, waErr);
+    }
+  }
+
+  // 4. Send via Socket.io
   let sentViaSocket = false;
   try {
     sentViaSocket = sendSocketNotification(userId, notificationPayload);
@@ -157,7 +173,7 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
     console.error(`[NotificationUtil] ⚠️ Socket error:`, err);
   }
 
-  // 4. Send via Firebase Cloud Messaging
+  // 5. Send via Firebase Cloud Messaging
   try {
     const sendPushNotification = await getSendPushNotification();
     const pushResult = await sendPushNotification(userId, notificationPayload);
@@ -173,5 +189,6 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
     return sentViaSocket;
   }
 };
+
 
 

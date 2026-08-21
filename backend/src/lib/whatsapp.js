@@ -264,3 +264,70 @@ export const sendWhatsappOtp = async ({
     }
   );
 };
+
+export const sendWhatsappNotification = async ({
+  to,
+  userName = "User",
+  title = "Notification",
+  message = "You have a new update."
+}) => {
+  const config = getWhatsAppConfig();
+
+  if (!config.isConfigured) {
+    console.warn("[WhatsApp Notification] Missing WhatsApp Cloud API configuration.");
+    return { delivered: false, reason: "missing_config" };
+  }
+
+  const cleanPhone = String(to || "").replace(/\D/g, "");
+  if (!cleanPhone) {
+    return { delivered: false, reason: "invalid_phone" };
+  }
+
+  const url = `https://graph.facebook.com/${config.graphVersion}/${config.phoneNumberId}/messages`;
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: cleanPhone,
+    type: "template",
+    template: {
+      name: "catalance_notification",
+      language: {
+        code: config.templateLanguage || "en"
+      },
+      components: [
+        {
+          type: "body",
+          parameters: [
+            { type: "text", text: String(userName || "User").slice(0, 60) },
+            { type: "text", text: String(title || "Notification").slice(0, 60) },
+            { type: "text", text: String(message || "New update").slice(0, 500) }
+          ]
+        }
+      ]
+    }
+  };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await response.json().catch(() => null);
+    if (response.ok) {
+      console.log(`[WhatsApp Notification] Delivered to ${cleanPhone} for "${title}"`);
+      return { delivered: true, id: data?.messages?.[0]?.id };
+    } else {
+      console.error("[WhatsApp Notification] Meta API Error:", JSON.stringify(data, null, 2));
+      return { delivered: false, error: data };
+    }
+  } catch (error) {
+    console.error("[WhatsApp Notification] Network Error:", error);
+    return { delivered: false, error: error.message };
+  }
+};
+
