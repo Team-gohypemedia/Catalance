@@ -162,17 +162,18 @@ Recent Conversation History: ${JSON.stringify(conversationHistory)}
 
 // Main Bot Processor Logic
 export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, buttonId }) => {
-  // Check if admin recently sent a message (if admin replied in last 6 hours, pause AI)
+  // Check if admin recently sent a message (if admin replied in last 10 minutes, pause AI)
   const lastAdminMsg = await prisma.whatsAppMessage.findFirst({
     where: { fromPhone, direction: "OUTBOUND" },
     orderBy: { createdAt: "desc" }
   }).catch(() => null);
 
-  if (lastAdminMsg && (Date.now() - new Date(lastAdminMsg.createdAt).getTime()) < 6 * 60 * 60 * 1000) {
-    // Admin was active recently, pause bot so human conversation is uninterrupted
+  if (lastAdminMsg && (Date.now() - new Date(lastAdminMsg.createdAt).getTime()) < 10 * 60 * 1000) {
+    // Admin was active in the last 10 minutes, pause bot so human conversation is uninterrupted
     console.log(`[WhatsApp Bot] Bot paused for ${fromPhone} due to recent admin interaction.`);
     return;
   }
+
 
   const cleanText = (userText || "").trim().toLowerCase();
 
