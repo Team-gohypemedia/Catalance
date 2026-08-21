@@ -921,6 +921,11 @@ const buildServicePricingValidationErrors = (normalizedDraft, fields = []) => {
 };
 
 const resolveServiceVisualKind = (entry) => {
+  if (typeof entry === "string") {
+    if (/\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(entry)) return "video";
+    return "image";
+  }
+
   const normalizedKind = String(entry?.kind || "").trim().toLowerCase();
   if (normalizedKind === "image" || normalizedKind === "video") {
     return normalizedKind;
@@ -937,6 +942,12 @@ const resolveServiceVisualKind = (entry) => {
   }
 
   if (mimeType.startsWith("image/")) {
+    return "image";
+  }
+
+  const url = String(entry?.url || entry?.uploadedUrl || entry?.previewUrl || "").trim();
+  if (url) {
+    if (/\.(mp4|webm|mov|m4v|ogg)(?:[?#]|$)/i.test(url)) return "video";
     return "image";
   }
 
@@ -958,7 +969,7 @@ const resolveServiceVisualKind = (entry) => {
     }
   }
 
-  return "";
+  return "image";
 };
 
 export const isServiceVisualsUploadValid = (mediaFiles = []) => {

@@ -862,12 +862,16 @@ const FreelancerServiceQuickInfoSlide = ({
 
   /* Validation errors */
   const titleError = String(serviceInfoValidationErrors.title || "").trim();
-  const categoryError = String(serviceInfoValidationErrors.category || "").trim();
+  const categoryError = String(
+    serviceInfoValidationErrors.category ||
+    serviceInfoValidationErrors.skills ||
+    ""
+  ).trim();
   const experienceError = String(serviceInfoValidationErrors.experience || "").trim();
   const mediaFilesError = String(serviceVisualsValidationErrors.mediaFiles || "").trim();
 
   const [expandedSections, setExpandedSections] = useState({
-    2: false,
+    2: true,
     3: false,
   });
 
@@ -913,7 +917,12 @@ const FreelancerServiceQuickInfoSlide = ({
     }));
   };
 
-  const sec2ErrorVal = String(servicePricingValidationErrors.priceRange || "").trim();
+  const sec2ErrorVal = String(
+    servicePricingValidationErrors.priceRange ||
+    servicePricingValidationErrors.pricingUnit ||
+    servicePricingValidationErrors.pricingQuantity ||
+    ""
+  ).trim();
 
   useEffect(() => {
     const hasSec2Error = Boolean(experienceError || sec2ErrorVal);
@@ -1139,39 +1148,66 @@ const FreelancerServiceQuickInfoSlide = ({
         : [],
     );
 
-    if (configuredCategoryOptions.length > 0) {
-      onUpdateServiceDraft((draft) => syncDerivedSkills({
-        ...draft,
-        subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
-          (entry) =>
-            entry?.subCategoryKey === subCategoryKey
-              ? {
-                  ...entry,
-                  selectedToolIds: toPositiveInteger(entry?.subCategoryId) ? normalizedToolIds : [],
-                  customSkillNames: normalizedCustomSkills,
-                }
-              : entry,
-        ),
-      }));
-      return;
-    }
+    const matchesKey = (entryKey, targetKey, entrySubCategoryId) => {
+      if (!targetKey) return false;
+      const strTarget = String(targetKey).trim();
+      const strEntry = String(entryKey || "").trim();
+      if (strEntry === strTarget) return true;
+      const targetId = strTarget.replace("catalog:", "");
+      const entryId = strEntry.replace("catalog:", "");
+      if (targetId && targetId === entryId) return true;
+      if (entrySubCategoryId && String(entrySubCategoryId) === targetId) return true;
+      return false;
+    };
 
-    onUpdateServiceDraft((draft) => syncDerivedSkills({
-      ...draft,
-      subcategories: (Array.isArray(draft.subcategories) ? draft.subcategories : []).map(
-        (entry) => {
-          if (entry?.subCategoryKey !== subCategoryKey) {
-            return entry;
-          }
+    onUpdateServiceDraft((draft) => {
+      const existingSubcategories = Array.isArray(draft.subcategories) ? draft.subcategories : [];
+      const hasMatch = existingSubcategories.some((entry) =>
+        matchesKey(entry?.subCategoryKey, subCategoryKey, entry?.subCategoryId) ||
+        matchesKey(getSubcategorySelectionKey(entry), subCategoryKey, entry?.subCategoryId)
+      );
+
+      let nextSubcategories;
+      if (hasMatch) {
+        nextSubcategories = existingSubcategories.map((entry) => {
+          const isThisEntry =
+            matchesKey(entry?.subCategoryKey, subCategoryKey, entry?.subCategoryId) ||
+            matchesKey(getSubcategorySelectionKey(entry), subCategoryKey, entry?.subCategoryId);
+
+          if (!isThisEntry) return entry;
 
           return {
             ...entry,
-            selectedToolIds: normalizedToolIds,
+            selectedToolIds: toPositiveInteger(entry?.subCategoryId) ? normalizedToolIds : [],
             customSkillNames: normalizedCustomSkills,
           };
-        },
-      ),
-    }));
+        });
+      } else {
+        const option = allCategoryOptions.find((o) =>
+          matchesKey(o.value, subCategoryKey, o.subCategoryId || o.id)
+        );
+        let subCategoryId = toPositiveInteger(option?.subCategoryId || option?.id);
+        if (!subCategoryId && String(subCategoryKey).startsWith("catalog:")) {
+          subCategoryId = toPositiveInteger(String(subCategoryKey).replace("catalog:", ""));
+        }
+        nextSubcategories = [
+          ...existingSubcategories,
+          {
+            subCategoryId,
+            subCategoryKey: subCategoryId ? `catalog:${subCategoryId}` : subCategoryKey,
+            label: option?.label || subCategoryKey,
+            isCustom: !subCategoryId,
+            selectedToolIds: subCategoryId ? normalizedToolIds : [],
+            customSkillNames: normalizedCustomSkills,
+          },
+        ];
+      }
+
+      return syncDerivedSkills({
+        ...draft,
+        subcategories: nextSubcategories,
+      });
+    });
   };
 
   /* ─── Pricing render helpers ─── */

@@ -1938,6 +1938,9 @@ const FreelancerOnboardingShell = () => {
       const isTaken =
         Array.isArray(freelancers) &&
         freelancers.some((freelancer) => {
+          if (user?.id && (String(freelancer?.id) === String(user.id) || String(freelancer?._id) === String(user.id))) {
+            return false;
+          }
           const existingUsername = normalizeUsernameInput(
             freelancer?.profileDetails?.identity?.username ||
               freelancer?.profileDetails?.username ||
@@ -1962,13 +1965,11 @@ const FreelancerOnboardingShell = () => {
         return "stale";
       }
 
-      console.error("Failed to check username availability:", error);
-      setUsernameStatus("error");
-      // Don't set a form validation error for network failures — the check is advisory.
-      // The server will validate uniqueness on submit.
-      return "error";
+      console.warn("Advisory username check failed (ignoring for submit):", error);
+      setUsernameStatus("idle");
+      return "idle";
     }
-  }, [basicProfileFields, basicProfileForm.username, currentUsername, syncUsernameErrorState]);
+  }, [basicProfileFields, basicProfileForm.username, currentUsername, syncUsernameErrorState, user?.id]);
 
   useEffect(() => {
     if (!shouldCheckUsernameAvailability) {
@@ -2960,20 +2961,18 @@ const FreelancerOnboardingShell = () => {
       throw new Error(firstValidationError);
     }
 
-    const usernameAvailability = await checkUsernameAvailability(
-      basicProfileForm.username,
-    );
-
-    if (usernameAvailability === "checking" || usernameAvailability === "stale") {
-      throw new Error("Checking username availability. Please try again.");
+    let usernameAvailability = "available";
+    try {
+      usernameAvailability = await checkUsernameAvailability(
+        basicProfileForm.username,
+      );
+    } catch {
+      usernameAvailability = "idle";
     }
+
     if (usernameAvailability === "unavailable") {
       setProfileError(USERNAME_AVAILABILITY_ERROR);
       throw new Error(USERNAME_AVAILABILITY_ERROR);
-    }
-    if (usernameAvailability === "error") {
-      setProfileError(USERNAME_CHECK_ERROR);
-      throw new Error(USERNAME_CHECK_ERROR);
     }
   };
 
@@ -3475,9 +3474,9 @@ const FreelancerOnboardingShell = () => {
         if (hasErrors) {
           setServiceValidationErrorsByStep((currentErrors) => ({
             ...currentErrors,
-            ...(infoMessage ? { serviceInfo: infoErrors } : {}),
-            ...(pricingMessage ? { servicePricing: pricingErrors } : {}),
-            ...(visualMessage ? { serviceVisuals: visualErrors } : {}),
+            serviceInfo: infoErrors,
+            servicePricing: pricingErrors,
+            serviceVisuals: visualErrors,
           }));
           toast.error(infoMessage || pricingMessage || visualMessage);
           return false;
