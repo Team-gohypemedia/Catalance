@@ -172,11 +172,9 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
   }).catch(() => null);
 
   if (lastAdminMsg && (Date.now() - new Date(lastAdminMsg.createdAt).getTime()) < 10 * 60 * 1000) {
-    // Admin was active in the last 10 minutes, pause bot so human conversation is uninterrupted
     console.log(`[WhatsApp Bot] Bot paused for ${fromPhone} due to recent admin interaction.`);
     return;
   }
-
 
   const cleanText = (userText || "").trim().toLowerCase();
 
@@ -195,25 +193,45 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
 
   // 2. Button Action: Project Help
   if (buttonId === "btn_project_help" || cleanText.includes("project help")) {
-    return sendWhatsappTextMessage({
+    return sendWhatsappInteractiveMenu({
       to: fromPhone,
-      text: "Project Help: We can help you track project progress, milestone payments, or freelancer updates. What specific question do you have about your project?"
+      bodyText: "Project Help: We can help you track project progress, milestone payments, or freelancer updates. Please choose what you need help with:",
+      buttons: [
+        { id: "btn_track_status", title: "Track Progress" },
+        { id: "btn_hire_freelancer", title: "Hire Freelancer" },
+        { id: "btn_contact_team", title: "Contact Team" }
+      ]
     });
   }
 
   // 3. Button Action: New Services
   if (buttonId === "btn_new_services" || cleanText.includes("new services")) {
-    return sendWhatsappTextMessage({
+    return sendWhatsappInteractiveMenu({
       to: fromPhone,
-      text: "Catalance Services: We offer top vetted freelancers for Web & Mobile App Development, AI Agents & Automation, UI/UX Design & Branding, and SEO & Digital Marketing. What kind of service are you looking to build?"
+      bodyText: "Catalance Services: We offer top vetted freelancers for Web & Mobile Apps, AI Agents, UI/UX Design, and Marketing. What would you like to build?",
+      buttons: [
+        { id: "btn_web_app", title: "Web or App Dev" },
+        { id: "btn_ai_agents", title: "AI & Automation" },
+        { id: "btn_design_seo", title: "Design & SEO" }
+      ]
     });
   }
 
-  // 4. Button Action: Contact Team
-  if (buttonId === "btn_contact_team" || cleanText.includes("contact team")) {
-    return sendWhatsappTextMessage({
+  // 4. Button Action: Contact Team / Hire / Details
+  if (
+    buttonId === "btn_contact_team" ||
+    buttonId === "btn_track_status" ||
+    buttonId === "btn_hire_freelancer" ||
+    buttonId === "btn_web_app" ||
+    buttonId === "btn_ai_agents" ||
+    buttonId === "btn_design_seo"
+  ) {
+    return sendWhatsappInteractiveMenu({
       to: fromPhone,
-      text: "Catalance Support: Our Admin Team has been notified of your request. An admin will review your message and reply directly to this chat shortly."
+      bodyText: "Thank you for selecting. Our Admin Team has been notified of your request. An admin will review your message and reply directly to this chat shortly.",
+      buttons: [
+        { id: "btn_menu", title: "Main Menu" }
+      ]
     });
   }
 
@@ -230,8 +248,14 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
   }));
 
   const aiReply = await generateAiChatbotResponse(userText || buttonId || "Hi", history);
-  return sendWhatsappTextMessage({
+  
+  // Deliver AI reply with interactive Main Menu button
+  return sendWhatsappInteractiveMenu({
     to: fromPhone,
-    text: aiReply
+    bodyText: aiReply,
+    buttons: [
+      { id: "btn_menu", title: "Main Menu" }
+    ]
   });
 };
+
