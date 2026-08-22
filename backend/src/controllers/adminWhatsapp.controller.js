@@ -148,7 +148,7 @@ export const sendWhatsappReply = async (req, res, next) => {
         messageType: "text",
         body: messageText,
         direction: "OUTBOUND",
-        status: "SENT",
+        status: "ADMIN_SENT",
         rawPayload: resData || {}
       }
     });

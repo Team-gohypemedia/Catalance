@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { env } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
+import { processIncomingWhatsappBotMessage } from "../services/whatsapp-bot.service.js";
 
 
 export const whatsappWebhookRouter = Router();
@@ -88,13 +89,11 @@ whatsappWebhookRouter.post("/", async (req, res) => {
             msg.interactive?.button_reply?.title ||
             null;
 
-          import("../services/whatsapp-bot.service.js").then(({ processIncomingWhatsappBotMessage }) => {
-            processIncomingWhatsappBotMessage({
-              fromPhone,
-              userText: body,
-              buttonId
-            }).catch((botErr) => console.error("[WhatsApp Webhook] Bot processing error:", botErr));
-          }).catch((importErr) => console.error("[WhatsApp Webhook] Bot import error:", importErr));
+          processIncomingWhatsappBotMessage({
+            fromPhone,
+            userText: body,
+            buttonId
+          }).catch((botErr) => console.error("[WhatsApp Webhook] Bot processing error:", botErr));
 
         }
       }

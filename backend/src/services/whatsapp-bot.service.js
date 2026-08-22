@@ -191,9 +191,9 @@ Recent Conversation History: ${JSON.stringify(conversationHistory)}
 
 // Main Bot Processor Logic
 export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, buttonId }) => {
-  // Check if admin recently sent a message (if admin replied in last 10 minutes, pause AI)
+  // Check if admin manually sent a message from dashboard recently (pause AI for 10 min only if admin replied)
   const lastAdminMsg = await prisma.whatsAppMessage.findFirst({
-    where: { fromPhone, direction: "OUTBOUND" },
+    where: { fromPhone, direction: "OUTBOUND", status: "ADMIN_SENT" },
     orderBy: { createdAt: "desc" }
   }).catch(() => null);
 
