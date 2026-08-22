@@ -49,7 +49,7 @@ whatsappWebhookRouter.post("/", async (req, res) => {
           body = msg.image?.caption || "[Image]";
           mediaUrl = msg.image?.id || null;
         } else if (messageType === "button" || messageType === "interactive") {
-          body = msg.button?.text || msg.interactive?.button_reply?.title || "[Interactive Button Reply]";
+          body = msg.button?.text || msg.interactive?.button_reply?.title || msg.interactive?.list_reply?.title || "[Interactive Reply]";
         } else {
           body = `[${messageType.toUpperCase()} message]`;
         }
@@ -83,6 +83,7 @@ whatsappWebhookRouter.post("/", async (req, res) => {
           // Trigger AI Chatbot processor asynchronously
           const buttonId =
             msg.interactive?.button_reply?.id ||
+            msg.interactive?.list_reply?.id ||
             msg.button?.payload ||
             msg.interactive?.button_reply?.title ||
             null;

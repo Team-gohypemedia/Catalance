@@ -7,7 +7,10 @@ const ACCESS_TOKEN = String(env.WHATSAPP_ACCESS_TOKEN || "").trim();
 
 // Send direct interactive button menu or text via Meta Cloud API
 export const sendWhatsappInteractiveMenu = async ({ to, bodyText, buttons }) => {
-  if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) return null;
+  if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) {
+    console.error("[WhatsApp Bot] Failed to send interactive menu: PHONE_NUMBER_ID or ACCESS_TOKEN is missing in env.");
+    return null;
+  }
 
   const cleanPhone = String(to || "").replace(/\D/g, "");
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/messages`;
@@ -45,7 +48,13 @@ export const sendWhatsappInteractiveMenu = async ({ to, bodyText, buttons }) => 
     });
     const data = await res.json().catch(() => null);
 
-    if (res.ok && data?.messages?.[0]?.id) {
+    if (!res.ok) {
+      console.error(`[WhatsApp Bot] Meta API HTTP Error ${res.status} when sending interactive menu to ${cleanPhone}:`, JSON.stringify(data || {}, null, 2));
+      return null;
+    }
+
+    if (data?.messages?.[0]?.id) {
+      console.log(`[WhatsApp Bot] Successfully sent interactive menu to ${cleanPhone}. Message ID: ${data.messages[0].id}`);
       // Save bot outbound message in DB
       await prisma.whatsAppMessage.create({
         data: {
@@ -57,18 +66,21 @@ export const sendWhatsappInteractiveMenu = async ({ to, bodyText, buttons }) => 
           direction: "OUTBOUND",
           status: "SENT"
         }
-      }).catch(() => null);
+      }).catch((dbErr) => console.error("[WhatsApp Bot] DB Save error for outbound message:", dbErr));
     }
     return data;
   } catch (err) {
-    console.error("[WhatsApp Bot] Error sending interactive menu:", err);
+    console.error("[WhatsApp Bot] Network/Fetch error sending interactive menu:", err);
     return null;
   }
 };
 
 // Send direct AI text response on WhatsApp
 export const sendWhatsappTextMessage = async ({ to, text }) => {
-  if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) return null;
+  if (!PHONE_NUMBER_ID || !ACCESS_TOKEN) {
+    console.error("[WhatsApp Bot] Failed to send text message: PHONE_NUMBER_ID or ACCESS_TOKEN is missing in env.");
+    return null;
+  }
 
   const cleanPhone = String(to || "").replace(/\D/g, "");
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/${PHONE_NUMBER_ID}/messages`;
@@ -92,7 +104,13 @@ export const sendWhatsappTextMessage = async ({ to, text }) => {
     });
     const data = await res.json().catch(() => null);
 
-    if (res.ok && data?.messages?.[0]?.id) {
+    if (!res.ok) {
+      console.error(`[WhatsApp Bot] Meta API HTTP Error ${res.status} when sending text to ${cleanPhone}:`, JSON.stringify(data || {}, null, 2));
+      return null;
+    }
+
+    if (data?.messages?.[0]?.id) {
+      console.log(`[WhatsApp Bot] Successfully sent text message to ${cleanPhone}. Message ID: ${data.messages[0].id}`);
       await prisma.whatsAppMessage.create({
         data: {
           fromPhone: cleanPhone,
@@ -103,11 +121,11 @@ export const sendWhatsappTextMessage = async ({ to, text }) => {
           direction: "OUTBOUND",
           status: "SENT"
         }
-      }).catch(() => null);
+      }).catch((dbErr) => console.error("[WhatsApp Bot] DB Save error for outbound text message:", dbErr));
     }
     return data;
   } catch (err) {
-    console.error("[WhatsApp Bot] Error sending text message:", err);
+    console.error("[WhatsApp Bot] Network/Fetch error sending text message:", err);
     return null;
   }
 };
@@ -189,7 +207,10 @@ export const processIncomingWhatsappBotMessage = async ({ fromPhone, userText, b
   // ----------------------------------------------------
   // 1. FIRST GREETING / MAIN MENU
   // ----------------------------------------------------
-  if (buttonId === "btn_menu" || ["hi", "hello", "hey", "start", "menu", "help"].includes(cleanText)) {
+  const isGreetingWord = ["hi", "hello", "hey", "start", "menu", "help"].some((g) => cleanText === g || cleanText.startsWith(g + " "));
+  const isSpecificQuery = cleanText.length > 15;
+
+  if (buttonId === "btn_menu" || (isGreetingWord && !isSpecificQuery)) {
     return sendWhatsappInteractiveMenu({
       to: fromPhone,
       bodyText: "Welcome to Catalance. How can we help you today? Please select an option below:",
