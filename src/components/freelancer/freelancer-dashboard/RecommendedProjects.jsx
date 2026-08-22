@@ -240,7 +240,12 @@ const RecommendedProjects = ({ liveProjects = [], userServices = [], className =
             {projectsToDisplay.map((project) => (
               <CarouselItem
                 key={project.id}
-                className="pl-3 sm:pl-4 md:pl-5 basis-[88%] sm:basis-[70%] md:basis-1/2 lg:basis-1/3 flex flex-col"
+                className={cn(
+                  "pl-3 sm:pl-4 md:pl-5 flex flex-col",
+                  projectsToDisplay.length === 1
+                    ? "basis-full"
+                    : "basis-full sm:basis-[70%] md:basis-1/2 lg:basis-1/3"
+                )}
               >
                 <RecommendedProjectCard item={project} />
               </CarouselItem>

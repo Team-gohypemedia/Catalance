@@ -203,7 +203,7 @@ export const DEFAULT_SERVICE_VISUALS_FIELDS = [
     type: "media",
     label: "Upload Media",
     helperText: "Add one image or video to create the primary preview.",
-    required: true,
+    required: false,
     visible: true,
     system: true,
     canDelete: false,
