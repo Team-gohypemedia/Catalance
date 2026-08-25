@@ -269,7 +269,9 @@ export const sendWhatsappNotification = async ({
   to,
   userName = "User",
   title = "Notification",
-  message = "You have a new update."
+  message = "You have a new update.",
+  link = null,
+  overrideTemplateName = null
 }) => {
   const config = getWhatsAppConfig();
 
@@ -283,6 +285,37 @@ export const sendWhatsappNotification = async ({
     return { delivered: false, reason: "invalid_phone" };
   }
 
+  // Extract clean first name
+  const cleanFirstName = String(userName || "User")
+    .replace(/\d+/g, "")
+    .trim()
+    .split(" ")[0] || "User";
+
+  const components = [
+    {
+      type: "body",
+      parameters: [
+        { type: "text", text: cleanFirstName.slice(0, 60) },
+        { type: "text", text: String(title || "Update").slice(0, 60) },
+        { type: "text", text: String(message || "New update available").slice(0, 500) }
+      ]
+    }
+  ];
+
+  if (link) {
+    const cleanPath = String(link).replace(/^https?:\/\/[^\/]+/, "").replace(/^\/+/, "");
+    components.push({
+      type: "button",
+      sub_type: "url",
+      index: "0",
+      parameters: [
+        { type: "text", text: cleanPath }
+      ]
+    });
+  }
+
+  const templateName = overrideTemplateName || env.WHATSAPP_NOTIFICATION_TEMPLATE_NAME || "catalance_notification_v2";
+
   const url = `https://graph.facebook.com/${config.graphVersion}/${config.phoneNumberId}/messages`;
   const payload = {
     messaging_product: "whatsapp",
@@ -290,7 +323,114 @@ export const sendWhatsappNotification = async ({
     to: cleanPhone,
     type: "template",
     template: {
-      name: "catalance_notification",
+      name: templateName,
+      language: {
+        code: config.templateLanguage || "en"
+      },
+      components
+    }
+  };
+
+  try {
+    let response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    let data = await response.json().catch(() => null);
+
+    // If Meta returns missing HEADER error, retry with header parameter included
+    if (!response.ok && data?.error?.message?.includes("HEADER")) {
+      console.warn("[WhatsApp Notification] Template requires HEADER component. Retrying with header...");
+      const headerComponents = [
+        {
+          type: "header",
+          parameters: [{ type: "text", text: String(title || "Catalance").slice(0, 60) }]
+        },
+        ...components
+      ];
+
+      response = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${config.accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          ...payload,
+          template: {
+            ...payload.template,
+            components: headerComponents
+          }
+        })
+      });
+      data = await response.json().catch(() => null);
+    }
+
+    if (response.ok) {
+      console.log(`[WhatsApp Notification] Delivered via ${templateName} to ${cleanPhone} for "${title}"`);
+      return { delivered: true, id: data?.messages?.[0]?.id };
+    }
+
+    // Fallback to legacy catalance_notification if new v2 template is still pending Meta review (code 132001)
+    if (data?.error?.code === 132001 && templateName !== "catalance_notification") {
+      console.warn(`[WhatsApp Notification] Template ${templateName} not active yet on Meta, falling back to catalance_notification...`);
+      return sendWhatsappNotification({
+        to,
+        userName,
+        title,
+        message,
+        link,
+        overrideTemplateName: "catalance_notification"
+      });
+    }
+
+    console.error("[WhatsApp Notification] Meta API Error:", JSON.stringify(data, null, 2));
+    return { delivered: false, error: data };
+  } catch (error) {
+    console.error("[WhatsApp Notification] Network Error:", error);
+    return { delivered: false, error: error.message };
+  }
+};
+
+export const sendFreelancerProfileReminderWhatsapp = async ({
+  to,
+  userName = "Freelancer",
+  completionPercent = 0,
+  profileUrl = "https://catalance.in/freelancer/profile"
+}) => {
+  const config = getWhatsAppConfig();
+
+  if (!config.isConfigured) {
+    console.warn("[WhatsApp Profile Reminder] Missing WhatsApp Cloud API configuration.");
+    return { delivered: false, reason: "missing_config" };
+  }
+
+  const cleanPhone = String(to || "").replace(/\D/g, "");
+  if (!cleanPhone) {
+    return { delivered: false, reason: "invalid_phone" };
+  }
+
+  const url = `https://graph.facebook.com/${config.graphVersion}/${config.phoneNumberId}/messages`;
+
+  // Extract a clean first name without trailing timestamps/IDs
+  const cleanFirstName = String(userName || "Freelancer")
+    .replace(/\d+/g, "")
+    .trim()
+    .split(" ")[0] || "Freelancer";
+
+  // Try dedicated template "freelancer_profile_reminder" first
+  const dedicatedPayload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: cleanPhone,
+    type: "template",
+    template: {
+      name: "freelancer_profile_reminder",
       language: {
         code: config.templateLanguage || "en"
       },
@@ -298,9 +438,8 @@ export const sendWhatsappNotification = async ({
         {
           type: "body",
           parameters: [
-            { type: "text", text: String(userName || "User").slice(0, 60) },
-            { type: "text", text: String(title || "Notification").slice(0, 60) },
-            { type: "text", text: String(message || "New update").slice(0, 500) }
+            { type: "text", text: cleanFirstName.slice(0, 60) },
+            { type: "text", text: String(completionPercent) }
           ]
         }
       ]
@@ -314,20 +453,33 @@ export const sendWhatsappNotification = async ({
         Authorization: `Bearer ${config.accessToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(dedicatedPayload)
     });
 
     const data = await response.json().catch(() => null);
     if (response.ok) {
-      console.log(`[WhatsApp Notification] Delivered to ${cleanPhone} for "${title}"`);
+      console.log(`[WhatsApp Profile Reminder] Delivered dedicated template to ${cleanPhone}`);
       return { delivered: true, id: data?.messages?.[0]?.id };
-    } else {
-      console.error("[WhatsApp Notification] Meta API Error:", JSON.stringify(data, null, 2));
-      return { delivered: false, error: data };
     }
+
+    // If template error (e.g. 132001 template does not exist yet), fallback to active catalance_notification
+    const errCode = data?.error?.code;
+    if (errCode === 132001 || errCode === 132000) {
+      console.warn("[WhatsApp Profile Reminder] Dedicated template not active, falling back to catalance_notification...");
+      return sendWhatsappNotification({
+        to: cleanPhone,
+        userName: userName,
+        title: `Complete Profile (${completionPercent}% done)`,
+        message: `Your profile is ${completionPercent}% complete. Complete your profile information to start receiving client project requests on Catalance. Tap below to update your profile details: ${profileUrl}`
+      });
+    }
+
+    console.error("[WhatsApp Profile Reminder] Meta API Error:", JSON.stringify(data, null, 2));
+    return { delivered: false, error: data };
   } catch (error) {
-    console.error("[WhatsApp Notification] Network Error:", error);
+    console.error("[WhatsApp Profile Reminder] Network Error:", error);
     return { delivered: false, error: error.message };
   }
 };
+
 

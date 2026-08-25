@@ -209,6 +209,17 @@ router.get("/whatsapp/conversations", getWhatsappConversations);
 router.get("/whatsapp/conversations/:phone", getWhatsappMessagesByPhone);
 router.post("/whatsapp/send", sendWhatsappReply);
 
+// Manual trigger for testing Profile Completion Reminders
+router.all("/trigger-profile-reminders", async (req, res) => {
+  try {
+    const { sendDailyFreelancerProfileReminders } = await import("../services/cron.service.js");
+    const result = await sendDailyFreelancerProfileReminders();
+    res.json({ success: true, message: "Profile completion reminder check executed successfully.", result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 export default router;
 
 

@@ -70,6 +70,48 @@ const enrichNotificationPayload = (recipientUserId, notification = {}) => {
   };
 };
 
+const resolveNotificationRedirectUrl = (notification = {}) => {
+  const explicitLink = notification?.data?.link || notification?.data?.profileUrl || notification?.link;
+  if (explicitLink) {
+    return explicitLink;
+  }
+
+  const type = String(notification?.type || "").toLowerCase();
+  const data = notification?.data || {};
+  const audience = notification?.audience || data?.audience;
+
+  // Chat Notifications -> redirect to Chat page
+  if (type === "chat" || type.includes("chat") || String(data?.service || "").startsWith("CHAT")) {
+    if (data?.conversationId || data?.chatId) {
+      return `messages?chat=${data.conversationId || data.chatId}`;
+    }
+    return "messages";
+  }
+
+  // Proposal Notifications -> redirect to Proposal page
+  if (type.includes("proposal") || data?.proposalId) {
+    if (audience === "client") {
+      return data?.proposalId ? `client/proposals?id=${data.proposalId}` : "client/proposals";
+    }
+    return data?.proposalId ? `freelancer/proposals?id=${data.proposalId}` : "freelancer/proposals";
+  }
+
+  // Project Notifications -> redirect to Project page
+  if (type.includes("project") || data?.projectId) {
+    if (data?.projectId) {
+      return `projects/${data.projectId}`;
+    }
+    return audience === "client" ? "client/projects" : "freelancer/projects";
+  }
+
+  // Profile Notifications -> redirect to Profile page
+  if (type === "profile_completion_reminder" || type.includes("profile")) {
+    return "freelancer/profile";
+  }
+
+  return "dashboard";
+};
+
 // Send a notification to a specific user via DB, Firebase Push, Socket.io AND WhatsApp!
 export const sendNotificationToUser = async (userId, notification, shouldEmail = true) => {
   if (!userId) {
@@ -148,12 +190,14 @@ export const sendNotificationToUser = async (userId, notification, shouldEmail =
   const userPhone = user?.phoneNumber || user?.phone;
   if (userPhone) {
     try {
-      console.log(`[NotificationUtil] 📲 Attempting to send WhatsApp notification to: ${userPhone}`);
+      const redirectLink = resolveNotificationRedirectUrl(notificationPayload);
+      console.log(`[NotificationUtil] 📲 Sending WhatsApp notification to: ${userPhone} with link: ${redirectLink}`);
       sendWhatsappNotification({
         to: userPhone,
         userName: user.fullName || "User",
-        title: notificationPayload.title || "Catalance Alert",
-        message: notificationPayload.message || notificationPayload.body || "New update on Catalance"
+        title: notificationPayload.title || "Update",
+        message: notificationPayload.message || notificationPayload.body || "New update available",
+        link: redirectLink
       }).catch((waErr) => console.error(`[NotificationUtil] ⚠️ WhatsApp error:`, waErr));
     } catch (waErr) {
       console.error(`[NotificationUtil] ⚠️ WhatsApp dispatch error:`, waErr);

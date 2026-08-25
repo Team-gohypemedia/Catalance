@@ -5,12 +5,15 @@ import { sendEmail } from '../lib/email-service.js';
 import { resend } from '../lib/resend.js';
 import { reconcileFreelancerOpenToWorkStatuses } from '../lib/freelancer-open-to-work.js';
 import { generateAndPublishDailyQuestionSet } from "../modules/engagement/services/engagement.service.js";
+import { calculateFreelancerProfileCompletion } from "../utils/freelancer-profile-completion.js";
+import { sendFreelancerProfileReminderWhatsapp } from "../lib/whatsapp.js";
 
 const CRON_DB_COOLDOWN_MS = 5 * 60 * 1000;
 let skipCronUntil = 0;
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const FIVE_DAYS_MS = 5 * TWENTY_FOUR_HOURS_MS;
 const SEVEN_DAYS_MS = 7 * TWENTY_FOUR_HOURS_MS;
+
 
 const isDatabaseConnectivityError = (error) => {
     const code = error?.code;
@@ -561,4 +564,108 @@ export const startCronJobs = () => {
             handleCronError('auto-delete rejected proposals cron', error);
         }
     }, { noOverlap: true });
+
+    // ============================================================
+    // Freelancer Profile Completion Reminder: Run daily at 10:00 AM
+    // ============================================================
+    cron.schedule('0 10 * * *', async () => {
+        if (shouldSkipCronRun('freelancer profile completion reminder cron')) {
+            return;
+        }
+        try {
+            await sendDailyFreelancerProfileReminders();
+        } catch (error) {
+            handleCronError('freelancer profile completion reminder cron', error);
+        }
+    }, { noOverlap: true });
 };
+
+export const sendDailyFreelancerProfileReminders = async () => {
+    try {
+        console.log('[Cron] 🚀 Starting alternate-day freelancer profile completion reminder check...');
+        // Real-time query of user, profile, skills, and marketplace details from DB
+        const freelancers = await prisma.user.findMany({
+            where: {
+                role: 'FREELANCER',
+                status: 'ACTIVE'
+            },
+            include: {
+                freelancerProfile: true,
+                freelancerSkills: true,
+                marketplace: true
+            }
+        });
+
+        // 48-hour window for alternate-day frequency (every 2 days)
+        const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
+        let checked = 0;
+        let sent = 0;
+        let skipped = 0;
+
+        for (const freelancer of freelancers) {
+            checked++;
+            const phone = freelancer.phoneNumber || freelancer.phone;
+            if (!phone) {
+                skipped++;
+                continue;
+            }
+
+            // Calculate real-time completion percentage
+            const { percent } = calculateFreelancerProfileCompletion(freelancer);
+
+            // Target freelancers with incomplete profiles (< 90%)
+            if (percent < 90) {
+                // Check if reminder was sent within last 48 hours (alternate days)
+                const recentNotif = await prisma.notification.findFirst({
+                    where: {
+                        userId: freelancer.id,
+                        type: 'PROFILE_COMPLETION_REMINDER',
+                        createdAt: { gte: fortyEightHoursAgo }
+                    }
+                });
+
+                if (recentNotif) {
+                    skipped++;
+                    continue;
+                }
+
+                // Send WhatsApp Notification
+                const result = await sendFreelancerProfileReminderWhatsapp({
+                    to: phone,
+                    userName: freelancer.fullName || 'Freelancer',
+                    completionPercent: percent,
+                    profileUrl: 'https://catalance.in/freelancer/profile'
+                });
+
+                // Persist notification in DB
+                await prisma.notification.create({
+                    data: {
+                        userId: freelancer.id,
+                        type: 'PROFILE_COMPLETION_REMINDER',
+                        title: `Complete Your Profile (${percent}% Done)`,
+                        message: `Your profile is ${percent}% complete. Complete your profile information to start receiving client project requests on Catalance. Tap below to update your profile details: https://catalance.in/freelancer/profile`,
+                        data: {
+                            completionPercent: percent,
+                            profileUrl: 'https://catalance.in/freelancer/profile'
+                        },
+                        read: false
+                    }
+                });
+
+                if (result?.delivered) {
+                    sent++;
+                    console.log(`[Cron] 📲 Profile completion reminder sent to ${freelancer.fullName} (${percent}% complete - Alternate Days)`);
+                }
+            } else {
+                skipped++;
+            }
+        }
+
+        console.log(`[Cron] ✅ Alternate-day profile completion reminder check complete. Checked: ${checked}, Sent: ${sent}, Skipped: ${skipped}`);
+        return { checked, sent, skipped };
+    } catch (error) {
+        handleCronError('freelancer profile reminder cron', error);
+        throw error;
+    }
+};
+

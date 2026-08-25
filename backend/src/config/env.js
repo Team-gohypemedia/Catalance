@@ -66,6 +66,7 @@ const envSchema = z.object({
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().optional(),
   WHATSAPP_OTP_TEMPLATE_NAME: z.string().optional(),
+  WHATSAPP_NOTIFICATION_TEMPLATE_NAME: z.string().default("catalance_notification_v2"),
   WHATSAPP_OTP_TEMPLATE_LANGUAGE: z.string().default("en"),
   WHATSAPP_OTP_TTL_MINUTES: z.coerce.number().int().positive().default(15)
 });
