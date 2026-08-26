@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
 import { useAuth } from "@/shared/context/AuthContext";
@@ -13,6 +14,7 @@ import Send from "lucide-react/dist/esm/icons/send";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
 import User from "lucide-react/dist/esm/icons/user";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
@@ -21,8 +23,14 @@ import { toast } from "sonner";
 
 export default function AdminWhatsappInbox() {
   const { authFetch } = useAuth();
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState([]);
   const [selectedPhone, setSelectedPhone] = useState(null);
+  const selectedPhoneRef = useRef(null);
+
+  useEffect(() => {
+    selectedPhoneRef.current = selectedPhone;
+  }, [selectedPhone]);
 
   const [messages, setMessages] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,8 +47,9 @@ export default function AdminWhatsappInbox() {
       const data = await res.json();
       if (data?.success) {
         setConversations(data.conversations || []);
-        if (!selectedPhone && data.conversations?.length > 0) {
+        if (!selectedPhoneRef.current && data.conversations?.length > 0) {
           setSelectedPhone(data.conversations[0].phone);
+          selectedPhoneRef.current = data.conversations[0].phone;
         }
       }
     } catch (err) {
@@ -50,9 +59,18 @@ export default function AdminWhatsappInbox() {
     }
   };
 
-  const fetchMessages = async (phone, silent = false) => {
+  useEffect(() => {
+    fetchConversations();
+    const interval = setInterval(() => {
+      fetchConversations(true);
+    }, 12000);
+    return () => clearInterval(interval);
+  }, []);
+
+
+  const fetchMessages = async (phone) => {
     if (!phone) return;
-    if (!silent) setLoadingMsgs(true);
+    setLoadingMsgs(true);
     try {
       const res = await authFetch(`/admin/whatsapp/conversations/${phone}`);
       const data = await res.json();
@@ -60,27 +78,15 @@ export default function AdminWhatsappInbox() {
         setMessages(data.messages || []);
       }
     } catch (err) {
-      if (!silent) toast.error("Failed to load messages for this conversation");
+      toast.error("Failed to load message thread");
     } finally {
-      if (!silent) setLoadingMsgs(false);
+      setLoadingMsgs(false);
     }
   };
 
   useEffect(() => {
-    fetchConversations();
-    const interval = setInterval(() => {
-      fetchConversations(true);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     if (selectedPhone) {
       fetchMessages(selectedPhone);
-      const interval = setInterval(() => {
-        fetchMessages(selectedPhone, true);
-      }, 4000);
-      return () => clearInterval(interval);
     }
   }, [selectedPhone]);
 
@@ -90,34 +96,35 @@ export default function AdminWhatsappInbox() {
 
   const handleSendReply = async (e) => {
     e.preventDefault();
-    if (!replyText.trim() || !selectedPhone || sending) return;
+    if (!selectedPhone || !replyText.trim()) return;
 
-    const textToSend = replyText.trim();
     setSending(true);
-    setReplyText("");
-
     try {
       const res = await authFetch("/admin/whatsapp/send", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           toPhone: selectedPhone,
-          message: textToSend
+          message: replyText.trim()
         })
       });
 
       const data = await res.json();
-
-      if (data?.success) {
-        toast.success("Message sent to WhatsApp!");
-        fetchMessages(selectedPhone, true);
-        fetchConversations(true);
-      } else {
-        toast.error(data?.message || "Failed to send WhatsApp message");
-        setReplyText(textToSend);
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || "Failed to send message");
       }
+
+      setReplyText("");
+      toast.success("WhatsApp message sent!");
+
+      if (data.message) {
+        setMessages((prev) => [...prev, data.message]);
+      } else {
+        fetchMessages(selectedPhone);
+      }
+      fetchConversations(true);
     } catch (err) {
-      toast.error(err.message || "Failed to send WhatsApp message");
-      setReplyText(textToSend);
+      toast.error(err.message || "Failed to send message");
     } finally {
       setSending(false);
     }
@@ -138,11 +145,39 @@ export default function AdminWhatsappInbox() {
       <div className="flex h-full flex-col gap-4 p-4 md:p-6">
         <AdminTopBar label="WhatsApp Inbox (+91 8882855425)" />
 
-        <div className="grid h-[calc(100vh-140px)] grid-cols-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm md:grid-cols-12">
+        {/* Header & Navigation Tabs */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card p-4 rounded-xl border shadow-sm">
+          <div>
+            <h2 className="text-lg font-bold">WhatsApp Business Conversations</h2>
+            <p className="text-xs text-muted-foreground">Manage customer queries & view notification analytics</p>
+          </div>
+
+          <div className="flex items-center gap-2 bg-muted/60 p-1 rounded-xl border shrink-0">
+            <Button
+              variant="default"
+              size="sm"
+              className="text-xs gap-1.5 h-8 font-semibold shadow-sm"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              Conversations Inbox
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate("/admin/whatsapp-analytics")}
+              className="text-xs gap-1.5 h-8 font-medium"
+            >
+              <TrendingUp className="h-3.5 w-3.5" />
+              Analytics & Spend
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid h-[calc(100vh-210px)] min-h-[550px] grid-cols-1 overflow-hidden rounded-xl border border-border bg-card shadow-sm md:grid-cols-12">
           
           {/* Left Panel: Conversation List */}
-          <div className="flex flex-col border-b border-border md:col-span-4 md:border-b-0 md:border-r">
-            <div className="flex items-center justify-between border-b p-3">
+          <div className="flex flex-col border-b border-border md:col-span-4 md:border-b-0 md:border-r min-h-0">
+            <div className="flex items-center justify-between border-b p-3 shrink-0">
               <div className="flex items-center gap-2 font-semibold">
                 <div className="flex size-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
                   <MessageSquare className="size-4" />
@@ -160,7 +195,7 @@ export default function AdminWhatsappInbox() {
             </div>
 
             {/* Search input */}
-            <div className="p-3">
+            <div className="p-3 shrink-0">
               <div className="relative">
                 <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input
@@ -174,7 +209,7 @@ export default function AdminWhatsappInbox() {
             </div>
 
             {/* Conversation list stream */}
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto min-h-0">
               {loadingConvs && conversations.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-muted-foreground">
                   <Loader2 className="mb-2 size-6 animate-spin" />
@@ -195,7 +230,10 @@ export default function AdminWhatsappInbox() {
                     return (
                       <button
                         key={conv.phone}
-                        onClick={() => setSelectedPhone(conv.phone)}
+                        onClick={() => {
+                          setSelectedPhone(conv.phone);
+                          selectedPhoneRef.current = conv.phone;
+                        }}
                         className={`flex w-full items-start gap-3 p-3.5 text-left transition hover:bg-muted/50 ${
                           isSelected ? "bg-muted/80 font-medium" : ""
                         }`}
@@ -219,7 +257,7 @@ export default function AdminWhatsappInbox() {
                             +{conv.phone}
                           </p>
                           <p className="mt-1 line-clamp-1 text-xs text-foreground/80">
-                            {conv.direction === "OUTBOUND" ? "You: " : ""}
+                            {conv.direction === "OUTBOUND" ? "Outbound: " : ""}
                             {conv.lastMessage || "[Media/Attachment]"}
                           </p>
                         </div>
@@ -233,15 +271,15 @@ export default function AdminWhatsappInbox() {
                   })}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
 
           {/* Right Panel: Active Chat Room */}
-          <div className="flex flex-col bg-muted/20 md:col-span-8">
+          <div className="flex flex-col bg-muted/20 md:col-span-8 min-h-0">
             {selectedConv ? (
               <>
                 {/* Chat Header */}
-                <div className="flex items-center justify-between border-b border-border bg-card p-3.5 shadow-sm">
+                <div className="flex items-center justify-between border-b border-border bg-card p-3.5 shadow-sm shrink-0">
                   <div className="flex items-center gap-3">
                     <div className="flex size-10 items-center justify-center rounded-full bg-emerald-500/10 font-bold text-emerald-700">
                       {selectedConv.senderName ? selectedConv.senderName.charAt(0).toUpperCase() : <User className="size-5" />}
@@ -263,7 +301,7 @@ export default function AdminWhatsappInbox() {
                 </div>
 
                 {/* Messages Feed */}
-                <ScrollArea className="flex-1 p-4">
+                <div className="flex-1 overflow-y-auto min-h-0 p-4">
                   {loadingMsgs && messages.length === 0 ? (
                     <div className="flex h-full items-center justify-center p-8">
                       <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -276,6 +314,8 @@ export default function AdminWhatsappInbox() {
                     <div className="space-y-3">
                       {messages.map((msg) => {
                         const isOutbound = msg.direction === "OUTBOUND";
+                        const isAdminReply = msg.status === "ADMIN_SENT";
+
                         return (
                           <div
                             key={msg.id}
@@ -283,10 +323,19 @@ export default function AdminWhatsappInbox() {
                               isOutbound ? "items-end" : "items-start"
                             }`}
                           >
+                            {/* AI / Admin Badge */}
+                            {isOutbound && (
+                              <span className="mb-1 text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+                                {isAdminReply ? "👤 Admin Reply" : "🤖 AI Bot Assistant"}
+                              </span>
+                            )}
+
                             <div
                               className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                                 isOutbound
-                                  ? "bg-emerald-600 text-white rounded-br-none"
+                                  ? isAdminReply
+                                    ? "bg-emerald-700 text-white rounded-br-none"
+                                    : "bg-emerald-600 text-white rounded-br-none"
                                   : "bg-card border border-border text-foreground rounded-bl-none"
                               }`}
                             >
@@ -311,13 +360,14 @@ export default function AdminWhatsappInbox() {
                       <div ref={messagesEndRef} />
                     </div>
                   )}
-                </ScrollArea>
+                </div>
 
                 {/* Reply Form */}
                 <form
                   onSubmit={handleSendReply}
-                  className="flex items-center gap-2 border-t border-border bg-card p-3"
+                  className="flex items-center gap-2 border-t border-border bg-card p-3 shrink-0"
                 >
+
                   <Input
                     type="text"
                     placeholder={`Reply to +${selectedPhone}...`}

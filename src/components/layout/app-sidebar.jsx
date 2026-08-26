@@ -192,6 +192,13 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "WhatsApp Analytics",
+      url: "/admin/whatsapp-analytics",
+      icon: BarChart,
+      isActive: true,
+    },
+
+    {
       title: "Services",
       url: "/admin/services",
       icon: Briefcase,

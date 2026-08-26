@@ -39,6 +39,7 @@ import {
 } from "../controllers/admin.controller.js";
 
 import {
+  getWhatsappAnalytics,
   getWhatsappConversations,
   getWhatsappMessagesByPhone,
   sendWhatsappReply,
@@ -204,10 +205,11 @@ router.post("/marketplace-filters/tools", createAdminTool);
 router.put("/marketplace-filters/tools/:id", updateAdminTool);
 router.delete("/marketplace-filters/tools/:id", deleteAdminTool);
 
-// WhatsApp Inbox Dashboard Routes
+// WhatsApp Inbox & Analytics Dashboard Routes
 router.get("/whatsapp/conversations", getWhatsappConversations);
 router.get("/whatsapp/conversations/:phone", getWhatsappMessagesByPhone);
 router.post("/whatsapp/send", sendWhatsappReply);
+router.get("/whatsapp/analytics", getWhatsappAnalytics);
 
 // Manual trigger for testing Profile Completion Reminders
 router.all("/trigger-profile-reminders", async (req, res) => {
