@@ -1,4 +1,5 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useEffect } from "react";
+import { useAuth } from "@/shared/context/AuthContext";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Globe from "lucide-react/dist/esm/icons/globe";
@@ -492,19 +493,68 @@ const getStartingPrice = (freelancer) => {
 };
 
 const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
+  const { authFetch } = useAuth();
+  const [fetchedData, setFetchedData] = useState(null);
+
+  const targetId =
+    viewingFreelancer?.freelancerId ||
+    viewingFreelancer?.id ||
+    viewingFreelancer?.freelancer?.id ||
+    viewingFreelancer?.userId;
+
+  useEffect(() => {
+    if (!open || !targetId || !authFetch) {
+      setFetchedData(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    authFetch(`/users/${targetId}`)
+      .then((res) => (res && res.ok ? res.json() : null))
+      .then((payload) => {
+        if (isMounted && payload) {
+          const data = payload?.data || payload;
+          setFetchedData(data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to fetch freelancer details in profile dialog:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [open, targetId, authFetch]);
+
+  const activeFreelancer = useMemo(() => {
+    if (!fetchedData) return viewingFreelancer;
+    return {
+      ...viewingFreelancer,
+      ...fetchedData,
+      freelancerProfile: fetchedData.freelancerProfile || viewingFreelancer?.freelancerProfile,
+      profileDetails:
+        fetchedData.freelancerProfile?.profileDetails ||
+        viewingFreelancer?.profileDetails ||
+        viewingFreelancer?.freelancerProfile,
+    };
+  }, [viewingFreelancer, fetchedData]);
+
   const profileDetails = asObject(
-    viewingFreelancer?.profileDetails || viewingFreelancer?.freelancerProfile,
+    activeFreelancer?.profileDetails || activeFreelancer?.freelancerProfile,
   );
-  const userDetails = asObject(viewingFreelancer?.user);
+  const userDetails = asObject(activeFreelancer?.user);
   const identityDetails = asObject(profileDetails?.identity);
   const serviceDetails = asObject(profileDetails?.serviceDetails);
-  const freelancerProjects = Array.isArray(viewingFreelancer?.freelancerProjects)
-    ? viewingFreelancer.freelancerProjects
-    : [];
+  const freelancerProjects = Array.isArray(activeFreelancer?.freelancerProjects)
+    ? activeFreelancer.freelancerProjects
+    : Array.isArray(fetchedData?.freelancerProjects)
+      ? fetchedData.freelancerProjects
+      : [];
 
   const displayName = firstNonEmptyText(
-    viewingFreelancer?.fullName,
-    viewingFreelancer?.name,
+    activeFreelancer?.fullName,
+    activeFreelancer?.name,
     profileDetails?.fullName,
     profileDetails?.name,
     userDetails?.fullName,
@@ -512,58 +562,58 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     "Freelancer",
   );
   const displayInitials = getDisplayInitials(displayName);
-  const avatarSrc = resolveAvatarSrc(viewingFreelancer);
-  const ratingLabel = formatRating(viewingFreelancer?.rating);
+  const avatarSrc = resolveAvatarSrc(activeFreelancer);
+  const ratingLabel = formatRating(activeFreelancer?.rating ?? profileDetails?.rating);
   const normalizedMatchPercent = resolveFreelancerMatchPercent(
-    viewingFreelancer,
+    activeFreelancer,
     null,
   );
   const matchScore = typeof normalizedMatchPercent === "number" && Number.isFinite(normalizedMatchPercent)
     ? `${normalizedMatchPercent}%`
     : null;
   const roleValue = firstNonEmptyText(
-    viewingFreelancer?.role,
+    activeFreelancer?.role,
     profileDetails?.role,
     profileDetails?.title,
     "Freelancer",
   );
   const roleLabel = toDisplayLabel(roleValue).toUpperCase();
-  const availability = getFreelancerAvailabilityMeta(viewingFreelancer);
+  const availability = getFreelancerAvailabilityMeta(activeFreelancer);
   const experienceLabel = formatExperience({
-    ...viewingFreelancer,
+    ...activeFreelancer,
     profileDetails,
     experienceYears:
-      viewingFreelancer?.experienceYears ?? profileDetails?.experienceYears,
-    experience: viewingFreelancer?.experience ?? profileDetails?.experience,
+      activeFreelancer?.experienceYears ?? profileDetails?.experienceYears,
+    experience: activeFreelancer?.experience ?? profileDetails?.experience,
   });
   const hourlyRateLabel = formatHourlyRate(
-    viewingFreelancer?.hourlyRate ??
+    activeFreelancer?.hourlyRate ??
       profileDetails?.hourlyRate ??
       profileDetails?.rate,
   );
   const identityLocation = [
-    profileDetails?.identity?.city || profileDetails?.identity?.state || profileDetails?.city || profileDetails?.state || viewingFreelancer?.city,
-    profileDetails?.identity?.country || profileDetails?.country || viewingFreelancer?.country
+    profileDetails?.identity?.city || profileDetails?.identity?.state || profileDetails?.city || profileDetails?.state || activeFreelancer?.city,
+    profileDetails?.identity?.country || profileDetails?.country || activeFreelancer?.country
   ].filter(Boolean).join(", ");
   const locationLabel = firstNonEmptyText(
-    viewingFreelancer?.location,
+    activeFreelancer?.location,
     profileDetails?.location,
     userDetails?.location,
     identityLocation,
   );
   const profileHeadline = firstNonEmptyText(
-    viewingFreelancer?.headline,
-    viewingFreelancer?.title,
-    viewingFreelancer?.niche,
+    activeFreelancer?.headline,
+    activeFreelancer?.title,
+    activeFreelancer?.niche,
     profileDetails?.headline,
     profileDetails?.title,
     profileDetails?.niche,
     profileDetails?.role,
   );
   const profileBio = firstNonEmptyText(
-    viewingFreelancer?.cleanBio,
-    viewingFreelancer?.bio,
-    viewingFreelancer?.about,
+    activeFreelancer?.cleanBio,
+    activeFreelancer?.bio,
+    activeFreelancer?.about,
     profileDetails?.cleanBio,
     profileDetails?.bio,
     profileDetails?.about,

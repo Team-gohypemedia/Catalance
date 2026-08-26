@@ -34,6 +34,7 @@ import {
   ProjectProposalCard,
 } from "@/components/features/client/ClientProjects";
 import { useClientProjectsData } from "./useClientProjectsData.js";
+import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 
 const projectFilterOptions = [
   { key: "ongoing", label: "Ongoing Projects" },
@@ -155,6 +156,13 @@ const ProjectCarouselDots = ({ count, activeIndex, onSelect, ariaLabel, getDotLa
 const ClientProjectsPage = () => {
   const { projects, isLoading, processingProjectId, handleApproveAndPay } =
     useClientProjectsData();
+  const [viewingFreelancer, setViewingFreelancer] = useState(null);
+  const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
+
+  const handleViewFreelancer = useCallback((freelancer) => {
+    setViewingFreelancer(freelancer);
+    setShowFreelancerProfile(true);
+  }, []);
   const { user } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -626,6 +634,7 @@ const ClientProjectsPage = () => {
                                       onPay={handleApproveAndPay}
                                       isPaying={processingProjectId === item.id}
                                       replaceSectionBadgeWithStatus
+                                      onViewFreelancer={handleViewFreelancer}
                                       className={activeProjectCardClassName}
                                     />
                                   </div>
@@ -675,6 +684,7 @@ const ClientProjectsPage = () => {
                             onPay={handleApproveAndPay}
                             isPaying={processingProjectId === item.id}
                             replaceSectionBadgeWithStatus
+                            onViewFreelancer={handleViewFreelancer}
                             className={activeProjectCardClassName}
                           />
                         );
@@ -702,10 +712,17 @@ const ClientProjectsPage = () => {
             </main>
 
             <ClientDashboardFooter variant="workspace" />
+
+            {showFreelancerProfile && (
+              <FreelancerProfileDialog
+                open={showFreelancerProfile}
+                onOpenChange={setShowFreelancerProfile}
+                viewingFreelancer={viewingFreelancer}
+              />
+            )}
           </div>
         </div>
       );
     };
 
     export default ClientProjectsPage;
-

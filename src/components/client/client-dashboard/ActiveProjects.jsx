@@ -33,6 +33,7 @@ import { processProjectInstallmentPayment } from "@/shared/lib/project-payment";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 import { useOptionalClientDashboardData } from "./useClientDashboardData.js";
+import FreelancerProfileDialog from "@/components/features/client/dashboard/FreelancerProfileDialog";
 
 const activeProjectCardClassName = "w-full";
 const activeProjectRedirectCardClassName = "w-full md:min-h-[506px]";
@@ -68,6 +69,14 @@ const ActiveProjects = memo(function ActiveProjects({
   const [activeProjectSnap, setActiveProjectSnap] = useState(0);
   const [mobileProjectCardHeight, setMobileProjectCardHeight] = useState(0);
   const projectCardRefs = useRef({});
+
+  const [viewingFreelancer, setViewingFreelancer] = useState(null);
+  const [showFreelancerProfile, setShowFreelancerProfile] = useState(false);
+
+  const handleViewFreelancer = useCallback((freelancer) => {
+    setViewingFreelancer(freelancer);
+    setShowFreelancerProfile(true);
+  }, []);
 
   const projectRedirectCards = useMemo(() => {
     const handleStartProject =
@@ -499,6 +508,7 @@ const ActiveProjects = memo(function ActiveProjects({
                           onPay={handlePayProject}
                           isPaying={resolvedRunningProjectProcessingId === item.id}
                           replaceSectionBadgeWithStatus
+                          onViewFreelancer={handleViewFreelancer}
                           className={activeProjectCardClassName}
                         />
                       </div>
@@ -549,6 +559,7 @@ const ActiveProjects = memo(function ActiveProjects({
                     onPay={handlePayProject}
                     isPaying={resolvedRunningProjectProcessingId === item.id}
                     replaceSectionBadgeWithStatus
+                    onViewFreelancer={handleViewFreelancer}
                     className={activeProjectCardClassName}
                   />
                 </div>
@@ -573,6 +584,14 @@ const ActiveProjects = memo(function ActiveProjects({
           )}
         </>
       ) : null}
+
+      {showFreelancerProfile && (
+        <FreelancerProfileDialog
+          open={showFreelancerProfile}
+          onOpenChange={setShowFreelancerProfile}
+          viewingFreelancer={viewingFreelancer}
+        />
+      )}
     </section>
   );
 });

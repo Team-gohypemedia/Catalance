@@ -737,7 +737,7 @@ export const normalizeClientProjects = (remote = []) =>
         return null;
       }
 
-      const spotlightFreelancer = acceptedProposal?.freelancer || null;
+      const spotlightFreelancer = acceptedProposal?.freelancer || project?.freelancer || null;
       const businessName = resolveProjectBusinessName(project, acceptedProposal);
       const serviceType = resolveProjectServiceType(project, acceptedProposal);
       const timelineMeta = resolveProjectTimelineMeta(project, acceptedProposal);
@@ -748,6 +748,13 @@ export const normalizeClientProjects = (remote = []) =>
       const dueInstallment = paymentPlan?.nextDueInstallment || null;
       const budgetValue = Number(project?.budget) || 0;
       const rawStatus = String(project?.status || "").toUpperCase();
+      const freelancerId =
+        spotlightFreelancer?.id ||
+        spotlightFreelancer?.freelancerId ||
+        acceptedProposal?.freelancerId ||
+        project?.freelancerId ||
+        project?.freelancer?.id ||
+        null;
 
       return {
         id: project?.id,
@@ -759,6 +766,8 @@ export const normalizeClientProjects = (remote = []) =>
           "Untitled Project",
         serviceType,
         sectionLabel: "Active Project",
+        freelancerId,
+        freelancer: spotlightFreelancer ? { ...spotlightFreelancer, id: freelancerId, freelancerId } : project?.freelancer || null,
         freelancerName:
           spotlightFreelancer?.fullName ||
           spotlightFreelancer?.name ||
@@ -908,7 +917,7 @@ export const buildProjectCardModel = (project) => {
       actionType: "link",
       actionHref: `/client/project/${project.id}`,
       actionLabel: "View Summary",
-      actionTone: "slate",
+      actionTone: "emerald",
     };
   }
 
@@ -926,7 +935,7 @@ export const buildProjectCardModel = (project) => {
     actionType: "link",
     actionHref: `/client/project/${project.id}`,
     actionLabel: "View Details",
-    actionTone: "amber",
+    actionTone: "brand",
   };
 };
 
@@ -1023,6 +1032,7 @@ export const ProjectProposalCard = ({
   isPaying,
   className,
   replaceSectionBadgeWithStatus = false,
+  onViewFreelancer,
 }) => {
   const [showPhaseDetails, setShowPhaseDetails] = useState(false);
   const [hasFreelancerAvatarError, setHasFreelancerAvatarError] = useState(false);
@@ -1094,6 +1104,23 @@ export const ProjectProposalCard = ({
     };
   }, [showPhaseDetails]);
 
+  const handleFreelancerClick = (e) => {
+    if (onViewFreelancer) {
+      e.stopPropagation();
+      const freelancerData =
+        project.freelancer ||
+        ({
+          id: project.freelancerId,
+          freelancerId: project.freelancerId,
+          fullName: project.freelancerName,
+          name: project.freelancerName,
+          avatar: project.freelancerAvatar,
+          jobTitle: project.freelancerRole,
+        });
+      onViewFreelancer(freelancerData);
+    }
+  };
+
   return (
     <article
       className={cn(
@@ -1119,8 +1146,23 @@ export const ProjectProposalCard = ({
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-            <Avatar className="size-9 shrink-0 border border-border">
+          <div
+            className={cn(
+              "flex items-center gap-2.5 flex-1 min-w-0 group/freelancer rounded-lg p-1 -ml-1 transition-all",
+              onViewFreelancer && "cursor-pointer hover:bg-muted/60"
+            )}
+            onClick={handleFreelancerClick}
+            role={onViewFreelancer ? "button" : undefined}
+            tabIndex={onViewFreelancer ? 0 : undefined}
+            onKeyDown={(e) => {
+              if (onViewFreelancer && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                handleFreelancerClick(e);
+              }
+            }}
+            title={onViewFreelancer ? `Click to view ${project.freelancerName}'s profile` : undefined}
+          >
+            <Avatar className="size-9 shrink-0 border border-border group-hover/freelancer:border-primary/50 transition-colors">
               {canRenderFreelancerAvatar ? (
                 <img
                   src={project.freelancerAvatar}
@@ -1138,8 +1180,12 @@ export const ProjectProposalCard = ({
             </Avatar>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-foreground leading-tight">{project.freelancerName}</p>
-              <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">{project.freelancerRole}</p>
+              <p className="truncate text-sm font-semibold text-foreground leading-tight group-hover/freelancer:text-primary transition-colors">
+                {project.freelancerName}
+              </p>
+              <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">
+                {project.freelancerRole}
+              </p>
             </div>
           </div>
 
