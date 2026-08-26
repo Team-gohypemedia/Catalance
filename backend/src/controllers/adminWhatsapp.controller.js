@@ -181,7 +181,7 @@ export const sendWhatsappReply = async (req, res, next) => {
 
 export const getWhatsappAnalytics = async (req, res, next) => {
   try {
-    const { timeframe = "all" } = req.query;
+    const { timeframe = "7d" } = req.query;
 
     let dateFilter = undefined;
     const now = new Date();
@@ -191,11 +191,13 @@ export const getWhatsappAnalytics = async (req, res, next) => {
       dateFilter = { gte: startOfDay };
     } else if (timeframe === "7d") {
       const date7 = new Date(now);
-      date7.setDate(now.getDate() - 7);
+      date7.setDate(now.getDate() - 6);
+      date7.setHours(0, 0, 0, 0);
       dateFilter = { gte: date7 };
     } else if (timeframe === "30d") {
       const date30 = new Date(now);
-      date30.setDate(now.getDate() - 30);
+      date30.setDate(now.getDate() - 29);
+      date30.setHours(0, 0, 0, 0);
       dateFilter = { gte: date30 };
     }
 
@@ -247,6 +249,28 @@ export const getWhatsappAnalytics = async (req, res, next) => {
     };
 
     const dailyTrendsMap = new Map();
+
+    if (timeframe === "7d" || timeframe === "30d") {
+      const daysCount = timeframe === "7d" ? 7 : 30;
+      for (let i = daysCount - 1; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(now.getDate() - i);
+        const dateKey = d.toISOString().slice(0, 10);
+        dailyTrendsMap.set(dateKey, {
+          date: dateKey,
+          label: d.toLocaleDateString([], { month: "short", day: "numeric" }),
+          totalCount: 0,
+          outboundCount: 0,
+          inboundCount: 0,
+          costInr: 0,
+          otpCount: 0,
+          notificationCount: 0,
+          marketingCount: 0,
+          textCount: 0,
+        });
+      }
+    }
+
     const enrichedLogs = [];
 
     for (const msg of allMessages) {
@@ -293,6 +317,7 @@ export const getWhatsappAnalytics = async (req, res, next) => {
         });
       }
       const dayData = dailyTrendsMap.get(dateKey);
+
       dayData.totalCount++;
       if (isOutbound) {
         dayData.outboundCount++;

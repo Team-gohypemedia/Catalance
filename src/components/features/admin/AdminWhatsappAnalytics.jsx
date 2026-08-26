@@ -37,7 +37,8 @@ const AdminWhatsappAnalytics = () => {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
-  const [timeframe, setTimeframe] = useState("all"); // 'today' | '7d' | '30d' | 'all'
+  const [timeframe, setTimeframe] = useState("7d"); // 'today' | '7d' | '30d' | 'all'
+
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [roleFilter, setRoleFilter] = useState("ALL");
@@ -388,40 +389,123 @@ const AdminWhatsappAnalytics = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex items-end gap-2 h-40 pt-4 px-2 border-b border-border/50">
+                  <div className="flex items-end gap-3 h-44 pt-4 px-2 border-b border-border/50">
                     {dailyTrends.map((trend) => {
-                      const heightPercent = Math.max(Math.round((trend.totalCount / maxDailyCount) * 100), 12);
+                      const totalDayMsgs = trend.totalCount || 0;
+                      const heightPercent = totalDayMsgs > 0 ? Math.max(Math.round((totalDayMsgs / maxDailyCount) * 100), 12) : 6;
+
+                      // Category proportions
+                      const otpRatio = totalDayMsgs > 0 ? (trend.otpCount || 0) / totalDayMsgs : 0;
+                      const notificationRatio = totalDayMsgs > 0 ? (trend.notificationCount || 0) / totalDayMsgs : 0;
+                      const marketingRatio = totalDayMsgs > 0 ? (trend.marketingCount || 0) / totalDayMsgs : 0;
+                      const textRatio = totalDayMsgs > 0 ? (trend.textCount || 0) / totalDayMsgs : 0;
+
                       return (
-                        <div key={trend.date} className="flex-1 flex flex-col items-center group relative min-w-[28px]">
-                          {/* Tooltip */}
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-12 bg-popover text-popover-foreground border text-[11px] p-1.5 rounded-md shadow-md pointer-events-none whitespace-nowrap z-20">
-                            <p className="font-bold">{trend.label}</p>
-                            <p className="text-emerald-600 dark:text-emerald-400 font-mono">
-                              {trend.totalCount} msgs • ₹{trend.costInr}
+                        <div key={trend.date} className="flex-1 flex flex-col items-center h-full justify-end group relative min-w-[32px]">
+                          {/* Rich Tooltip */}
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity absolute -top-24 bg-popover text-popover-foreground border text-[11px] p-2.5 rounded-lg shadow-lg pointer-events-none whitespace-nowrap z-30 space-y-1">
+                            <p className="font-bold border-b pb-1 text-foreground">{trend.label}</p>
+                            <div className="space-y-0.5 font-mono text-[10px]">
+                              {trend.otpCount > 0 && (
+                                <p className="text-amber-500 font-semibold flex items-center justify-between gap-3">
+                                  <span>🟧 Auth OTP:</span> <span>{trend.otpCount} msgs</span>
+                                </p>
+                              )}
+                              {trend.notificationCount > 0 && (
+                                <p className="text-blue-500 font-semibold flex items-center justify-between gap-3">
+                                  <span>🟦 Utility Alerts:</span> <span>{trend.notificationCount} msgs</span>
+                                </p>
+                              )}
+                              {trend.marketingCount > 0 && (
+                                <p className="text-purple-500 font-semibold flex items-center justify-between gap-3">
+                                  <span>🟪 Marketing:</span> <span>{trend.marketingCount} msgs</span>
+                                </p>
+                              )}
+                              {trend.textCount > 0 && (
+                                <p className="text-emerald-500 font-semibold flex items-center justify-between gap-3">
+                                  <span>🟩 Direct Support:</span> <span>{trend.textCount} msgs</span>
+                                </p>
+                              )}
+                              {totalDayMsgs === 0 && <p className="text-muted-foreground">0 messages sent</p>}
+                            </div>
+                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono pt-1 border-t">
+                              Total: {totalDayMsgs} msgs • ₹{trend.costInr}
                             </p>
                           </div>
 
-                          {/* Bar */}
-                          <div
-                            style={{ height: `${heightPercent}%` }}
-                            className="w-full max-w-[36px] bg-gradient-to-t from-primary/80 to-emerald-500 rounded-t-md transition-all group-hover:brightness-110 shadow-sm"
-                          />
-                          <span className="text-[10px] text-muted-foreground font-mono mt-2 truncate w-full text-center">
+                          {/* Stacked Multi-Color Bar Container (h-28) */}
+                          <div className="w-full h-28 flex items-end justify-center">
+                            {totalDayMsgs > 0 ? (
+                              <div
+                                style={{ height: `${heightPercent}%` }}
+                                className="w-full max-w-[32px] min-h-[12px] rounded-t-md overflow-hidden flex flex-col-reverse shadow-sm transition-all group-hover:brightness-110"
+                              >
+                                {trend.otpCount > 0 && (
+                                  <div
+                                    style={{ height: `${otpRatio * 100}%` }}
+                                    className="w-full bg-amber-500"
+                                    title={`Auth OTP: ${trend.otpCount}`}
+                                  />
+                                )}
+                                {trend.notificationCount > 0 && (
+                                  <div
+                                    style={{ height: `${notificationRatio * 100}%` }}
+                                    className="w-full bg-blue-500"
+                                    title={`Utility Alerts: ${trend.notificationCount}`}
+                                  />
+                                )}
+                                {trend.marketingCount > 0 && (
+                                  <div
+                                    style={{ height: `${marketingRatio * 100}%` }}
+                                    className="w-full bg-purple-500"
+                                    title={`Marketing: ${trend.marketingCount}`}
+                                  />
+                                )}
+                                {trend.textCount > 0 && (
+                                  <div
+                                    style={{ height: `${textRatio * 100}%` }}
+                                    className="w-full bg-emerald-500"
+                                    title={`Direct Support: ${trend.textCount}`}
+                                  />
+                                )}
+                              </div>
+                            ) : (
+                              <div className="w-full max-w-[32px] h-[4px] bg-muted/60 rounded-full" />
+                            )}
+                          </div>
+
+                          {/* Date Label */}
+                          <span className="text-[10px] text-muted-foreground font-mono mt-2 truncate w-full text-center font-medium">
                             {trend.label}
                           </span>
                         </div>
                       );
                     })}
                   </div>
-                  <div className="flex items-center justify-end gap-4 text-xs text-muted-foreground pt-1">
-                    <span className="flex items-center gap-1.5">
+
+                  {/* Multi-Color Legend */}
+                  <div className="flex flex-wrap items-center justify-center sm:justify-end gap-4 text-xs text-muted-foreground pt-1">
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <span className="h-2.5 w-2.5 rounded-full bg-amber-500 inline-block" />
+                      Auth OTP (₹0.15)
+                    </span>
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <span className="h-2.5 w-2.5 rounded-full bg-blue-500 inline-block" />
+                      Utility Alerts (₹0.30)
+                    </span>
+                    <span className="flex items-center gap-1.5 font-medium">
+                      <span className="h-2.5 w-2.5 rounded-full bg-purple-500 inline-block" />
+                      Marketing & Reminders (₹0.75)
+                    </span>
+                    <span className="flex items-center gap-1.5 font-medium">
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 inline-block" />
-                      Daily Dispatched Messages
+                      Support & Direct Replies (₹0.15)
                     </span>
                   </div>
                 </div>
               )}
             </CardContent>
+
           </Card>
 
           {/* Meta Category Rate Card & Progress Breakdown Grid */}
