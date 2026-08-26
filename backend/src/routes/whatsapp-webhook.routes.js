@@ -4,6 +4,8 @@ import { prisma } from "../lib/prisma.js";
 import { processIncomingWhatsappBotMessage } from "../services/whatsapp-bot.service.js";
 
 
+const recentlyProcessedWamids = new Set();
+
 export const whatsappWebhookRouter = Router();
 
 whatsappWebhookRouter.get("/", (req, res) => {
@@ -56,6 +58,25 @@ whatsappWebhookRouter.post("/", async (req, res) => {
         }
 
         if (fromPhone) {
+          let isDuplicate = false;
+          if (wamid) {
+            if (recentlyProcessedWamids.has(wamid)) {
+              isDuplicate = true;
+            } else {
+              recentlyProcessedWamids.add(wamid);
+              if (recentlyProcessedWamids.size > 2000) {
+                const firstKey = recentlyProcessedWamids.values().next().value;
+                recentlyProcessedWamids.delete(firstKey);
+              }
+              const existingInDb = await prisma.whatsAppMessage.findUnique({
+                where: { wamid }
+              }).catch(() => null);
+              if (existingInDb) {
+                isDuplicate = true;
+              }
+            }
+          }
+
           await prisma.whatsAppMessage.upsert({
             where: { wamid: wamid || "temp_" + Date.now() },
             update: {
@@ -79,22 +100,23 @@ whatsappWebhookRouter.post("/", async (req, res) => {
             console.error("[WhatsApp Webhook] Database save error:", err);
           });
 
-          console.log(`[WhatsApp Webhook] Recorded incoming message from ${fromPhone} (${senderName || 'Unknown'}): ${body}`);
+          console.log(`[WhatsApp Webhook] Recorded incoming message from ${fromPhone} (${senderName || 'Unknown'}): ${body}${isDuplicate ? ' (Duplicate - skipping bot reply)' : ''}`);
 
-          // Trigger AI Chatbot processor asynchronously
-          const buttonId =
-            msg.interactive?.button_reply?.id ||
-            msg.interactive?.list_reply?.id ||
-            msg.button?.payload ||
-            msg.interactive?.button_reply?.title ||
-            null;
+          if (!isDuplicate) {
+            // Trigger AI Chatbot processor asynchronously
+            const buttonId =
+              msg.interactive?.button_reply?.id ||
+              msg.interactive?.list_reply?.id ||
+              msg.button?.payload ||
+              msg.interactive?.button_reply?.title ||
+              null;
 
-          processIncomingWhatsappBotMessage({
-            fromPhone,
-            userText: body,
-            buttonId
-          }).catch((botErr) => console.error("[WhatsApp Webhook] Bot processing error:", botErr));
-
+            processIncomingWhatsappBotMessage({
+              fromPhone,
+              userText: body,
+              buttonId
+            }).catch((botErr) => console.error("[WhatsApp Webhook] Bot processing error:", botErr));
+          }
         }
       }
     } else if (status) {
