@@ -1,7 +1,9 @@
 import { env } from "../config/env.js";
 import { AppError } from "../utils/app-error.js";
+import { prisma } from "./prisma.js";
 
 const WHATSAPP_PROVIDER = "whatsapp";
+
 
 const maskPhone = (value = "") => {
   const digits = String(value || "").replace(/\D/g, "");
@@ -204,6 +206,22 @@ export const sendWhatsappOtp = async ({
 
       if (response.ok) {
         const messageId = payload?.messages?.[0]?.id || null;
+        const cleanPhone = String(to || "").replace(/\D/g, "");
+
+        if (cleanPhone) {
+          await prisma.whatsAppMessage.create({
+            data: {
+              fromPhone: cleanPhone,
+              toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+              wamid: messageId,
+              messageType: "otp",
+              body: `[Authentication OTP] Verification passcode sent to user`,
+              direction: "OUTBOUND",
+              status: "DELIVERED",
+              rawPayload: payload || {}
+            }
+          }).catch((dbErr) => console.error("[WhatsApp OTP] DB Save Error:", dbErr));
+        }
 
         console.log(
           `[WhatsApp OTP] Accepted for ${maskPhone(to)} with template ${config.templateName}/${templateLanguage} using ${payloadMode}. ID: ${messageId || "n/a"}`
@@ -214,6 +232,7 @@ export const sendWhatsappOtp = async ({
           waId: payload?.contacts?.[0]?.wa_id || null
         };
       }
+
 
       const providerError = parseWhatsAppError(payload);
       lastFailure = {
@@ -372,9 +391,24 @@ export const sendWhatsappNotification = async ({
     }
 
     if (response.ok) {
+      const msgId = data?.messages?.[0]?.id || null;
+      await prisma.whatsAppMessage.create({
+        data: {
+          fromPhone: cleanPhone,
+          toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          wamid: msgId,
+          messageType: "notification",
+          body: `[${title}]: ${message}`,
+          direction: "OUTBOUND",
+          status: "DELIVERED",
+          rawPayload: data || {}
+        }
+      }).catch((dbErr) => console.error("[WhatsApp Notification] DB Save Error:", dbErr));
+
       console.log(`[WhatsApp Notification] Delivered via ${templateName} to ${cleanPhone} for "${title}"`);
-      return { delivered: true, id: data?.messages?.[0]?.id };
+      return { delivered: true, id: msgId };
     }
+
 
     // Fallback to legacy catalance_notification if new v2 template is still pending Meta review (code 132001)
     if (data?.error?.code === 132001 && templateName !== "catalance_notification") {
@@ -458,9 +492,24 @@ export const sendFreelancerProfileReminderWhatsapp = async ({
 
     const data = await response.json().catch(() => null);
     if (response.ok) {
+      const msgId = data?.messages?.[0]?.id || null;
+      await prisma.whatsAppMessage.create({
+        data: {
+          fromPhone: cleanPhone,
+          toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          wamid: msgId,
+          messageType: "notification",
+          body: `[Profile Completion Reminder]: ${cleanFirstName}, your profile is ${completionPercent}% complete. Update your profile on Catalance!`,
+          direction: "OUTBOUND",
+          status: "DELIVERED",
+          rawPayload: data || {}
+        }
+      }).catch((dbErr) => console.error("[WhatsApp Profile Reminder] DB Save Error:", dbErr));
+
       console.log(`[WhatsApp Profile Reminder] Delivered dedicated template to ${cleanPhone}`);
-      return { delivered: true, id: data?.messages?.[0]?.id };
+      return { delivered: true, id: msgId };
     }
+
 
     // If template error (e.g. 132001 template does not exist yet), fallback to active catalance_notification
     const errCode = data?.error?.code;
