@@ -58,8 +58,8 @@ export const sendWhatsappInteractiveMenu = async ({ to, bodyText, buttons }) => 
       // Save bot outbound message in DB
       await prisma.whatsAppMessage.create({
         data: {
-          fromPhone: cleanPhone,
-          toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          fromPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          toPhone: cleanPhone,
           wamid: data.messages[0].id,
           messageType: "interactive",
           body: bodyText,
@@ -113,8 +113,8 @@ export const sendWhatsappTextMessage = async ({ to, text }) => {
       console.log(`[WhatsApp Bot] Successfully sent text message to ${cleanPhone}. Message ID: ${data.messages[0].id}`);
       await prisma.whatsAppMessage.create({
         data: {
-          fromPhone: cleanPhone,
-          toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          fromPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          toPhone: cleanPhone,
           wamid: data.messages[0].id,
           messageType: "text",
           body: text,

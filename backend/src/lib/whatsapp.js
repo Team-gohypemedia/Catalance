@@ -211,8 +211,8 @@ export const sendWhatsappOtp = async ({
         if (cleanPhone) {
           await prisma.whatsAppMessage.create({
             data: {
-              fromPhone: cleanPhone,
-              toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+              fromPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+              toPhone: cleanPhone,
               wamid: messageId,
               messageType: "otp",
               body: `[Authentication OTP] Verification passcode sent to user`,
@@ -394,8 +394,8 @@ export const sendWhatsappNotification = async ({
       const msgId = data?.messages?.[0]?.id || null;
       await prisma.whatsAppMessage.create({
         data: {
-          fromPhone: cleanPhone,
-          toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          fromPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+          toPhone: cleanPhone,
           wamid: msgId,
           messageType: "notification",
           body: `[${title}]: ${message}`,

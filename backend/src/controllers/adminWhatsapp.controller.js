@@ -158,12 +158,13 @@ export const sendWhatsappReply = async (req, res, next) => {
     }
 
     const wamid = resData?.messages?.[0]?.id || null;
+    const businessPhone = String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, "");
 
     // Save outbound message into database
     const savedMessage = await prisma.whatsAppMessage.create({
       data: {
-        fromPhone: cleanPhone,
-        toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+        fromPhone: businessPhone,
+        toPhone: cleanPhone,
         wamid,
         messageType: "text",
         body: messageText,

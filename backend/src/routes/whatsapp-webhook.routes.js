@@ -77,6 +77,8 @@ whatsappWebhookRouter.post("/", async (req, res) => {
             }
           }
 
+          const businessPhone = String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, "");
+
           await prisma.whatsAppMessage.upsert({
             where: { wamid: wamid || "temp_" + Date.now() },
             update: {
@@ -87,7 +89,7 @@ whatsappWebhookRouter.post("/", async (req, res) => {
             create: {
               fromPhone,
               senderName,
-              toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
+              toPhone: businessPhone,
               wamid,
               messageType,
               body,
@@ -102,7 +104,9 @@ whatsappWebhookRouter.post("/", async (req, res) => {
 
           console.log(`[WhatsApp Webhook] Recorded incoming message from ${fromPhone} (${senderName || 'Unknown'}): ${body}${isDuplicate ? ' (Duplicate - skipping bot reply)' : ''}`);
 
-          if (!isDuplicate) {
+          // Prevent AI Bot processing if request is a forwarded webhook from another server or marked duplicate
+          const isForwardedRequest = req.headers["x-forwarded-webhook"] === "true";
+          if (!isDuplicate && !isForwardedRequest) {
             // Trigger AI Chatbot processor asynchronously
             const buttonId =
               msg.interactive?.button_reply?.id ||
@@ -134,11 +138,17 @@ whatsappWebhookRouter.post("/", async (req, res) => {
   }
 
   // Dual Webhook Forwarding to Staging / NeonDB (if configured in .env as FORWARD_WEBHOOK_URL)
+  const isForwardedRequest = req.headers["x-forwarded-webhook"] === "true";
   const forwardUrl = process.env.FORWARD_WEBHOOK_URL || process.env.STAGING_WEBHOOK_URL;
-  if (forwardUrl) {
+  
+  // Forward only if configured AND the request is not already a forwarded request (prevents infinite loop)
+  if (forwardUrl && !isForwardedRequest) {
     fetch(forwardUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Forwarded-Webhook": "true"
+      },
       body: JSON.stringify(req.body)
     }).catch((err) => console.error("[WhatsApp Webhook Forward Error]:", err.message));
   }
