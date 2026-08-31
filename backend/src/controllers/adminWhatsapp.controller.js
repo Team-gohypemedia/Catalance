@@ -289,9 +289,11 @@ export const getWhatsappAnalytics = async (req, res, next) => {
         ? "otp"
         : msg.messageType === "notification"
           ? "notification"
-          : msg.body?.toLowerCase().includes("reminder") || msg.body?.toLowerCase().includes("offer")
+          : msg.messageType === "marketing"
             ? "marketing"
-            : "text";
+            : msg.body?.toLowerCase().includes("offer") || msg.body?.toLowerCase().includes("promo") || msg.body?.toLowerCase().includes("discount")
+              ? "marketing"
+              : "text";
 
       const costForMsg = isOutbound ? (RATES_INR[msgCategory] || 0.25) : 0;
       if (isOutbound) {
@@ -358,6 +360,84 @@ export const getWhatsappAnalytics = async (req, res, next) => {
       });
     }
 
+    // Calculate Freelancer Profile Completion Reminder Conversion Metrics
+    const reminderLogs = allMessages.filter(
+      (m) =>
+        m.direction === "OUTBOUND" &&
+        (m.body?.toLowerCase().includes("profile") ||
+         m.body?.toLowerCase().includes("complete") ||
+         m.body?.toLowerCase().includes("action required") ||
+         m.body?.toLowerCase().includes("account notice"))
+    );
+
+    const remindedPhones = new Set();
+    const reminderDetailsMap = new Map();
+
+    reminderLogs.forEach((m) => {
+      const p = String(m.toPhone || m.fromPhone || "").replace(/\D/g, "").slice(-10);
+      if (p) {
+        remindedPhones.add(p);
+        if (!reminderDetailsMap.has(p)) {
+          reminderDetailsMap.set(p, {
+            phone: p,
+            sentAt: m.createdAt,
+            body: m.body
+          });
+        }
+      }
+    });
+
+    const remindedFreelancersList = [];
+    let freelancersUpdatedCount = 0;
+
+    if (remindedPhones.size > 0) {
+      const remindedUsers = await prisma.user.findMany({
+        where: {
+          role: "FREELANCER",
+          OR: Array.from(remindedPhones).flatMap((p) => [
+            { phone: { contains: p } },
+            { phoneNumber: { contains: p } }
+          ])
+        },
+        include: {
+          freelancerProfile: true,
+          freelancerSkills: true,
+          marketplace: true
+        }
+      }).catch(() => []);
+
+      const { calculateFreelancerProfileCompletion } = await import("../utils/freelancer-profile-completion.js").catch(() => ({ calculateFreelancerProfileCompletion: () => ({ percent: 0, missingCriteria: [] }) }));
+
+      for (const u of remindedUsers) {
+        const pDigits = String(u.phone || u.phoneNumber || "").replace(/\D/g, "").slice(-10);
+        const remInfo = reminderDetailsMap.get(pDigits);
+        const sentDate = remInfo?.sentAt ? new Date(remInfo.sentAt) : null;
+        const profileUpdatedDate = u.freelancerProfile?.updatedAt ? new Date(u.freelancerProfile.updatedAt) : null;
+
+        const isUpdatedAfterReminder = Boolean(
+          sentDate && profileUpdatedDate && profileUpdatedDate.getTime() > sentDate.getTime()
+        );
+
+        if (isUpdatedAfterReminder) {
+          freelancersUpdatedCount++;
+        }
+
+        const { percent, missingCriteria } = calculateFreelancerProfileCompletion(u);
+
+        remindedFreelancersList.push({
+          userId: u.id,
+          name: u.fullName || "Freelancer",
+          email: u.email,
+          phone: pDigits,
+          sentAt: remInfo?.sentAt || null,
+          currentCompletionPercent: percent,
+          missingCriteria: missingCriteria || [],
+          isProfileUpdated: isUpdatedAfterReminder,
+          lastProfileUpdate: u.freelancerProfile?.updatedAt || null
+        });
+      }
+    }
+
     const dailyTrends = Array.from(dailyTrendsMap.values())
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((d) => ({
@@ -376,6 +456,12 @@ export const getWhatsappAnalytics = async (req, res, next) => {
           totalFailed,
           totalCostInr: Number(totalCostInr.toFixed(2)),
           totalCostUsd: Number((totalCostInr / USD_EXCHANGE_RATE).toFixed(2)),
+        },
+        profileReminderStats: {
+          totalReminded: remindedPhones.size,
+          updatedCount: freelancersUpdatedCount,
+          conversionRate: remindedPhones.size > 0 ? Math.round((freelancersUpdatedCount / remindedPhones.size) * 100) : 0,
+          remindedFreelancers: remindedFreelancersList
         },
         categoryStats,
         dailyTrends,

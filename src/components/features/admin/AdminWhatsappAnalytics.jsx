@@ -336,28 +336,132 @@ const AdminWhatsappAnalytics = () => {
               </CardContent>
             </Card>
 
-            <Card className="shadow-sm">
+            <Card className="shadow-sm border-purple-500/20 bg-gradient-to-br from-card to-purple-500/5">
               <CardHeader className="pb-2 flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Delivery Health Rate
+                  Profile Reminders Sent
                 </CardTitle>
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <Users className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                  {loading
-                    ? "--"
-                    : summary.totalSent > 0
-                      ? `${Math.round((summary.totalDelivered / Math.max(summary.totalSent, 1)) * 100)}%`
-                      : "100%"}
+                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                  {loading ? "--" : (data?.profileReminderStats?.totalReminded || 0)}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                  <Activity className="h-3 w-3 text-emerald-500 inline" />
-                  {summary.totalFailed > 0 ? `${summary.totalFailed} failed` : "Healthy operation"}
+                <p className="text-xs text-muted-foreground mt-1 flex items-center justify-between">
+                  <span>{data?.profileReminderStats?.updatedCount || 0} updated profiles</span>
+                  <Badge variant="outline" className="text-[10px] font-mono border-purple-500/30 text-purple-600 bg-purple-500/10">
+                    {data?.profileReminderStats?.conversionRate || 0}% Action Rate
+                  </Badge>
                 </p>
               </CardContent>
             </Card>
           </div>
+
+          {/* Freelancer Profile Completion WhatsApp Audit Section */}
+          <Card className="border-border shadow-sm bg-gradient-to-br from-card via-card to-emerald-500/5">
+            <CardHeader className="pb-3 border-b">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                    <Users className="h-4 w-4 text-purple-600" />
+                    Freelancer Profile Completion WhatsApp Reminders & Conversion Audit
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Track freelancers sent alternate-day WhatsApp notifications (under 90% completion) and check profile updates post-notification.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-600 text-white font-mono text-xs">
+                    {data?.profileReminderStats?.totalReminded || 0} Reminded
+                  </Badge>
+                  <Badge className="bg-emerald-600 text-white font-mono text-xs">
+                    {data?.profileReminderStats?.updatedCount || 0} Profiles Updated
+                  </Badge>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="pt-4">
+              {loading ? (
+                <div className="h-28 flex items-center justify-center text-muted-foreground text-sm">
+                  Loading freelancer reminder audit...
+                </div>
+              ) : !data?.profileReminderStats?.remindedFreelancers || data.profileReminderStats.remindedFreelancers.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground text-xs space-y-1">
+                  <Users className="mx-auto h-6 w-6 opacity-40 mb-1 text-purple-500" />
+                  <p className="font-semibold text-foreground">No Profile Reminders Sent in Selected Timeframe</p>
+                  <p>Alternate-day reminders run automatically for freelancers with profile completion under 90%.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {data.profileReminderStats.remindedFreelancers.map((freelancer) => (
+                      <div
+                        key={freelancer.userId}
+                        className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${
+                          freelancer.isProfileUpdated
+                            ? "bg-emerald-500/5 border-emerald-500/30 dark:bg-emerald-950/20"
+                            : "bg-card border-border"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-xs font-bold text-foreground truncate">{freelancer.name}</h4>
+                            <p className="text-[11px] font-mono text-muted-foreground">+{freelancer.phone}</p>
+                          </div>
+                          {freelancer.isProfileUpdated ? (
+                            <Badge className="bg-emerald-600 text-white text-[10px] font-semibold gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> Profile Updated!
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10">
+                              Pending Update
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="text-muted-foreground font-medium">Completion Level:</span>
+                            <span className={`font-mono font-bold ${freelancer.currentCompletionPercent < 100 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600"}`}>
+                              {freelancer.currentCompletionPercent}% {freelancer.currentCompletionPercent < 100 ? "(Incomplete)" : "✓"}
+                            </span>
+                          </div>
+                          <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                freelancer.currentCompletionPercent === 100
+                                  ? "bg-emerald-500"
+                                  : freelancer.currentCompletionPercent >= 75
+                                    ? "bg-blue-500"
+                                    : "bg-amber-500"
+                              }`}
+                              style={{ width: `${freelancer.currentCompletionPercent}%` }}
+                            />
+                          </div>
+                          {freelancer.currentCompletionPercent < 100 && freelancer.missingCriteria && freelancer.missingCriteria.length > 0 && (
+                            <div className="text-[10px] text-amber-600 dark:text-amber-400 font-medium pt-1 truncate" title={freelancer.missingCriteria.join(", ")}>
+                              <span className="font-bold">Pending:</span> {freelancer.missingCriteria.slice(0, 2).join(", ")}{freelancer.missingCriteria.length > 2 ? ` +${freelancer.missingCriteria.length - 2} more` : ""}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-1 border-t border-border/50 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                          <span>Sent: {freelancer.sentAt ? new Date(freelancer.sentAt).toLocaleDateString() : "N/A"}</span>
+                          {freelancer.isProfileUpdated && (
+                            <span className="text-emerald-600 font-semibold">
+                              Updated {new Date(freelancer.lastProfileUpdate).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Daily Notification Volume & Cost Visual Trend Chart */}
           <Card className="border-border shadow-sm">

@@ -610,8 +610,9 @@ export const sendDailyFreelancerProfileReminders = async () => {
                 continue;
             }
 
-            // Calculate real-time completion percentage
-            const { percent } = calculateFreelancerProfileCompletion(freelancer);
+            // Calculate real-time completion percentage and missing items
+            const { percent, missingCriteria = [] } = calculateFreelancerProfileCompletion(freelancer);
+            const missingText = missingCriteria.length > 0 ? missingCriteria.slice(0, 3).join(", ") : "profile info";
 
             // Target freelancers with incomplete profiles (< 90%)
             if (percent < 90) {
@@ -634,6 +635,7 @@ export const sendDailyFreelancerProfileReminders = async () => {
                     to: phone,
                     userName: freelancer.fullName || 'Freelancer',
                     completionPercent: percent,
+                    missingItems: missingText,
                     profileUrl: 'https://catalance.in/freelancer/profile'
                 });
 

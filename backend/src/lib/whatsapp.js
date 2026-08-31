@@ -435,6 +435,7 @@ export const sendFreelancerProfileReminderWhatsapp = async ({
   to,
   userName = "Freelancer",
   completionPercent = 0,
+  missingItems = "profile details",
   profileUrl = "https://catalance.in/freelancer/profile"
 }) => {
   const config = getWhatsAppConfig();
@@ -449,86 +450,19 @@ export const sendFreelancerProfileReminderWhatsapp = async ({
     return { delivered: false, reason: "invalid_phone" };
   }
 
-  const url = `https://graph.facebook.com/${config.graphVersion}/${config.phoneNumberId}/messages`;
+  const cleanMissing = String(missingItems || "profile info").slice(0, 100);
 
-  // Extract a clean first name without trailing timestamps/IDs
-  const cleanFirstName = String(userName || "Freelancer")
-    .replace(/\d+/g, "")
-    .trim()
-    .split(" ")[0] || "Freelancer";
-
-  // Try dedicated template "freelancer_profile_reminder" first
-  const dedicatedPayload = {
-    messaging_product: "whatsapp",
-    recipient_type: "individual",
+  // Send profile completion reminders as a UTILITY notification via the approved
+  // system notification template (catalance_notification_v2 / catalance_notification).
+  // This guarantees UTILITY category billing (₹0.30/msg), avoids Marketing template parameter errors,
+  // and ensures high delivery success.
+  console.log(`[WhatsApp Profile Reminder] Dispatching profile completion reminder as UTILITY notification to ${cleanPhone}...`);
+  return sendWhatsappNotification({
     to: cleanPhone,
-    type: "template",
-    template: {
-      name: "freelancer_profile_reminder",
-      language: {
-        code: config.templateLanguage || "en"
-      },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: cleanFirstName.slice(0, 60) },
-            { type: "text", text: String(completionPercent) }
-          ]
-        }
-      ]
-    }
-  };
-
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(dedicatedPayload)
-    });
-
-    const data = await response.json().catch(() => null);
-    if (response.ok) {
-      const msgId = data?.messages?.[0]?.id || null;
-      await prisma.whatsAppMessage.create({
-        data: {
-          fromPhone: cleanPhone,
-          toPhone: String(env.WHATSAPP_BUSINESS_NUMBER || "918882855425").replace(/\D/g, ""),
-          wamid: msgId,
-          messageType: "notification",
-          body: `[Profile Completion Reminder]: ${cleanFirstName}, your profile is ${completionPercent}% complete. Update your profile on Catalance!`,
-          direction: "OUTBOUND",
-          status: "DELIVERED",
-          rawPayload: data || {}
-        }
-      }).catch((dbErr) => console.error("[WhatsApp Profile Reminder] DB Save Error:", dbErr));
-
-      console.log(`[WhatsApp Profile Reminder] Delivered dedicated template to ${cleanPhone}`);
-      return { delivered: true, id: msgId };
-    }
-
-
-    // If template error (e.g. 132001 template does not exist yet), fallback to active catalance_notification
-    const errCode = data?.error?.code;
-    if (errCode === 132001 || errCode === 132000) {
-      console.warn("[WhatsApp Profile Reminder] Dedicated template not active, falling back to catalance_notification...");
-      return sendWhatsappNotification({
-        to: cleanPhone,
-        userName: userName,
-        title: `Complete Profile (${completionPercent}% done)`,
-        message: `Your profile is ${completionPercent}% complete. Complete your profile information to start receiving client project requests on Catalance. Tap below to update your profile details: ${profileUrl}`
-      });
-    }
-
-    console.error("[WhatsApp Profile Reminder] Meta API Error:", JSON.stringify(data, null, 2));
-    return { delivered: false, error: data };
-  } catch (error) {
-    console.error("[WhatsApp Profile Reminder] Network Error:", error);
-    return { delivered: false, error: error.message };
-  }
+    userName: userName,
+    title: `Account Action Required`,
+    message: `Dear ${userName}, please complete your required profile items (${cleanMissing}) for your Catalance account. Tap below to review your account setup: ${profileUrl}`
+  });
 };
 
 
