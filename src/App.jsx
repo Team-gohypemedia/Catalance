@@ -463,9 +463,9 @@ const App = () => {
             <Route
               path="/services"
               element={
-                <LayoutWithNavbar>
+                <LayoutServices>
                   <GuestAIDemo />
-                </LayoutWithNavbar>
+                </LayoutServices>
               }
             />
             <Route
@@ -1035,11 +1035,28 @@ const LayoutNavbarOnly = ({ children }) => (
   <>
     <Navbar />
     {children}
-    <Footer />
   </>
 );
 
 LayoutNavbarOnly.propTypes = {
+  children: PropTypes.node.isRequired,
+};
+
+const LayoutServices = ({ children }) => {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const hasChatParam = Boolean(searchParams.get("chat"));
+
+  return (
+    <>
+      <Navbar />
+      {children}
+      {!hasChatParam && <Footer />}
+    </>
+  );
+};
+
+LayoutServices.propTypes = {
   children: PropTypes.node.isRequired,
 };
 
