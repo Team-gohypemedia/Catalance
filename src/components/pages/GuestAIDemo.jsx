@@ -3127,6 +3127,7 @@ const GuestAIDemo = () => {
     const [isProposalsModalOpen, setIsProposalsModalOpen] = useState(false);
     const [activeResourceLibrary, setActiveResourceLibrary] = useState(null);
     const [chatToDelete, setChatToDelete] = useState(null);
+    const [showLoginFirstModal, setShowLoginFirstModal] = useState(false);
     const [sidebarDropdowns, setSidebarDropdowns] = useState({
         proposals: false,
         links: false,
@@ -3227,6 +3228,23 @@ const GuestAIDemo = () => {
         ...briefingAnswers,
         referenceCount: briefingReferenceLinks.length + briefingFiles.length,
     }), [briefingAnswers, briefingReferenceLinks.length, briefingFiles.length]);
+
+    useEffect(() => {
+        if (!isAuthLoading && !isUserLoggedIn) {
+            const params = new URLSearchParams(location.search);
+            const hasChatParam = Boolean(
+                params.get('chat') || params.get('chatId') || params.get('sessionId')
+            );
+
+            if (hasChatParam) {
+                setShowLoginFirstModal(true);
+            } else {
+                setShowLoginFirstModal(false);
+            }
+        } else {
+            setShowLoginFirstModal(false);
+        }
+    }, [isAuthLoading, isUserLoggedIn, location.search]);
 
     useEffect(() => {
         messagesRef.current = messages;
@@ -7310,7 +7328,10 @@ const GuestAIDemo = () => {
                     ) : (
                         <button
                             type="button"
-                            onClick={() => navigate('/signin/phone', { state: { redirectTo: '/ai-demo' } })}
+                            onClick={() => {
+                                const currentUrl = `${location.pathname}${location.search}`;
+                                navigate(`/signin/phone?role=client&redirect=${encodeURIComponent(currentUrl)}`);
+                            }}
                             className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-[13px] font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/4' : 'text-slate-600 hover:bg-slate-200/35'}`}
                         >
                             <LogIn className="h-4 w-4 shrink-0" />
@@ -7870,6 +7891,48 @@ const GuestAIDemo = () => {
                             className="rounded-xl px-5 py-2.5 font-semibold transition-colors !bg-red-600 !text-white hover:!bg-red-700 hover:!text-white border-transparent shadow-none"
                         >
                             Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Proper Login First popup modal */}
+            <AlertDialog open={showLoginFirstModal} onOpenChange={() => {}}>
+                <AlertDialogContent className={`max-w-lg rounded-3xl p-7 border shadow-2xl backdrop-blur-xl transition-all ${
+                    isDark
+                        ? 'bg-[#0d0d12]/95 border-white/15 text-white shadow-black/80'
+                        : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-900/10'
+                }`}>
+                    <AlertDialogHeader className="space-y-4">
+                        <div className="flex justify-center">
+                            <div className="relative">
+                                <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-primary to-primary/60 opacity-30 blur-md" />
+                                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                                    <LogIn className="h-8 w-8 stroke-[2.2]" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 text-center">
+                            <AlertDialogTitle className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                Please Login First
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
+                                To access and view this AI chat session, proposals, and project features, please log in to your account.
+                            </AlertDialogDescription>
+                        </div>
+                    </AlertDialogHeader>
+
+                    <AlertDialogFooter className="mt-6 flex flex-col gap-3 sm:flex-col">
+                        <AlertDialogAction
+                            onClick={() => {
+                                const currentUrl = `${location.pathname}${location.search}`;
+                                navigate(`/signin/phone?role=client&redirect=${encodeURIComponent(currentUrl)}`);
+                            }}
+                            className="h-12 w-full rounded-2xl bg-gradient-to-r from-primary to-primary/90 px-6 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-95 flex items-center justify-center gap-2.5"
+                        >
+                            <LogIn className="h-5 w-5" />
+                            Login to Continue
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
