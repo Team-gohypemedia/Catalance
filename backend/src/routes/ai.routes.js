@@ -25,15 +25,31 @@ aiRouter.post("/chat", async (req, res) => {
       return;
     }
 
+    console.log("\n================================================================================");
+    console.log("🤖 [AI REQUEST SENT TO AI MODEL]");
+    console.log("--------------------------------------------------------------------------------");
+    console.log(`📌 Task / Service : ${serviceName || "default"}`);
+    console.log(`💬 Payload Length : ${message.length} chars`);
+    console.log(`📄 Sent Content   :\n${message.slice(0, 1500)}${message.length > 1500 ? "\n...[truncated for terminal preview]" : ""}`);
+    console.log("================================================================================");
+
     const result = await chatWithAI(
       [{ role: "user", content: message }],
       conversationHistory,
       serviceName
     );
 
+    console.log("================================================================================");
+    console.log("✨ [AI GENERATION COMPLETED]");
+    console.log("--------------------------------------------------------------------------------");
+    console.log(`🤖 AI Model Used   : ${result?.meta?.model || "google/gemini-2.5-flash (OpenRouter)"}`);
+    console.log(`⏱️ Duration        : ${result?.meta?.durationMs || "N/A"} ms`);
+    console.log(`💡 Generated Points :\n${result?.message || "(No content generated)"}`);
+    console.log("================================================================================\n");
+
     res.json(result);
   } catch (error) {
-    console.error("AI Chat Error:", error);
+    console.error("❌ AI Chat Error:", error);
     const statusCode = Number.isInteger(error?.statusCode)
       ? error.statusCode
       : 500;

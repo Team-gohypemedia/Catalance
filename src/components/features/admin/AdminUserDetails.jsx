@@ -1168,47 +1168,152 @@ const AdminUserDetails = () => {
             {/* Freelancer's Proposals */}
             {isFreelancer && proposals.length > 0 && (
               <div className="bg-card p-6 rounded-xl border shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold">Proposals Submitted</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="h-5 w-5 text-primary" />
+                    <h2 className="text-lg font-semibold">Assigned & Active Projects & Proposals</h2>
+                  </div>
+                  <Badge variant="secondary" className="px-2.5 py-1 text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+                    {proposals.filter(p => p.status === "ACCEPTED" || p.project?.status === "IN_PROGRESS").length} Active Projects
+                  </Badge>
                 </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm border-collapse">
                     <thead>
-                      <tr className="border-b text-muted-foreground font-medium">
-                        <th className="py-2.5">Project Title</th>
+                      <tr className="border-b text-muted-foreground font-medium text-xs">
+                        <th className="py-2.5">Project Title & Status</th>
+                        <th className="py-2.5">Client (Owner)</th>
+                        <th className="py-2.5">Project Manager (PM)</th>
+                        <th className="py-2.5">Amount / Budget</th>
                         <th className="py-2.5">Proposal Status</th>
-                        <th className="py-2.5">Amount</th>
-                        <th className="py-2.5">Project Budget</th>
-                        <th className="py-2.5">Project Status</th>
-                        <th className="py-2.5">Date Submitted</th>
+                        <th className="py-2.5 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                      {proposals.map((proposal) => (
-                        <tr 
-                          key={proposal.id} 
-                          className="hover:bg-muted/30 cursor-pointer transition-colors"
-                          onClick={() => navigate(`/admin/projects/${proposal.project?.id}`)}
-                        >
-                          <td className="py-3 font-medium text-primary hover:underline max-w-[200px] truncate">
-                            {proposal.project?.title || "Unknown Project"}
-                          </td>
-                          <td className="py-3">
-                            <Badge variant={proposal.status === "ACCEPTED" ? "outline" : proposal.status === "PENDING" ? "secondary" : "destructive"} className="text-[10px] px-2 py-0.5">
-                              {proposal.status}
-                            </Badge>
-                          </td>
-                          <td className="py-3 font-medium">{formatCurrency(proposal.amount)}</td>
-                          <td className="py-3 text-muted-foreground">{formatCurrency(proposal.project?.budget ?? 0)}</td>
-                          <td className="py-3">
-                            <Badge variant="ghost" className="text-[10px] px-2 py-0.5 uppercase">
-                              {proposal.project?.status || "-"}
-                            </Badge>
-                          </td>
-                          <td className="py-3 text-muted-foreground text-xs">{formatDate(proposal.createdAt)}</td>
-                        </tr>
-                      ))}
+                      {proposals.map((proposal) => {
+                        const proj = proposal.project || {};
+                        const client = proj.owner || {};
+                        const manager = proj.manager || {};
+                        const clientPhone = client.phone || client.phoneNumber;
+                        const managerPhone = manager.phone || manager.phoneNumber;
+
+                        return (
+                          <tr key={proposal.id} className="hover:bg-muted/30 transition-colors">
+                            {/* Project Title & Status */}
+                            <td className="py-3 max-w-[200px]">
+                              <div className="space-y-1">
+                                <p
+                                  onClick={() => navigate(`/admin/projects/${proj.id}`)}
+                                  className="font-semibold text-primary hover:underline cursor-pointer truncate"
+                                  title={proj.title || "Untitled Project"}
+                                >
+                                  {proj.title || "Untitled Project"}
+                                </p>
+                                <Badge
+                                  variant="outline"
+                                  className={`text-[10px] px-2 py-0.5 font-bold uppercase ${
+                                    proj.status === "IN_PROGRESS"
+                                      ? "border-blue-300 bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+                                      : proj.status === "COMPLETED"
+                                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                        : "border-border text-muted-foreground"
+                                  }`}
+                                >
+                                  {proj.status || "DRAFT"}
+                                </Badge>
+                              </div>
+                            </td>
+
+                            {/* Client (Owner) Details */}
+                            <td className="py-3 min-w-[180px]">
+                              {client.fullName ? (
+                                <div className="space-y-0.5">
+                                  <button
+                                    onClick={() => navigate(`/admin/users/${client.id}`)}
+                                    className="font-medium text-xs text-foreground hover:text-primary hover:underline flex items-center gap-1 font-semibold text-left"
+                                  >
+                                    <Mail className="h-3 w-3 text-primary inline shrink-0" />
+                                    {client.fullName}
+                                  </button>
+                                  <p className="text-[11px] text-muted-foreground truncate">{client.email}</p>
+                                  {clientPhone ? (
+                                    <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                                      <Phone className="h-2.5 w-2.5 text-emerald-600 inline shrink-0" />
+                                      {clientPhone}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">No Client Data</span>
+                              )}
+                            </td>
+
+                            {/* Project Manager Details */}
+                            <td className="py-3 min-w-[180px]">
+                              {manager.fullName ? (
+                                <div className="space-y-0.5">
+                                  <button
+                                    onClick={() => navigate(`/admin/users/${manager.id}`)}
+                                    className="font-medium text-xs text-foreground hover:text-primary hover:underline flex items-center gap-1 font-semibold text-left"
+                                  >
+                                    <User className="h-3 w-3 text-purple-600 inline shrink-0" />
+                                    {manager.fullName}
+                                  </button>
+                                  <p className="text-[11px] text-muted-foreground truncate">{manager.email}</p>
+                                  {managerPhone ? (
+                                    <p className="text-[10px] text-muted-foreground font-mono flex items-center gap-1">
+                                      <Phone className="h-2.5 w-2.5 text-emerald-600 inline shrink-0" />
+                                      {managerPhone}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic bg-muted/30 px-2 py-0.5 rounded">
+                                  Unassigned PM
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Amount & Budget */}
+                            <td className="py-3">
+                              <div className="space-y-0.5">
+                                <p className="font-semibold text-xs text-foreground">{formatCurrency(proposal.amount)}</p>
+                                <p className="text-[10px] text-muted-foreground">Budget: {formatCurrency(proj.budget ?? 0)}</p>
+                              </div>
+                            </td>
+
+                            {/* Proposal Status */}
+                            <td className="py-3">
+                              <Badge
+                                variant={proposal.status === "ACCEPTED" ? "outline" : proposal.status === "PENDING" ? "secondary" : "destructive"}
+                                className={`text-[10px] px-2 py-0.5 ${
+                                  proposal.status === "ACCEPTED"
+                                    ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                                    : ""
+                                }`}
+                              >
+                                {proposal.status}
+                              </Badge>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-3 text-right">
+                              {proj.id && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/admin/projects/${proj.id}`)}
+                                  className="h-7 text-xs gap-1"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  View Project
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

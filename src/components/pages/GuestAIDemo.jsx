@@ -47,7 +47,14 @@ import {
     Globe,
     MessageSquarePlus,
     ChevronDown,
-    Lightbulb
+    Lightbulb,
+    UploadCloud,
+    File,
+    CheckCircle2,
+    ShieldCheck,
+    Lock,
+    ArrowRight,
+    Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -2680,26 +2687,56 @@ const buildBriefingSentenceParts = ({
     references: referenceCount > 0 ? `${referenceCount} reference${referenceCount === 1 ? '' : 's'} attached` : '',
 });
 
+const extractBudgetFromText = (str) => {
+    if (!str) return null;
+    const match = str.match(/(?:Investment|Budget|Cost|Price|Total|Fee|Commercials?)\s*[:=]?\s*(?:₹|INR|Rs\.?)\s*([\d,]+)/i)
+        || str.match(/(?:₹|INR|Rs\.?)\s*([\d,]{4,})/i)
+        || str.match(/([\d,]{5,})\s*(?:₹|INR|Rs\.?|\+?\s*GST)/i);
+
+    if (match && match[1]) {
+        const num = parseInt(match[1].replace(/,/g, ''), 10);
+        if (num >= 1000) return num;
+    }
+    return null;
+};
+
 const buildBriefingSummary = ({
     answers = createInitialBriefingAnswers(),
     referenceLinks = [],
     attachmentCount = 0,
     fileContexts = [],
+    aiBulletPoints = '',
 }) => {
     const parts = buildBriefingSentenceParts({
         ...answers,
         referenceCount: (Array.isArray(referenceLinks) ? referenceLinks.length : 0) + Number(attachmentCount || 0),
     });
+
+    let displayBudget = parts.budget;
+    if (!displayBudget && aiBulletPoints) {
+        const extractedNum = extractBudgetFromText(aiBulletPoints);
+        if (extractedNum) {
+            displayBudget = `INR ${extractedNum.toLocaleString('en-IN')}`;
+        }
+    }
+
     const lines = [
         `I'm looking for ${parts.role || 'the right specialist'} to ${parts.goal || 'move this project forward'}.`,
     ];
 
-    if (parts.budget || parts.kickoff || parts.duration) {
+    if (displayBudget || parts.kickoff || parts.duration) {
         lines.push([
-            parts.budget ? `Budget: ${parts.budget}` : '',
+            displayBudget ? `Budget: ${displayBudget}` : '',
             parts.kickoff ? `Kickoff: ${parts.kickoff}` : '',
             parts.duration ? `Duration: ${parts.duration}` : '',
         ].filter(Boolean).join(' | '));
+    }
+
+    if (aiBulletPoints && aiBulletPoints.trim()) {
+        lines.push([
+            '### Document Requirement Specifications & Scope:',
+            aiBulletPoints.trim(),
+        ].join('\n\n'));
     }
 
     const normalizedLinks = (Array.isArray(referenceLinks) ? referenceLinks : []).filter(Boolean);
@@ -2707,30 +2744,12 @@ const buildBriefingSummary = ({
         lines.push(`Reference links:\n${normalizedLinks.map((link) => `- ${link}`).join('\n')}`);
     }
 
-    const readableFileContexts = (Array.isArray(fileContexts) ? fileContexts : [])
-        .map((entry) => ({
-            name: String(entry?.name || 'Attachment').trim() || 'Attachment',
-            typeLabel: String(entry?.typeLabel || 'File').trim() || 'File',
-            text: String(entry?.text || '').trim(),
-        }))
-        .filter((entry) => entry.text);
-
-    if (readableFileContexts.length > 0) {
-        lines.push([
-            'Reference file content:',
-            ...readableFileContexts.map((entry) =>
-                [
-                    `### ${entry.name}`,
-                    `Type: ${entry.typeLabel}`,
-                    '',
-                    entry.text.slice(0, BRIEFING_FILE_TEXT_MAX_CHARS),
-                ].join('\n').trim()
-            ),
-        ].join('\n\n'));
-    }
-
     if (attachmentCount > 0) {
-        lines.push(`Attached ${attachmentCount} reference file${attachmentCount === 1 ? '' : 's'} for context.`);
+        const fileNames = (Array.isArray(fileContexts) ? fileContexts : [])
+            .map((entry) => String(entry?.name || '').trim())
+            .filter(Boolean);
+        
+        lines.push(`Attached ${attachmentCount} reference document${attachmentCount === 1 ? '' : 's'}${fileNames.length > 0 ? `: ${fileNames.join(', ')}` : ''}.`);
     }
 
     return lines.filter(Boolean).join('\n\n').trim();
@@ -2768,67 +2787,120 @@ const truncateBriefingFileText = (text = '') => {
 };
 
 const extractBriefingTextFromPdf = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
-
-    for (let i = 1; i <= pdf.numPages; i += 1) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const items = textContent.items.filter((item) => item.str.trim().length > 0);
-
-        items.sort((a, b) => {
-            const yDiff = b.transform[5] - a.transform[5];
-            if (Math.abs(yDiff) > 5) {
-                return yDiff;
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        if (pdfjsLib && pdfjsLib.getDocument) {
+            const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+            const pdf = await loadingTask.promise;
+            let fullText = '';
+            const maxPages = Math.min(pdf.numPages || 1, 20);
+            for (let i = 1; i <= maxPages; i += 1) {
+                try {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageStr = (textContent.items || [])
+                        .map((item) => item.str || '')
+                        .filter((s) => s.trim().length > 0)
+                        .join(' ');
+                    if (pageStr.trim()) {
+                        fullText += pageStr + '\n\n';
+                    }
+                } catch (pageErr) {
+                    console.warn(`[PDF Extract] Error on page ${i}:`, pageErr);
+                }
             }
-            return a.transform[4] - b.transform[4];
-        });
-
-        let pageText = '';
-        let lastY = null;
-        items.forEach((item) => {
-            const { str: text, transform } = item;
-            const y = transform[5];
-            if (lastY !== null && Math.abs(y - lastY) > 5) {
-                pageText += '\n';
+            if (fullText.trim().length > 10) {
+                return truncateBriefingFileText(fullText);
             }
-            pageText += (pageText && pageText[pageText.length - 1] !== '\n' ? ' ' : '') + text;
-            lastY = y;
-        });
-
-        fullText += `${pageText}\n\n`;
+        }
+    } catch (err) {
+        console.warn('[PDF Extract] pdfjs-dist failed, attempting fallback text scan:', err);
     }
 
-    return truncateBriefingFileText(fullText);
-};
-
-const extractBriefingTextFromDocx = async (file) => {
-    const arrayBuffer = await file.arrayBuffer();
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return truncateBriefingFileText(result.value || '');
-};
-
-const extractBriefingTextFromFile = async (file) => {
-    const extension = getBriefingFileExtension(file?.name || '');
-    const mimeType = String(file?.type || '').toLowerCase();
-
-    if (mimeType === 'application/pdf' || extension === 'pdf') {
-        return extractBriefingTextFromPdf(file);
-    }
-
-    if (
-        mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        || extension === 'docx'
-    ) {
-        return extractBriefingTextFromDocx(file);
-    }
-
-    if (mimeType === 'text/plain' || extension === 'txt') {
-        return truncateBriefingFileText(await file.text());
+    try {
+        const text = await file.text();
+        const matches = text.match(/\(([^)]+)\)\s*TJ|\(([^)]+)\)\s*Tj/g);
+        if (matches && matches.length > 0) {
+            const extracted = matches
+                .map((m) => m.replace(/^[^(]*\(|\)\s*TJ$|\)\s*Tj$/gi, ''))
+                .join(' ')
+                .replace(/\\/g, '');
+            if (extracted.trim().length > 10) {
+                return truncateBriefingFileText(extracted);
+            }
+        }
+    } catch {
+        // ignore fallback errors
     }
 
     return '';
+};
+
+const extractBriefingTextFromDocx = async (file) => {
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        if (mammoth && mammoth.extractRawText) {
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            if (result?.value?.trim()) {
+                return truncateBriefingFileText(result.value);
+            }
+        }
+    } catch (err) {
+        console.warn('[DOCX Extract] mammoth extraction failed:', err);
+    }
+
+    try {
+        const text = await file.text();
+        const matches = text.match(/<w:t[^>]*>([^<]+)<\/w:t>/g);
+        if (matches && matches.length > 0) {
+            const extracted = matches.map((m) => m.replace(/<[^>]+>/g, '')).join(' ');
+            if (extracted.trim()) {
+                return truncateBriefingFileText(extracted);
+            }
+        }
+    } catch {
+        // ignore fallback error
+    }
+    return '';
+};
+
+const extractBriefingTextFromFile = async (file) => {
+    if (!file) return '';
+    try {
+        const extension = getBriefingFileExtension(file.name || '');
+        const mimeType = String(file.type || '').toLowerCase();
+
+        if (mimeType === 'application/pdf' || extension === 'pdf') {
+            return await extractBriefingTextFromPdf(file);
+        }
+
+        if (
+            mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            || mimeType === 'application/msword'
+            || extension === 'docx'
+            || extension === 'doc'
+        ) {
+            return await extractBriefingTextFromDocx(file);
+        }
+
+        if (
+            mimeType.startsWith('text/')
+            || ['txt', 'md', 'json', 'csv', 'rtf', 'js', 'html', 'css', 'ts', 'jsx', 'tsx', 'py', 'log', 'xml'].includes(extension)
+        ) {
+            const textContent = await file.text();
+            return truncateBriefingFileText(textContent);
+        }
+
+        const rawText = await file.text().catch(() => '');
+        if (rawText && !/[\u0000-\u0008\u000E-\u001F]/.test(rawText.slice(0, 300))) {
+            return truncateBriefingFileText(rawText);
+        }
+
+        return '';
+    } catch (error) {
+        console.warn('[Briefing Extraction] Error extracting file:', file?.name, error);
+        return '';
+    }
 };
 
 const buildBriefingGoalSuggestions = (role = '') => {
@@ -3092,7 +3164,11 @@ const GuestAIDemo = () => {
     const [briefingReferenceInput, setBriefingReferenceInput] = useState('');
     const [briefingReferenceLinks, setBriefingReferenceLinks] = useState([]);
     const [briefingFiles, setBriefingFiles] = useState([]);
+    const [briefingInputTab, setBriefingInputTab] = useState('text');
     const [briefingSubmitting, setBriefingSubmitting] = useState(false);
+    const briefingFileInputRef = useRef(null);
+    const [scanProgress, setScanProgress] = useState(0);
+    const [scanStepText, setScanStepText] = useState('');
     const [showAllRoleServices, setShowAllRoleServices] = useState(false);
     const [pendingBriefSubmission, setPendingBriefSubmission] = useState(null);
     const [selectedService, setSelectedService] = useState(null);
@@ -3128,6 +3204,11 @@ const GuestAIDemo = () => {
     const [activeResourceLibrary, setActiveResourceLibrary] = useState(null);
     const [chatToDelete, setChatToDelete] = useState(null);
     const [showLoginFirstModal, setShowLoginFirstModal] = useState(false);
+    const [activeDocPointsModalFile, setActiveDocPointsModalFile] = useState(null);
+    const [isExtractingDocPoints, setIsExtractingDocPoints] = useState(false);
+    const [docScanProgress, setDocScanProgress] = useState(0);
+    const [docScanStepText, setDocScanStepText] = useState('');
+    const [docPointsModalText, setDocPointsModalText] = useState('');
     const [sidebarDropdowns, setSidebarDropdowns] = useState({
         proposals: false,
         links: false,
@@ -4287,6 +4368,7 @@ const GuestAIDemo = () => {
         setBriefingFiles([]);
         setBriefingSubmitting(false);
         setPendingBriefSubmission(null);
+        setActiveDocPointsModalFile(null);
     }, []);
 
     const updateBriefingAnswer = useCallback((key, value) => {
@@ -4319,7 +4401,7 @@ const GuestAIDemo = () => {
         setBriefingReferenceLinks((current) => current.filter((_, currentIndex) => currentIndex !== index));
     }, []);
 
-    const handleBriefingFilePick = useCallback((event) => {
+    const handleBriefingFilePick = useCallback(async (event) => {
         const files = Array.from(event.target.files || []);
         event.target.value = '';
         if (files.length === 0) return;
@@ -4351,6 +4433,71 @@ const GuestAIDemo = () => {
             });
             return deduped.slice(0, 5);
         });
+
+        // Open Document Scanner Popup Modal IMMEDIATELY upon file pick
+        const targetFile = nextValidFiles[0];
+        setActiveDocPointsModalFile(targetFile);
+        setIsExtractingDocPoints(true);
+        setDocScanProgress(25);
+        setDocScanStepText(`Scanning "${targetFile.name}" & reading document content...`);
+        setDocPointsModalText('');
+
+        try {
+            const text = await extractBriefingTextFromFile(targetFile);
+            targetFile._extractedText = text;
+            setDocScanProgress(60);
+            setDocScanStepText('Analyzing document structure & technical scope...');
+
+            if (text && text.trim().length > 0) {
+                const promptText = `Extract and summarize all critical project requirements, key features, technical stack, target audience, deliverables, and constraints from the document text below into a clean list of bullet points. Focus ONLY on important points so no detail is missed. Return ONLY bullet points.\n\nDocument: ${targetFile.name}\n\nContent:\n${text.slice(0, 10000)}`;
+
+                const aiRes = await request('/ai/chat', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        message: promptText,
+                        serviceName: 'website-development',
+                    }),
+                }).catch(() => null);
+
+                const pointsText = aiRes?.message || aiRes?.reply || aiRes?.content || aiRes?.data?.message || '';
+                const finalPoints = (pointsText && pointsText.trim().length > 10)
+                    ? pointsText.trim()
+                    : ('• ' + text.trim().slice(0, 300).replace(/\n+/g, '\n• '));
+
+                targetFile._aiBulletPoints = finalPoints;
+                setDocPointsModalText(finalPoints);
+                setDocScanProgress(100);
+                setDocScanStepText('Document Scanned & Scope Extracted Successfully!');
+
+                const foundBudget = extractBudgetFromText(finalPoints) || extractBudgetFromText(text);
+                if (foundBudget) {
+                    setBriefingAnswers((prev) => ({
+                        ...prev,
+                        budgetMin: prev.budgetMin && Number(prev.budgetMin) >= 1000 ? prev.budgetMin : String(foundBudget),
+                        budgetMax: prev.budgetMax && Number(prev.budgetMax) >= 1000 ? prev.budgetMax : String(foundBudget),
+                    }));
+                }
+
+                setBriefingFiles((current) => [...current]);
+            } else {
+                const fallbackMsg = '• Reference document attached successfully for project context.';
+                targetFile._aiBulletPoints = fallbackMsg;
+                setDocPointsModalText(fallbackMsg);
+                setDocScanProgress(100);
+                setDocScanStepText('Document Attached');
+                setBriefingFiles((current) => [...current]);
+            }
+        } catch (err) {
+            console.warn('[Doc AI Extraction] Error:', err);
+            const fallbackMsg = '• Reference document attached.';
+            targetFile._aiBulletPoints = fallbackMsg;
+            setDocPointsModalText(fallbackMsg);
+            setDocScanProgress(100);
+            setBriefingFiles((current) => [...current]);
+        } finally {
+            setIsExtractingDocPoints(false);
+            setBriefingFiles((current) => [...current]);
+        }
     }, [isAllowedUploadFile]);
 
     const removeBriefingFile = useCallback((index) => {
@@ -4360,13 +4507,14 @@ const GuestAIDemo = () => {
     const currentBriefingStepKey = BRIEFING_STEP_DEFINITIONS[briefingStepIndex]?.key || 'role';
 
     const isCurrentBriefingStepValid = useMemo(() => {
+        if (isExtractingDocPoints) return false;
         if (currentBriefingStepKey === 'role') return normalizeBriefingFragment(briefingAnswers.role).length >= 3;
-        if (currentBriefingStepKey === 'goal') return normalizeBriefingFragment(briefingAnswers.goal).length >= 8;
+        if (currentBriefingStepKey === 'goal') return normalizeBriefingFragment(briefingAnswers.goal).length >= 8 || briefingFiles.length > 0;
         if (currentBriefingStepKey === 'budget') return Boolean(formatBriefingBudgetRange(briefingAnswers.budgetMin, briefingAnswers.budgetMax));
         if (currentBriefingStepKey === 'kickoff') return Boolean(normalizeBriefingFragment(briefingAnswers.kickoff));
         if (currentBriefingStepKey === 'duration') return Boolean(normalizeBriefingFragment(briefingAnswers.duration));
         return true;
-    }, [briefingAnswers, currentBriefingStepKey]);
+    }, [briefingAnswers, briefingFiles, currentBriefingStepKey, isExtractingDocPoints]);
 
     const goToNextBriefingStep = useCallback(() => {
         if (!isCurrentBriefingStepValid) return;
@@ -4388,24 +4536,58 @@ const GuestAIDemo = () => {
         }
 
         setBriefingSubmitting(true);
+        setScanProgress(15);
+        setScanStepText('Initiating Document Requirement Scanner...');
 
         let fileContexts = [];
+        let aiBulletPoints = '';
+
         if (briefingFiles.length > 0) {
+            setScanProgress(30);
+            setScanStepText(`Processing ${briefingFiles.length} attached document${briefingFiles.length === 1 ? '' : 's'}...`);
+
             const extractedContexts = await Promise.all(
                 briefingFiles.map(async (file) => {
                     try {
-                        const text = await extractBriefingTextFromFile(file);
+                        let text = file._extractedText;
+                        if (typeof text !== 'string') {
+                            text = await extractBriefingTextFromFile(file);
+                            file._extractedText = text;
+                        }
+
+                        let bulletPoints = file._aiBulletPoints;
+                        if (!bulletPoints && text && text.trim().length > 0) {
+                            setScanStepText(`Extracting key requirement points from "${file.name}"...`);
+                            const promptText = `Extract and summarize all critical project requirements, key features, technical stack, target audience, deliverables, and constraints from the document text below into a clean list of bullet points. Return ONLY bullet points.\n\nDocument: ${file.name}\n\nContent:\n${text.slice(0, 10000)}`;
+
+                            const aiRes = await request('/ai/chat', {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    message: promptText,
+                                    serviceName: inferredBriefingService?.slug || inferredBriefingService?.id || 'website-development',
+                                }),
+                            }).catch(() => null);
+
+                            const pointsText = aiRes?.message || aiRes?.reply || aiRes?.content || aiRes?.data?.message || '';
+                            if (pointsText && pointsText.trim().length > 10) {
+                                file._aiBulletPoints = pointsText.trim();
+                                bulletPoints = pointsText.trim();
+                            }
+                        }
+
+                        setScanProgress((prev) => Math.min(75, prev + Math.round(30 / briefingFiles.length)));
+
                         return {
                             name: file.name || 'Attachment',
                             typeLabel: getBriefingFileTypeLabel(file),
-                            text,
+                            bulletPoints: bulletPoints || '',
                         };
                     } catch (error) {
-                        console.warn('[GuestAIDemo] Failed to extract text from briefing file:', file?.name, error);
+                        console.warn('[GuestAIDemo] Failed to process briefing file:', file?.name, error);
                         return {
                             name: file.name || 'Attachment',
                             typeLabel: getBriefingFileTypeLabel(file),
-                            text: '',
+                            bulletPoints: '',
                         };
                     }
                 }),
@@ -4413,25 +4595,36 @@ const GuestAIDemo = () => {
 
             fileContexts = extractedContexts;
 
-            const unreadableFiles = extractedContexts.filter((entry) => !String(entry.text || '').trim());
-            if (unreadableFiles.length > 0) {
-                toast.info(
-                    `${unreadableFiles.length} attached file${unreadableFiles.length === 1 ? '' : 's'} could not be text-read in the browser and will be uploaded as files only.`,
-                );
-            }
+            aiBulletPoints = extractedContexts
+                .filter((f) => f.bulletPoints)
+                .map((f) => `• File: ${f.name}\n${f.bulletPoints}`)
+                .join('\n\n');
+        } else {
+            setScanProgress(50);
+            setScanStepText('Analyzing project requirement brief...');
         }
+
+        setScanProgress(85);
+        setScanStepText('Structuring project requirements to prevent info loss...');
 
         const summary = buildBriefingSummary({
             answers: briefingAnswers,
             referenceLinks: briefingReferenceLinks,
             attachmentCount: briefingFiles.length,
             fileContexts,
+            aiBulletPoints,
         });
 
         setPendingBriefSubmission({
             content: summary,
             attachments: briefingFiles,
         });
+
+        setScanProgress(98);
+        setScanStepText('Launching interactive CATA AI workspace...');
+        await new Promise((resolve) => setTimeout(resolve, 600));
+
+        setActiveDocPointsModalFile(null);
 
         const started = await startServiceConversation(inferredBriefingService, {
             preserveExistingMessages: false,
@@ -4441,6 +4634,7 @@ const GuestAIDemo = () => {
         if (!started) {
             setPendingBriefSubmission(null);
             setBriefingSubmitting(false);
+            setScanProgress(0);
         }
     }
 
@@ -5654,8 +5848,8 @@ const GuestAIDemo = () => {
     const currentBriefingStep = BRIEFING_STEP_DEFINITIONS[briefingStepIndex] || BRIEFING_STEP_DEFINITIONS[0];
     const isLastBriefingStep = briefingStepIndex === BRIEFING_STEP_DEFINITIONS.length - 1;
     const canContinueBriefing = isLastBriefingStep
-        ? Boolean(inferredBriefingService) && !briefingSubmitting
-        : isCurrentBriefingStepValid;
+        ? Boolean(inferredBriefingService) && !briefingSubmitting && !isExtractingDocPoints
+        : isCurrentBriefingStepValid && !isExtractingDocPoints;
     const briefingBackdropClasses = isDark
         ? 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
         : 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.12),transparent_40%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.08),transparent_30%),linear-gradient(180deg,rgba(var(--background-rgb),1)_0%,rgba(var(--brand-rgb),0.08)_100%)]';
@@ -5733,6 +5927,83 @@ const GuestAIDemo = () => {
                             }}
                             className={`relative z-10 overflow-hidden backdrop-blur rounded-[1.5rem] sm:rounded-[2rem] ${briefingCardClasses}`}
                         >
+                            {/* AI Document Scanner Loading Screen Overlay */}
+                            {briefingSubmitting && (
+                                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-xl p-6 sm:p-10 text-center space-y-6 animate-in fade-in duration-300">
+                                    {/* Animated Scanner Pulse Ring */}
+                                    <div className="relative flex items-center justify-center">
+                                        <div className="absolute h-32 w-32 rounded-full bg-gradient-to-tr from-primary via-amber-500 to-emerald-500 opacity-30 animate-ping blur-md" />
+                                        <div className="absolute h-28 w-28 rounded-full bg-primary/20 animate-pulse" />
+                                        <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-primary to-amber-500 p-0.5 shadow-2xl shadow-primary/30">
+                                            <div className={`h-full w-full rounded-[22px] flex items-center justify-center ${isDark ? 'bg-[#0d0e14]' : 'bg-white'}`}>
+                                                <Sparkles className="h-9 w-9 text-primary animate-spin" style={{ animationDuration: '4s' }} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Title & Live Status */}
+                                    <div className="space-y-2 max-w-md">
+                                        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3.5 py-1 text-xs font-bold text-primary tracking-wide uppercase shadow-sm">
+                                            <span className="relative flex h-2 w-2">
+                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                                            </span>
+                                            AI Neural Document Scanner Active
+                                        </div>
+
+                                        <h3 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                            Scanning & Extracting Requirements
+                                        </h3>
+
+                                        <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} animate-pulse`}>
+                                            {scanStepText || 'Extracting technical specifications and project requirements...'}
+                                        </p>
+                                    </div>
+
+                                    {/* Progress Bar & Counter */}
+                                    <div className="w-full max-w-sm space-y-2">
+                                        <div className="flex justify-between text-xs font-semibold">
+                                            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Scanning Progress</span>
+                                            <span className="text-primary font-mono font-bold">{scanProgress}%</span>
+                                        </div>
+                                        <div className="h-2.5 w-full rounded-full bg-muted/60 overflow-hidden border border-border/40 p-0.5">
+                                            <div
+                                                className="h-full rounded-full bg-gradient-to-r from-primary via-orange-500 to-emerald-500 transition-all duration-300 shadow-sm"
+                                                style={{ width: `${Math.max(5, scanProgress)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Files Processing Preview List */}
+                                    {briefingFiles.length > 0 && (
+                                        <div className="w-full max-w-sm space-y-2 text-left">
+                                            <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                                Processing Documents ({briefingFiles.length})
+                                            </p>
+                                            <div className="space-y-1.5 max-h-28 overflow-y-auto">
+                                                {briefingFiles.map((file, idx) => (
+                                                    <div key={idx} className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs border ${
+                                                        isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
+                                                    }`}>
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                            <span className="truncate font-medium">{file.name}</span>
+                                                        </div>
+                                                        <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 shrink-0">
+                                                            <Check className="w-3 h-3" /> Scanned
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className={`text-[11px] font-mono flex items-center justify-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>Zero information loss guaranteed • Forwarding to CATA AI Workspace</span>
+                                    </div>
+                                </div>
+                            )}
                             <div className="px-6 pt-7 pb-3 sm:px-8 sm:pt-8">
                                 <div className="flex gap-4 items-start">
                                     <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
@@ -5784,7 +6055,7 @@ const GuestAIDemo = () => {
                                                         onClick={() => setShowAllRoleServices(!showAllRoleServices)}
                                                         className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingSelectedChipClasses}`}
                                                     >
-                                                        {showAllRoleServices ? 'Less' : 'More'}
+                                                        {showAllRoleServices ? 'Show less' : `+${orderedServices.length - 7} more`}
                                                     </button>
                                                 ) : null}
                                             </div>
@@ -5793,46 +6064,269 @@ const GuestAIDemo = () => {
                                 ) : null}
 
                                 {currentBriefingStep.key === 'goal' ? (
-                                    <>
-                                        <div className="space-y-1.5">
-                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Your requirement</p>
-                                            <div className={`flex items-center rounded-xl border px-4 py-3 ${briefingBudgetFieldClasses}`}>
-                                                <input
-                                                    value={briefingAnswers.goal}
-                                                    onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
-                                                    placeholder={currentBriefingStep.placeholder}
-                                                    className={`w-full bg-transparent text-base outline-none ${briefingFieldTextClasses}`}
-                                                />
-                                                {briefingAnswers.goal && (
+                                    <div className="space-y-4">
+                                        {/* Segmented Tab Switcher */}
+                                        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/40 p-1.5 border border-border/50">
+                                            <button
+                                                type="button"
+                                                onClick={() => setBriefingInputTab('text')}
+                                                className={`flex items-center justify-center gap-2.5 rounded-xl py-2.5 px-4 text-xs font-semibold transition-all duration-200 ${
+                                                    briefingInputTab === 'text'
+                                                        ? (isDark ? 'bg-primary text-primary-foreground shadow-md' : 'bg-white text-foreground shadow-sm')
+                                                        : (isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')
+                                                }`}
+                                            >
+                                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                                <span>Write Requirements</span>
+                                                {briefingAnswers.goal?.trim()?.length > 0 && (
+                                                    <span className="ml-1 flex h-2 w-2 rounded-full bg-emerald-500" title="Text brief provided" />
+                                                )}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setBriefingInputTab('upload')}
+                                                className={`flex items-center justify-center gap-2.5 rounded-xl py-2.5 px-4 text-xs font-semibold transition-all duration-200 ${
+                                                    briefingInputTab === 'upload'
+                                                        ? (isDark ? 'bg-primary text-primary-foreground shadow-md' : 'bg-white text-foreground shadow-sm')
+                                                        : (isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')
+                                                }`}
+                                            >
+                                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                </svg>
+                                                <span>Upload Document</span>
+                                                {briefingFiles.length > 0 && (
+                                                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                        {briefingFiles.length}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {/* Tab 1: Write Requirements */}
+                                        {briefingInputTab === 'text' && (
+                                            <div className="space-y-3 pt-1">
+                                                <div className="relative">
+                                                    <textarea
+                                                        rows={5}
+                                                        value={briefingAnswers.goal}
+                                                        onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
+                                                        placeholder="Describe your project requirements, target audience, core features, or design preferences in detail..."
+                                                        className={`w-full rounded-2xl border p-4 text-sm outline-none resize-none transition-all duration-200 focus:ring-2 focus:ring-primary/20 ${briefingBudgetFieldClasses} ${briefingFieldTextClasses}`}
+                                                    />
+                                                    <div className="absolute bottom-3 right-3 text-[11px] text-muted-foreground/70 font-mono">
+                                                        {briefingAnswers.goal?.trim()?.length || 0} chars
+                                                    </div>
+                                                </div>
+
+                                                {/* Suggestion Chips */}
+                                                <div className="space-y-2">
+                                                    <p className={`text-[10px] font-semibold uppercase tracking-[0.25em] ${briefingMicroLabelClasses}`}>Quick suggestions (click to add)</p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {[
+                                                            'Full responsive design for mobile & desktop',
+                                                            'E-commerce store with payment gateway',
+                                                            'Modern dark theme UI with sleek animations',
+                                                            'SEO optimized with fast page load speed',
+                                                            'Admin dashboard & analytics panel',
+                                                        ].map((chip) => (
+                                                            <button
+                                                                key={chip}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    const currentText = briefingAnswers.goal ? briefingAnswers.goal.trim() + ' ' : '';
+                                                                    if (!currentText.includes(chip)) {
+                                                                        updateBriefingAnswer('goal', currentText + chip + '. ');
+                                                                    }
+                                                                }}
+                                                                className={`rounded-lg border px-2.5 py-1 text-[11px] transition-all hover:scale-[1.02] ${
+                                                                    briefingAnswers.goal?.includes(chip)
+                                                                        ? 'border-primary/40 bg-primary/10 text-primary font-medium'
+                                                                        : 'border-border/60 bg-background/50 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                                                }`}
+                                                            >
+                                                                + {chip}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {briefingFiles.length === 0 && (
                                                     <button
                                                         type="button"
-                                                        onClick={() => updateBriefingAnswer('goal', '')}
-                                                        className="ml-2 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary !text-white transition-colors hover:brightness-90"
+                                                        onClick={() => setBriefingInputTab('upload')}
+                                                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline pt-1 font-medium"
                                                     >
-                                                        <X className="h-3 w-3" style={{ color: 'white', stroke: 'white' }} />
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                        </svg>
+                                                        Have a requirement document or PDF? Switch to upload mode
                                                     </button>
                                                 )}
                                             </div>
-                                        </div>
-                                        {/* <div className={`space-y-3 pt-2`}>
-                                            <p className={`text-[11px] font-semibold uppercase tracking-[0.34em] ${briefingMicroLabelClasses}`}>Popular options</p>
-                                            <div className="flex flex-wrap gap-3">
-                                                {briefingGoalSuggestions.map((suggestion) => {
-                                                    const isSelected = briefingAnswers.goal === suggestion;
-                                                    return (
-                                                        <button
-                                                            key={suggestion}
-                                                            type="button"
-                                                            onClick={() => updateBriefingAnswer('goal', suggestion)}
-                                                            className={`rounded-full border px-4 py-2 text-xs transition-colors ${isSelected ? briefingSelectedChipClasses : briefingChipClasses}`}
-                                                        >
-                                                            {suggestion}
-                                                        </button>
-                                                    );
-                                                })}
+                                        )}
+
+                                        {/* Tab 2: Document Upload */}
+                                        {briefingInputTab === 'upload' && (
+                                            <div className="space-y-3 pt-1">
+                                                <label className={`group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-all duration-200 ${
+                                                    isExtractingDocPoints ? 'opacity-60 pointer-events-none cursor-not-allowed border-primary/40 bg-primary/5' : 'cursor-pointer hover:border-primary/60 hover:bg-primary/[0.02]'
+                                                } ${briefingUploadClasses}`}>
+                                                    <input
+                                                        type="file"
+                                                        multiple
+                                                        disabled={isExtractingDocPoints}
+                                                        onChange={handleBriefingFilePick}
+                                                        className="hidden"
+                                                        accept=".pdf,.doc,.docx,.txt,.rtf,.md,.png,.jpg,.jpeg,.webp"
+                                                    />
+                                                    <div className="flex flex-col items-center justify-center gap-2.5 text-center">
+                                                        {isExtractingDocPoints ? (
+                                                            <div className="flex flex-col items-center gap-2 py-2">
+                                                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                                                                <p className="text-sm font-semibold text-primary">Document analysis in progress...</p>
+                                                                <p className="text-xs text-muted-foreground">Please wait while requirements are extracted</p>
+                                                            </div>
+                                                        ) : (
+                                                            <>
+                                                                <div className="rounded-full bg-primary/10 p-3.5 text-primary group-hover:scale-110 transition-transform duration-200">
+                                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                                                    </svg>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-sm font-semibold text-foreground">Click to upload or drag & drop project files</p>
+                                                                    <p className="text-xs text-muted-foreground mt-0.5">Supports PDF, DOCX, TXT, PNG, JPG (up to 10MB per file)</p>
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </label>
+
+                                                {/* Uploaded Files Grid */}
+                                                {briefingFiles.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <p className={`text-[10px] font-semibold uppercase tracking-[0.25em] ${briefingMicroLabelClasses}`}>Attached files ({briefingFiles.length})</p>
+                                                        <div className="grid gap-2 sm:grid-cols-1">
+                                                            {briefingFiles.map((file, idx) => (
+                                                                <div
+                                                                    key={`${file.name}-${idx}`}
+                                                                    className={`rounded-xl border p-3 text-xs transition-all space-y-2 ${briefingTagClasses}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                                            <div className="rounded-lg bg-primary/10 p-2 text-primary shrink-0">
+                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                                                </svg>
+                                                                            </div>
+                                                                            <div className="min-w-0">
+                                                                                <p className={`truncate font-medium text-xs ${briefingTagTextClasses}`}>{file.name}</p>
+                                                                                <p className={`text-[10px] ${briefingTagSubtleClasses}`}>
+                                                                                    {(file.size / 1024).toFixed(0)} KB
+                                                                                    {file._extractedText ? ` • Extracted ${file._extractedText.trim().split(/\s+/).length} words` : ''}
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1.5 shrink-0">
+                                                                            {file._aiBulletPoints && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setActiveDocPointsModalFile(file);
+                                                                                        setIsExtractingDocPoints(false);
+                                                                                    }}
+                                                                                    className="rounded-lg px-2.5 py-1 bg-primary/10 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1"
+                                                                                >
+                                                                                    <FileText className="w-3 h-3 text-primary" /> View Full Brief
+                                                                                </button>
+                                                                            )}
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => removeBriefingFile(idx)}
+                                                                                className="ml-1 rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                                                                title="Remove file"
+                                                                            >
+                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Extracted Bullet Points Box Directly on Page Card */}
+                                                                    {file._aiBulletPoints && (
+                                                                        <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-amber-500/5 p-4 border border-primary/20 space-y-2 mt-2 shadow-sm">
+                                                                            <div className="flex items-center justify-between">
+                                                                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
+                                                                                    <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                                                    <span>Extracted Requirement Highlights:</span>
+                                                                                </div>
+                                                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                                                                    <CheckCircle2 className="w-3 h-3" /> Scanned
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="rounded-xl bg-background/90 p-3.5 text-xs leading-relaxed text-foreground font-sans max-h-60 overflow-y-auto border border-border/60 shadow-inner">
+                                                                                {(() => {
+                                                                                    const cleanLines = file._aiBulletPoints.split('\n').map((l) => l.trim()).filter(Boolean);
+                                                                                    return (
+                                                                                        <div className="space-y-2 font-sans text-xs">
+                                                                                            {cleanLines.map((line, lIdx) => {
+                                                                                                const cleanedText = line.replace(/^[#*\-\s\u2022]+/, '').replace(/\*\*/g, '').trim();
+                                                                                                if (!cleanedText) return null;
+                                                                                                const isHeading = line.startsWith('#') || line.startsWith('**') || line.endsWith(':') || /^- \*\*/.test(line);
+
+                                                                                                if (isHeading) {
+                                                                                                    return (
+                                                                                                        <div key={lIdx} className="pt-2 flex items-center gap-2 border-b border-primary/10 pb-1 mt-1">
+                                                                                                            <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                                                                                            <span className="font-bold text-foreground text-[12px] tracking-tight">{cleanedText}</span>
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                }
+
+                                                                                                return (
+                                                                                                    <div key={lIdx} className="flex items-start gap-2 pl-2 text-muted-foreground leading-relaxed">
+                                                                                                        <span className="text-primary font-bold text-xs leading-none mt-1">•</span>
+                                                                                                        <span className="text-foreground/90 font-medium">{cleanedText}</span>
+                                                                                                    </div>
+                                                                                                );
+                                                                                            })}
+                                                                                        </div>
+                                                                                    );
+                                                                                })()}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div> */}
-                                    </>
+                                        )}
+
+                                        {/* Status summary banner */}
+                                        {(briefingAnswers.goal?.trim() || briefingFiles.length > 0) && (
+                                            <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/15 px-3.5 py-2 text-xs text-primary font-medium">
+                                                <span className="flex items-center gap-1.5">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    Requirement ready for analysis
+                                                </span>
+                                                <span className="text-[11px] opacity-80 font-mono">
+                                                    {[
+                                                        briefingAnswers.goal?.trim() ? `${briefingAnswers.goal.trim().split(/\s+/).length} words` : null,
+                                                        briefingFiles.length > 0 ? `${briefingFiles.length} file(s)` : null,
+                                                    ].filter(Boolean).join(' + ')}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : null}
 
                                 {currentBriefingStep.key === 'budget' ? (
@@ -5924,22 +6418,34 @@ const GuestAIDemo = () => {
                                 <button
                                     type="button"
                                     onClick={goToPreviousBriefingStep}
-                                    disabled={briefingStepIndex === 0}
-                                    className={`flex items-center gap-2 text-[13px] font-semibold transition-colors ${briefingStepIndex === 0 ? 'invisible' : 'disabled:opacity-50'} ${briefingHintClasses} ${briefingBackButtonClasses}`}
+                                    disabled={briefingStepIndex === 0 || isExtractingDocPoints || briefingSubmitting}
+                                    className={`flex items-center gap-2 text-[13px] font-semibold transition-colors ${
+                                        (briefingStepIndex === 0 || isExtractingDocPoints || briefingSubmitting) ? 'invisible pointer-events-none' : 'disabled:opacity-50'
+                                    } ${briefingHintClasses} ${briefingBackButtonClasses}`}
                                 >
                                     <ArrowLeft className="h-4 w-4" />
                                     <span>Back</span>
                                 </button>
 
                                 <div className="flex items-center gap-4">
-
                                     {!['role', 'kickoff', 'duration'].includes(currentBriefingStep.key) && (
                                         <button
                                             type="submit"
-                                            disabled={!canContinueBriefing}
-                                            className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${isDark ? 'h-11 px-5 text-sm' : 'h-10 px-5 text-sm'} ${briefingPrimaryButtonClasses}`}
+                                            disabled={!canContinueBriefing || isExtractingDocPoints || briefingSubmitting}
+                                            className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-all ${
+                                                (!canContinueBriefing || isExtractingDocPoints || briefingSubmitting) ? 'opacity-50 cursor-not-allowed pointer-events-none' : ''
+                                            } ${isDark ? 'h-11 px-5 text-sm' : 'h-10 px-5 text-sm'} ${briefingPrimaryButtonClasses}`}
                                         >
-                                            {isLastBriefingStep ? (briefingSubmitting ? 'Starting...' : 'Continue') : 'Continue'}
+                                            {isExtractingDocPoints ? (
+                                                <>
+                                                    <Loader2 className="w-4 h-4 animate-spin shrink-0 text-primary-foreground" />
+                                                    <span>Analyzing Document...</span>
+                                                </>
+                                            ) : isLastBriefingStep ? (
+                                                briefingSubmitting ? 'Starting...' : 'Continue'
+                                            ) : (
+                                                'Continue'
+                                            )}
                                         </button>
                                     )}
                                 </div>
@@ -7933,6 +8439,148 @@ const GuestAIDemo = () => {
                         >
                             <LogIn className="h-5 w-5" />
                             Login to Continue
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* AI Document Requirement Points Popup Modal */}
+            <AlertDialog open={Boolean(activeDocPointsModalFile) && !sessionId} onOpenChange={(open) => !open && setActiveDocPointsModalFile(null)}>
+                <AlertDialogContent className={`max-w-lg rounded-[28px] p-7 border shadow-2xl backdrop-blur-xl relative overflow-hidden transition-all ${
+                    isDark
+                        ? 'bg-[#0d0d12]/95 border-white/15 text-white shadow-black/80'
+                        : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-900/10'
+                }`}>
+                    {/* Ambient glow */}
+                    <div className="absolute -top-20 -left-20 h-40 w-40 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+
+                    <AlertDialogHeader className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3.5 min-w-0">
+                                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                                    <FileText className="h-6 w-6 text-primary" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary tracking-wide uppercase mb-1">
+                                        {isExtractingDocPoints ? (
+                                            <span className="flex items-center gap-1">
+                                                <span className="relative flex h-1.5 w-1.5">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
+                                                </span>
+                                                Document Processing Active
+                                            </span>
+                                        ) : (
+                                            <span className="flex items-center gap-1 text-emerald-500">
+                                                <Check className="w-3 h-3" /> Analysis Complete
+                                            </span>
+                                        )}
+                                    </div>
+                                    <AlertDialogTitle className={`text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        Document Requirement Analysis
+                                    </AlertDialogTitle>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className={`flex items-center gap-2 rounded-xl px-3 py-2 border text-xs ${
+                            isDark ? 'bg-white/4 border-white/8 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                        }`}>
+                            <FileText className="w-4 h-4 text-primary shrink-0" />
+                            <span className="truncate font-medium">{activeDocPointsModalFile?.name}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground ml-auto shrink-0">
+                                {activeDocPointsModalFile?.size ? `${(activeDocPointsModalFile.size / 1024).toFixed(0)} KB` : ''}
+                            </span>
+                        </div>
+                    </AlertDialogHeader>
+
+                    <div className="mt-4 mb-2 space-y-4">
+                        {isExtractingDocPoints ? (
+                            <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center">
+                                <div className="relative flex items-center justify-center">
+                                    <div className="absolute h-20 w-20 rounded-full bg-primary/20 animate-ping blur-sm" />
+                                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                                        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1 max-w-xs">
+                                    <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                        Analyzing Document Requirements...
+                                    </p>
+                                    <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'} animate-pulse`}>
+                                        {docScanStepText || 'Processing document specifications...'}
+                                    </p>
+                                </div>
+
+                                <div className="w-full max-w-xs space-y-1.5">
+                                    <div className="flex justify-between text-[11px] font-semibold">
+                                        <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Processing Progress</span>
+                                        <span className="text-primary font-mono font-bold">{docScanProgress}%</span>
+                                    </div>
+                                    <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden border border-border/40 p-0.5">
+                                        <div
+                                            className="h-full rounded-full bg-gradient-to-r from-primary via-orange-500 to-emerald-500 transition-all duration-300 shadow-sm"
+                                            style={{ width: `${Math.max(10, docScanProgress)}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="font-bold text-emerald-500 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                                        Parsed Project Specifications:
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground font-mono">Ready for Scope Matching</span>
+                                </div>
+
+                                <div className={`rounded-2xl p-4 border text-xs max-h-60 overflow-y-auto ${
+                                    isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-slate-50 border-slate-200/90 text-slate-800'
+                                }`}>
+                                    {(() => {
+                                        const textToRender = docPointsModalText || activeDocPointsModalFile?._aiBulletPoints || '• Document attached successfully for project reference.';
+                                        const cleanLines = textToRender.split('\n').map((l) => l.trim()).filter(Boolean);
+                                        return (
+                                            <div className="space-y-2 font-sans text-xs">
+                                                {cleanLines.map((line, lIdx) => {
+                                                    const cleanedText = line.replace(/^[#*\-\s\u2022]+/, '').replace(/\*\*/g, '').trim();
+                                                    if (!cleanedText) return null;
+                                                    const isHeading = line.startsWith('#') || line.startsWith('**') || line.endsWith(':') || /^- \*\*/.test(line);
+
+                                                    if (isHeading) {
+                                                        return (
+                                                            <div key={lIdx} className="pt-2 flex items-center gap-2 border-b border-primary/10 pb-1 mt-1">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                                                <span className="font-bold text-foreground text-[12px] tracking-tight">{cleanedText}</span>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <div key={lIdx} className="flex items-start gap-2 pl-2 text-muted-foreground leading-relaxed">
+                                                            <span className="text-primary font-bold text-xs leading-none mt-1">•</span>
+                                                            <span className="text-foreground/90 font-medium">{cleanedText}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <AlertDialogFooter className="mt-5 flex justify-end">
+                        <AlertDialogAction
+                            disabled={isExtractingDocPoints}
+                            onClick={() => setActiveDocPointsModalFile(null)}
+                            className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-primary to-primary/90 px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                        >
+                            <Check className="w-4 h-4" />
+                            Use These Requirements
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -28,10 +28,92 @@ import Award from "lucide-react/dist/esm/icons/award";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import X from "lucide-react/dist/esm/icons/x";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import Phone from "lucide-react/dist/esm/icons/phone";
+import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import UserCheck from "lucide-react/dist/esm/icons/user-check";
+import FolderGit2 from "lucide-react/dist/esm/icons/folder-git-2";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 12;
 const STATUS_FILTERS = ["ALL", "ACTIVE", "PENDING", "SUSPENDED"];
+
+const computeUserOverallProfileCompletion = (user) => {
+  if (!user) {
+    return { percentage: 0, missingItems: ["Profile photo", "Professional bio", "Services & Skills", "Resume / CV"], isComplete: false };
+  }
+
+  const fp = user.freelancerProfile || {};
+  let pd = {};
+  if (typeof user.profileDetails === "string") {
+    try { pd = JSON.parse(user.profileDetails); } catch { pd = {}; }
+  } else if (user.profileDetails && typeof user.profileDetails === "object") {
+    pd = user.profileDetails;
+  } else if (fp?.serviceDetails?.__profileDetails) {
+    pd = fp.serviceDetails.__profileDetails;
+  }
+  const draft = pd.onboardingDraft || {};
+
+  const missingItems = [];
+  let filledCount = 0;
+  const totalWeight = 8;
+
+  // 1. Profile Photo
+  const photo = user.avatar || fp.profilePhoto || draft.basicProfilePhoto;
+  if (photo) filledCount++;
+  else missingItems.push("Profile photo");
+
+  // 2. Professional Bio
+  const bio = user.bio || fp.professionalBio || fp.bio || pd.bio || draft.basicProfileBio;
+  if (bio && String(bio).trim().length > 10) filledCount++;
+  else missingItems.push("Professional bio");
+
+  // 3. Services & Skills
+  const services = user.services || pd.services || fp.services || draft.selectedServices || [];
+  if (Array.isArray(services) && services.length > 0) filledCount++;
+  else missingItems.push("Services & Skills");
+
+  // 4. Experience & Title
+  const role = fp.profileRole || fp.serviceTitle || user.roleTitle;
+  const experience = fp.experienceYears || user.experienceYears;
+  if (role || experience) filledCount++;
+  else missingItems.push("Experience & Title");
+
+  // 5. Portfolio / Case Studies
+  const caseStudies = [
+    ...(Array.isArray(fp?.portfolio) ? fp.portfolio : []),
+    ...(Array.isArray(pd?.portfolioProjects) ? pd.portfolioProjects : []),
+    ...(Array.isArray(fp?.portfolioProjects) ? fp.portfolioProjects : []),
+  ];
+  if (caseStudies.length > 0) filledCount++;
+  else missingItems.push("Portfolio / Case Studies");
+
+  // 6. Resume / CV
+  const resume = fp.resume || pd.resumeUrl || pd.resume || draft.basicProfileResume;
+  if (resume) filledCount++;
+  else missingItems.push("Resume / CV");
+
+  // 7. Work Availability & Policy
+  const accept = draft.acceptInProgressProjectsValue ?? fp?.acceptInProgressProjects ?? pd?.acceptInProgressProjects;
+  if (accept !== undefined && accept !== null) filledCount++;
+  else missingItems.push("Work availability");
+
+  // 8. Contact & Location
+  const country = user.country || fp.country || pd.country;
+  const phone = user.phone || user.phoneNumber || user.contactNumber;
+  if (country || phone) filledCount++;
+  else missingItems.push("Location & Contact info");
+
+  const percentage = Math.round((filledCount / totalWeight) * 100);
+
+  return {
+    percentage: Math.min(percentage, 100),
+    missingItems,
+    isComplete: percentage >= 100,
+    filledCount,
+    totalWeight,
+  };
+};
 
 const ONBOARDING_STEPS = [
   { id: "completed", label: "Completed (100%)", shortName: "Completed" },
@@ -315,6 +397,9 @@ const AdminUsers = ({ roleFilter }) => {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [actionLoadingKey, setActionLoadingKey] = useState("");
+  const [activeTab, setActiveTab] = useState("ALL_FREELANCERS");
+  const [profileStatusFilter, setProfileStatusFilter] = useState("ALL");
+  const [projectWorkingFilter, setProjectWorkingFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [completionFilter, setCompletionFilter] = useState("ALL");
   const [stepFilter, setStepFilter] = useState("ALL");
@@ -356,6 +441,70 @@ const AdminUsers = ({ roleFilter }) => {
     () => buildSummaryCards(summary, roleFilter),
     [roleFilter, summary],
   );
+
+  const allFreelancersStats = useMemo(() => {
+    if (!isFreelancerView || allFreelancers.length === 0) {
+      return { total: 0, completed100: 0, incomplete: 0, workingOnProjects: 0, openToWork: 0 };
+    }
+
+    let completed100 = 0;
+    let incomplete = 0;
+    let workingOnProjects = 0;
+    let openToWork = 0;
+
+    allFreelancers.forEach((u) => {
+      const overall = computeUserOverallProfileCompletion(u);
+      if (overall.isComplete) completed100++;
+      else incomplete++;
+
+      const activeProj = u.activeProjectsCount ?? (Array.isArray(u.proposals) ? u.proposals.length : 0);
+      if (activeProj > 0) workingOnProjects++;
+
+      const avail = getFreelancerAvailability(u);
+      if (avail !== "BUSY") openToWork++;
+    });
+
+    return {
+      total: allFreelancers.length,
+      completed100,
+      incomplete,
+      workingOnProjects,
+      openToWork,
+    };
+  }, [allFreelancers, isFreelancerView]);
+
+  const allFreelancersSummaryCards = useMemo(() => [
+    {
+      key: "total",
+      title: "Total Registered Freelancers",
+      value: allFreelancersStats.total,
+      tone: "text-foreground",
+    },
+    {
+      key: "completed100",
+      title: "100% Completed Profiles",
+      value: allFreelancersStats.completed100,
+      tone: "text-emerald-600 dark:text-emerald-400",
+    },
+    {
+      key: "incomplete",
+      title: "Incomplete Profiles (<100%)",
+      value: allFreelancersStats.incomplete,
+      tone: "text-amber-600 dark:text-amber-400",
+    },
+    {
+      key: "workingOnProjects",
+      title: "Working on Active Projects",
+      value: allFreelancersStats.workingOnProjects,
+      tone: "text-blue-600 dark:text-blue-400",
+    },
+    {
+      key: "openToWork",
+      title: "Open to Work",
+      value: allFreelancersStats.openToWork,
+      tone: "text-purple-600 dark:text-purple-400",
+    },
+  ], [allFreelancersStats]);
 
   // Compute stats across all freelancers
   const freelancerAnalytics = useMemo(() => {
@@ -499,9 +648,26 @@ const AdminUsers = ({ roleFilter }) => {
         const servicesList = Array.isArray(fp.services) ? fp.services.join(" ") : (Array.isArray(u.services) ? u.services.join(" ") : "");
         const matchName = u.fullName?.toLowerCase().includes(q);
         const matchEmail = u.email?.toLowerCase().includes(q);
+        const matchPhone = (u.phone || u.phoneNumber || "").toLowerCase().includes(q);
         const matchUsername = fp.username?.toLowerCase().includes(q);
         const matchService = servicesList.toLowerCase().includes(q);
-        return matchName || matchEmail || matchUsername || matchService;
+        return matchName || matchEmail || matchPhone || matchUsername || matchService;
+      });
+    }
+
+    // Profile Completion Status filter for All Freelancers view
+    if (activeTab === "ALL_FREELANCERS" && profileStatusFilter !== "ALL") {
+      result = result.filter((u) => {
+        const overall = computeUserOverallProfileCompletion(u);
+        return profileStatusFilter === "COMPLETE" ? overall.isComplete : !overall.isComplete;
+      });
+    }
+
+    // Active Projects Filter for All Freelancers view
+    if (activeTab === "ALL_FREELANCERS" && projectWorkingFilter !== "ALL") {
+      result = result.filter((u) => {
+        const activeProj = u.activeProjectsCount ?? (Array.isArray(u.proposals) ? u.proposals.length : 0);
+        return projectWorkingFilter === "WORKING" ? activeProj > 0 : activeProj === 0;
       });
     }
 
@@ -544,8 +710,8 @@ const AdminUsers = ({ roleFilter }) => {
 
     // Sorting
     result.sort((a, b) => {
-      const statsA = computeUserOnboardingStats(a);
-      const statsB = computeUserOnboardingStats(b);
+      const statsA = activeTab === "ALL_FREELANCERS" ? computeUserOverallProfileCompletion(a) : computeUserOnboardingStats(a);
+      const statsB = activeTab === "ALL_FREELANCERS" ? computeUserOverallProfileCompletion(b) : computeUserOnboardingStats(b);
 
       if (sortFilter === "COMPLETION_DESC") {
         return statsB.percentage - statsA.percentage;
@@ -580,7 +746,22 @@ const AdminUsers = ({ roleFilter }) => {
       total: totalFiltered,
       totalPages: totalPages,
     });
-  }, [allFreelancers, availabilityFilter, completionFilter, isFreelancerView, page, pageSize, search, serviceFilter, sortFilter, statusFilter, stepFilter]);
+  }, [
+    activeTab,
+    allFreelancers,
+    availabilityFilter,
+    completionFilter,
+    isFreelancerView,
+    page,
+    pageSize,
+    profileStatusFilter,
+    projectWorkingFilter,
+    search,
+    serviceFilter,
+    sortFilter,
+    statusFilter,
+    stepFilter,
+  ]);
 
   const fetchSummary = useCallback(async () => {
     setSummaryLoading(true);
@@ -712,7 +893,7 @@ const AdminUsers = ({ roleFilter }) => {
                 {isFreelancerView && (
                   <Badge variant="secondary" className="px-2.5 py-1 text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
                     <Sparkles className="mr-1 h-3.5 w-3.5 text-primary inline" />
-                    Analytics & Multi-Filter Active
+                    Analytics & Profile Audit Active
                   </Badge>
                 )}
               </div>
@@ -721,15 +902,17 @@ const AdminUsers = ({ roleFilter }) => {
 
             {isFreelancerView ? (
               <div className="flex flex-wrap gap-2 items-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAnalyticsPanel(!showAnalyticsPanel)}
-                  className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
-                >
-                  <PieChart className="h-4 w-4" />
-                  {showAnalyticsPanel ? "Hide Analytics Dashboard" : "Show Analytics Dashboard"}
-                </Button>
+                {activeTab === "ONBOARDING" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAnalyticsPanel(!showAnalyticsPanel)}
+                    className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
+                  >
+                    <PieChart className="h-4 w-4" />
+                    {showAnalyticsPanel ? "Hide Analytics Dashboard" : "Show Analytics Dashboard"}
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={() => navigate("/admin/approvals")}>
                   Approvals
                 </Button>
@@ -743,9 +926,46 @@ const AdminUsers = ({ roleFilter }) => {
             ) : null}
           </div>
 
+          {/* Top-Level Tabs for Freelancers View */}
+          {isFreelancerView && (
+            <div className="flex border-b border-border/80 gap-6 text-sm font-medium">
+              <button
+                type="button"
+                onClick={() => { setActiveTab("ALL_FREELANCERS"); setPage(1); }}
+                className={`pb-3 flex items-center gap-2 border-b-2 transition-all ${
+                  activeTab === "ALL_FREELANCERS"
+                    ? "border-primary text-primary font-bold"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Users className="h-4 w-4" />
+                All Freelancers Directory
+                <Badge variant="secondary" className="ml-1.5 px-2 py-0.5 text-xs font-mono bg-primary/10 text-primary border border-primary/20">
+                  {allFreelancersStats.total}
+                </Badge>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setActiveTab("ONBOARDING"); setPage(1); }}
+                className={`pb-3 flex items-center gap-2 border-b-2 transition-all ${
+                  activeTab === "ONBOARDING"
+                    ? "border-primary text-primary font-bold"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <TrendingUp className="h-4 w-4" />
+                Freelancer Onboarding Funnel
+                <Badge variant="outline" className="ml-1.5 px-2 py-0.5 text-xs font-mono">
+                  {freelancerAnalytics.avgCompletion}% Avg
+                </Badge>
+              </button>
+            </div>
+          )}
+
           {/* Quick Summary Metric Cards */}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            {summaryCards.map((card) => (
+            {(isFreelancerView && activeTab === "ALL_FREELANCERS" ? allFreelancersSummaryCards : summaryCards).map((card) => (
               <Card key={card.key} className="shadow-sm transition-all hover:shadow">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{card.title}</CardTitle>
@@ -759,18 +979,18 @@ const AdminUsers = ({ roleFilter }) => {
             ))}
           </div>
 
-          {/* Detailed Freelancer Analytics Dashboard (Completion Distribution & Onboarding Drop-off Funnel) */}
-          {isFreelancerView && showAnalyticsPanel && (
+          {/* Detailed Freelancer Analytics Dashboard (Only in Onboarding Funnel Tab) */}
+          {isFreelancerView && activeTab === "ONBOARDING" && showAnalyticsPanel && (
             <Card className="border-primary/20 bg-gradient-to-br from-card via-card to-primary/5 shadow-md">
               <CardHeader className="pb-3 border-b border-border/60">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                   <div>
                     <CardTitle className="text-lg font-bold flex items-center gap-2">
                       <TrendingUp className="h-5 w-5 text-primary" />
-                      Profile Completion & Drop-off Funnel Analytics
+                      Onboarding Completion & Drop-off Funnel Analytics
                     </CardTitle>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Visual distribution of overall freelancer onboarding completion percentage and stage drop-offs. Click any card or step to filter instantly.
+                      Visual distribution of freelancer onboarding completion percentage and stage drop-offs. Click any card or step to filter instantly.
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -786,7 +1006,7 @@ const AdminUsers = ({ roleFilter }) => {
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs font-semibold tracking-wide text-foreground uppercase flex items-center gap-1.5">
                       <PieChart className="h-3.5 w-3.5 text-primary" />
-                      Profile Completion Tiers (Click card to filter)
+                      Onboarding Completion Tiers (Click card to filter)
                     </span>
                     {completionFilter !== "ALL" && (
                       <button
@@ -906,7 +1126,7 @@ const AdminUsers = ({ roleFilter }) => {
               <div className="relative flex-1 min-w-[260px]">
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={`Search by name, email, username, or skill...`}
+                  placeholder={`Search by name, email, phone, username, or skill...`}
                   className="pl-9 pr-4"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -941,48 +1161,84 @@ const AdminUsers = ({ roleFilter }) => {
               </div>
             </div>
 
-            {/* Row 2: Deep Dropdown Filters (Only in Freelancer view) */}
+            {/* Row 2: Dropdown Filters */}
             {isFreelancerView && (
               <div className="pt-2 border-t border-border/60 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5">
-                {/* 1. Completion Filter */}
-                <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
-                    Completion Percentage:
-                  </label>
-                  <Select value={completionFilter} onValueChange={setCompletionFilter}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="All Completion %" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Completion Levels</SelectItem>
-                      {COMPLETION_TIERS.map((tier) => (
-                        <SelectItem key={tier.key} value={tier.key}>
-                          {tier.label} ({freelancerAnalytics.tiers[tier.key] || 0})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* 1. Profile Status / Onboarding Completion Filter */}
+                {activeTab === "ALL_FREELANCERS" ? (
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                      Overall Profile Completion:
+                    </label>
+                    <Select value={profileStatusFilter} onValueChange={setProfileStatusFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="All Completion Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Profiles ({allFreelancersStats.total})</SelectItem>
+                        <SelectItem value="COMPLETE">100% Fully Completed ({allFreelancersStats.completed100})</SelectItem>
+                        <SelectItem value="INCOMPLETE">Incomplete & Pending ({allFreelancersStats.incomplete})</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                      Onboarding Percentage:
+                    </label>
+                    <Select value={completionFilter} onValueChange={setCompletionFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="All Completion %" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Completion Levels</SelectItem>
+                        {COMPLETION_TIERS.map((tier) => (
+                          <SelectItem key={tier.key} value={tier.key}>
+                            {tier.label} ({freelancerAnalytics.tiers[tier.key] || 0})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
-                {/* 2. Onboarding Step Filter */}
-                <div>
-                  <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
-                    Drop-off Step:
-                  </label>
-                  <Select value={stepFilter} onValueChange={setStepFilter}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue placeholder="All Drop-off Steps" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All Steps & Phases</SelectItem>
-                      {ONBOARDING_STEPS.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.label} ({freelancerAnalytics.steps[s.id] || 0})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* 2. Active Projects Working Filter (All Freelancers tab) OR Drop-off Step Filter (Onboarding tab) */}
+                {activeTab === "ALL_FREELANCERS" ? (
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                      Active Projects Working:
+                    </label>
+                    <Select value={projectWorkingFilter} onValueChange={setProjectWorkingFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="All Project Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Working Status</SelectItem>
+                        <SelectItem value="WORKING">Working on Active Projects ({allFreelancersStats.workingOnProjects})</SelectItem>
+                        <SelectItem value="NO_PROJECTS">No Active Projects</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
+                      Drop-off Step:
+                    </label>
+                    <Select value={stepFilter} onValueChange={setStepFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="All Drop-off Steps" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Steps & Phases</SelectItem>
+                        {ONBOARDING_STEPS.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.label} ({freelancerAnalytics.steps[s.id] || 0})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* 3. Work Availability Filter */}
                 <div>
@@ -1053,6 +1309,18 @@ const AdminUsers = ({ roleFilter }) => {
                     <X className="h-3 w-3 cursor-pointer" onClick={() => setStatusFilter("ALL")} />
                   </Badge>
                 )}
+                {profileStatusFilter !== "ALL" && (
+                  <Badge variant="secondary" className="text-[11px] gap-1 px-2 py-0.5 bg-primary/10 text-primary">
+                    Profile Status: {profileStatusFilter}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setProfileStatusFilter("ALL")} />
+                  </Badge>
+                )}
+                {projectWorkingFilter !== "ALL" && (
+                  <Badge variant="secondary" className="text-[11px] gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                    Projects: {projectWorkingFilter}
+                    <X className="h-3 w-3 cursor-pointer" onClick={() => setProjectWorkingFilter("ALL")} />
+                  </Badge>
+                )}
                 {completionFilter !== "ALL" && (
                   <Badge variant="secondary" className="text-[11px] gap-1 px-2 py-0.5 bg-primary/10 text-primary">
                     Completion: {completionFilter}%
@@ -1102,17 +1370,24 @@ const AdminUsers = ({ roleFilter }) => {
             <Table>
               <TableHeader className="bg-muted/40">
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role / Type</TableHead>
+                  <TableHead>Freelancer Profile</TableHead>
+                  <TableHead>Specialization & Skills</TableHead>
                   {isFreelancerView ? (
-                    <>
-                      <TableHead>Onboarding Phase & Drop-Off</TableHead>
-                      <TableHead>Primary Service & Skills</TableHead>
-                    </>
+                    activeTab === "ALL_FREELANCERS" ? (
+                      <>
+                        <TableHead>Overall Profile Status</TableHead>
+                        <TableHead>No. of Active Projects</TableHead>
+                      </>
+                    ) : (
+                      <>
+                        <TableHead>Onboarding Phase & Drop-Off</TableHead>
+                        <TableHead>Primary Service & Skills</TableHead>
+                      </>
+                    )
                   ) : (
                     <TableHead>Status</TableHead>
                   )}
-                  <TableHead>Joined & Last Active</TableHead>
+                  <TableHead>Joined & Account Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1149,166 +1424,227 @@ const AdminUsers = ({ roleFilter }) => {
                   users.map((user) => {
                     const displayStatus = getDisplayStatus(user);
                     const fp = user.freelancerProfile || {};
-                    const stats = computeUserOnboardingStats(user);
-                    const isComplete = stats.isComplete;
-                    const stepId = stats.stepId;
-                    const stepTitle = stats.stepTitle;
-                    const percentage = stats.percentage;
+                    const onboardingStats = computeUserOnboardingStats(user);
+                    const overallStats = computeUserOverallProfileCompletion(user);
                     const availStatus = getFreelancerAvailability(user);
                     const servicesList = Array.isArray(fp.services) ? fp.services : (Array.isArray(user.services) ? user.services : []);
-                    const primaryService = servicesList[0] ? String(servicesList[0]).replace(/[_-]+/g, " ") : "Not set";
-                    const lastActiveDate = fp.updatedAt || user.updatedAt || user.createdAt;
+                    const primaryService = servicesList[0] ? String(servicesList[0]).replace(/[_-]+/g, " ") : (fp.profileRole || "Freelancer");
+                    const phoneNum = user.phone || user.phoneNumber || fp.phoneNumber;
+                    const activeProjectsCount = user.activeProjectsCount ?? (Array.isArray(user.proposals) ? user.proposals.length : 0);
 
                     return (
                       <TableRow key={user.id} className="hover:bg-muted/50 transition-colors">
-                        <TableCell>
+                        {/* 1. Freelancer Profile Info */}
+                        <TableCell className="min-w-[220px]">
                           <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center font-semibold text-primary overflow-hidden shrink-0">
+                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary overflow-hidden shrink-0 border border-primary/20">
                               {user.avatar || fp.profilePhoto ? (
                                 <img src={user.avatar || fp.profilePhoto} alt={user.fullName} className="h-full w-full object-cover" />
                               ) : (
-                                user.fullName?.charAt(0)?.toUpperCase() || "U"
+                                user.fullName?.charAt(0)?.toUpperCase() || "F"
                               )}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 space-y-0.5">
                               <div className="flex items-center gap-1.5">
-                                <p className="font-medium text-sm truncate">{user.fullName}</p>
-                                {isFreelancerView && (
-                                  <span
-                                    className={`inline-block h-2 w-2 rounded-full shrink-0 ${
-                                      availStatus === "OPEN_TO_WORK"
-                                        ? "bg-emerald-500"
-                                        : availStatus === "ACCEPTING_PROJECTS"
-                                          ? "bg-blue-500"
-                                          : "bg-muted-foreground/40"
-                                    }`}
-                                    title={availStatus === "OPEN_TO_WORK" ? "Open to Work" : availStatus === "ACCEPTING_PROJECTS" ? "Accepting Projects" : "Busy"}
-                                  />
-                                )}
+                                <p className="font-semibold text-sm truncate">{user.fullName}</p>
+                                <span
+                                  className={`inline-block h-2 w-2 rounded-full shrink-0 ${
+                                    availStatus === "OPEN_TO_WORK"
+                                      ? "bg-emerald-500"
+                                      : availStatus === "ACCEPTING_PROJECTS"
+                                        ? "bg-blue-500"
+                                        : "bg-muted-foreground/40"
+                                  }`}
+                                  title={availStatus === "OPEN_TO_WORK" ? "Open to Work" : availStatus === "ACCEPTING_PROJECTS" ? "Accepting Projects" : "Busy"}
+                                />
                               </div>
                               <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                              {phoneNum ? (
+                                <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-mono">
+                                  <Phone className="h-3 w-3 text-emerald-600 inline shrink-0" />
+                                  {phoneNum}
+                                </p>
+                              ) : null}
                               {fp.username ? (
-                                <p className="text-[11px] text-primary/80 font-mono">@{fp.username}</p>
+                                <p className="text-[11px] text-primary font-mono">@{fp.username}</p>
                               ) : null}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex flex-col gap-1 items-start">
-                            <span
-                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                user.role === "ADMIN"
-                                  ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-                                  : user.role === "CLIENT"
-                                    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-                                    : user.role === "PROJECT_MANAGER"
-                                      ? "bg-primary/10 text-primary dark:bg-primary/10 dark:text-primary"
-                                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
-                              }`}
-                            >
-                              {user.role === "PROJECT_MANAGER" ? "PM" : user.role}
-                            </span>
+
+                        {/* 2. Specialization & Skills */}
+                        <TableCell className="max-w-[210px]">
+                          <div className="space-y-1">
+                            <p className="text-xs font-semibold capitalize text-foreground truncate" title={primaryService}>
+                              {primaryService}
+                            </p>
                             {fp.profileRole ? (
-                              <span className="text-[11px] text-muted-foreground capitalize">
-                                {fp.profileRole}
-                              </span>
+                              <p className="text-[11px] text-muted-foreground truncate">{fp.profileRole}</p>
                             ) : null}
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {servicesList.slice(0, 2).map((s, idx) => (
+                                <Badge key={idx} variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
+                                  {String(s).replace(/[_-]+/g, " ")}
+                                </Badge>
+                              ))}
+                              {servicesList.length > 2 ? (
+                                <span className="text-[10px] text-muted-foreground">+{servicesList.length - 2} more</span>
+                              ) : null}
+                            </div>
                           </div>
                         </TableCell>
 
+                        {/* 3 & 4. Tab Specific Columns */}
                         {isFreelancerView ? (
-                          <>
-                            {/* Onboarding Phase & Real-Time Drop-off */}
-                            <TableCell className="min-w-[210px]">
-                              <div className="space-y-1.5">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="font-medium capitalize text-foreground truncate max-w-[140px]" title={stepTitle}>
-                                    {stepTitle}
-                                  </span>
-                                  <span className={`font-mono font-bold text-xs ${
-                                    isComplete
-                                      ? "text-emerald-600 dark:text-emerald-400"
-                                      : percentage >= 75
-                                        ? "text-blue-600 dark:text-blue-400"
-                                        : percentage >= 50
-                                          ? "text-indigo-600 dark:text-indigo-400"
-                                          : "text-amber-600 dark:text-amber-400"
-                                  }`}>
-                                    {percentage}%
-                                  </span>
+                          activeTab === "ALL_FREELANCERS" ? (
+                            <>
+                              {/* Overall Profile Completion Status */}
+                              <TableCell className="min-w-[230px]">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <Badge
+                                      className={`text-[10px] font-bold px-2 py-0.5 border-0 ${
+                                        overallStats.isComplete
+                                          ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                          : "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+                                      }`}
+                                    >
+                                      {overallStats.isComplete ? "100% Complete" : `Incomplete (${overallStats.percentage}%)`}
+                                    </Badge>
+                                    <span className="font-mono font-bold text-xs text-foreground">
+                                      {overallStats.percentage}%
+                                    </span>
+                                  </div>
+                                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                    <div
+                                      className={`h-full transition-all duration-500 ${
+                                        overallStats.isComplete
+                                          ? "bg-emerald-500"
+                                          : overallStats.percentage >= 75
+                                            ? "bg-blue-500"
+                                            : overallStats.percentage >= 50
+                                              ? "bg-indigo-500"
+                                              : "bg-amber-500"
+                                      }`}
+                                      style={{ width: `${overallStats.percentage}%` }}
+                                    />
+                                  </div>
+                                  <p className="text-[11px] text-muted-foreground truncate max-w-[220px]">
+                                    {overallStats.isComplete ? (
+                                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                                        ✓ All profile sections complete
+                                      </span>
+                                    ) : (
+                                      <span className="text-amber-700 dark:text-amber-400 font-medium">
+                                        Pending: {overallStats.missingItems.slice(0, 2).join(", ")}
+                                        {overallStats.missingItems.length > 2 ? ` +${overallStats.missingItems.length - 2}` : ""}
+                                      </span>
+                                    )}
+                                  </p>
                                 </div>
-                                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                                  <div
-                                    className={`h-full transition-all duration-500 ${
-                                      isComplete
-                                        ? "bg-emerald-500"
-                                        : percentage >= 75
-                                          ? "bg-blue-500"
-                                          : percentage >= 50
-                                            ? "bg-indigo-500"
-                                            : percentage >= 25
-                                              ? "bg-amber-500"
-                                              : "bg-rose-500"
+                              </TableCell>
+
+                              {/* No. of Active Projects Working On */}
+                              <TableCell className="min-w-[170px]">
+                                <div className="space-y-1">
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-xs font-semibold gap-1.5 px-2.5 py-1 ${
+                                      activeProjectsCount > 0
+                                        ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950/40 dark:text-blue-300"
+                                        : "bg-muted/40 text-muted-foreground border-border"
                                     }`}
-                                    style={{ width: `${percentage}%` }}
-                                  />
+                                  >
+                                    <Briefcase className="h-3.5 w-3.5" />
+                                    {activeProjectsCount} Active {activeProjectsCount === 1 ? "Project" : "Projects"}
+                                  </Badge>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {activeProjectsCount > 0 ? "Currently assigned & working" : "Available for new projects"}
+                                  </p>
                                 </div>
-                                <div className="flex items-center gap-1.5">
+                              </TableCell>
+                            </>
+                          ) : (
+                            <>
+                              {/* Onboarding Phase & Drop-Off */}
+                              <TableCell className="min-w-[210px]">
+                                <div className="space-y-1.5">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <span className="font-medium capitalize text-foreground truncate max-w-[140px]" title={onboardingStats.stepTitle}>
+                                      {onboardingStats.stepTitle}
+                                    </span>
+                                    <span className="font-mono font-bold text-xs">
+                                      {onboardingStats.percentage}%
+                                    </span>
+                                  </div>
+                                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                    <div
+                                      className={`h-full transition-all duration-500 ${
+                                        onboardingStats.isComplete ? "bg-emerald-500" : "bg-amber-500"
+                                      }`}
+                                      style={{ width: `${onboardingStats.percentage}%` }}
+                                    />
+                                  </div>
                                   <Badge
                                     variant="outline"
                                     className={`text-[10px] px-1.5 py-0 font-normal ${
-                                      isComplete
-                                        ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                        : "border-amber-300 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
+                                      onboardingStats.isComplete
+                                        ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                                        : "border-amber-300 bg-amber-50 text-amber-700"
                                     }`}
                                   >
-                                    {isComplete ? "Onboarded (100%)" : `Backed up at ${stepId}`}
+                                    {onboardingStats.isComplete ? "Onboarded (100%)" : `Backed up at ${onboardingStats.stepId}`}
                                   </Badge>
                                 </div>
-                              </div>
-                            </TableCell>
+                              </TableCell>
 
-                            {/* Primary Service & Skills */}
-                            <TableCell className="max-w-[200px]">
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium capitalize text-foreground truncate" title={primaryService}>
-                                  {primaryService}
-                                </p>
-                                {servicesList.length > 1 ? (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    +{servicesList.length - 1} more services
-                                  </span>
-                                ) : null}
-                              </div>
-                            </TableCell>
-                          </>
+                              {/* Primary Service & Skills */}
+                              <TableCell className="max-w-[200px]">
+                                <p className="text-xs font-medium capitalize text-foreground truncate">{primaryService}</p>
+                              </TableCell>
+                            </>
+                          )
                         ) : (
                           <TableCell>
                             <Badge
                               className={
                                 displayStatus === "SUSPENDED"
-                                  ? "bg-red-100 text-red-700 border-0 dark:bg-red-900/30 dark:text-red-400"
+                                  ? "bg-red-100 text-red-700 border-0"
                                   : displayStatus === "PENDING"
-                                    ? "bg-amber-100 text-amber-700 border-0 dark:bg-amber-900/30 dark:text-amber-400"
-                                    : "bg-green-100 text-green-700 border-0 dark:bg-green-900/30 dark:text-green-400"
+                                    ? "bg-amber-100 text-amber-700 border-0"
+                                    : "bg-green-100 text-green-700 border-0"
                               }
                             >
-                              {displayStatus === "PENDING" ? "Pending" : displayStatus === "SUSPENDED" ? "Suspended" : "Active"}
+                              {displayStatus}
                             </Badge>
                           </TableCell>
                         )}
 
-                        {/* Joined & Last Active */}
+                        {/* Joined & Account Status */}
                         <TableCell>
-                          <div className="text-xs space-y-0.5">
-                            <p className="text-foreground font-mono">
-                              {new Date(user.createdAt).toLocaleDateString()}
+                          <div className="text-xs space-y-1">
+                            <div className="flex items-center gap-1">
+                              <Badge
+                                variant="outline"
+                                className={`text-[10px] px-1.5 py-0 ${
+                                  displayStatus === "ACTIVE"
+                                    ? "border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40"
+                                    : displayStatus === "PENDING"
+                                      ? "border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40"
+                                      : "border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/40"
+                                }`}
+                              >
+                                {displayStatus}
+                              </Badge>
+                              {user.isVerified && (
+                                <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-blue-100 text-blue-700">
+                                  Verified
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-muted-foreground font-mono">
+                              Joined {new Date(user.createdAt).toLocaleDateString()}
                             </p>
-                            {lastActiveDate ? (
-                              <p className="text-[11px] text-muted-foreground">
-                                Active {new Date(lastActiveDate).toLocaleDateString()}
-                              </p>
-                            ) : null}
                           </div>
                         </TableCell>
 

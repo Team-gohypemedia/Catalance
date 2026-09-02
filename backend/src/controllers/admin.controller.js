@@ -313,12 +313,15 @@ export const getUsers = asyncHandler(async (req, res) => {
     }
 
     const total = await prisma.user.count({ where });
+
     const users = await prisma.user.findMany({
       where,
       select: {
         id: true,
         fullName: true,
         email: true,
+        phone: true,
+        phoneNumber: true,
         role: true,
         status: true,
         isVerified: true,
@@ -329,14 +332,21 @@ export const getUsers = asyncHandler(async (req, res) => {
         freelancerProfile: {
           select: {
             profileRole: true,
-            username: true,
-            city: true,
-            country: true,
+            professionalBio: true,
             services: true,
             serviceDetails: true,
+            profilePhoto: true,
+            isVerified: true,
+            username: true,
             rating: true,
             reviewCount: true,
             experienceYears: true,
+            workExperience: true,
+            resume: true,
+            deliveryPolicyAccepted: true,
+            communicationPolicyAccepted: true,
+            acceptInProgressProjects: true,
+            customProjectLimit: true,
             updatedAt: true,
           },
         },
@@ -345,19 +355,33 @@ export const getUsers = asyncHandler(async (req, res) => {
             profileDetails: true,
           },
         },
+        proposals: {
+          where: { status: 'ACCEPTED' },
+          select: {
+            id: true,
+            status: true,
+            project: { select: { id: true, title: true, status: true } },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
       take: limit
     });
 
-    const paginatedUsers = users.map((user) => ({
-      ...user,
-      profileDetails:
-        user.managerProfile?.profileDetails && typeof user.managerProfile.profileDetails === "object"
-          ? user.managerProfile.profileDetails
-          : undefined,
-    }));
+    const paginatedUsers = users.map((user) => {
+      const activeProjects = Array.isArray(user.proposals)
+        ? user.proposals.filter((p) => p.project?.status === 'IN_PROGRESS' || p.status === 'ACCEPTED')
+        : [];
+      return {
+        ...user,
+        activeProjectsCount: activeProjects.length,
+        profileDetails:
+          user.managerProfile?.profileDetails && typeof user.managerProfile.profileDetails === "object"
+            ? user.managerProfile.profileDetails
+            : undefined,
+      };
+    });
 
     res.json({
       data: {
@@ -1413,7 +1437,6 @@ export const getProjects = asyncHandler(async (req, res) => {
   }
 });
 
-// Get detailed user information
 export const getUserDetails = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.params;
@@ -1450,10 +1473,16 @@ export const getUserDetails = asyncHandler(async (req, res) => {
             serviceDetails: true,
             profilePhoto: true,
             isVerified: true,
-            username: true
+            username: true,
+            rating: true,
+            reviewCount: true,
+            experienceYears: true,
+            workExperience: true,
+            resume: true,
+            city: true,
+            country: true,
           }
         },
-        // For clients: get their owned projects
         ownedProjects: {
           select: {
             id: true,
@@ -1468,13 +1497,12 @@ export const getUserDetails = asyncHandler(async (req, res) => {
                 amount: true,
                 status: true,
                 freelancer: {
-                  select: { fullName: true, email: true }
+                  select: { id: true, fullName: true, email: true, phone: true }
                 }
               }
             }
           }
         },
-        // For freelancers: get their proposals
         proposals: {
           select: {
             id: true,
@@ -1488,8 +1516,12 @@ export const getUserDetails = asyncHandler(async (req, res) => {
                 status: true,
                 budget: true,
                 spent: true,
+                progress: true,
                 owner: {
-                  select: { fullName: true, email: true }
+                  select: { id: true, fullName: true, email: true, phone: true, phoneNumber: true }
+                },
+                manager: {
+                  select: { id: true, fullName: true, email: true, phone: true, phoneNumber: true }
                 }
               }
             }
@@ -1544,21 +1576,6 @@ export const getUserDetails = asyncHandler(async (req, res) => {
               orderBy: { createdAt: "desc" },
               take: 1,
             },
-          },
-          orderBy: { createdAt: "desc" }
-        },
-        managedDisputes: {
-          select: {
-            id: true,
-            status: true,
-            description: true,
-            createdAt: true,
-            project: {
-              select: {
-                id: true,
-                title: true,
-              }
-            }
           },
           orderBy: { createdAt: "desc" }
         },
@@ -1624,7 +1641,13 @@ export const getUserDetails = asyncHandler(async (req, res) => {
           take: 12,
         }
       }
-    });    const freelancerProfile =
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const freelancerProfile =
       user.freelancerProfile && typeof user.freelancerProfile === "object"
         ? user.freelancerProfile
         : {};
@@ -1634,30 +1657,33 @@ export const getUserDetails = asyncHandler(async (req, res) => {
         ? freelancerProfileDetails.identity
         : {};
 
+    const ownedProjects = user.ownedProjects || [];
+    const userProposals = user.proposals || [];
+
     // Calculate statistics based on role
     let stats = {};
 
     if (user.role === "CLIENT") {
-      const totalProjects = user.ownedProjects.length;
-      const activeProjects = user.ownedProjects.filter(p => p.status === "IN_PROGRESS").length;
-      const completedProjects = user.ownedProjects.filter(p => p.status === "COMPLETED").length;
+      const totalProjects = ownedProjects.length;
+      const activeProjects = ownedProjects.filter(p => p.status === "IN_PROGRESS").length;
+      const completedProjects = ownedProjects.filter(p => p.status === "COMPLETED").length;
 
       // Calculate total spent from actual 'spent' field on each project
-      const totalSpent = user.ownedProjects.reduce((sum, project) => sum + (project.spent || 0), 0);
+      const totalSpent = ownedProjects.reduce((sum, project) => sum + (project.spent || 0), 0);
 
       stats = {
         totalProjects,
         activeProjects,
         completedProjects,
-        openProjects: user.ownedProjects.filter(p => p.status === "OPEN").length,
+        openProjects: ownedProjects.filter(p => p.status === "OPEN").length,
         totalSpent,
-        moneyRemaining: user.ownedProjects.reduce((sum, p) => sum + (p.budget || 0), 0) - totalSpent
+        moneyRemaining: ownedProjects.reduce((sum, p) => sum + (p.budget || 0), 0) - totalSpent
       };
     } else if (user.role === "FREELANCER") {
-      const totalProposals = user.proposals.length;
-      const acceptedProposals = user.proposals.filter(p => p.status === "ACCEPTED");
-      const pendingProposals = user.proposals.filter(p => p.status === "PENDING");
-      const rejectedProposals = user.proposals.filter(p => p.status === "REJECTED");
+      const totalProposals = userProposals.length;
+      const acceptedProposals = userProposals.filter(p => p.status === "ACCEPTED");
+      const pendingProposals = userProposals.filter(p => p.status === "PENDING");
+      const rejectedProposals = userProposals.filter(p => p.status === "REJECTED");
 
       // Platform fee - freelancer receives 70%
       const PLATFORM_FEE_PERCENTAGE = 0.30;

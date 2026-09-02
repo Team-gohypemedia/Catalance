@@ -1983,19 +1983,40 @@ const extractParsedBudgetFromAnswerText = (answerText = "") => {
     const rawText = String(answerText || "").trim();
     if (!rawText) return null;
 
-    const directParse = parseFlexibleBudgetFromText(rawText);
-    if (directParse?.amount && Number.isFinite(directParse.amount)) {
-        return directParse;
+    // 1. Prioritize explicit keyword match (e.g. "Investment: ₹70,000", "Budget: 50,000", "Commercials: ₹70,000")
+    const explicitKeywordMatch = rawText.match(
+        /(?:Investment|Budget|Cost|Price|Total|Fee|Commercials?)\s*[:=]?\s*(?:rs\.?|inr|usd|eur|gbp|\$)?\s*([\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?)/i
+    );
+    if (explicitKeywordMatch && explicitKeywordMatch[1]) {
+        const parsedExplicit = parseFlexibleBudgetFromText(explicitKeywordMatch[1]);
+        if (parsedExplicit?.amount && Number.isFinite(parsedExplicit.amount) && parsedExplicit.amount >= 1000) {
+            return parsedExplicit;
+        }
     }
 
+    // 2. Scan all candidates with explicit currency symbols or budget multipliers
     const budgetCandidates = rawText.match(
-        /(?:rs\.?|inr|usd|eur|gbp|\$)?\s*[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?\s*(?:rs\.?|inr|usd|eur|gbp|\$)?/gi
+        /(?:rs\.?|inr|usd|eur|gbp|\$)\s*[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?|[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)\s*(?:rs\.?|inr|usd|eur|gbp|\$)?/gi
     ) || [];
 
+    const validCandidates = [];
     for (const candidate of budgetCandidates) {
         const parsedCandidate = parseFlexibleBudgetFromText(String(candidate || "").trim());
-        if (parsedCandidate?.amount && Number.isFinite(parsedCandidate.amount)) {
-            return parsedCandidate;
+        if (parsedCandidate?.amount && Number.isFinite(parsedCandidate.amount) && parsedCandidate.amount >= 1000) {
+            validCandidates.push(parsedCandidate);
+        }
+    }
+
+    if (validCandidates.length > 0) {
+        validCandidates.sort((a, b) => b.amount - a.amount);
+        return validCandidates[0];
+    }
+
+    // Fallback: direct parse if text is concise
+    if (rawText.length < 50) {
+        const directParse = parseFlexibleBudgetFromText(rawText);
+        if (directParse?.amount && Number.isFinite(directParse.amount) && directParse.amount >= 1000) {
+            return directParse;
         }
     }
 
