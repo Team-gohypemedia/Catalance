@@ -136,6 +136,8 @@ const getInitials = (value) => {
 
 /* ─── AuthButtons ────────────────────────────────────────────────────── */
 const AuthButtons = ({ showAuthenticatedNav, currentDashboard, user }) => {
+  const location = useLocation();
+
   if (showAuthenticatedNav) {
     const displayName = getDisplayName(user);
     return (
@@ -155,11 +157,21 @@ const AuthButtons = ({ showAuthenticatedNav, currentDashboard, user }) => {
     );
   }
 
+  const currentUrl = `${location.pathname}${location.search}`;
+  const isAuthPath =
+    location.pathname.startsWith("/signin") ||
+    location.pathname.startsWith("/signup") ||
+    location.pathname.startsWith("/get-started") ||
+    location.pathname.startsWith("/onboarding");
+  const signInPath = isAuthPath || location.pathname === "/"
+    ? "/signin/phone"
+    : `/signin/phone?redirect=${encodeURIComponent(currentUrl)}`;
+
   return (
     <div className="flex items-center gap-2">
       <NavbarButton
         as={Link}
-        to="/signin/phone"
+        to={signInPath}
         className="bg-primary text-primary-foreground hover:bg-primary/90"
       >
         Sign In
@@ -265,6 +277,17 @@ const Navbar = () => {
 /* ─── PublicMobileSidebar ────────────────────────────────────────────── */
 const PublicMobileSidebar = ({ navItems, currentPath, _isHome }) => {
   const [open, setOpen] = useState(false);
+  const location = useLocation();
+
+  const currentUrl = `${location.pathname}${location.search}`;
+  const isAuthPath =
+    location.pathname.startsWith("/signin") ||
+    location.pathname.startsWith("/signup") ||
+    location.pathname.startsWith("/get-started") ||
+    location.pathname.startsWith("/onboarding");
+  const signInPath = isAuthPath || location.pathname === "/"
+    ? "/signin/phone"
+    : `/signin/phone?redirect=${encodeURIComponent(currentUrl)}`;
 
   return (
     <div className="w-full border-b border-border/60 bg-background px-4 py-2 shadow-sm lg:hidden">
@@ -336,7 +359,7 @@ const PublicMobileSidebar = ({ navItems, currentPath, _isHome }) => {
                 <div className="mt-auto space-y-2 pt-6">
                   <SheetClose asChild>
                     <Link
-                      to="/signin/phone"
+                      to={signInPath}
                       className="flex min-h-10 w-full items-center justify-center rounded-[15px] bg-primary px-3 py-1.5 text-[0.9rem] font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                     >
                       Sign In

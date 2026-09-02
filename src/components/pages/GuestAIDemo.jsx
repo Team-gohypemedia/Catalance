@@ -5776,8 +5776,9 @@ const GuestAIDemo = () => {
                 setGeneratedProposals(nextProposals);
 
                 toast.success("Proposal saved! Please create an account to continue.");
+                const currentUrl = `${location.pathname}${location.search}`;
                 navigate(
-                    `/signin/phone?role=client&redirect=${encodeURIComponent(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH)}`,
+                    `/signin/phone?role=client&redirect=${encodeURIComponent(currentUrl)}`,
                     {
                         state: {
                             fromProposal: true,
@@ -6122,37 +6123,7 @@ const GuestAIDemo = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Suggestion Chips */}
-                                                <div className="space-y-2">
-                                                    <p className={`text-[10px] font-semibold uppercase tracking-[0.25em] ${briefingMicroLabelClasses}`}>Quick suggestions (click to add)</p>
-                                                    <div className="flex flex-wrap gap-1.5">
-                                                        {[
-                                                            'Full responsive design for mobile & desktop',
-                                                            'E-commerce store with payment gateway',
-                                                            'Modern dark theme UI with sleek animations',
-                                                            'SEO optimized with fast page load speed',
-                                                            'Admin dashboard & analytics panel',
-                                                        ].map((chip) => (
-                                                            <button
-                                                                key={chip}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    const currentText = briefingAnswers.goal ? briefingAnswers.goal.trim() + ' ' : '';
-                                                                    if (!currentText.includes(chip)) {
-                                                                        updateBriefingAnswer('goal', currentText + chip + '. ');
-                                                                    }
-                                                                }}
-                                                                className={`rounded-lg border px-2.5 py-1 text-[11px] transition-all hover:scale-[1.02] ${
-                                                                    briefingAnswers.goal?.includes(chip)
-                                                                        ? 'border-primary/40 bg-primary/10 text-primary font-medium'
-                                                                        : 'border-border/60 bg-background/50 text-muted-foreground hover:border-primary/40 hover:text-foreground'
-                                                                }`}
-                                                            >
-                                                                + {chip}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
+
 
                                                 {briefingFiles.length === 0 && (
                                                     <button

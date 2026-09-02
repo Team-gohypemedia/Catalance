@@ -272,11 +272,9 @@ export const parseAssistantMessageLayout = (
     .filter(Boolean);
   const normalizedOptionEntries = dedupeOptionEntries(optionEntries);
 
-  const hasQuestionLine = lines.some((line) => QUESTION_LINE_REGEX.test(line));
   const isLikelyInteractivePrompt =
     normalizedOptionEntries.length >= 2 &&
-    normalizedOptionEntries.length <= 24 &&
-    (hasQuestionLine || OPTION_PROMPT_CUE_REGEX.test(normalized) || forceInteractiveOptions);
+    normalizedOptionEntries.length <= 24;
 
   if (optionEntries.length > 0 && !isLikelyInteractivePrompt) {
     return { contextText: forceSentenceBreaks(normalized), questionText: "", options: [] };

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import X from "lucide-react/dist/esm/icons/x";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
@@ -431,6 +431,7 @@ export function ProposalSidebar({
   embedded = false,
   inline = false,
 }) {
+  const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -496,10 +497,14 @@ export function ProposalSidebar({
       return;
     }
 
+    const currentUrl = `${location.pathname}${location.search}`;
+    const targetUrl = !currentUrl || currentUrl === "/" || currentUrl.startsWith("/signin")
+      ? CLIENT_DASHBOARD_SEND_PROPOSAL_PATH
+      : currentUrl;
     toast.success("Proposal saved! Please create an account to continue.");
     onClose?.();
     navigate(
-      `/signin/phone?role=client&redirect=${encodeURIComponent(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH)}`,
+      `/signin/phone?role=client&redirect=${encodeURIComponent(targetUrl)}`,
       {
         state: {
           fromProposal: true,

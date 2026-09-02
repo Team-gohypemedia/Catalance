@@ -137,11 +137,20 @@ function Login({ className, ...props }) {
   // Read ?redirect= query param (set by Service Details CTA flow)
   const redirectParam = searchParams.get("redirect");
   const openMessageParam = searchParams.get("openMessage");
-  // Build the full return URL, including openMessage if it was set
+  const openReviewParam = searchParams.get("openReview");
+  // Build the full return URL, including openMessage/openReview if set
   const buildReturnUrl = () => {
     if (!redirectParam) return null;
-    const extra = openMessageParam ? `?openMessage=${openMessageParam}` : "";
-    return `${redirectParam}${extra}`;
+    let url = redirectParam;
+    if (openMessageParam && !url.includes("openMessage=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}openMessage=${openMessageParam}`;
+    }
+    if (openReviewParam && !url.includes("openReview=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}openReview=${openReviewParam}`;
+    }
+    return url;
   };
 
   const handleChange = (event) => {

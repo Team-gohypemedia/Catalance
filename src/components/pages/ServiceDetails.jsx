@@ -569,8 +569,12 @@ const ServiceDetails = () => {
   }, [service]);
 
   const handleLoginRequired = () => {
-    const returnPath = location.pathname;
-    navigate(`/signin/phone?redirect=${encodeURIComponent(returnPath)}&openMessage=1`);
+    const returnPath = `${location.pathname}${location.search}`;
+    const separator = returnPath.includes("?") ? "&" : "?";
+    const targetUrl = returnPath.includes("openMessage=")
+      ? returnPath
+      : `${returnPath}${separator}openMessage=1`;
+    navigate(`/signin/phone?redirect=${encodeURIComponent(targetUrl)}`);
   };
 
   const handleShare = async () => {

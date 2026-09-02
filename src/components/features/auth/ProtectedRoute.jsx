@@ -31,7 +31,18 @@ const ProtectedRoute = ({
   }
 
   if (!isAuthenticated) {
-    return <Navigate to={loginPath} replace />;
+    const currentUrl = `${location.pathname}${location.search}`;
+    const isAuthPath =
+      location.pathname.startsWith("/signin") ||
+      location.pathname.startsWith("/signup") ||
+      location.pathname.startsWith("/get-started") ||
+      location.pathname.startsWith("/onboarding");
+    const separator = loginPath.includes("?") ? "&" : "?";
+    const targetLoginPath =
+      !isAuthPath && currentUrl && currentUrl !== "/"
+        ? `${loginPath}${separator}redirect=${encodeURIComponent(currentUrl)}`
+        : loginPath;
+    return <Navigate to={targetLoginPath} replace />;
   }
 
   if (

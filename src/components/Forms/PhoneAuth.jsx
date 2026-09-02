@@ -353,6 +353,7 @@ function PhoneAuth() {
     : "/signin/email";
   const redirectParam = searchParams.get("redirect");
   const openMessageParam = searchParams.get("openMessage");
+  const openReviewParam = searchParams.get("openReview");
   const requestedRole =
     searchParams.get("role")?.toUpperCase() ||
     (typeof location.state?.role === "string"
@@ -364,8 +365,16 @@ function PhoneAuth() {
 
   const buildReturnUrl = () => {
     if (!redirectParam) return null;
-    const extra = openMessageParam ? `?openMessage=${openMessageParam}` : "";
-    return `${redirectParam}${extra}`;
+    let url = redirectParam;
+    if (openMessageParam && !url.includes("openMessage=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}openMessage=${openMessageParam}`;
+    }
+    if (openReviewParam && !url.includes("openReview=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}openReview=${openReviewParam}`;
+    }
+    return url;
   };
 
   const getPhonePayload = () => {

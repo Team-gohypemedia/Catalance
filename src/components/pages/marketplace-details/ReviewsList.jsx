@@ -293,8 +293,12 @@ const ReviewsList = ({ serviceId, initialStats }) => {
                         <Button
                             className="mt-2 rounded-xl h-10 px-6 font-semibold"
                             onClick={() => {
-                                const returnPath = location.pathname;
-                                navigate(`/signin/phone?redirect=${encodeURIComponent(returnPath)}&openReview=1`);
+                                const returnPath = `${location.pathname}${location.search}`;
+                                const separator = returnPath.includes("?") ? "&" : "?";
+                                const targetUrl = returnPath.includes("openReview=")
+                                    ? returnPath
+                                    : `${returnPath}${separator}openReview=1`;
+                                navigate(`/signin/phone?redirect=${encodeURIComponent(targetUrl)}`);
                             }}
                         >
                             Log in to review

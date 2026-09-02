@@ -24,7 +24,7 @@ const createJwt = (payload = {}) => {
 
   return [
     encode({ alg: "none", typ: "JWT" }),
-    encode(payload),
+    encode({ onboardingRole: "CLIENT", ...payload }),
     "signature",
   ].join(".");
 };
@@ -87,6 +87,7 @@ const renderProtectedApp = ({
       <AuthProvider>
         <Routes>
           <Route path={loginPath} element={<LoginPage />} />
+          <Route path="/onboarding/role" element={<div>Role Onboarding</div>} />
           <Route
             path={protectedPath}
             element={<ProtectedRoute {...protectedProps}>{protectedElement}</ProtectedRoute>}
@@ -138,12 +139,12 @@ describe("ProtectedRoute auth bootstrap", () => {
     });
     persistSession({
       accessToken: token,
-      user: { id: "user-1", role: "CLIENT" },
+      user: { id: "user-1", role: "CLIENT", onboardingRole: "CLIENT", fullName: "Test User", phoneNumber: "9876543210" },
     });
 
     const fetchMock = vi.fn().mockResolvedValue(
       createJsonResponse(200, {
-        data: { id: "user-1", role: "CLIENT", email: "client@example.com" },
+        data: { id: "user-1", role: "CLIENT", onboardingRole: "CLIENT", fullName: "Test User", phoneNumber: "9876543210", email: "client@example.com" },
       })
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -194,14 +195,14 @@ describe("ProtectedRoute auth bootstrap", () => {
     });
     persistSession({
       accessToken: token,
-      user: { id: "user-3", role: "CLIENT" },
+      user: { id: "user-3", role: "CLIENT", onboardingRole: "CLIENT", fullName: "Test User", phoneNumber: "9876543210" },
     });
 
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
         createJsonResponse(200, {
-          data: { id: "user-3", role: "CLIENT", email: "client@example.com" },
+          data: { id: "user-3", role: "CLIENT", onboardingRole: "CLIENT", fullName: "Test User", phoneNumber: "9876543210", email: "client@example.com" },
         })
       )
       .mockResolvedValueOnce(createJsonResponse(401, { message: "Unauthorized" }));
@@ -228,7 +229,7 @@ describe("ProtectedRoute auth bootstrap", () => {
     });
     persistSession({
       accessToken: token,
-      user: { id: "user-4", role: "FREELANCER", onboardingComplete: false },
+      user: { id: "user-4", role: "FREELANCER", onboardingRole: "FREELANCER", fullName: "Test User", phoneNumber: "9876543210", onboardingComplete: false },
     });
 
     const fetchMock = vi.fn().mockResolvedValue(
@@ -236,6 +237,9 @@ describe("ProtectedRoute auth bootstrap", () => {
         data: {
           id: "user-4",
           role: "FREELANCER",
+          onboardingRole: "FREELANCER",
+          fullName: "Test User",
+          phoneNumber: "9876543210",
           email: "freelancer@example.com",
           onboardingComplete: false,
         },
@@ -261,7 +265,7 @@ describe("ProtectedRoute auth bootstrap", () => {
     });
     persistSession({
       accessToken: token,
-      user: { id: "user-4b", role: "FREELANCER", onboardingComplete: false },
+      user: { id: "user-4b", role: "FREELANCER", onboardingRole: "FREELANCER", fullName: "Test User", phoneNumber: "9876543210", onboardingComplete: false },
     });
 
     const fetchMock = vi.fn().mockResolvedValue(
@@ -269,6 +273,9 @@ describe("ProtectedRoute auth bootstrap", () => {
         data: {
           id: "user-4b",
           role: "FREELANCER",
+          onboardingRole: "FREELANCER",
+          fullName: "Test User",
+          phoneNumber: "9876543210",
           email: "freelancer-locked@example.com",
           onboardingComplete: false,
         },
@@ -300,7 +307,7 @@ describe("ProtectedRoute auth bootstrap", () => {
     });
     persistSession({
       accessToken: token,
-      user: { id: "user-5", role: "FREELANCER", onboardingComplete: true },
+      user: { id: "user-5", role: "FREELANCER", onboardingRole: "FREELANCER", fullName: "Test User", phoneNumber: "9876543210", onboardingComplete: true },
     });
 
     const fetchMock = vi.fn().mockResolvedValue(
@@ -308,6 +315,9 @@ describe("ProtectedRoute auth bootstrap", () => {
         data: {
           id: "user-5",
           role: "FREELANCER",
+          onboardingRole: "FREELANCER",
+          fullName: "Test User",
+          phoneNumber: "9876543210",
           email: "complete@example.com",
           onboardingComplete: true,
         },

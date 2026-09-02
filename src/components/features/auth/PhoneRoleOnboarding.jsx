@@ -167,7 +167,8 @@ const readFileAsDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
-const getTargetPath = (role, user) => {
+const getTargetPath = (role, user, redirectTo) => {
+  if (redirectTo) return redirectTo;
   if (role === FREELANCER_ROLE) {
     return getDashboardEntryPath(user, FREELANCER_DASHBOARD) || "/freelancer";
   }
@@ -532,7 +533,10 @@ function PhoneRoleOnboarding() {
           : "Redirecting to your client dashboard...",
         { id: progressToastId },
       );
-      navigate(getTargetPath(roleOverride, sessionUser), { replace: true });
+      navigate(
+        getTargetPath(roleOverride, sessionUser, onboardingState?.redirectTo),
+        { replace: true }
+      );
     } catch (error) {
       const message =
         error?.message || "Unable to save your onboarding details. Please try again.";

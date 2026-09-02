@@ -164,6 +164,7 @@ function EmailAuth() {
 
   const redirectParam = searchParams.get("redirect");
   const openMessageParam = searchParams.get("openMessage");
+  const openReviewParam = searchParams.get("openReview");
   const queryString = searchParams.toString();
   const phoneSigninPath = queryString
     ? `/signin/phone?${queryString}`
@@ -181,8 +182,16 @@ function EmailAuth() {
 
   const buildReturnUrl = () => {
     if (!redirectParam) return null;
-    const extra = openMessageParam ? `?openMessage=${openMessageParam}` : "";
-    return `${redirectParam}${extra}`;
+    let url = redirectParam;
+    if (openMessageParam && !url.includes("openMessage=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}openMessage=${openMessageParam}`;
+    }
+    if (openReviewParam && !url.includes("openReview=")) {
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}openReview=${openReviewParam}`;
+    }
+    return url;
   };
 
   const requestOtp = async ({ resend = false } = {}) => {

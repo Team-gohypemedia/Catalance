@@ -119,7 +119,7 @@ describe("Navbar service tab visibility", () => {
 
     expect(homeLink.getAttribute("aria-current")).toBe("page");
     expect(homeTileClassName).toContain("bg-primary");
-    expect(homeTileClassName).toContain("text-background");
+    expect(homeTileClassName).toContain("text-primary-foreground");
     expect(dashboardLink.getAttribute("aria-current")).toBeNull();
     expect(dashboardTileClassName).not.toContain("bg-primary");
   });
@@ -142,7 +142,7 @@ describe("Navbar service tab visibility", () => {
 
     expect(projectsLink.getAttribute("aria-current")).toBe("page");
     expect(projectsTileClassName).toContain("bg-primary");
-    expect(projectsTileClassName).toContain("text-background");
+    expect(projectsTileClassName).toContain("text-primary-foreground");
     expect(dashboardLink.getAttribute("aria-current")).toBeNull();
     expect(dashboardTileClassName).not.toContain("bg-primary");
   });
