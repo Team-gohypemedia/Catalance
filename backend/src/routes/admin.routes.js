@@ -61,6 +61,11 @@ import {
   upsertAdminBlog,
 } from "../controllers/blog.controller.js";
 
+import {
+  getServicesActivity,
+  getServicesActivitySessionDetail,
+} from "../controllers/adminServicesActivity.controller.js";
+
 import { requireAuth } from "../middlewares/require-auth.js";
 import { requireAdmin } from "../middleware/admin.middleware.js";
 import { adminEngagementRouter } from "../modules/engagement/routes/adminEngagement.routes.js";
@@ -204,6 +209,10 @@ router.delete("/marketplace-filters/sub-categories/:id", deleteAdminSubCategory)
 router.post("/marketplace-filters/tools", createAdminTool);
 router.put("/marketplace-filters/tools/:id", updateAdminTool);
 router.delete("/marketplace-filters/tools/:id", deleteAdminTool);
+
+// Services Activity & Drop-off Tracker Routes
+router.get("/services-activity", getServicesActivity);
+router.get("/services-activity/:sessionId", getServicesActivitySessionDetail);
 
 // WhatsApp Inbox & Analytics Dashboard Routes
 router.get("/whatsapp/conversations", getWhatsappConversations);

@@ -24,6 +24,7 @@ import Newspaper from "lucide-react/dist/esm/icons/newspaper";
 import BookOpen from "lucide-react/dist/esm/icons/book-open";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import PenSquare from "lucide-react/dist/esm/icons/pen-square";
+import Activity from "lucide-react/dist/esm/icons/activity";
 
 import { NavMain } from "@/components/layout/nav-main";
 import { NavUser } from "@/components/layout/nav-user";
@@ -259,6 +260,12 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "Services Activity",
+      url: "/admin/services-activity",
+      icon: Activity,
+      isActive: true,
+    },
+    {
       title: "Onboarding Content",
       url: "/admin/onboarding-content",
       icon: MessageSquareCode,
@@ -369,7 +376,7 @@ export function AppSidebar({ ...props }) {
       <SidebarHeader>
         <TeamSwitcher brand={brand} />
       </SidebarHeader>
-      <SidebarContent className="overflow-hidden!">
+      <SidebarContent className="overflow-y-auto overflow-x-hidden">
         <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>

@@ -162,6 +162,12 @@ const AdminFreelancerOnboarding = lazy(
 
   () => import("@/components/features/admin/AdminFreelancerOnboarding"),
 );
+const AdminServicesActivity = lazy(
+  () => import("@/components/features/admin/AdminServicesActivity"),
+);
+const AdminServicesActivityDetail = lazy(
+  () => import("@/components/features/admin/AdminServicesActivityDetail"),
+);
 const AdminFreelancerLimits = lazy(
   () => import("@/components/features/admin/AdminFreelancerLimits"),
 );
@@ -852,6 +858,22 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminFreelancerOnboarding />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/services-activity"
+              element={
+                <AdminRoute>
+                  <AdminServicesActivity />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/services-activity/:sessionId"
+              element={
+                <AdminRoute>
+                  <AdminServicesActivityDetail />
                 </AdminRoute>
               }
             />

@@ -314,7 +314,7 @@ export function AppSidebar({ ...props }) {
       <SidebarHeader>
         <TeamSwitcher brand={brand} />
       </SidebarHeader>
-      <SidebarContent className="overflow-x-hidden">
+      <SidebarContent className="overflow-y-auto overflow-x-hidden">
         <NavMain items={navItems} />
       </SidebarContent>
       <SidebarFooter>
