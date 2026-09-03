@@ -22,14 +22,33 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/shared/context/AuthContext";
 import { request } from "@/shared/lib/api-client";
+import { blogPosts } from "@/shared/data/blogPosts";
 
 const BLOG_PAGE_TITLE = SEO_DATA.blog.title;
 const BLOG_PAGE_DESCRIPTION = SEO_DATA.blog.description;
 
+const normalizeStaticPost = (post) => ({
+  id: post.id,
+  slug: post.slug,
+  title: post.title,
+  excerpt: post.summary,
+  category: post.label || "Insights",
+  authorName: post.author || "Catalance Editorial Team",
+  coverImageUrl: post.image || "",
+  coverImageAlt: post.title,
+  featured: false,
+  readTime: post.readTime || "5 min read",
+  publishedLabel: post.published || "Recent",
+  seoTitle: post.title,
+  seoDescription: post.summary
+});
+
+const STATIC_FALLBACK_POSTS = blogPosts.map(normalizeStaticPost);
+
 const Blog = () => {
   const { user } = useAuth();
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState(STATIC_FALLBACK_POSTS);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -44,18 +63,19 @@ const Blog = () => {
 
   const loadBlogs = async () => {
     try {
-      setLoading(true);
-      setError("");
       const response = await request("/blogs");
       const list = Array.isArray(response)
         ? response
         : Array.isArray(response?.data)
         ? response.data
         : [];
-      setPosts(list);
+      if (list.length > 0) {
+        setPosts(list);
+        setError("");
+      }
     } catch (err) {
-      console.error("Could not fetch published blogs:", err);
-      setError(err?.message || "Failed to load articles.");
+      console.warn("Using static blog fallback, live fetch failed:", err);
+      // Keep static posts available so Googlebot and users never see an empty page or status error box
     } finally {
       setLoading(false);
     }

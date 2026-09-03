@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/shared/context/AuthContext";
 import { request } from "@/shared/lib/api-client";
+import { getBlogPostBySlug } from "@/shared/data/blogPosts";
 
 const headingSlug = (text = "") =>
   String(text || "")
@@ -62,10 +63,38 @@ const BlogPost = () => {
         }
       } catch (nextError) {
         if (!ignore) {
-          console.error("Failed to load blog post:", nextError);
-          setError(nextError?.message || "Failed to load article");
-          setPost(null);
-          setRelatedPosts([]);
+          console.warn("Failed to load live blog post, using fallback static post:", nextError);
+          const staticMatch = getBlogPostBySlug(slug);
+          if (staticMatch) {
+            setPost({
+              id: staticMatch.id,
+              slug: staticMatch.slug,
+              title: staticMatch.title,
+              excerpt: staticMatch.summary,
+              category: staticMatch.label || "Insights",
+              authorName: staticMatch.author || "Catalance Editorial Team",
+              coverImageUrl: staticMatch.image || "",
+              coverImageAlt: staticMatch.title,
+              readTime: staticMatch.readTime || "5 min read",
+              publishedAt: new Date().toISOString(),
+              publishedLabel: staticMatch.published || "Recent",
+              seoTitle: staticMatch.title,
+              seoDescription: staticMatch.summary,
+              content: [
+                staticMatch.content?.intro,
+                ...(staticMatch.content?.sections || []).map(
+                  (s) => `## ${s.heading}\n\n${(s.paragraphs || []).join("\n\n")}`
+                )
+              ]
+                .filter(Boolean)
+                .join("\n\n")
+            });
+            setError("");
+          } else {
+            setError(nextError?.message || "Failed to load article");
+            setPost(null);
+            setRelatedPosts([]);
+          }
         }
       } finally {
         if (!ignore) {
