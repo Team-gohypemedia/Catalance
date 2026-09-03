@@ -150,4 +150,115 @@ describe("CategoryComboSearch Component", () => {
       screen.queryByRole("dialog", { name: "Choose categories and skills" }),
     ).toBeNull();
   });
+
+  it("automatically selects all skills when category checkbox is clicked", () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    const onChange = vi.fn();
+    const onSubcategorySkillChange = vi.fn();
+
+    render(
+      <CategoryMultiSelect
+        options={[
+          {
+            value: "catalog:9",
+            label: "CMS Development",
+            subCategoryId: 9,
+          },
+        ]}
+        toolOptionsByCategory={{
+          9: [
+            { id: 26, label: "Shopify" },
+            { id: 27, label: "Webflow" },
+          ],
+        }}
+        skillSuggestionsByCategory={{
+          "catalog:9": ["WordPress", "Wix"],
+        }}
+        selected={[]}
+        onChange={onChange}
+        onSubcategorySkillChange={onSubcategorySkillChange}
+      />,
+    );
+
+    // Open browse accordion
+    const browseButton = screen.getByTitle("Browse all categories & skills");
+    fireEvent.click(browseButton);
+
+    // Click the category select checkbox for CMS Development
+    const categorySelectBtn = screen.getByLabelText("Select category CMS Development");
+    fireEvent.click(categorySelectBtn);
+
+    // Should call onChange with category
+    expect(onChange).toHaveBeenCalledWith(["catalog:9"]);
+
+    // Should call onSubcategorySkillChange with all tool IDs [26, 27] and all suggested skills ["WordPress", "Wix"]
+    expect(onSubcategorySkillChange).toHaveBeenCalledWith("catalog:9", {
+      selectedToolIds: [26, 27],
+      customSkillNames: ["WordPress", "Wix"],
+    });
+  });
+
+  it("clears all skills when an already fully-selected category checkbox is clicked", () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ data: [] }),
+    });
+
+    const onChange = vi.fn();
+    const onSubcategorySkillChange = vi.fn();
+
+    render(
+      <CategoryMultiSelect
+        options={[
+          {
+            value: "catalog:9",
+            label: "CMS Development",
+            subCategoryId: 9,
+          },
+        ]}
+        toolOptionsByCategory={{
+          9: [
+            { id: 26, label: "Shopify" },
+            { id: 27, label: "Webflow" },
+          ],
+        }}
+        skillSuggestionsByCategory={{
+          "catalog:9": ["WordPress"],
+        }}
+        selected={["catalog:9"]}
+        selectedSubcategories={[
+          {
+            subCategoryId: 9,
+            subCategoryKey: "catalog:9",
+            selectedToolIds: [26, 27],
+            customSkillNames: ["WordPress"],
+          },
+        ]}
+        onChange={onChange}
+        onSubcategorySkillChange={onSubcategorySkillChange}
+      />,
+    );
+
+    // Open browse accordion
+    const browseButton = screen.getByTitle("Browse all categories & skills");
+    fireEvent.click(browseButton);
+
+    // Click the category select checkbox for CMS Development to deselect
+    const categorySelectBtn = screen.getByLabelText("Select category CMS Development");
+    fireEvent.click(categorySelectBtn);
+
+    // Should remove category from selected
+    expect(onChange).toHaveBeenCalledWith([]);
+
+    // Should clear all skills
+    expect(onSubcategorySkillChange).toHaveBeenCalledWith("catalog:9", {
+      selectedToolIds: [],
+      customSkillNames: [],
+    });
+  });
 });
+

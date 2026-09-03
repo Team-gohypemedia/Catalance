@@ -1,6 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Check, ChevronDown, ChevronRight, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, Minus, Search, X } from 'lucide-react';
 import { cn } from "@/shared/lib/utils";
 import { API_BASE_URL, request } from "@/shared/lib/api-client";
 import { getSubcategorySelectionKey, normalizeStringArray } from "../../service-details";
@@ -567,14 +567,146 @@ const CategoryMultiSelect = ({
     }
   };
 
-  const toggleOption = (optionValue) => {
+  const getToolsForCategory = (option) => {
+    const subCatId =
+      toPositiveInteger(option?.subCategoryId) ||
+      (String(option?.value || "").startsWith("catalog:")
+        ? toPositiveInteger(String(option.value).split(":")[1])
+        : null) ||
+      toPositiveInteger(option?.value);
+
+    const fromProps = subCatId ? toolOptionsByCategory[String(subCatId)] : null;
+    const fromPreFetch =
+      allPreFetchedTools[option?.value] ||
+      (subCatId ? allPreFetchedTools[String(subCatId)] : null) ||
+      (subCatId ? allPreFetchedTools[`catalog:${subCatId}`] : null);
+    const tools =
+      Array.isArray(fromProps) && fromProps.length > 0
+        ? fromProps
+        : Array.isArray(fromPreFetch)
+          ? fromPreFetch
+          : [];
+
+    return tools
+      .map((tool) => ({
+        id: toPositiveInteger(tool?.id),
+        label: String(tool?.label || tool?.name || "").trim(),
+      }))
+      .filter((t) => t.id && t.label);
+  };
+
+  const getSuggestedSkillsForCategory = (optionValue) => {
+    const rawSkills = skillSuggestionsByCategory?.[optionValue];
+    return normalizeStringArray(
+      (Array.isArray(rawSkills) ? rawSkills : []).map(
+        (entry) => entry?.label || entry?.value || entry,
+      ),
+    );
+  };
+
+  const getSelectedForCategory = (categoryKey) => {
+    const matchesKey = (entryKey, targetKey, entrySubCategoryId) => {
+      if (!targetKey) return false;
+      const strTarget = String(targetKey).trim();
+      const strEntry = String(entryKey || "").trim();
+      if (strEntry === strTarget) return true;
+      const targetId = strTarget.replace("catalog:", "");
+      const entryId = strEntry.replace("catalog:", "");
+      if (targetId && targetId === entryId) return true;
+      if (entrySubCategoryId && String(entrySubCategoryId) === targetId) return true;
+      return false;
+    };
+
+    const currentSub = (
+      Array.isArray(selectedSubcategories) ? selectedSubcategories : []
+    ).find((sub) =>
+      matchesKey(getSubcategorySelectionKey(sub), categoryKey, sub?.subCategoryId)
+    );
+    const toolIds = (
+      Array.isArray(currentSub?.selectedToolIds) ? currentSub.selectedToolIds : []
+    )
+      .map((val) => toPositiveInteger(val))
+      .filter(Boolean);
+    const customSkills = normalizeStringArray(currentSub?.customSkillNames);
+    return { toolIds: new Set(toolIds), toolIdsList: toolIds, customSkills };
+  };
+
+  const toggleOption = (optionValue, forceOption = null) => {
     const normalizedValue = String(optionValue).trim();
     if (!normalizedValue) return;
+
+    const opt =
+      (Array.isArray(options) ? options : []).find((o) => String(o.value) === normalizedValue) ||
+      (Array.isArray(customSelections) ? customSelections : []).find((o) => String(o.value) === normalizedValue) ||
+      { value: normalizedValue };
+
+    const { toolIds: currentToolIds, customSkills: currentCustomSkills } = getSelectedForCategory(normalizedValue);
+    const availableTools = getToolsForCategory(opt);
+    const availableSuggested = getSuggestedSkillsForCategory(normalizedValue);
+    const allAvailableToolIds = availableTools.map((t) => t.id).filter(Boolean);
+    const allAvailableSuggested = [...availableSuggested];
+    const totalAvailableCount = allAvailableToolIds.length + allAvailableSuggested.length;
+    const currentSelectedCount = currentToolIds.size + currentCustomSkills.length;
     const wasSelected = selectedSet.has(normalizedValue);
-    const nextSelectedValues = wasSelected
-      ? normalizedSelected.filter((value) => value !== normalizedValue)
-      : [...normalizedSelected, normalizedValue];
-    commitCategorySelection(nextSelectedValues, normalizedValue);
+    const isAllSelected =
+      totalAvailableCount > 0 ? currentSelectedCount >= totalAvailableCount : wasSelected;
+
+    const shouldSelect = forceOption !== null ? forceOption : !isAllSelected;
+
+    let nextSelectedValues;
+    if (shouldSelect) {
+      nextSelectedValues = wasSelected ? normalizedSelected : [...normalizedSelected, normalizedValue];
+      commitCategorySelection(nextSelectedValues, normalizedValue);
+
+      onSubcategorySkillChange?.(normalizedValue, {
+        selectedToolIds: allAvailableToolIds,
+        customSkillNames: allAvailableSuggested,
+      });
+
+      const subCatId =
+        toPositiveInteger(opt?.subCategoryId) ||
+        (String(opt?.value || "").startsWith("catalog:")
+          ? toPositiveInteger(String(opt.value).split(":")[1])
+          : null) ||
+        toPositiveInteger(opt?.value);
+
+      if (subCatId && allAvailableToolIds.length === 0) {
+        fetch(`${API_BASE_URL}/marketplace/filters/tools?subCategoryId=${subCatId}`)
+          .then((res) => res.json())
+          .then((payload) => {
+            const tools = (Array.isArray(payload?.data) ? payload.data : [])
+              .map((entry) => ({
+                id: toPositiveInteger(entry?.id),
+                label: String(entry?.name || "").trim(),
+              }))
+              .filter((t) => t.id && t.label);
+            if (tools.length > 0) {
+              setAllPreFetchedTools((prev) => ({
+                ...prev,
+                [normalizedValue]: tools,
+                [String(subCatId)]: tools,
+              }));
+              onSubcategorySkillChange?.(normalizedValue, {
+                selectedToolIds: tools.map((t) => t.id),
+                customSkillNames: allAvailableSuggested,
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      nextSelectedValues = normalizedSelected.filter((value) => value !== normalizedValue);
+      const nextActiveValue =
+        normalizedValue === activeCategoryValue
+          ? nextSelectedValues[0] || ""
+          : activeCategoryValue;
+      commitCategorySelection(nextSelectedValues, nextActiveValue);
+
+      onSubcategorySkillChange?.(normalizedValue, {
+        selectedToolIds: [],
+        customSkillNames: [],
+      });
+    }
   };
 
   const removeOption = (optionValue) => {
@@ -587,6 +719,10 @@ const CategoryMultiSelect = ({
         ? nextSelectedValues[0] || ""
         : activeCategoryValue;
     commitCategorySelection(nextSelectedValues, nextActiveValue);
+    onSubcategorySkillChange?.(normalizedValue, {
+      selectedToolIds: [],
+      customSkillNames: [],
+    });
   };
 
   const handleSkillSelectionChange = (nextSelectedToolIds, nextCustomSkillNames) => {
@@ -629,55 +765,6 @@ const CategoryMultiSelect = ({
       return next;
     });
     onActiveCategoryChange?.(key);
-  };
-
-  const getToolsForCategory = (option) => {
-    const subCatId =
-      toPositiveInteger(option?.subCategoryId) ||
-      (String(option?.value || "").startsWith("catalog:")
-        ? toPositiveInteger(String(option.value).split(":")[1])
-        : null) ||
-      toPositiveInteger(option?.value);
-
-    const fromProps = subCatId ? toolOptionsByCategory[String(subCatId)] : null;
-    const fromPreFetch =
-      allPreFetchedTools[option?.value] ||
-      (subCatId ? allPreFetchedTools[String(subCatId)] : null);
-    const tools =
-      Array.isArray(fromProps) && fromProps.length > 0
-        ? fromProps
-        : Array.isArray(fromPreFetch)
-          ? fromPreFetch
-          : [];
-
-    return tools
-      .map((tool) => ({
-        id: toPositiveInteger(tool?.id),
-        label: String(tool?.label || tool?.name || "").trim(),
-      }))
-      .filter((t) => t.id && t.label);
-  };
-
-  const getSuggestedSkillsForCategory = (optionValue) => {
-    const rawSkills = skillSuggestionsByCategory?.[optionValue];
-    return normalizeStringArray(
-      (Array.isArray(rawSkills) ? rawSkills : []).map(
-        (entry) => entry?.label || entry?.value || entry,
-      ),
-    );
-  };
-
-  const getSelectedForCategory = (categoryKey) => {
-    const currentSub = (
-      Array.isArray(selectedSubcategories) ? selectedSubcategories : []
-    ).find((sub) => getSubcategorySelectionKey(sub) === categoryKey);
-    const toolIds = (
-      Array.isArray(currentSub?.selectedToolIds) ? currentSub.selectedToolIds : []
-    )
-      .map((val) => toPositiveInteger(val))
-      .filter(Boolean);
-    const customSkills = normalizeStringArray(currentSub?.customSkillNames);
-    return { toolIds: new Set(toolIds), toolIdsList: toolIds, customSkills };
   };
 
   const handleToggleToolForCategory = (categoryKey, toolId) => {
@@ -1248,7 +1335,24 @@ const CategoryMultiSelect = ({
                       Categories
                     </p>
                     {searchResults.categories.map((entry) => {
-                      const isSelected = selectedSet.has(entry.categoryValue);
+                      const categoryKey = String(entry.categoryValue);
+                      const isSelected = selectedSet.has(categoryKey);
+                      const {
+                        toolIds: selectedToolIdsSet,
+                        customSkills: selectedCustomSkills,
+                      } = getSelectedForCategory(categoryKey);
+                      const selectedCount =
+                        selectedToolIdsSet.size + selectedCustomSkills.length;
+                      const opt =
+                        (Array.isArray(options) ? options : []).find((o) => String(o.value) === categoryKey) ||
+                        (Array.isArray(customSelections) ? customSelections : []).find((o) => String(o.value) === categoryKey) ||
+                        { value: categoryKey };
+                      const tools = getToolsForCategory(opt);
+                      const suggested = getSuggestedSkillsForCategory(categoryKey);
+                      const totalCount = tools.length + suggested.length;
+                      const isAllSelected = totalCount > 0 ? selectedCount >= totalCount : isSelected;
+                      const isPartiallySelected = isSelected && selectedCount > 0 && !isAllSelected;
+
                       return (
                         <button
                           key={`search-cat-${entry.categoryValue}`}
@@ -1267,10 +1371,14 @@ const CategoryMultiSelect = ({
                           <span
                             className={cn(
                               "flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded border",
-                              isSelected ? "border-primary bg-primary" : "border-border",
+                              isAllSelected || isPartiallySelected ? "border-primary bg-primary text-primary-foreground" : "border-border",
                             )}
                           >
-                            {isSelected && <Check className="h-3 w-3 !text-white" />}
+                            {isAllSelected ? (
+                              <Check className="h-3 w-3 !text-white stroke-[3]" />
+                            ) : isPartiallySelected ? (
+                              <Minus className="h-3 w-3 !text-white stroke-[3]" />
+                            ) : null}
                           </span>
                           <span className="min-w-0 flex-1 truncate font-medium">{entry.label}</span>
                           <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -1319,6 +1427,14 @@ const CategoryMultiSelect = ({
                   } = getSelectedForCategory(categoryKey);
                   const selectedCount =
                     selectedToolIdsSet.size + selectedCustomSkills.length;
+                  const totalAvailableCount =
+                    matchingTools.length + matchingSuggested.length;
+                  const isAllSelected =
+                    totalAvailableCount > 0
+                      ? selectedCount >= totalAvailableCount
+                      : isSelected;
+                  const isPartiallySelected =
+                    isSelected && selectedCount > 0 && !isAllSelected;
                   const hasSkills =
                     matchingTools.length > 0 || matchingSuggested.length > 0;
 
@@ -1348,14 +1464,16 @@ const CategoryMultiSelect = ({
                             }}
                             className={cn(
                               "flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors cursor-pointer",
-                              isSelected
+                              isAllSelected || isPartiallySelected
                                 ? "border-primary bg-primary text-primary-foreground"
                                 : "border-border bg-background hover:border-primary/60",
                             )}
                             aria-label={`Select category ${option.label}`}
                           >
-                            {isSelected ? (
+                            {isAllSelected ? (
                               <Check className="h-2.5 w-2.5 stroke-[3]" />
+                            ) : isPartiallySelected ? (
+                              <Minus className="h-2.5 w-2.5 stroke-[3]" />
                             ) : null}
                           </button>
 
@@ -1428,7 +1546,7 @@ const CategoryMultiSelect = ({
                                     </button>
                                   );
                                 })}
-                                </div>
+                              </div>
                             </div>
                           )}
 

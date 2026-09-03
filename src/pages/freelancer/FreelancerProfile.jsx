@@ -3527,14 +3527,54 @@ const FreelancerProfile = () => {
   const quickLanguagesLabel = onboardingLanguages.length
     ? onboardingLanguages.join(", ")
     : "Not set yet";
-  const onboardingServiceDetailMap = useMemo(
-    () =>
+  const onboardingServiceDetailMap = useMemo(() => {
+    const fromServiceDetails =
       profileDetails?.serviceDetails &&
-        typeof profileDetails.serviceDetails === "object"
+      typeof profileDetails.serviceDetails === "object"
         ? profileDetails.serviceDetails
-        : {},
-    [profileDetails?.serviceDetails]
-  );
+        : {};
+    const fromOnboardingDraft =
+      profileDetails?.onboardingDraft?.serviceDraftsByKey &&
+      typeof profileDetails.onboardingDraft.serviceDraftsByKey === "object"
+        ? profileDetails.onboardingDraft.serviceDraftsByKey
+        : {};
+    const fromUserFreelancerProfile =
+      user?.freelancerProfile?.serviceDetails &&
+      typeof user.freelancerProfile.serviceDetails === "object"
+        ? user.freelancerProfile.serviceDetails
+        : {};
+    const fromUserDraft =
+      user?.onboardingDraft?.serviceDraftsByKey &&
+      typeof user.onboardingDraft.serviceDraftsByKey === "object"
+        ? user.onboardingDraft.serviceDraftsByKey
+        : {};
+
+    const allKeys = Array.from(
+      new Set([
+        ...Object.keys(fromOnboardingDraft),
+        ...Object.keys(fromUserDraft),
+        ...Object.keys(fromUserFreelancerProfile),
+        ...Object.keys(fromServiceDetails),
+      ])
+    );
+
+    const merged = {};
+    allKeys.forEach((key) => {
+      merged[key] = {
+        ...(fromOnboardingDraft[key] || {}),
+        ...(fromUserDraft[key] || {}),
+        ...(fromUserFreelancerProfile[key] || {}),
+        ...(fromServiceDetails[key] || {}),
+      };
+    });
+
+    return merged;
+  }, [
+    profileDetails?.serviceDetails,
+    profileDetails?.onboardingDraft?.serviceDraftsByKey,
+    user?.freelancerProfile?.serviceDetails,
+    user?.onboardingDraft?.serviceDraftsByKey,
+  ]);
   const onboardingPlatformLinks = collectOnboardingPlatformLinks(
     onboardingServiceDetailMap
   );
