@@ -1,4 +1,6 @@
 import React from "react";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import Hero from "@/components/Home/Hero";
 import FreelancerClientCards from "@/components/Home/FreelancerClientCards";
 import ServiceCardsCarousel from "@/components/Home/ServiceCardsCarousel";
@@ -19,6 +21,11 @@ const Home = () => {
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
+      <SeoMeta
+        title={SEO_DATA.home.title}
+        description={SEO_DATA.home.description}
+        canonicalUrl="https://catalance.in/"
+      />
       <Hero/>
       <FreelancerClientCards />
       <ServiceCardsCarousel />

@@ -13,6 +13,7 @@ import Star from "lucide-react/dist/esm/icons/star";
 import User from "lucide-react/dist/esm/icons/user";
 
 import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,9 +23,8 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/shared/context/AuthContext";
 import { request } from "@/shared/lib/api-client";
 
-const BLOG_PAGE_TITLE = "Catalance Blog | Engineering, Product, Freelance & SEO Insights";
-const BLOG_PAGE_DESCRIPTION =
-  "Practical guides, software architecture insights, hiring strategies, AI workflows, and digital project execution for modern product teams.";
+const BLOG_PAGE_TITLE = SEO_DATA.blog.title;
+const BLOG_PAGE_DESCRIPTION = SEO_DATA.blog.description;
 
 const Blog = () => {
   const { user } = useAuth();

@@ -4,6 +4,8 @@ import { useTheme } from "@/components/providers/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Search from "lucide-react/dist/esm/icons/search";
 import HelpCircle from "lucide-react/dist/esm/icons/help-circle";
@@ -434,6 +436,11 @@ const HelpCenter = () => {
 
   return (
     <main className={`min-h-screen bg-background ${isDark ? "text-white" : "text-gray-900"}`}>
+      <SeoMeta
+        title={SEO_DATA.help.title}
+        description={SEO_DATA.help.description}
+        canonicalUrl="https://catalance.in/help"
+      />
       <div className="mx-auto max-w-6xl px-5 pb-20 pt-28 md:px-8 md:pt-32">
         <section
           className={`rounded-3xl border p-7 md:p-10 ${

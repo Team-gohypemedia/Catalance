@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
 
 const Section = ({ title, children }) => (
@@ -23,6 +25,11 @@ const RefundPolicy = () => {
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-background text-gray-900 dark:text-white selection:bg-primary/30">
+      <SeoMeta
+        title={SEO_DATA.refundPolicy.title}
+        description={SEO_DATA.refundPolicy.description}
+        canonicalUrl="https://catalance.in/refund-policy"
+      />
 
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(200, 80, 40,0.15),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
 

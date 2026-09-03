@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import {
   Accordion,
   AccordionContent,
@@ -183,6 +185,11 @@ const About = () => {
 
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <SeoMeta
+        title={SEO_DATA.about.title}
+        description={SEO_DATA.about.description}
+        canonicalUrl="https://catalance.in/about"
+      />
       <section className="mx-auto w-full max-w-5xl px-4 py-20 md:px-8 md:py-24">
         <header className="mb-12 space-y-6">
           <p className="text-sm uppercase tracking-[0.24em] text-primary">

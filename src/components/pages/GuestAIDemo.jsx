@@ -1,6 +1,8 @@
 import React, { startTransition, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { generateRandomString } from "@/components/ui/evervault-card";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 
 const MATRIX_SPOTLIGHT_RADIUS = 250;
 
@@ -5901,6 +5903,11 @@ const GuestAIDemo = () => {
     if (!selectedService) {
         return (
             <>
+                <SeoMeta
+                    title={SEO_DATA.services.title}
+                    description={SEO_DATA.services.description}
+                    canonicalUrl="https://catalance.in/services"
+                />
                 <Navbar />
                 <main className="relative min-h-screen overflow-hidden bg-background pt-16 text-foreground transition-colors sm:pt-20">
                     <div className="pointer-events-none absolute inset-0 overflow-hidden">

@@ -50,6 +50,8 @@ import {
 import SubcategorySection from "@/components/pages/marketplace-browse/SubcategorySection";
 import ServiceCategoryCarousel from "@/components/ui/service-category-carousel";
 import { Input } from "@/components/ui/input";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA, getCategorySeoMeta } from "@/shared/lib/seo-config";
 import { getSession } from "@/shared/lib/auth-storage";
 import { useAuth } from "@/shared/context/AuthContext";
 import { API_BASE_URL } from "@/shared/lib/api-client";
@@ -1877,8 +1879,40 @@ const Marketplace = () => {
     </Dialog>
   );
 
+  const seoMeta = useMemo(() => {
+    if (isOpportunityView) {
+      return {
+        title: SEO_DATA.opportunity.title,
+        description: SEO_DATA.opportunity.description,
+        canonicalUrl: "https://catalance.in/opportunity",
+      };
+    }
+
+    if (category && category !== "all") {
+      const catMeta = getCategorySeoMeta(category);
+      if (catMeta) {
+        return {
+          title: catMeta.title,
+          description: catMeta.description,
+          canonicalUrl: `https://catalance.in/marketplace/${encodeURIComponent(normalizeKey(category))}`,
+        };
+      }
+    }
+
+    return {
+      title: SEO_DATA.marketplace.title,
+      description: SEO_DATA.marketplace.description,
+      canonicalUrl: "https://catalance.in/marketplace",
+    };
+  }, [category, isOpportunityView]);
+
   return (
     <div className={cn("relative min-h-screen bg-background text-foreground", category !== "all" && "pt-16 sm:pt-20 md:pt-28")}>
+      <SeoMeta
+        title={seoMeta.title}
+        description={seoMeta.description}
+        canonicalUrl={seoMeta.canonicalUrl}
+      />
       {/* Full Screen Hero Section */}
       {category === "all" && (
         <section className="relative flex w-full flex-col items-center justify-start overflow-hidden bg-background pt-24 pb-0">

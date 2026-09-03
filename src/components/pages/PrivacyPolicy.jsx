@@ -1,5 +1,7 @@
 import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import Shield from "lucide-react/dist/esm/icons/shield";
 
 const Section = ({ title, children }) => (
@@ -25,6 +27,11 @@ const PrivacyPolicy = () => {
     <main
       className="relative min-h-screen w-full overflow-hidden bg-background text-gray-900 dark:text-white selection:bg-primary/30"
     >
+      <SeoMeta
+        title={SEO_DATA.privacy.title}
+        description={SEO_DATA.privacy.description}
+        canonicalUrl="https://catalance.in/privacy"
+      />
 
       <div className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(200, 80, 40,0.15),transparent_45%)] dark:bg-[radial-gradient(circle_at_top,rgba(253,200,0,0.12),transparent_45%)]" />
 

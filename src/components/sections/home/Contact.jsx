@@ -3,6 +3,8 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import ArrowUpRight from "lucide-react/dist/esm/icons/arrow-up-right";
 import { toast } from "sonner";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import { submitContactInquiry } from "@/shared/lib/api-client";
 import { indiaPaths } from "./india_svg_paths";
 
@@ -148,6 +150,11 @@ const Contact = () => {
       ref={containerRef}
       className={`relative min-h-screen w-full pt-32 pb-16 px-4 md:px-10 lg:px-20 xl:px-40 ${bgColor} ${textColor} font-sans overflow-x-hidden transition-colors duration-300 ${isDark ? 'selection:bg-primary/30' : 'selection:bg-[#D9692A]/30'}`}
     >
+      <SeoMeta
+        title={SEO_DATA.contact.title}
+        description={SEO_DATA.contact.description}
+        canonicalUrl="https://catalance.in/contact"
+      />
       {/* Background Orbs */}
       <div className="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div

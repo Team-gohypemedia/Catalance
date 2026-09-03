@@ -6,6 +6,8 @@ import { SplitText } from "gsap/SplitText";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spotlight } from "@/components/ui/spotlight";
+import SeoMeta from "@/components/common/SeoMeta";
+import { SEO_DATA } from "@/shared/lib/seo-config";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Building2 from "lucide-react/dist/esm/icons/building-2";
 import ShieldCheck from "lucide-react/dist/esm/icons/shield-check";
@@ -158,6 +160,11 @@ const EnterpriseSolutions = () => {
       ref={containerRef}
       className={`relative min-h-screen w-full ${bgColor} ${textColor} overflow-hidden font-sans selection:bg-primary/30`}
     >
+      <SeoMeta
+        title={SEO_DATA.enterprise.title}
+        description={SEO_DATA.enterprise.description}
+        canonicalUrl="https://catalance.in/enterprise"
+      />
       {/* Background Grid */}
       <div
         className="absolute inset-0 z-0 pointer-events-none"
