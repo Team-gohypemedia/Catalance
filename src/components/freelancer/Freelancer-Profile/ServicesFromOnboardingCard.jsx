@@ -55,9 +55,44 @@ const DEFAULT_FIELD_PATHS = {
   serviceCoverImage: ["coverImage"],
   serviceMedia: ["mediaFiles", "media", "serviceMedia"],
 
-  experience: ["experienceYears", "experience"],
-  deliveryTimeline: ["deliveryTime", "deliveryTimeline", "deliveryDays"],
-  startingPrice: ["averageProjectPrice", "averagePrice", "priceRange"],
+  experience: [
+    "experienceYears",
+    "experience",
+    "yearsOfExperienceInService",
+    "experienceLevel",
+    "serviceExperience",
+    "workingLevel",
+    "customFields.serviceInfo.experience",
+    "customFields.serviceInfo.experienceYears",
+    "serviceInfo.experience",
+    "serviceInfo.experienceYears",
+    "infoDetails.experience",
+  ],
+  deliveryTimeline: [
+    "deliveryTime",
+    "deliveryTimeline",
+    "deliveryDays",
+    "customFields.serviceInfo.deliveryTimeline",
+    "serviceInfo.deliveryTimeline",
+  ],
+  startingPrice: [
+    "averageProjectPrice",
+    "averagePrice",
+    "priceRange",
+    "startingPrice",
+    "price",
+    "pricing",
+    "rate",
+    "startingRate",
+    "budget",
+    "customFields.servicePricing.priceRange",
+    "customFields.servicePricing.startingPrice",
+    "customFields.servicePricing.averageProjectPrice",
+    "servicePricing.priceRange",
+    "servicePricing.startingPrice",
+    "pricingDetails.priceRange",
+    "pricingDetails.startingPrice",
+  ],
 
   subcategories: ["subcategories"],
   fallbackSubcategories: [
@@ -409,17 +444,44 @@ const resolveTimelineLabel = ({
   );
 };
 
-const resolveStartingPriceLabel = ({ value, normalizeValueLabel, emptyLabel }) => {
-  const raw = String(value || "").trim();
-  if (!raw) return emptyLabel;
+const EXPERIENCE_LABELS_MAP = {
+  entry: "Entry Level (0–1 years)",
+  intermediate: "Intermediate (1–3 years)",
+  experienced: "Experienced (3–5 years)",
+  expert: "Expert (5–10 years)",
+  veteran: "Veteran (10+ years)",
+  "0-1": "0–1 years",
+  "0-1 years": "0–1 years",
+  "1-3": "1–3 years",
+  "1-3 years": "1–3 years",
+  "3-5": "3–5 years",
+  "3-5 years": "3–5 years",
+  "5-10": "5–10 years",
+  "5-10 years": "5–10 years",
+  "10+": "10+ years",
+  "10+ years": "10+ years",
+};
 
-  const plainNumericPrice = /^[₹,\s\d]+$/.test(raw);
+const resolveStartingPriceLabel = ({
+  value,
+  pricingUnit,
+  normalizeValueLabel,
+  emptyLabel,
+}) => {
+  if (value === undefined || value === null || value === "") return emptyLabel;
+  const raw = String(value).trim();
+  if (!raw || raw === "0") return emptyLabel;
 
-  if (plainNumericPrice) {
-    const parsed = Number(raw.replace(/[^\d]/g, ""));
-
+  const digitsMatch = raw.match(/\d[\d,]*/);
+  if (digitsMatch) {
+    const parsed = Number(digitsMatch[0].replace(/[^\d]/g, ""));
     if (Number.isInteger(parsed) && parsed > 0) {
-      return `₹${parsed.toLocaleString("en-IN")}`;
+      const formattedPrice = `₹${parsed.toLocaleString("en-IN")}`;
+      const unit = String(pricingUnit || "").trim().toLowerCase();
+      if (unit && unit !== "project" && !raw.toLowerCase().includes(unit)) {
+        return `${formattedPrice} / ${unit}`;
+      }
+      return formattedPrice;
     }
   }
 
@@ -431,8 +493,21 @@ const resolveStartingPriceLabel = ({ value, normalizeValueLabel, emptyLabel }) =
 };
 
 const resolveExperienceLabel = ({ value, normalizeValueLabel, emptyLabel }) => {
-  const raw = String(value || "").trim();
+  if (value === undefined || value === null || value === "") return emptyLabel;
+  const raw = String(value).trim();
   if (!raw) return emptyLabel;
+
+  const lower = raw.toLowerCase();
+  if (EXPERIENCE_LABELS_MAP[lower]) {
+    return EXPERIENCE_LABELS_MAP[lower];
+  }
+
+  if (/^\d+$/.test(raw)) {
+    const num = Number(raw);
+    if (num === 0) return "Entry Level (0–1 years)";
+    if (num === 1) return "1 year";
+    return `${num}+ years`;
+  }
 
   const normalized =
     (typeof normalizeValueLabel === "function" ? normalizeValueLabel(raw) : "") ||
@@ -455,24 +530,29 @@ const createDefaultMetricDefinitions = (labels) => [
     key: "experience",
     label: labels.serviceExperienceLabel,
     icon: Briefcase,
-    getValue: ({ detail, fieldPaths, helpers }) =>
-      helpers.resolveExperienceLabel(getFirstValue(detail, fieldPaths.experience)),
+    getValue: ({ detail, entry, fieldPaths, helpers }) => {
+      const raw =
+        getFirstValue(detail, fieldPaths.experience) ||
+        getFirstValue(entry, fieldPaths.experience) ||
+        getFirstValue(entry?.detail, fieldPaths.experience);
+      return helpers.resolveExperienceLabel(raw);
+    },
   },
-  /*
-  {
-    key: "deliveryTimeline",
-    label: labels.deliveryTimelineLabel,
-    icon: CalendarClock,
-    getValue: ({ detail, fieldPaths, helpers }) =>
-      helpers.resolveTimelineLabel(getFirstValue(detail, fieldPaths.deliveryTimeline)),
-  },
-  */
   {
     key: "startingPrice",
     label: labels.startingPriceLabel,
     icon: IndianRupee,
-    getValue: ({ detail, fieldPaths, helpers }) =>
-      helpers.resolveStartingPriceLabel(getFirstValue(detail, fieldPaths.startingPrice)),
+    getValue: ({ detail, entry, fieldPaths, helpers }) => {
+      const raw =
+        getFirstValue(detail, fieldPaths.startingPrice) ||
+        getFirstValue(entry, fieldPaths.startingPrice) ||
+        getFirstValue(entry?.detail, fieldPaths.startingPrice);
+      const unit =
+        getFirstValue(detail, ["pricingUnit", "customFields.servicePricing.pricingUnit"]) ||
+        getFirstValue(entry, ["pricingUnit"]) ||
+        "";
+      return helpers.resolveStartingPriceLabel(raw, unit);
+    },
   },
 ];
 
@@ -711,9 +791,10 @@ const ServicesFromOnboardingCard = ({
           normalizeValueLabel,
           emptyLabel: labels.emptyValue,
         }),
-      resolveStartingPriceLabel: (value) =>
+      resolveStartingPriceLabel: (value, pricingUnit) =>
         resolveStartingPriceLabel({
           value,
+          pricingUnit,
           normalizeValueLabel,
           emptyLabel: labels.emptyValue,
         }),

@@ -911,15 +911,22 @@ const AddEditServiceWizard = ({
   );
 
   const handleSubcategorySkillChange = useCallback(
-    (subcategoryKey, field, values) => {
+    (subcategoryKey, fieldOrUpdates, values) => {
+      const updates =
+        typeof fieldOrUpdates === "object" && fieldOrUpdates !== null
+          ? fieldOrUpdates
+          : { [fieldOrUpdates]: values };
+
       setServiceProfileForm((prev) =>
         syncDerivedSkills({
           ...prev,
           subcategories: (Array.isArray(prev.subcategories) ? prev.subcategories : []).map(
-            (subcategory) =>
-              subcategory.subCategoryKey === subcategoryKey
-                ? { ...subcategory, [field]: values }
-                : subcategory
+            (subcategory) => {
+              const isMatch =
+                subcategory.subCategoryKey === subcategoryKey ||
+                String(subcategory.subCategoryId) === String(subcategoryKey).replace("catalog:", "");
+              return isMatch ? { ...subcategory, ...updates } : subcategory;
+            }
           ),
         })
       );
