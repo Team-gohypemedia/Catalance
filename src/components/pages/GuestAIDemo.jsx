@@ -5898,7 +5898,36 @@ const GuestAIDemo = () => {
     const briefingTextareaTypographyClasses = isDark
         ? 'text-[clamp(1rem,1.7vw,1.28rem)]'
         : 'text-[clamp(1.15rem,2.1vw,1.55rem)]';
-    const visibleRoleServices = showAllRoleServices ? orderedServices : orderedServices.slice(0, 7);
+    const roleServicesList = useMemo(() => {
+        if (!Array.isArray(orderedServices) || orderedServices.length === 0) return [];
+        
+        const priorityKeywords = [
+            'website',      // 1. Website Dev
+            'app',          // 2. App Dev / Mobile App Development
+            'social media', // 3. Social Media
+            'video',        // 4. Video Services
+            'paid',         // 5. Paid Ads / Paid Advertising
+            'creative',     // 6. Creative / Creative & Design
+        ];
+
+        const matched = [];
+        const remaining = [...orderedServices];
+
+        priorityKeywords.forEach((keyword) => {
+            const index = remaining.findIndex((s) => {
+                const title = String(s?.title || s?.name || s?.slug || s?.id || '').toLowerCase();
+                return title.includes(keyword);
+            });
+            if (index !== -1) {
+                matched.push(remaining[index]);
+                remaining.splice(index, 1);
+            }
+        });
+
+        return [...matched, ...remaining];
+    }, [orderedServices]);
+
+    const visibleRoleServices = showAllRoleServices ? roleServicesList : roleServicesList.slice(0, 7);
 
     if (!selectedService) {
         return (
@@ -5935,83 +5964,6 @@ const GuestAIDemo = () => {
                             }}
                             className={`relative z-10 overflow-hidden backdrop-blur rounded-[1.5rem] sm:rounded-[2rem] ${briefingCardClasses}`}
                         >
-                            {/* AI Document Scanner Loading Screen Overlay */}
-                            {briefingSubmitting && (
-                                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/95 backdrop-blur-xl p-6 sm:p-10 text-center space-y-6 animate-in fade-in duration-300">
-                                    {/* Animated Scanner Pulse Ring */}
-                                    <div className="relative flex items-center justify-center">
-                                        <div className="absolute h-32 w-32 rounded-full bg-gradient-to-tr from-primary via-amber-500 to-emerald-500 opacity-30 animate-ping blur-md" />
-                                        <div className="absolute h-28 w-28 rounded-full bg-primary/20 animate-pulse" />
-                                        <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-tr from-primary to-amber-500 p-0.5 shadow-2xl shadow-primary/30">
-                                            <div className={`h-full w-full rounded-[22px] flex items-center justify-center ${isDark ? 'bg-[#0d0e14]' : 'bg-white'}`}>
-                                                <Sparkles className="h-9 w-9 text-primary animate-spin" style={{ animationDuration: '4s' }} />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Title & Live Status */}
-                                    <div className="space-y-2 max-w-md">
-                                        <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/20 px-3.5 py-1 text-xs font-bold text-primary tracking-wide uppercase shadow-sm">
-                                            <span className="relative flex h-2 w-2">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                                            </span>
-                                            AI Neural Document Scanner Active
-                                        </div>
-
-                                        <h3 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                            Scanning & Extracting Requirements
-                                        </h3>
-
-                                        <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'} animate-pulse`}>
-                                            {scanStepText || 'Extracting technical specifications and project requirements...'}
-                                        </p>
-                                    </div>
-
-                                    {/* Progress Bar & Counter */}
-                                    <div className="w-full max-w-sm space-y-2">
-                                        <div className="flex justify-between text-xs font-semibold">
-                                            <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Scanning Progress</span>
-                                            <span className="text-primary font-mono font-bold">{scanProgress}%</span>
-                                        </div>
-                                        <div className="h-2.5 w-full rounded-full bg-muted/60 overflow-hidden border border-border/40 p-0.5">
-                                            <div
-                                                className="h-full rounded-full bg-gradient-to-r from-primary via-orange-500 to-emerald-500 transition-all duration-300 shadow-sm"
-                                                style={{ width: `${Math.max(5, scanProgress)}%` }}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Files Processing Preview List */}
-                                    {briefingFiles.length > 0 && (
-                                        <div className="w-full max-w-sm space-y-2 text-left">
-                                            <p className={`text-[10px] font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                                Processing Documents ({briefingFiles.length})
-                                            </p>
-                                            <div className="space-y-1.5 max-h-28 overflow-y-auto">
-                                                {briefingFiles.map((file, idx) => (
-                                                    <div key={idx} className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs border ${
-                                                        isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
-                                                    }`}>
-                                                        <div className="flex items-center gap-2 min-w-0">
-                                                            <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-                                                            <span className="truncate font-medium">{file.name}</span>
-                                                        </div>
-                                                        <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1 shrink-0">
-                                                            <Check className="w-3 h-3" /> Scanned
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    <div className={`text-[11px] font-mono flex items-center justify-center gap-1.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
-                                        <span>Zero information loss guaranteed • Forwarding to CATA AI Workspace</span>
-                                    </div>
-                                </div>
-                            )}
                             <div className="px-6 pt-7 pb-3 sm:px-8 sm:pt-8">
                                 <div className="flex gap-4 items-start">
                                     <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
