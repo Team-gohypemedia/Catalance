@@ -1983,26 +1983,26 @@ const extractParsedBudgetFromAnswerText = (answerText = "") => {
     const rawText = String(answerText || "").trim();
     if (!rawText) return null;
 
-    // 1. Prioritize explicit keyword match (e.g. "Investment: ₹70,000", "Budget: 50,000", "Commercials: ₹70,000")
+    // 1. Prioritize explicit keyword match (e.g. "Investment: ₹70,000", "Budget: 50,000", "budget is 100rs")
     const explicitKeywordMatch = rawText.match(
-        /(?:Investment|Budget|Cost|Price|Total|Fee|Commercials?)\s*[:=]?\s*(?:rs\.?|inr|usd|eur|gbp|\$)?\s*([\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?)/i
+        /(?:Investment|Budget|Cost|Price|Total|Fee|Commercials?)\s*(?:is|to|=|:|\s)*\s*(?:rs\.?|inr|usd|eur|gbp|\$)?\s*([\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?\s*(?:rs\.?|inr|usd|eur|gbp|\$)?)/i
     );
     if (explicitKeywordMatch && explicitKeywordMatch[1]) {
         const parsedExplicit = parseFlexibleBudgetFromText(explicitKeywordMatch[1]);
-        if (parsedExplicit?.amount && Number.isFinite(parsedExplicit.amount) && parsedExplicit.amount >= 1000) {
+        if (parsedExplicit?.amount && Number.isFinite(parsedExplicit.amount) && parsedExplicit.amount > 0) {
             return parsedExplicit;
         }
     }
 
     // 2. Scan all candidates with explicit currency symbols or budget multipliers
     const budgetCandidates = rawText.match(
-        /(?:rs\.?|inr|usd|eur|gbp|\$)\s*[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?|[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)\s*(?:rs\.?|inr|usd|eur|gbp|\$)?/gi
+        /(?:rs\.?|inr|usd|eur|gbp|\$)\s*[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?|[\d,]+(?:\.\d+)?\s*(?:lakh|lac|crore|cr|million|billion|k|thousand)?\s*(?:rs\.?|inr|usd|eur|gbp|\$)?/gi
     ) || [];
 
     const validCandidates = [];
     for (const candidate of budgetCandidates) {
         const parsedCandidate = parseFlexibleBudgetFromText(String(candidate || "").trim());
-        if (parsedCandidate?.amount && Number.isFinite(parsedCandidate.amount) && parsedCandidate.amount >= 1000) {
+        if (parsedCandidate?.amount && Number.isFinite(parsedCandidate.amount) && parsedCandidate.amount > 0) {
             validCandidates.push(parsedCandidate);
         }
     }
@@ -2015,7 +2015,7 @@ const extractParsedBudgetFromAnswerText = (answerText = "") => {
     // Fallback: direct parse if text is concise
     if (rawText.length < 50) {
         const directParse = parseFlexibleBudgetFromText(rawText);
-        if (directParse?.amount && Number.isFinite(directParse.amount) && directParse.amount >= 1000) {
+        if (directParse?.amount && Number.isFinite(directParse.amount) && directParse.amount > 0) {
             return directParse;
         }
     }
@@ -2179,7 +2179,8 @@ const findBudgetMinimumViolationChange = ({
     service = {},
 }) => {
     for (const change of Array.isArray(changes) ? changes : []) {
-        const question = questions?.[change?.index];
+        const question = questions?.[change?.index]
+            || (Array.isArray(questions) ? questions.find((q) => q?.slug === change?.slug) : null);
         const validation = getBudgetMinimumValidationResult({
             question,
             service,
@@ -6557,6 +6558,7 @@ const applyExtractedAnswerUpdates = ({
     currentQuestion = null,
     ignoreSlug = "",
     correctionIntent = false,
+    hasAttachmentContext = false,
     logPrefix = "[Auto Capture]"
 }) => {
     const nextAnswers = { ...(baseAnswersBySlug || {}) };
@@ -6614,7 +6616,7 @@ const applyExtractedAnswerUpdates = ({
             ? (correctionIntent ? EXTRACTION_CONFIDENCE_MIN : EXTRACTION_CONFIDENCE_UPDATE_MIN)
             : EXTRACTION_CONFIDENCE_MIN;
 
-        if (Number.isInteger(currentStep) && currentStep >= 0 && Number.isInteger(targetIndex)) {
+        if (!hasAttachmentContext && Number.isInteger(currentStep) && currentStep >= 0 && Number.isInteger(targetIndex)) {
             if (targetIndex > currentStep + 1) {
                 minConfidence = Math.max(minConfidence, 0.93);
             } else if (targetIndex > currentStep) {
@@ -6807,6 +6809,7 @@ const extractAnswersFromMessage = async ({
     serviceName = "",
     message = "",
     questions = [],
+    hasAttachmentContext = false,
     timingTracker = null,
 }) => {
     if (!message || !Array.isArray(questions) || questions.length === 0) {
@@ -6826,24 +6829,27 @@ const extractAnswersFromMessage = async ({
         }))
     }));
 
+    const isDocumentContext = hasAttachmentContext || message.includes("Attachment context from uploaded files:");
+
     const extractorPrompt = `
-You are extracting questionnaire answers from a single user message.
+You are extracting questionnaire answers from a user message.
 
 Service: ${serviceName}
 User message: ${JSON.stringify(message)}
 Questionnaire: ${JSON.stringify(compactQuestions)}
 
 Rules:
-- Return answers that are explicitly stated or clearly implied by the user's message.
-- For option-based questions, if the user's meaning clearly matches one option, return that exact option label as the answer.
+- Return answers that are explicitly stated or clearly implied by the user's message or uploaded document.
+- For option-based questions, if the user's meaning or document scope clearly matches one option, return that exact option label as the answer.
 - Use any provided option aliases when they clearly map the user's wording to an option.
 - Only map an answer into a dedicated _other field when the user explicitly describes that question's topic. Do not assign a future _other field from a generic correction or unrelated aside.
 - If a question is not clearly answered, skip it.
 - Do not force a match when multiple options seem plausible.
-- Keep free-text answers short and close to what the user said.
+- Keep free-text answers short and close to what the user said or what the document details.
 - Never map a company/brand/business name to a personal/client/contact name question, and never map a personal name to a company/brand/business name question, unless the user explicitly labels both in the same message.
 - Never map an age range, quantity, or random number to a budget or price question unless the user explicitly mentions money, currency, or words like budget/cost/price.
-- You may mark later questions as answered if this single message clearly answers them.
+- You may mark later questions as answered if this single message or document context answers them.
+${isDocumentContext ? `- IMPORTANT: The user message contains an uploaded document / specification file context. Read the document context thoroughly and extract EVERY questionnaire answer that is stated, detailed, or clearly implied in the document. For option-based questions, choose the option label/value that best matches the scope in the document. Set confidence to 0.90 or higher for clear document extractions so all inferrable questions can be safely completed from the document.` : ""}
 - Use higher confidence only when the answer is clear enough that the question can be safely skipped.
 - If the message clearly answers the immediate next question, confidence should usually be 0.90 or higher.
 - If the message clearly answers a later future question, confidence should usually be 0.93 or higher.
@@ -7700,6 +7706,7 @@ const buildConversationalServiceReply = async ({
     conversationHistory = [],
     coverageSummary = null,
     explicitProposalRequest = false,
+    hasAttachmentContext = false,
     timingTracker = null,
 }) => {
     const openingNameStep =
@@ -7755,6 +7762,7 @@ ${JSON.stringify({
         enoughForProposal: Boolean(coverageSummary?.enoughForProposal),
         enoughForExplicitRequest: Boolean(coverageSummary?.enoughForExplicitRequest),
         explicitProposalRequest,
+        hasAttachmentContext,
     })}
 
 Rules:
@@ -7763,6 +7771,7 @@ Rules:
 - Never use headings, markdown section titles, or labels such as "The current question", "Current pending question", "Best next question", or "Question:".
 - Never use UI helper copy such as "If you don't see what you need, kindly type it below."
 - If the user is asking for guidance, answer clearly before asking anything else.
+- If an uploaded document or attachment context is present in the message/chat, DO NOT ask repetitive confirmation questions for details already present in the document or known answers. Like ChatGPT, Gemini, or Claude: digest the document context, acknowledge the extracted scope, and ask ONLY for any missing required detail if necessary. If enough context exists to build a proposal, state that you have all necessary details from their document and are creating their proposal.
 - If this is the opening turn and the hidden pending detail is only the user's name, do not force the name question first. Start broader by asking about the project need or goal.
 - When a follow-up is useful, make the reply feel engaging in this order:
   1. one short acknowledgement
@@ -7804,7 +7813,7 @@ Return plain text only.
         if (shouldReplaceMismatchedQuestionReply({ replyText: cleanedMessage, nextQuestion })) {
             cleanedMessage = String(nextQuestion?.text || "").trim();
         }
-        if (hasOptions) {
+        if (hasOptions && !hasAttachmentContext) {
             cleanedMessage = `${
                 messageUsesExpectedOptionLabels(cleanedMessage, nextQuestionOptions)
                     ? cleanedMessage
@@ -8576,6 +8585,7 @@ export const guestChat = asyncHandler(async (req, res) => {
                 serviceName: service.name,
                 message: userMessageForReasoning || userMessageText,
                 questions,
+                hasAttachmentContext: Boolean(attachmentContextText),
                 timingTracker: requestTimingTracker,
             });
         }
@@ -9696,10 +9706,15 @@ export const guestChat = asyncHandler(async (req, res) => {
         runtimeOptionsByQuestionSlug: nextRuntimeOptionsByQuestionSlug,
     });
 
+    const hasAttachmentContext = Boolean(attachmentContextText.trim());
+    const hasEnoughDocumentOrCoverageInfo =
+        (hasAttachmentContext && (coverageSummary.enoughForProposal || coverageSummary.answeredCount >= 2 || hasAnswerValue(updatedAnswersBySlug.project_budget) || hasAnswerValue(updatedAnswersBySlug.budget))) ||
+        (coverageSummary.enoughForProposal && (explicitProposalRequest || hasAttachmentContext || coverageSummary.answeredCount >= 3));
+
     if (
         nextStep < questions.length
-        && explicitProposalRequest
-        && (coverageSummary.enoughForExplicitRequest || coverageSummary.enoughForProposal)
+        && (explicitProposalRequest || hasEnoughDocumentOrCoverageInfo)
+        && (coverageSummary.enoughForExplicitRequest || coverageSummary.enoughForProposal || hasAttachmentContext)
     ) {
         try {
             responseContent = await generateProposalResponseForSession({
@@ -9751,6 +9766,7 @@ export const guestChat = asyncHandler(async (req, res) => {
             conversationHistory: conversationalHistory,
             coverageSummary,
             explicitProposalRequest,
+            hasAttachmentContext,
             timingTracker: requestTimingTracker,
         });
 

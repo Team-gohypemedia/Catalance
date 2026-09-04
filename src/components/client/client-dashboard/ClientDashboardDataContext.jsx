@@ -607,10 +607,9 @@ const fetchClientDashboardData = async (authFetch) => {
 
   const remoteDraftProjects = projects
     .filter((project) => {
+      if (projectIdsWithProposals.has(String(project?.id))) return false;
       const status = String(project?.status || "").toUpperCase();
-      if (status === "DRAFT") return true;
-      if (status === "OPEN" && !projectIdsWithProposals.has(String(project.id))) return true;
-      return false;
+      return status === "DRAFT" || status === "OPEN";
     })
     .map(mapApiDraftProject);
 

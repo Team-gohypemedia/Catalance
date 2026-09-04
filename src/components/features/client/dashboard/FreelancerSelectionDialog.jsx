@@ -383,7 +383,7 @@ const FreelancerSelectionCard = memo(({
   return (
     <Card
       key={freelancer.id}
-      className="group relative flex min-h-[22.5rem] w-[min(23rem,calc(96vw-3.25rem))] shrink-0 snap-start flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-2.5 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55 sm:w-auto sm:shrink sm:snap-align-none"
+      className="group relative flex min-h-[22.5rem] w-full flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-3 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55"
     >
       <div
         className="relative isolate h-24 min-h-24 shrink-0 overflow-visible rounded-xl border border-border/70 shadow-none"
@@ -648,37 +648,6 @@ const FreelancerSelectionDialog = ({
     }
   }, [savedProposal?.status, savedProposal?.projectStatus]);
 
-  // Prevent background dialog/panel containers from scrolling when this nested dialog is open
-  useEffect(() => {
-    if (!open) return;
-
-    const scrollElements = document.querySelectorAll(".overflow-y-auto, [data-slot='dialog-content']");
-    const originalStyles = [];
-
-    scrollElements.forEach((el) => {
-      // Skip our own dialog content and its children
-      if (
-        dialogContentRef.current &&
-        (el === dialogContentRef.current || dialogContentRef.current.contains(el))
-      ) {
-        return;
-      }
-
-      originalStyles.push({
-        el,
-        overflow: el.style.overflow,
-      });
-      el.style.overflow = "hidden";
-    });
-
-    return () => {
-      originalStyles.forEach(({ el, overflow }) => {
-        el.style.overflow = overflow;
-      });
-    };
-  }, [open]);
-
-
   const activeAiFreelancer = Array.isArray(filteredFreelancers)
     ? filteredFreelancers.find(
         (freelancer) => String(freelancer?.id || "") === String(activeAiFreelancerId || ""),
@@ -712,7 +681,7 @@ const FreelancerSelectionDialog = ({
           event.preventDefault();
         }
       }}
-      className="fixed left-1/2 top-1/2 flex h-[82dvh] w-[96vw] max-w-[34rem] -translate-x-1/2 -translate-y-1/2 flex-col overscroll-contain p-3 sm:h-[84dvh] sm:max-w-5xl sm:p-4"
+      className="flex max-h-[88vh] h-[86vh] w-[95vw] max-w-5xl flex-col overflow-hidden rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-2xl"
     >
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-lg">
@@ -770,11 +739,11 @@ const FreelancerSelectionDialog = ({
                       <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       Fetching matched freelancers...
                     </div>
-                    <div className="flex flex-row gap-3 overflow-x-auto pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 sm:snap-none lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 w-full">
                       {Array.from({ length: 6 }).map((_, index) => (
                         <Card
                           key={`freelancer-loading-${index}`}
-                          className="min-h-[25rem] w-[min(23rem,calc(96vw-3.25rem))] shrink-0 snap-start rounded-[20px] border border-border/60 bg-card/90 p-2.5 sm:w-auto sm:shrink sm:snap-align-none"
+                          className="min-h-[25rem] w-full rounded-[20px] border border-border/60 bg-card/90 p-3"
                         >
 
                           <Skeleton className="h-28 w-full rounded-xl" />
@@ -878,7 +847,7 @@ const FreelancerSelectionDialog = ({
                         return { ...prev, [group.key]: newIndex };
                       });
                     }}
-                    className="flex flex-row gap-3 overflow-x-auto pb-3 snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-x-visible sm:pb-0 sm:snap-none lg:grid-cols-3"
+                    className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 w-full"
                   >
                     {group.freelancers.map((freelancer) => (
                       <FreelancerSelectionCard
