@@ -2905,6 +2905,65 @@ const extractBriefingTextFromFile = async (file) => {
     }
 };
 
+const parseDocumentRequirementBullets = (rawText = '', fileName = '') => {
+    if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
+        return '• Reference document attached successfully for project context.';
+    }
+
+    const clean = rawText
+        .replace(/\r/g, '')
+        .replace(/\t/g, ' ')
+        .replace(/\u0000/g, '')
+        .trim();
+
+    // 1. Check if the document already has clean bullet points or numbered items
+    const existingLines = clean.split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 5);
+
+    const bulletCandidates = [];
+
+    for (const line of existingLines) {
+        if (/^([*•\-–—]|\d+[\.\)])\s+/.test(line)) {
+            const stripped = line.replace(/^([*•\-–—]|\d+[\.\)])\s+/, '').trim();
+            if (stripped.length > 10) {
+                bulletCandidates.push(stripped);
+            }
+        }
+    }
+
+    if (bulletCandidates.length >= 2) {
+        return bulletCandidates.slice(0, 8).map((b) => `• ${b}`).join('\n');
+    }
+
+    // 2. Otherwise extract full, complete sentences from text
+    const rawSentences = clean
+        .split(/(?<=[.!?])\s+(?=[A-Z0-9"'])/g)
+        .map((s) => s.replace(/\s+/g, ' ').trim())
+        .filter((s) => s.length >= 20 && s.length <= 350);
+
+    const filteredSentences = rawSentences.filter((s) => {
+        if (/^page\s+\d+/i.test(s)) return false;
+        if (/^all\s+rights\s+reserved/i.test(s)) return false;
+        if (/^table\s+of\s+contents/i.test(s)) return false;
+        if (s.split(' ').length < 4) return false;
+        return true;
+    });
+
+    if (filteredSentences.length > 0) {
+        const selected = filteredSentences.slice(0, 5);
+        return selected.map((s) => `• ${s.endsWith('.') ? s : s + '.'}`).join('\n');
+    }
+
+    const firstPeriod = clean.indexOf('.', 80);
+    if (firstPeriod !== -1 && firstPeriod <= 400) {
+        const firstSentence = clean.slice(0, firstPeriod + 1).replace(/\s+/g, ' ').trim();
+        return `• ${firstSentence}`;
+    }
+
+    return `• ${clean.slice(0, 180).replace(/\s+/g, ' ').trim()}...`;
+};
+
 const buildBriefingGoalSuggestions = (role = '') => {
     const normalizedRole = normalizeServiceLogoKey(role);
     if (/\b(brand|design|ui|ux|creative)\b/.test(normalizedRole)) {
@@ -4451,20 +4510,7 @@ const GuestAIDemo = () => {
             setDocScanStepText('Analyzing document structure & technical scope...');
 
             if (text && text.trim().length > 0) {
-                const promptText = `Extract and summarize all critical project requirements, key features, technical stack, target audience, deliverables, and constraints from the document text below into a clean list of bullet points. Focus ONLY on important points so no detail is missed. Return ONLY bullet points.\n\nDocument: ${targetFile.name}\n\nContent:\n${text.slice(0, 10000)}`;
-
-                const aiRes = await request('/ai/chat', {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        message: promptText,
-                        serviceName: 'website-development',
-                    }),
-                }).catch(() => null);
-
-                const pointsText = aiRes?.message || aiRes?.reply || aiRes?.content || aiRes?.data?.message || '';
-                const finalPoints = (pointsText && pointsText.trim().length > 10)
-                    ? pointsText.trim()
-                    : ('• ' + text.trim().slice(0, 300).replace(/\n+/g, '\n• '));
+                const finalPoints = parseDocumentRequirementBullets(text, targetFile.name);
 
                 targetFile._aiBulletPoints = finalPoints;
                 setDocPointsModalText(finalPoints);
@@ -4491,7 +4537,7 @@ const GuestAIDemo = () => {
             }
         } catch (err) {
             console.warn('[Doc AI Extraction] Error:', err);
-            const fallbackMsg = '• Reference document attached.';
+            const fallbackMsg = '• Reference document attached successfully for project context.';
             targetFile._aiBulletPoints = fallbackMsg;
             setDocPointsModalText(fallbackMsg);
             setDocScanProgress(100);
@@ -4560,21 +4606,8 @@ const GuestAIDemo = () => {
                         let bulletPoints = file._aiBulletPoints;
                         if (!bulletPoints && text && text.trim().length > 0) {
                             setScanStepText(`Extracting key requirement points from "${file.name}"...`);
-                            const promptText = `Extract and summarize all critical project requirements, key features, technical stack, target audience, deliverables, and constraints from the document text below into a clean list of bullet points. Return ONLY bullet points.\n\nDocument: ${file.name}\n\nContent:\n${text.slice(0, 10000)}`;
-
-                            const aiRes = await request('/ai/chat', {
-                                method: 'POST',
-                                body: JSON.stringify({
-                                    message: promptText,
-                                    serviceName: inferredBriefingService?.slug || inferredBriefingService?.id || 'website-development',
-                                }),
-                            }).catch(() => null);
-
-                            const pointsText = aiRes?.message || aiRes?.reply || aiRes?.content || aiRes?.data?.message || '';
-                            if (pointsText && pointsText.trim().length > 10) {
-                                file._aiBulletPoints = pointsText.trim();
-                                bulletPoints = pointsText.trim();
-                            }
+                            bulletPoints = parseDocumentRequirementBullets(text, file.name);
+                            file._aiBulletPoints = bulletPoints;
                         }
 
                         setScanProgress((prev) => Math.min(75, prev + Math.round(30 / briefingFiles.length)));
@@ -4730,6 +4763,11 @@ const GuestAIDemo = () => {
     const startServiceConversation = useCallback(async (service, options = {}) => {
         if (!service) return null;
 
+        if (!isUserLoggedIn) {
+            setShowLoginFirstModal(true);
+            return null;
+        }
+
         const routeServiceId = String(service.slug || service.id || '').trim();
         syncServiceRouteQuery({ serviceId: routeServiceId, chatId: '' });
 
@@ -4850,6 +4888,7 @@ const GuestAIDemo = () => {
         }
     }, [
         expandSidebar,
+        isUserLoggedIn,
         syncServiceRouteQuery,
         replaceMessages,
         resetChatComposerState,
@@ -5337,6 +5376,10 @@ const GuestAIDemo = () => {
 
     const handleSendMessage = async (e, forcedContent = null, options = {}) => {
         if (e) e.preventDefault();
+        if (!isUserLoggedIn) {
+            setShowLoginFirstModal(true);
+            return;
+        }
         const ignorePendingOptionFollowup = Boolean(options?.ignorePendingOptionFollowup);
         const attachmentSource = Array.isArray(options?.pendingAttachmentsOverride)
             ? options.pendingAttachmentsOverride
@@ -6026,40 +6069,44 @@ const GuestAIDemo = () => {
                                 {currentBriefingStep.key === 'goal' ? (
                                     <div className="space-y-4">
                                         {/* Segmented Tab Switcher */}
-                                        <div className="grid grid-cols-2 gap-2 rounded-2xl bg-muted/40 p-1.5 border border-border/50">
+                                        <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-[#f0eae1]/80 dark:bg-white/[0.04] p-1.5 border border-[#e8dfd3] dark:border-white/10">
                                             <button
                                                 type="button"
                                                 onClick={() => setBriefingInputTab('text')}
-                                                className={`flex items-center justify-center gap-2.5 rounded-xl py-2.5 px-4 text-xs font-semibold transition-all duration-200 ${
+                                                className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-semibold transition-all duration-200 ${
                                                     briefingInputTab === 'text'
-                                                        ? (isDark ? 'bg-primary text-primary-foreground shadow-md' : 'bg-white text-foreground shadow-sm')
-                                                        : (isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')
+                                                        ? (isDark
+                                                            ? 'bg-zinc-800 text-white shadow-md border border-white/10'
+                                                            : 'bg-white text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-black/[0.04]')
+                                                        : (isDark
+                                                            ? 'text-zinc-400 hover:text-white hover:bg-white/5'
+                                                            : 'text-muted-foreground hover:text-foreground hover:bg-black/[0.02]')
                                                 }`}
                                             >
-                                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
+                                                <FileText className="w-3.5 h-3.5 shrink-0" />
                                                 <span>Write Requirements</span>
                                                 {briefingAnswers.goal?.trim()?.length > 0 && (
-                                                    <span className="ml-1 flex h-2 w-2 rounded-full bg-emerald-500" title="Text brief provided" />
+                                                    <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500" title="Text brief provided" />
                                                 )}
                                             </button>
 
                                             <button
                                                 type="button"
                                                 onClick={() => setBriefingInputTab('upload')}
-                                                className={`flex items-center justify-center gap-2.5 rounded-xl py-2.5 px-4 text-xs font-semibold transition-all duration-200 ${
+                                                className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-semibold transition-all duration-200 ${
                                                     briefingInputTab === 'upload'
-                                                        ? (isDark ? 'bg-primary text-primary-foreground shadow-md' : 'bg-white text-foreground shadow-sm')
-                                                        : (isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')
+                                                        ? (isDark
+                                                            ? 'bg-zinc-800 text-white shadow-md border border-white/10'
+                                                            : 'bg-white text-foreground shadow-[0_2px_8px_rgba(0,0,0,0.06)] border border-black/[0.04]')
+                                                        : (isDark
+                                                            ? 'text-zinc-400 hover:text-white hover:bg-white/5'
+                                                            : 'text-muted-foreground hover:text-foreground hover:bg-black/[0.02]')
                                                 }`}
                                             >
-                                                <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                </svg>
+                                                <UploadCloud className="w-4 h-4 shrink-0" />
                                                 <span>Upload Document</span>
                                                 {briefingFiles.length > 0 && (
-                                                    <span className="ml-1 inline-flex items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-white">
+                                                    <span className="inline-flex items-center justify-center rounded-full bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 text-[10px] font-bold leading-none">
                                                         {briefingFiles.length}
                                                     </span>
                                                 )}
@@ -6082,17 +6129,13 @@ const GuestAIDemo = () => {
                                                     </div>
                                                 </div>
 
-
-
                                                 {briefingFiles.length === 0 && (
                                                     <button
                                                         type="button"
                                                         onClick={() => setBriefingInputTab('upload')}
-                                                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline pt-1 font-medium"
+                                                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline pt-0.5 font-semibold"
                                                     >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                                        </svg>
+                                                        <UploadCloud className="w-3.5 h-3.5" />
                                                         Have a requirement document or PDF? Switch to upload mode
                                                     </button>
                                                 )}
@@ -6101,10 +6144,12 @@ const GuestAIDemo = () => {
 
                                         {/* Tab 2: Document Upload */}
                                         {briefingInputTab === 'upload' && (
-                                            <div className="space-y-3 pt-1">
-                                                <label className={`group flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-all duration-200 ${
-                                                    isExtractingDocPoints ? 'opacity-60 pointer-events-none cursor-not-allowed border-primary/40 bg-primary/5' : 'cursor-pointer hover:border-primary/60 hover:bg-primary/[0.02]'
-                                                } ${briefingUploadClasses}`}>
+                                            <div className="space-y-4 pt-1">
+                                                <label className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-all duration-300 ${
+                                                    isExtractingDocPoints
+                                                        ? 'opacity-70 pointer-events-none cursor-not-allowed border-primary/40 bg-primary/5'
+                                                        : 'cursor-pointer border-[#d8cdbf] dark:border-white/15 bg-[#faf7f2]/50 dark:bg-white/[0.02] hover:border-primary/60 hover:bg-primary/[0.03]'
+                                                }`}>
                                                     <input
                                                         type="file"
                                                         multiple
@@ -6113,23 +6158,32 @@ const GuestAIDemo = () => {
                                                         className="hidden"
                                                         accept=".pdf,.doc,.docx,.txt,.rtf,.md,.png,.jpg,.jpeg,.webp"
                                                     />
-                                                    <div className="flex flex-col items-center justify-center gap-2.5 text-center">
+                                                    <div className="flex flex-col items-center justify-center gap-3 text-center">
                                                         {isExtractingDocPoints ? (
-                                                            <div className="flex flex-col items-center gap-2 py-2">
-                                                                <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                                                                <p className="text-sm font-semibold text-primary">Document analysis in progress...</p>
-                                                                <p className="text-xs text-muted-foreground">Please wait while requirements are extracted</p>
+                                                            <div className="flex flex-col items-center gap-2.5 py-3">
+                                                                <div className="relative flex items-center justify-center">
+                                                                    <div className="absolute h-12 w-12 rounded-full bg-primary/20 animate-ping" />
+                                                                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
+                                                                        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-0.5">
+                                                                    <p className="text-xs font-bold text-primary">Analyzing Document & Extracting Scope...</p>
+                                                                    <p className="text-[11px] text-muted-foreground">{docScanStepText || 'Parsing specifications, please wait...'}</p>
+                                                                </div>
                                                             </div>
                                                         ) : (
                                                             <>
-                                                                <div className="rounded-full bg-primary/10 p-3.5 text-primary group-hover:scale-110 transition-transform duration-200">
-                                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                                                    </svg>
+                                                                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-2xs group-hover:scale-105 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                                                                    <UploadCloud className="w-6 h-6" />
                                                                 </div>
-                                                                <div>
-                                                                    <p className="text-sm font-semibold text-foreground">Click to upload or drag & drop project files</p>
-                                                                    <p className="text-xs text-muted-foreground mt-0.5">Supports PDF, DOCX, TXT, PNG, JPG (up to 10MB per file)</p>
+                                                                <div className="space-y-1">
+                                                                    <p className="text-sm font-bold text-foreground tracking-tight">
+                                                                        Click to upload or drag & drop project files
+                                                                    </p>
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Supports PDF, DOCX, TXT, PNG, JPG (up to 10MB per file)
+                                                                    </p>
                                                                 </div>
                                                             </>
                                                         )}
@@ -6138,101 +6192,129 @@ const GuestAIDemo = () => {
 
                                                 {/* Uploaded Files Grid */}
                                                 {briefingFiles.length > 0 && (
-                                                    <div className="space-y-2">
-                                                        <p className={`text-[10px] font-semibold uppercase tracking-[0.25em] ${briefingMicroLabelClasses}`}>Attached files ({briefingFiles.length})</p>
-                                                        <div className="grid gap-2 sm:grid-cols-1">
-                                                            {briefingFiles.map((file, idx) => (
-                                                                <div
-                                                                    key={`${file.name}-${idx}`}
-                                                                    className={`rounded-xl border p-3 text-xs transition-all space-y-2 ${briefingTagClasses}`}
-                                                                >
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex items-center gap-2.5 min-w-0">
-                                                                            <div className="rounded-lg bg-primary/10 p-2 text-primary shrink-0">
-                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                                                </svg>
+                                                    <div className="space-y-2.5">
+                                                        <div className="flex items-center justify-between px-0.5">
+                                                            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-1.5">
+                                                                Attached Files
+                                                                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted-foreground/15 px-1 text-[10px] font-bold text-foreground">
+                                                                    {briefingFiles.length}
+                                                                </span>
+                                                            </span>
+                                                        </div>
+
+                                                        <div className="space-y-2.5">
+                                                            {briefingFiles.map((file, idx) => {
+                                                                const fileExt = getBriefingFileTypeLabel(file);
+                                                                const isPdf = fileExt === 'PDF';
+                                                                const wordCount = file._extractedText ? file._extractedText.trim().split(/\s+/).length : null;
+
+                                                                return (
+                                                                    <div
+                                                                        key={`${file.name}-${idx}`}
+                                                                        className="rounded-2xl border border-[#e4dbd0] dark:border-white/10 bg-white dark:bg-zinc-900/70 p-4 transition-all duration-200 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-none space-y-3.5"
+                                                                    >
+                                                                        {/* File Header Row */}
+                                                                        <div className="flex items-center justify-between gap-3">
+                                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs border bg-primary/10 text-primary border-primary/25">
+                                                                                    {fileExt}
+                                                                                </div>
+                                                                                <div className="min-w-0">
+                                                                                    <p className="truncate text-sm font-bold text-foreground">
+                                                                                        {file.name}
+                                                                                    </p>
+                                                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-muted-foreground">
+                                                                                        <span>{(file.size / 1024).toFixed(0)} KB</span>
+                                                                                        {wordCount ? (
+                                                                                            <>
+                                                                                                <span>•</span>
+                                                                                                <span>{wordCount} words</span>
+                                                                                            </>
+                                                                                        ) : null}
+                                                                                        <span>•</span>
+                                                                                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                                            <CheckCircle2 className="w-3 h-3" /> Scanned
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
                                                                             </div>
-                                                                            <div className="min-w-0">
-                                                                                <p className={`truncate font-medium text-xs ${briefingTagTextClasses}`}>{file.name}</p>
-                                                                                <p className={`text-[10px] ${briefingTagSubtleClasses}`}>
-                                                                                    {(file.size / 1024).toFixed(0)} KB
-                                                                                    {file._extractedText ? ` • Extracted ${file._extractedText.trim().split(/\s+/).length} words` : ''}
-                                                                                </p>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="flex items-center gap-1.5 shrink-0">
-                                                                            {file._aiBulletPoints && (
+
+                                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                                {file._aiBulletPoints && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => {
+                                                                                            setActiveDocPointsModalFile(file);
+                                                                                            setIsExtractingDocPoints(false);
+                                                                                        }}
+                                                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 shadow-2xs"
+                                                                                    >
+                                                                                        <FileText className="w-3.5 h-3.5" />
+                                                                                        <span>View Full Brief</span>
+                                                                                    </button>
+                                                                                )}
                                                                                 <button
                                                                                     type="button"
-                                                                                    onClick={() => {
-                                                                                        setActiveDocPointsModalFile(file);
-                                                                                        setIsExtractingDocPoints(false);
-                                                                                    }}
-                                                                                    className="rounded-lg px-2.5 py-1 bg-primary/10 text-primary text-[11px] font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1"
+                                                                                    onClick={() => removeBriefingFile(idx)}
+                                                                                    className="rounded-xl p-2 text-muted-foreground/60 transition-colors hover:bg-red-500/10 hover:text-red-600"
+                                                                                    title="Remove file"
                                                                                 >
-                                                                                    <FileText className="w-3 h-3 text-primary" /> View Full Brief
+                                                                                    <Trash2 className="w-4 h-4" />
                                                                                 </button>
-                                                                            )}
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => removeBriefingFile(idx)}
-                                                                                className="ml-1 rounded-lg p-1.5 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors"
-                                                                                title="Remove file"
-                                                                            >
-                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                                </svg>
-                                                                            </button>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Extracted Bullet Points Box Directly on Page Card */}
-                                                                    {file._aiBulletPoints && (
-                                                                        <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-amber-500/5 p-4 border border-primary/20 space-y-2 mt-2 shadow-sm">
-                                                                            <div className="flex items-center justify-between">
-                                                                                <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
-                                                                                    <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
-                                                                                    <span>Extracted Requirement Highlights:</span>
-                                                                                </div>
-                                                                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                                                    <CheckCircle2 className="w-3 h-3" /> Scanned
-                                                                                </span>
                                                                             </div>
-                                                                            <div className="rounded-xl bg-background/90 p-3.5 text-xs leading-relaxed text-foreground font-sans max-h-60 overflow-y-auto border border-border/60 shadow-inner">
-                                                                                {(() => {
-                                                                                    const cleanLines = file._aiBulletPoints.split('\n').map((l) => l.trim()).filter(Boolean);
-                                                                                    return (
-                                                                                        <div className="space-y-2 font-sans text-xs">
-                                                                                            {cleanLines.map((line, lIdx) => {
-                                                                                                const cleanedText = line.replace(/^[#*\-\s\u2022]+/, '').replace(/\*\*/g, '').trim();
-                                                                                                if (!cleanedText) return null;
-                                                                                                const isHeading = line.startsWith('#') || line.startsWith('**') || line.endsWith(':') || /^- \*\*/.test(line);
+                                                                        </div>
 
-                                                                                                if (isHeading) {
-                                                                                                    return (
-                                                                                                        <div key={lIdx} className="pt-2 flex items-center gap-2 border-b border-primary/10 pb-1 mt-1">
-                                                                                                            <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                                                                                            <span className="font-bold text-foreground text-[12px] tracking-tight">{cleanedText}</span>
-                                                                                                        </div>
-                                                                                                    );
-                                                                                                }
+                                                                        {/* Integrated Requirement Scope - Single Clean Surface without Nested Boxes */}
+                                                                        {file._aiBulletPoints && (
+                                                                            <div className="rounded-xl bg-[#FAF6F0] dark:bg-white/[0.03] border border-[#e8dfd3] dark:border-white/10 p-3.5 space-y-2.5">
+                                                                                <div className="flex items-center justify-between">
+                                                                                    <span className="text-xs font-bold text-foreground">
+                                                                                        Key Requirement Highlights
+                                                                                    </span>
+                                                                                    <span className="text-[10px] font-semibold text-primary uppercase tracking-wider">
+                                                                                        Ready for analysis
+                                                                                    </span>
+                                                                                </div>
 
+                                                                                <div className="max-h-60 overflow-y-auto pr-1 space-y-2 text-xs">
+                                                                                    {(() => {
+                                                                                        const raw = file._aiBulletPoints || '';
+                                                                                        let lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+
+                                                                                        if (lines.length === 1 && lines[0].length > 120) {
+                                                                                            const parts = lines[0].split(/(?<=[.!?])\s+(?=[A-Z0-9•\-])/g).filter(Boolean);
+                                                                                            if (parts.length > 1) {
+                                                                                                lines = parts;
+                                                                                            }
+                                                                                        }
+
+                                                                                        return lines.map((line, lIdx) => {
+                                                                                            const cleanedText = line.replace(/^[#*\-\s\u2022]+/, '').replace(/\*\*/g, '').trim();
+                                                                                            if (!cleanedText) return null;
+                                                                                            const isHeading = line.startsWith('#') || line.startsWith('**') || line.endsWith(':') || /^- \*\*/.test(line);
+
+                                                                                            if (isHeading) {
                                                                                                 return (
-                                                                                                    <div key={lIdx} className="flex items-start gap-2 pl-2 text-muted-foreground leading-relaxed">
-                                                                                                        <span className="text-primary font-bold text-xs leading-none mt-1">•</span>
-                                                                                                        <span className="text-foreground/90 font-medium">{cleanedText}</span>
+                                                                                                    <div key={lIdx} className="pt-1.5 pb-0.5 font-bold text-primary text-[11px] uppercase tracking-wide border-b border-primary/10">
+                                                                                                        {cleanedText}
                                                                                                     </div>
                                                                                                 );
-                                                                                            })}
-                                                                                        </div>
-                                                                                    );
-                                                                                })()}
+                                                                                            }
+
+                                                                                            return (
+                                                                                                <div key={lIdx} className="flex items-start gap-2.5 pl-0.5 leading-relaxed text-foreground/90">
+                                                                                                    <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
+                                                                                                    <span className="font-medium text-xs text-foreground/90">{cleanedText}</span>
+                                                                                                </div>
+                                                                                            );
+                                                                                        });
+                                                                                    })()}
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            ))}
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
                                                         </div>
                                                     </div>
                                                 )}
@@ -6241,14 +6323,12 @@ const GuestAIDemo = () => {
 
                                         {/* Status summary banner */}
                                         {(briefingAnswers.goal?.trim() || briefingFiles.length > 0) && (
-                                            <div className="flex items-center justify-between rounded-xl bg-primary/5 border border-primary/15 px-3.5 py-2 text-xs text-primary font-medium">
-                                                <span className="flex items-center gap-1.5">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                                    </svg>
+                                            <div className="flex items-center justify-between rounded-2xl bg-primary/[0.06] border border-primary/20 px-4 py-2.5 text-xs font-semibold text-foreground">
+                                                <span className="flex items-center gap-2 text-primary font-bold">
+                                                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
                                                     Requirement ready for analysis
                                                 </span>
-                                                <span className="text-[11px] opacity-80 font-mono">
+                                                <span className="text-[11px] font-mono font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/15">
                                                     {[
                                                         briefingAnswers.goal?.trim() ? `${briefingAnswers.goal.trim().split(/\s+/).length} words` : null,
                                                         briefingFiles.length > 0 ? `${briefingFiles.length} file(s)` : null,
@@ -7764,10 +7844,7 @@ const GuestAIDemo = () => {
                     ) : (
                         <button
                             type="button"
-                            onClick={() => {
-                                const currentUrl = `${location.pathname}${location.search}`;
-                                navigate(`/signin/phone?role=client&redirect=${encodeURIComponent(currentUrl)}`);
-                            }}
+                            onClick={() => setShowLoginFirstModal(true)}
                             className={`flex w-full items-center gap-2 rounded-xl px-2 py-2 text-[13px] font-medium transition-colors ${isDark ? 'text-slate-300 hover:bg-white/4' : 'text-slate-600 hover:bg-slate-200/35'}`}
                         >
                             <LogIn className="h-4 w-4 shrink-0" />
@@ -8333,42 +8410,76 @@ const GuestAIDemo = () => {
             </AlertDialog>
 
             {/* Proper Login First popup modal */}
-            <AlertDialog open={showLoginFirstModal} onOpenChange={() => {}}>
-                <AlertDialogContent className={`max-w-lg rounded-3xl p-7 border shadow-2xl backdrop-blur-xl transition-all ${
+            <AlertDialog open={showLoginFirstModal} onOpenChange={(open) => {
+                if (!open && isUserLoggedIn) setShowLoginFirstModal(false);
+            }}>
+                <AlertDialogContent className={`max-w-[420px] w-[calc(100%-2rem)] rounded-[28px] p-6 border shadow-2xl backdrop-blur-2xl relative overflow-hidden transition-all ${
                     isDark
-                        ? 'bg-[#0d0d12]/95 border-white/15 text-white shadow-black/80'
-                        : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-900/10'
+                        ? 'bg-[#121216]/98 border-white/15 text-white shadow-[0_28px_80px_-20px_rgba(0,0,0,0.9)]'
+                        : 'bg-[#FAF6F0]/98 border-[#e4dbd0] text-foreground shadow-[0_28px_80px_-20px_rgba(0,0,0,0.15)]'
                 }`}>
-                    <AlertDialogHeader className="space-y-4">
-                        <div className="flex justify-center">
+                    {/* Ambient Glow */}
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 h-32 w-48 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
+
+                    <AlertDialogHeader className="space-y-2.5 pt-0.5">
+                        <div className="flex flex-col items-center gap-2">
                             <div className="relative">
-                                <div className="absolute -inset-1.5 rounded-2xl bg-gradient-to-r from-primary to-primary/60 opacity-30 blur-md" />
-                                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
-                                    <LogIn className="h-8 w-8 stroke-[2.2]" />
+                                <div className="absolute -inset-1 rounded-full bg-primary/20 blur-md pointer-events-none" />
+                                <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-md shadow-primary/25">
+                                    <img
+                                        src={cataLogo}
+                                        alt="Catalance Logo"
+                                        className={`h-9 w-9 object-contain ${isDark ? 'brightness-0' : 'brightness-0 invert'}`}
+                                    />
                                 </div>
                             </div>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary tracking-widest uppercase">
+                                <ShieldCheck className="w-3 h-3" /> Account Required
+                            </span>
                         </div>
 
-                        <div className="space-y-2 text-center">
-                            <AlertDialogTitle className={`text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                                Please Login First
+                        <div className="space-y-1 text-center">
+                            <AlertDialogTitle className={`text-lg sm:text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-foreground'}`}>
+                                Sign In to Continue
                             </AlertDialogTitle>
-                            <AlertDialogDescription className={`text-sm leading-relaxed ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
-                                To access and view this AI chat session, proposals, and project features, please log in to your account.
+                            <AlertDialogDescription className={`text-xs leading-relaxed ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
+                                Sign in to access this interactive AI consultation, review proposal breakdowns, and match with verified talent.
                             </AlertDialogDescription>
                         </div>
                     </AlertDialogHeader>
 
-                    <AlertDialogFooter className="mt-6 flex flex-col gap-3 sm:flex-col">
+                    {/* Value Proposition List */}
+                    <div className="my-3.5 rounded-2xl bg-white/80 dark:bg-white/[0.03] border border-[#e8dfd3] dark:border-white/10 p-3 space-y-2 text-xs">
+                        <div className="flex items-center gap-2 text-foreground/90">
+                            <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <Sparkles className="h-3 w-3" />
+                            </div>
+                            <span className="font-medium text-[11px]">Save & resume your project requirements</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-foreground/90">
+                            <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <ShieldCheck className="h-3 w-3" />
+                            </div>
+                            <span className="font-medium text-[11px]">Unlock full scope & pricing recommendations</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-foreground/90">
+                            <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                <Users className="h-3 w-3" />
+                            </div>
+                            <span className="font-medium text-[11px]">Connect directly with vetted freelancers & agencies</span>
+                        </div>
+                    </div>
+
+                    <AlertDialogFooter className="flex flex-col gap-2 sm:flex-col mt-1">
                         <AlertDialogAction
                             onClick={() => {
                                 const currentUrl = `${location.pathname}${location.search}`;
                                 navigate(`/signin/phone?role=client&redirect=${encodeURIComponent(currentUrl)}`);
                             }}
-                            className="h-12 w-full rounded-2xl bg-gradient-to-r from-primary to-primary/90 px-6 text-base font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-95 flex items-center justify-center gap-2.5"
+                            className="h-11 w-full rounded-2xl bg-primary hover:bg-primary/90 active:scale-[0.99] px-6 text-sm font-bold text-white dark:text-black shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2 cursor-pointer border-0"
                         >
-                            <LogIn className="h-5 w-5" />
-                            Login to Continue
+                            <LogIn className="h-4 w-4" />
+                            <span>Sign In to Continue</span>
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
@@ -8378,20 +8489,20 @@ const GuestAIDemo = () => {
             <AlertDialog open={Boolean(activeDocPointsModalFile) && !sessionId} onOpenChange={(open) => !open && setActiveDocPointsModalFile(null)}>
                 <AlertDialogContent className={`max-w-lg rounded-[28px] p-7 border shadow-2xl backdrop-blur-xl relative overflow-hidden transition-all ${
                     isDark
-                        ? 'bg-[#0d0d12]/95 border-white/15 text-white shadow-black/80'
-                        : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-900/10'
+                        ? 'bg-[#121216]/95 border-white/15 text-white shadow-black/80'
+                        : 'bg-[#FAF6F0]/98 border-[#e4dbd0] text-foreground shadow-[0_24px_60px_-15px_rgba(0,0,0,0.15)]'
                 }`}>
                     {/* Ambient glow */}
-                    <div className="absolute -top-20 -left-20 h-40 w-40 rounded-full bg-primary/20 blur-3xl pointer-events-none" />
+                    <div className="absolute -top-20 -left-20 h-40 w-40 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
 
                     <AlertDialogHeader className="space-y-3">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
-                                    <FileText className="h-6 w-6 text-primary" />
+                                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
+                                    <FileText className="h-5 w-5 text-primary" />
                                 </div>
                                 <div className="min-w-0">
-                                    <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary tracking-wide uppercase mb-1">
+                                    <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary tracking-wide uppercase mb-0.5">
                                         {isExtractingDocPoints ? (
                                             <span className="flex items-center gap-1">
                                                 <span className="relative flex h-1.5 w-1.5">
@@ -8401,23 +8512,23 @@ const GuestAIDemo = () => {
                                                 Document Processing Active
                                             </span>
                                         ) : (
-                                            <span className="flex items-center gap-1 text-emerald-500">
+                                            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
                                                 <Check className="w-3 h-3" /> Analysis Complete
                                             </span>
                                         )}
                                     </div>
-                                    <AlertDialogTitle className={`text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    <AlertDialogTitle className={`text-lg sm:text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-foreground'}`}>
                                         Document Requirement Analysis
                                     </AlertDialogTitle>
                                 </div>
                             </div>
                         </div>
 
-                        <div className={`flex items-center gap-2 rounded-xl px-3 py-2 border text-xs ${
-                            isDark ? 'bg-white/4 border-white/8 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+                        <div className={`flex items-center gap-2 rounded-xl px-3.5 py-2 border text-xs ${
+                            isDark ? 'bg-white/4 border-white/8 text-zinc-300' : 'bg-white/90 border-[#e8dfd3] text-foreground'
                         }`}>
                             <FileText className="w-4 h-4 text-primary shrink-0" />
-                            <span className="truncate font-medium">{activeDocPointsModalFile?.name}</span>
+                            <span className="truncate font-semibold">{activeDocPointsModalFile?.name}</span>
                             <span className="text-[10px] font-mono text-muted-foreground ml-auto shrink-0">
                                 {activeDocPointsModalFile?.size ? `${(activeDocPointsModalFile.size / 1024).toFixed(0)} KB` : ''}
                             </span>
@@ -8435,17 +8546,17 @@ const GuestAIDemo = () => {
                                 </div>
 
                                 <div className="space-y-1 max-w-xs">
-                                    <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                                    <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-foreground'}`}>
                                         Analyzing Document Requirements...
                                     </p>
-                                    <p className={`text-xs font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'} animate-pulse`}>
+                                    <p className={`text-xs font-medium text-muted-foreground animate-pulse`}>
                                         {docScanStepText || 'Processing document specifications...'}
                                     </p>
                                 </div>
 
                                 <div className="w-full max-w-xs space-y-1.5">
                                     <div className="flex justify-between text-[11px] font-semibold">
-                                        <span className={isDark ? 'text-slate-400' : 'text-slate-500'}>Processing Progress</span>
+                                        <span className="text-muted-foreground">Processing Progress</span>
                                         <span className="text-primary font-mono font-bold">{docScanProgress}%</span>
                                     </div>
                                     <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden border border-border/40 p-0.5">
@@ -8459,44 +8570,48 @@ const GuestAIDemo = () => {
                         ) : (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between text-xs">
-                                    <span className="font-bold text-emerald-500 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                                    <span className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                                         <CheckCircle2 className="w-4 h-4 shrink-0" />
                                         Parsed Project Specifications:
                                     </span>
                                     <span className="text-[10px] text-muted-foreground font-mono">Ready for Scope Matching</span>
                                 </div>
 
-                                <div className={`rounded-2xl p-4 border text-xs max-h-60 overflow-y-auto ${
-                                    isDark ? 'bg-white/5 border-white/10 text-slate-200' : 'bg-slate-50 border-slate-200/90 text-slate-800'
+                                <div className={`rounded-2xl p-4 border text-xs max-h-64 overflow-y-auto space-y-2 ${
+                                    isDark ? 'bg-zinc-900/70 border-white/10 text-zinc-200' : 'bg-white border-[#e6ddd2] text-foreground'
                                 }`}>
                                     {(() => {
                                         const textToRender = docPointsModalText || activeDocPointsModalFile?._aiBulletPoints || '• Document attached successfully for project reference.';
-                                        const cleanLines = textToRender.split('\n').map((l) => l.trim()).filter(Boolean);
-                                        return (
-                                            <div className="space-y-2 font-sans text-xs">
-                                                {cleanLines.map((line, lIdx) => {
-                                                    const cleanedText = line.replace(/^[#*\-\s\u2022]+/, '').replace(/\*\*/g, '').trim();
-                                                    if (!cleanedText) return null;
-                                                    const isHeading = line.startsWith('#') || line.startsWith('**') || line.endsWith(':') || /^- \*\*/.test(line);
+                                        let cleanLines = textToRender.split('\n').map((l) => l.trim()).filter(Boolean);
 
-                                                    if (isHeading) {
-                                                        return (
-                                                            <div key={lIdx} className="pt-2 flex items-center gap-2 border-b border-primary/10 pb-1 mt-1">
-                                                                <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                                                <span className="font-bold text-foreground text-[12px] tracking-tight">{cleanedText}</span>
-                                                            </div>
-                                                        );
-                                                    }
+                                        if (cleanLines.length === 1 && cleanLines[0].length > 120) {
+                                            const parts = cleanLines[0].split(/(?<=[.!?])\s+(?=[A-Z0-9•\-])/g).filter(Boolean);
+                                            if (parts.length > 1) {
+                                                cleanLines = parts;
+                                            }
+                                        }
 
-                                                    return (
-                                                        <div key={lIdx} className="flex items-start gap-2 pl-2 text-muted-foreground leading-relaxed">
-                                                            <span className="text-primary font-bold text-xs leading-none mt-1">•</span>
-                                                            <span className="text-foreground/90 font-medium">{cleanedText}</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        );
+                                        return cleanLines.map((line, lIdx) => {
+                                            const cleanedText = line.replace(/^[#*\-\s\u2022]+/, '').replace(/\*\*/g, '').trim();
+                                            if (!cleanedText) return null;
+                                            const isHeading = line.startsWith('#') || line.startsWith('**') || line.endsWith(':') || /^- \*\*/.test(line);
+
+                                            if (isHeading) {
+                                                return (
+                                                    <div key={lIdx} className="pt-2 flex items-center gap-2 border-b border-primary/10 pb-1 mt-1">
+                                                        <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                                        <span className="font-bold text-foreground text-[12px] tracking-tight">{cleanedText}</span>
+                                                    </div>
+                                                );
+                                            }
+
+                                            return (
+                                                <div key={lIdx} className="flex items-start gap-2 pl-1.5 text-muted-foreground leading-relaxed">
+                                                    <span className="text-primary font-bold text-xs leading-none mt-1">•</span>
+                                                    <span className="text-foreground/90 font-medium">{cleanedText}</span>
+                                                </div>
+                                            );
+                                        });
                                     })()}
                                 </div>
                             </div>
@@ -8507,7 +8622,7 @@ const GuestAIDemo = () => {
                         <AlertDialogAction
                             disabled={isExtractingDocPoints}
                             onClick={() => setActiveDocPointsModalFile(null)}
-                            className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-primary to-primary/90 px-6 py-3 font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:opacity-90 flex items-center justify-center gap-2"
+                            className="w-full sm:w-auto rounded-2xl bg-primary px-6 py-3 font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 flex items-center justify-center gap-2"
                         >
                             <Check className="w-4 h-4" />
                             Use These Requirements
