@@ -16,14 +16,19 @@ import Activity from "lucide-react/dist/esm/icons/activity";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import Copy from "lucide-react/dist/esm/icons/copy";
+import Cpu from "lucide-react/dist/esm/icons/cpu";
+import Download from "lucide-react/dist/esm/icons/download";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import FileCheck from "lucide-react/dist/esm/icons/file-check";
+import FileText from "lucide-react/dist/esm/icons/file-text";
 import Layers from "lucide-react/dist/esm/icons/layers";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Mail from "lucide-react/dist/esm/icons/mail";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import Paperclip from "lucide-react/dist/esm/icons/paperclip";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
-import User from "lucide-react/dist/esm/icons/user";
+import Send from "lucide-react/dist/esm/icons/send";
 import UserX from "lucide-react/dist/esm/icons/user-x";
 import { toast } from "sonner";
 import cataLogo from "@/assets/logos/logo.svg";
@@ -50,6 +55,11 @@ const getClientInitials = (name = "") => {
   const parts = clean.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   return clean.slice(0, 2).toUpperCase();
+};
+
+const getCleanPhoneNumber = (phone = "") => {
+  if (!phone || phone === "N/A") return "";
+  return phone.replace(/[^\d+]/g, "").replace(/^\+/, "");
 };
 
 const AdminServicesActivityDetail = () => {
@@ -90,6 +100,8 @@ const AdminServicesActivityDetail = () => {
     toast.success(`${label} copied to clipboard.`);
   };
 
+  const cleanPhone = getCleanPhoneNumber(sessionDetail?.client?.phone);
+
   return (
     <AdminLayout>
       <div className="space-y-6 p-6 max-w-6xl mx-auto">
@@ -103,12 +115,12 @@ const AdminServicesActivityDetail = () => {
               className="rounded-xl border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
             >
               <ArrowLeft className="h-4 w-4 mr-1.5" />
-              Back to Services Activity
+              Back to Client Activity
             </Button>
             <div className="h-4 w-[1px] bg-slate-300 hidden sm:block" />
             <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
               <Bot className="h-5 w-5 text-orange-500" />
-              Chat Session Detail
+              Client Activity & AI Usage Detail
             </h1>
           </div>
 
@@ -167,43 +179,64 @@ const AdminServicesActivityDetail = () => {
                       <Phone className="h-3.5 w-3.5 text-emerald-500" />
                       {sessionDetail.client?.phone || "Phone Not Provided"}
                     </span>
-                  </div>
-                </div>
-
-                {/* Column 2: Service & Status */}
-                <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Service</span>
-                    <Badge variant="outline" className="bg-slate-50 text-slate-800 border-slate-200 text-xs font-semibold">
-                      {sessionDetail.serviceLabel}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Status</span>
-                    {sessionDetail.status === "PROPOSAL_GENERATED" ? (
-                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-semibold">
-                        <FileCheck className="h-3 w-3 mr-1" />
-                        Proposal Created
-                      </Badge>
-                    ) : sessionDetail.status === "DROPPED_OFF" ? (
-                      <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-semibold">
-                        <UserX className="h-3 w-3 mr-1" />
-                        Dropped Off
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs font-semibold">
-                        <Activity className="h-3 w-3 mr-1" />
-                        In Progress
-                      </Badge>
+                    {sessionDetail.client?.email && sessionDetail.client.email !== "N/A" && (
+                      <span className="text-xs text-slate-500 font-medium flex items-center gap-1.5 truncate">
+                        <Mail className="h-3.5 w-3.5 text-slate-400" />
+                        {sessionDetail.client.email}
+                      </span>
                     )}
                   </div>
                 </div>
 
-                {/* Column 3: Live Chat Action */}
-                <div className="flex flex-col gap-2.5 items-stretch md:items-end border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
-                  <span className="text-xs text-slate-500 font-medium">
-                    Started: {formatDate(sessionDetail.createdAt)}
+                {/* Column 2: Direct Contact Actions */}
+                <div className="flex flex-col gap-2 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
+                  <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
+                    Direct Client Outreach
                   </span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {sessionDetail.client?.phone && sessionDetail.client.phone !== "N/A" && (
+                      <>
+                        <a
+                          href={`tel:${sessionDetail.client.phone}`}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold text-xs px-3 py-2 border border-emerald-200 transition-colors"
+                        >
+                          <Phone className="h-3.5 w-3.5" /> Call Direct
+                        </a>
+                        {cleanPhone && (
+                          <a
+                            href={`https://wa.me/${cleanPhone}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 rounded-xl bg-green-50 hover:bg-green-100 text-green-700 font-semibold text-xs px-3 py-2 border border-green-200 transition-colors"
+                          >
+                            <Send className="h-3.5 w-3.5" /> WhatsApp
+                          </a>
+                        )}
+                      </>
+                    )}
+                    {sessionDetail.client?.email && sessionDetail.client.email !== "N/A" && (
+                      <a
+                        href={`mailto:${sessionDetail.client.email}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-xs px-3 py-2 border border-blue-200 transition-colors"
+                      >
+                        <Mail className="h-3.5 w-3.5" /> Email Client
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 3: Live Chat & Service Status */}
+                <div className="flex flex-col gap-2.5 items-stretch md:items-end border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-slate-50 text-slate-800 border-slate-200 text-xs font-semibold">
+                      {sessionDetail.serviceLabel}
+                    </Badge>
+                    {sessionDetail.documentData?.hasDocument && (
+                      <Badge className="bg-indigo-50 text-indigo-700 border-indigo-200 text-xs font-semibold">
+                        📄 Doc Uploaded
+                      </Badge>
+                    )}
+                  </div>
                   <a
                     href={`/services?service=${sessionDetail.serviceId}&chat=${sessionDetail.id}`}
                     target="_blank"
@@ -216,16 +249,24 @@ const AdminServicesActivityDetail = () => {
               </div>
             </div>
 
-            {/* Tabbed View: Transcript vs Extracted Answers */}
-            <Tabs defaultValue="transcript" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 rounded-2xl bg-slate-100 p-1 border border-slate-200">
+            {/* 4-Tab View: Transcript vs Document Data vs AI Usage vs Extracted Answers */}
+            <Tabs defaultValue={sessionDetail.documentData?.hasDocument ? "documents" : "transcript"} className="w-full">
+              <TabsList className="grid w-full grid-cols-4 rounded-2xl bg-slate-100 p-1 border border-slate-200">
                 <TabsTrigger value="transcript" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
                   <MessageSquare className="h-4 w-4 mr-2 text-orange-500" />
-                  Chat Message Transcript ({sessionDetail.messages?.length || 0})
+                  Transcript ({sessionDetail.messages?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+                  <FileText className="h-4 w-4 mr-2 text-indigo-500" />
+                  Documents ({sessionDetail.documentData?.attachmentCount || 0})
+                </TabsTrigger>
+                <TabsTrigger value="ai_usage" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+                  <Cpu className="h-4 w-4 mr-2 text-purple-600" />
+                  AI Cost & Tokens
                 </TabsTrigger>
                 <TabsTrigger value="answers" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
-                  <Layers className="h-4 w-4 mr-2 text-orange-500" />
-                  Extracted Brief & Captured Answers
+                  <Layers className="h-4 w-4 mr-2 text-emerald-500" />
+                  Brief & Answers
                 </TabsTrigger>
               </TabsList>
 
@@ -247,14 +288,12 @@ const AdminServicesActivityDetail = () => {
                               isAssistant ? "justify-start" : "justify-end"
                             }`}
                           >
-                            {/* Assistant Avatar */}
                             {isAssistant && (
                               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 border border-slate-200 shadow-sm mt-1">
                                 <img src={cataLogo} alt="AI logo" className="h-5 w-5 object-contain" />
                               </div>
                             )}
 
-                            {/* Message Box */}
                             <div
                               className={`flex flex-col gap-1.5 max-w-[85%] rounded-2xl p-4.5 shadow-sm border ${
                                 isAssistant
@@ -272,9 +311,31 @@ const AdminServicesActivityDetail = () => {
                               <div className="prose prose-sm max-w-none break-words text-sm leading-relaxed text-slate-800 prose-p:my-1 prose-headings:text-slate-900 prose-headings:font-semibold prose-strong:text-slate-900 prose-li:text-slate-800">
                                 <ReactMarkdown>{msg.content}</ReactMarkdown>
                               </div>
+
+                              {/* Display Message Attachment if Present */}
+                              {msg.attachment && typeof msg.attachment === "object" && (
+                                <div className="mt-2 p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 overflow-hidden">
+                                    <Paperclip className="h-4 w-4 text-indigo-500 shrink-0" />
+                                    <span className="text-xs font-semibold text-slate-800 truncate" title={msg.attachment.name}>
+                                      {msg.attachment.name || "Attachment"}
+                                    </span>
+                                  </div>
+                                  {msg.attachment.url && (
+                                    <a
+                                      href={msg.attachment.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="p-1 rounded-lg bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+                                      title="Download Attachment"
+                                    >
+                                      <Download className="h-3.5 w-3.5" />
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                             </div>
 
-                            {/* User Avatar */}
                             {!isAssistant && (
                               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-white font-bold text-xs shadow-md mt-1">
                                 {getClientInitials(sessionDetail.client?.name)}
@@ -288,7 +349,150 @@ const AdminServicesActivityDetail = () => {
                 </Card>
               </TabsContent>
 
-              {/* Tab 2: Extracted Answers & Brief */}
+              {/* Tab 2: Uploaded Document Analytics & Content */}
+              <TabsContent value="documents" className="mt-6">
+                <Card className="border-slate-200 rounded-3xl p-6 shadow-sm bg-white">
+                  {!sessionDetail.documentData?.hasDocument ? (
+                    <div className="text-center py-12 text-slate-400">
+                      <FileText className="h-10 w-10 mx-auto text-slate-300 mb-2" />
+                      <p className="font-semibold text-slate-700">No Document Uploaded in this Session</p>
+                      <p className="text-xs text-slate-500 mt-1">The user interacted directly via chat questionnaire prompts.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* File Cards Grid */}
+                      {sessionDetail.documentData.attachments?.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider">
+                            Uploaded File Attachments ({sessionDetail.documentData.attachments.length})
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {sessionDetail.documentData.attachments.map((file, i) => (
+                              <div key={i} className="flex items-center justify-between p-4 rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                  <div className="p-2.5 rounded-xl bg-indigo-50 text-indigo-600">
+                                    <FileText className="h-5 w-5" />
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-sm font-bold text-slate-900 truncate" title={file.name}>
+                                      {file.name || `Document ${i + 1}`}
+                                    </span>
+                                    <span className="text-xs text-slate-500 font-medium">
+                                      {file.type || "Document File"} {file.size ? `• ${Math.round(file.size / 1024)} KB` : ""}
+                                    </span>
+                                  </div>
+                                </div>
+                                {file.url && (
+                                  <a
+                                    href={file.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-3.5 py-2 shadow-sm transition-all shrink-0"
+                                  >
+                                    <Download className="h-3.5 w-3.5" /> View / Download
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Extracted Document Context Text Box */}
+                      {sessionDetail.documentData.extractedText && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-xs uppercase font-bold text-slate-500 tracking-wider flex items-center gap-2">
+                              Extracted Document Context & AI Insights
+                            </h4>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => copyToClipboard(sessionDetail.documentData.extractedText, "Document context")}
+                              className="h-7 text-xs rounded-lg border-slate-200 text-slate-700"
+                            >
+                              <Copy className="h-3 w-3 mr-1" /> Copy Text
+                            </Button>
+                          </div>
+                          <div className="rounded-2xl border border-slate-200 bg-slate-900 text-slate-100 p-5 font-mono text-xs leading-relaxed max-h-[350px] overflow-y-auto whitespace-pre-wrap shadow-inner">
+                            {sessionDetail.documentData.extractedText}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
+
+              {/* Tab 3: AI Usage & Token Cost Analytics */}
+              <TabsContent value="ai_usage" className="mt-6">
+                <Card className="border-slate-200 rounded-3xl p-6 shadow-sm bg-white space-y-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    <div className="p-4.5 rounded-2xl border border-purple-200 bg-purple-50/60 space-y-1">
+                      <span className="text-xs uppercase font-bold text-purple-700 tracking-wider flex items-center gap-1.5">
+                        <Cpu className="h-4 w-4 text-purple-600" /> Total Estimated Cost
+                      </span>
+                      <p className="text-2xl font-extrabold text-purple-950">
+                        {sessionDetail.aiUsage?.formattedCostINR || "₹0.00"}
+                      </p>
+                      <p className="text-xs text-purple-700 font-mono font-medium">
+                        {sessionDetail.aiUsage?.formattedCostUSD || "$0.0000"} USD
+                      </p>
+                    </div>
+
+                    <div className="p-4.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1">
+                      <span className="text-xs uppercase font-bold text-slate-500 tracking-wider">
+                        Total Tokens Consumed
+                      </span>
+                      <p className="text-2xl font-extrabold text-slate-900">
+                        {(sessionDetail.aiUsage?.totalTokens || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        Input: {(sessionDetail.aiUsage?.promptTokens || 0).toLocaleString()} • Output: {(sessionDetail.aiUsage?.completionTokens || 0).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="p-4.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1">
+                      <span className="text-xs uppercase font-bold text-slate-500 tracking-wider">
+                        AI Model & Call Count
+                      </span>
+                      <p className="text-base font-bold text-slate-900 truncate">
+                        {sessionDetail.aiUsage?.modelName || "GPT-4o-mini / Gemini Flash"}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {sessionDetail.aiUsage?.callCount || 0} total AI turns executed
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Detailed Token Accounting Box */}
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5 space-y-3">
+                    <h4 className="text-xs uppercase font-bold text-slate-700 tracking-wider flex items-center gap-2">
+                      <Cpu className="h-4 w-4 text-purple-600" /> AI Usage & Token Accounting Breakdown
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3.5 rounded-xl bg-white border border-slate-200">
+                        <span className="text-slate-500 block mb-1">Prompt (Input) Tokens</span>
+                        <span className="font-extrabold text-slate-900 text-sm">{(sessionDetail.aiUsage?.promptTokens || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-white border border-slate-200">
+                        <span className="text-slate-500 block mb-1">Completion (Output) Tokens</span>
+                        <span className="font-extrabold text-slate-900 text-sm">{(sessionDetail.aiUsage?.completionTokens || 0).toLocaleString()}</span>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200">
+                        <span className="text-purple-700 block font-semibold mb-1">Cost in INR (₹)</span>
+                        <span className="font-extrabold text-purple-900 text-sm">{sessionDetail.aiUsage?.formattedCostINR || "₹0.00"}</span>
+                      </div>
+                      <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200">
+                        <span className="text-purple-700 block font-semibold mb-1">Cost in USD ($)</span>
+                        <span className="font-extrabold text-purple-900 text-sm">{sessionDetail.aiUsage?.formattedCostUSD || "$0.0000"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </TabsContent>
+
+              {/* Tab 4: Extracted Answers & Brief */}
               <TabsContent value="answers" className="mt-6">
                 <Card className="border-slate-200 rounded-3xl p-6 shadow-sm bg-white">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

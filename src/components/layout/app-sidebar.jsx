@@ -260,7 +260,7 @@ const navConfigs = {
       isActive: true,
     },
     {
-      title: "Services Activity",
+      title: "Client Activity",
       url: "/admin/services-activity",
       icon: Activity,
       isActive: true,
