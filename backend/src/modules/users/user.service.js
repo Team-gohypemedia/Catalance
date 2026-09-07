@@ -9,6 +9,7 @@ import {
 } from "../../utils/skill-utils.js";
 import { env } from "../../config/env.js";
 import { ensureResendClient } from "../../lib/resend.js";
+import { sendEmail } from "../../lib/email-service.js";
 import { sendWhatsappOtp } from "../../lib/whatsapp.js";
 import { hashPassword, verifyPassword, verifyLegacyPassword } from "./password.utils.js";
 import {
@@ -2344,69 +2345,50 @@ const sendOtpEmail = async ({
   isResend = false,
   purpose = "verification"
 }) => {
-  const hasResendConfig = Boolean(env.RESEND_API_KEY && env.RESEND_FROM_EMAIL);
-
-  if (!hasResendConfig) {
-    const message =
-      "Email service is not configured (missing RESEND_API_KEY or RESEND_FROM_EMAIL).";
-    if (env.NODE_ENV === "production") {
-      throw new AppError(message, 500, {
-        provider: "resend",
-        reason: "missing_config"
-      });
-    }
-
-    console.warn(`[OTP Email] ${message}`);
-    console.log(`[DEV] OTP for ${email}: ${otpCode}`);
-    return { delivered: false, reason: "missing_config" };
-  }
-
-  const resend = ensureResendClient();
   const { subject, html } = buildOtpEmailContent({
     otpCode,
     isResend,
     purpose
   });
+
+  let delivered = false;
   let lastError = null;
 
   for (let attempt = 1; attempt <= OTP_EMAIL_RETRY_ATTEMPTS; attempt += 1) {
     try {
-      const result = await resend.emails.send({
-        from: env.RESEND_FROM_EMAIL,
+      delivered = await sendEmail({
         to: email,
         subject,
-        html
+        html,
+        rawHtml: true
       });
-
-      if (result?.error) {
-        throw new Error(
-          typeof result.error === "string"
-            ? result.error
-            : result.error?.message || JSON.stringify(result.error)
-        );
+      if (delivered) {
+        console.log(`[OTP Email] Sent to ${email}. Subject: ${subject}`);
+        return { delivered: true };
       }
-
-      console.log(
-        `[OTP Email] Sent to ${email}. Subject: ${subject}. ID: ${result?.data?.id || "n/a"}`
-      );
-      return { delivered: true, id: result?.data?.id || null };
     } catch (error) {
       lastError = error;
       console.error(
         `[OTP Email] Attempt ${attempt}/${OTP_EMAIL_RETRY_ATTEMPTS} failed:`,
         error?.message || error
       );
-      if (attempt < OTP_EMAIL_RETRY_ATTEMPTS) {
-        await wait(400);
-      }
     }
+    if (attempt < OTP_EMAIL_RETRY_ATTEMPTS) {
+      await wait(400);
+    }
+  }
+
+  if (env.NODE_ENV !== "production") {
+    console.warn(`[OTP Email] Email delivery failed or not configured.`);
+    console.log(`[DEV] OTP for ${email}: ${otpCode}`);
+    return { delivered: false, reason: "dev_fallback" };
   }
 
   throw new AppError(
     "We could not deliver the verification code email. Please try again in a moment.",
     502,
     {
-      provider: "resend",
+      provider: "smtp",
       reason: "delivery_failed",
       cause: lastError?.message || "unknown_error"
     }

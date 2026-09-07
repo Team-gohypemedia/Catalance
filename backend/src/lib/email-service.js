@@ -1,6 +1,31 @@
-
+import nodemailer from "nodemailer";
 import { resend } from "./resend.js";
 import { env } from "../config/env.js";
+
+const createSmtpTransporter = () => {
+  const host = env.SMTP_HOST || "smtp.hostinger.com";
+  const user = env.SMTP_USER || "info@catalance.in";
+  const pass = env.SMTP_PASS || "Gohypemedia@2026";
+  const port = Number(env.SMTP_PORT) || 465;
+
+  if (host && user && pass) {
+    return nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: {
+        user,
+        pass
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+  }
+  return null;
+};
+
+export const smtpTransporter = createSmtpTransporter();
 
 // Helper to wrap content in a basic responsive HTML template
 const wrapHtml = (title, content) => `
@@ -37,34 +62,51 @@ const wrapHtml = (title, content) => `
 </html>
 `;
 
-export const sendEmail = async ({ to, subject, title, html, text }) => {
-  if (!resend) {
-    console.warn("[EmailService] Resend not configured. Skipping email:", subject);
-    return false;
+export const sendEmail = async ({ to, subject, title, html, text, rawHtml = false }) => {
+  const fromEmail = env.SMTP_FROM_EMAIL || env.RESEND_FROM_EMAIL || `"Catalance" <${env.SMTP_USER || "info@catalance.in"}>`;
+  const finalHtml = rawHtml ? (html || text) : wrapHtml(title || subject, html || `<p>${text}</p>`);
+
+  // Try SMTP (Hostinger) first
+  if (smtpTransporter) {
+    try {
+      const info = await smtpTransporter.sendMail({
+        from: fromEmail,
+        to,
+        subject,
+        html: finalHtml,
+        text: text || undefined
+      });
+      console.log(`[EmailService] 📧 Hostinger SMTP Email sent to ${to}: ${subject} (ID: ${info.messageId})`);
+      return true;
+    } catch (smtpError) {
+      console.error("[EmailService] Hostinger SMTP error:", smtpError?.message || smtpError);
+    }
   }
 
-  try {
-    const from = env.RESEND_FROM_EMAIL || "Catalance <onboarding@resend.dev>";
-    
-    // If we only have text, wrap it in a simple p tag for HTML
-    const finalHtml = wrapHtml(title || subject, html || `<p>${text}</p>`);
+  // Fallback to Resend if configured
+  if (resend) {
+    try {
+      const from = env.RESEND_FROM_EMAIL || "Catalance <info@catalance.in>";
+      const data = await resend.emails.send({
+        from,
+        to,
+        subject,
+        html: finalHtml,
+      });
 
-    const data = await resend.emails.send({
-      from,
-      to,
-      subject,
-      html: finalHtml,
-    });
-
-    if (data.error) {
+      if (data.error) {
         console.error("[EmailService] Resend API Error:", data.error);
         return false;
-    }
+      }
 
-    console.log(`[EmailService] 📧 Email sent to ${to}: ${subject} (ID: ${data.data?.id})`);
-    return true;
-  } catch (error) {
-    console.error("[EmailService] Failed to send email:", error);
-    return false;
+      console.log(`[EmailService] 📧 Resend Email sent to ${to}: ${subject} (ID: ${data.data?.id})`);
+      return true;
+    } catch (error) {
+      console.error("[EmailService] Failed to send email via Resend:", error);
+      return false;
+    }
   }
+
+  console.warn("[EmailService] No active email provider (SMTP or Resend). Skipping email:", subject);
+  return false;
 };
