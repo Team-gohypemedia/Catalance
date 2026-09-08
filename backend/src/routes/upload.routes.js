@@ -64,11 +64,11 @@ const serviceMediaUpload = multer({
   }
 });
 
-// Chat file upload - any file type, 10MB limit
+// Chat file upload - any file type, 25MB limit
 const chatUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fileSize: 25 * 1024 * 1024, // 25MB limit
   },
   fileFilter: (req, file, cb) => {
     // Allowed file types: images, PDFs, documents, text, archives

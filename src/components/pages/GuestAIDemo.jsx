@@ -4393,7 +4393,9 @@ const GuestAIDemo = () => {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok) {
-            const message = payload?.error?.message || payload?.message || 'Failed to upload attachment';
+            const message = response.status === 413
+                ? 'File is too large for the server upload limit. Please use a smaller file (under 25MB).'
+                : (payload?.error?.message || payload?.message || 'Failed to upload attachment');
             throw new Error(message);
         }
 
