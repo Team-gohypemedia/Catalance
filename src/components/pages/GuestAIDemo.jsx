@@ -102,9 +102,7 @@ import { CLIENT_DASHBOARD_SEND_PROPOSAL_PATH } from '@/shared/lib/proposal-dashb
 import cataLogo from '@/assets/logos/logo.svg';
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
-import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+import '@/shared/lib/pdf-worker-setup';
 
 const { primaryKey: GUEST_CHAT_STORAGE_KEY } = getGuestChatStorageKeys();
 const { primaryKey: GUEST_CHAT_SIDEBAR_SIZE_KEY } =

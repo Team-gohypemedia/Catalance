@@ -2051,10 +2051,7 @@ const extractProposalUpdate = ({ userText, assistantText, serviceName }) => {
 
 import * as pdfjsLib from "pdfjs-dist";
 import mammoth from "mammoth";
-
-// Initialize PDF.js worker
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+import "@/shared/lib/pdf-worker-setup";
 
 function AIChat({
   prefill: _prefill = "",

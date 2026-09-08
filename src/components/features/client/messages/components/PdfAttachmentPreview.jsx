@@ -1,18 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 
+import { configurePdfWorker } from "@/shared/lib/pdf-worker-setup";
+
 const pdfPreviewCache = new Map();
 let pdfPreviewLibraryPromise = null;
 
 const loadPdfPreviewLibrary = async () => {
   if (!pdfPreviewLibraryPromise) {
-    pdfPreviewLibraryPromise = Promise.all([
-      import("pdfjs-dist"),
-      import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
-    ]).then(([pdfjsModule, workerModule]) => {
+    pdfPreviewLibraryPromise = import("pdfjs-dist").then((pdfjsModule) => {
       const pdfjsLib = pdfjsModule.default ?? pdfjsModule;
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        workerModule.default ?? workerModule;
+      configurePdfWorker(pdfjsLib);
       return pdfjsLib;
     });
   }
