@@ -7586,9 +7586,9 @@ const buildDiscoveryCoverageSummary = ({
         runtimeOptionsByQuestionSlug,
     });
     const nextQuestion = nextQuestionIndex < totalCount ? safeQuestions[nextQuestionIndex] : null;
-    const totalTarget = totalCount > 0 ? Math.min(totalCount, Math.max(3, Math.ceil(totalCount * 0.35))) : 0;
-    const criticalTarget = criticalCount > 0 ? Math.min(criticalCount, Math.max(2, Math.ceil(criticalCount * 0.5))) : 0;
-    const requiredTarget = requiredCount > 0 ? Math.min(requiredCount, Math.max(1, Math.ceil(requiredCount * 0.5))) : 0;
+    const totalTarget = totalCount > 0 ? Math.ceil(totalCount * 0.90) : 0;
+    const criticalTarget = criticalCount > 0 ? Math.ceil(criticalCount * 0.90) : 0;
+    const requiredTarget = requiredCount > 0 ? Math.ceil(requiredCount * 0.90) : 0;
 
     const enoughForProposal =
         totalCount === 0
@@ -9709,7 +9709,7 @@ export const guestChat = asyncHandler(async (req, res) => {
     const hasAttachmentContext = Boolean(attachmentContextText.trim());
     const hasEnoughDocumentOrCoverageInfo =
         (hasAttachmentContext && (coverageSummary.enoughForProposal || coverageSummary.answeredCount >= 2 || hasAnswerValue(updatedAnswersBySlug.project_budget) || hasAnswerValue(updatedAnswersBySlug.budget))) ||
-        (coverageSummary.enoughForProposal && (explicitProposalRequest || hasAttachmentContext || coverageSummary.answeredCount >= 3));
+        (coverageSummary.enoughForProposal && (explicitProposalRequest || hasAttachmentContext));
 
     if (
         nextStep < questions.length
