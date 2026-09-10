@@ -28,8 +28,10 @@ import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
 import Users from "lucide-react/dist/esm/icons/users";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
+import { AdminPayoutRequestsContent } from "./AdminPayoutRequests";
 
 const formatINR = (value) =>
   `INR ${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
@@ -455,9 +457,22 @@ const AdminDashboard = () => {
         <AdminTopBar label="Dashboard" />
 
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-            <p className="mt-2 text-muted-foreground">Overview of your platform performance.</p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+              <p className="mt-2 text-muted-foreground">Overview of your platform performance.</p>
+            </div>
+            <Button
+              onClick={() => navigate("/admin/payout-requests")}
+              className="h-11 rounded-[14px] bg-emerald-600 font-semibold text-white hover:bg-emerald-700 shadow-sm"
+            >
+              <CreditCard className="mr-2 size-4" /> Freelancer Payout Requests
+            </Button>
+          </div>
+
+          {/* Freelancer Payout Requests Section */}
+          <div className="border-t border-border/80 pt-6">
+            <AdminPayoutRequestsContent />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

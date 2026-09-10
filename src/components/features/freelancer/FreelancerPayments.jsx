@@ -14,6 +14,15 @@ import ListFilter from "lucide-react/dist/esm/icons/list-filter";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import Wallet from "lucide-react/dist/esm/icons/wallet";
+import QrCode from "lucide-react/dist/esm/icons/qr-code";
+import Upload from "lucide-react/dist/esm/icons/upload";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Send from "lucide-react/dist/esm/icons/send";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
+import Building from "lucide-react/dist/esm/icons/building";
+import Check from "lucide-react/dist/esm/icons/check";
 import {
   CartesianGrid,
   Line,
@@ -49,22 +58,16 @@ const metricCardClass = `${surfaceClass} px-5 py-5 sm:px-6 sm:py-6`;
 
 const PAYMENT_METHODS = [
   {
+    id: "upi",
+    label: "UPI & QR Code",
+    subtitle: "Instant domestic payouts via UPI ID and QR code scan.",
+    icon: QrCode,
+  },
+  {
     id: "bank-transfer",
-    label: "Bank Transfer",
-    subtitle: "Primary payout route for domestic withdrawals.",
+    label: "Bank Transfer (NEFT/IMPS)",
+    subtitle: "Direct payout into your domestic bank account.",
     icon: Landmark,
-  },
-  {
-    id: "payoneer",
-    label: "Payoneer",
-    subtitle: "Useful for international payout handling.",
-    icon: CreditCard,
-  },
-  {
-    id: "paypal",
-    label: "PayPal",
-    subtitle: "Fast online payouts for supported regions.",
-    icon: Wallet,
   },
 ];
 
@@ -91,6 +94,7 @@ const formatDateLabel = (value) => {
   return parsedDate.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
+    year: "numeric",
   });
 };
 
@@ -426,30 +430,6 @@ const ProjectFilterMenu = ({ projects, value, onValueChange }) => {
   );
 };
 
-const PaymentMethodRow = ({ method, onClick }) => (
-  <button
-    type="button"
-    onClick={() => onClick(method)}
-    className="group flex w-full items-start gap-3 rounded-[16px] border border-border bg-card px-4 py-4 text-left transition hover:bg-muted/50 sm:items-center sm:gap-4 sm:rounded-[18px]"
-  >
-    <div className="flex size-10 shrink-0 items-center justify-center rounded-[12px] bg-muted text-foreground sm:size-11">
-      <method.icon className="size-[18px]" />
-    </div>
-    <div className="min-w-0 flex-1">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="truncate text-sm font-semibold text-foreground">{method.label}</p>
-        {method.badge ? (
-          <Badge className="border-0 bg-primary/10 px-2.5 py-0.5 text-[10px] font-medium text-primary">
-            {method.badge}
-          </Badge>
-        ) : null}
-      </div>
-      <p className="mt-1 text-xs text-muted-foreground">{method.subtitle}</p>
-    </div>
-    <ChevronRight className="size-4 text-muted-foreground transition group-hover:text-foreground" />
-  </button>
-);
-
 const MilestoneStatusBadge = ({ statusTone, statusLabel }) => {
   const statusClasses = getStatusClasses(statusTone);
 
@@ -463,6 +443,36 @@ const MilestoneStatusBadge = ({ statusTone, statusLabel }) => {
       <span className={cn("size-2.5 rounded-full", statusClasses.dot)} />
       {statusLabel}
     </span>
+  );
+};
+
+const PayoutStatusBadge = ({ status }) => {
+  const upperStatus = (status || "").toUpperCase();
+  if (upperStatus === "PAID") {
+    return (
+      <Badge className="border-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold px-2.5 py-1">
+        <CheckCircle2 className="mr-1 size-3.5" /> Paid
+      </Badge>
+    );
+  }
+  if (upperStatus === "APPROVED") {
+    return (
+      <Badge className="border-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold px-2.5 py-1">
+        <Check className="mr-1 size-3.5" /> Approved
+      </Badge>
+    );
+  }
+  if (upperStatus === "REJECTED") {
+    return (
+      <Badge className="border-0 bg-red-500/10 text-red-600 dark:text-red-400 font-semibold px-2.5 py-1">
+        <XCircle className="mr-1 size-3.5" /> Rejected
+      </Badge>
+    );
+  }
+  return (
+    <Badge className="border-0 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold px-2.5 py-1">
+      <Clock3 className="mr-1 size-3.5 animate-pulse" /> Pending Review
+    </Badge>
   );
 };
 
@@ -487,68 +497,205 @@ const FreelancerPayments = () => {
   const [projectRows, setProjectRows] = useState([]);
   const [milestoneRows, setMilestoneRows] = useState([]);
   const [projectFilter, setProjectFilter] = useState(PROJECT_FILTER_ALL_VALUE);
-  const [isPayoutConnected, setIsPayoutConnected] = useState(() => typeof window !== "undefined" ? localStorage.getItem("payoutMethodConnected") === "true" : false);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [lastWithdrawalAt, setLastWithdrawalAt] = useState(null);
 
-  useEffect(() => {
+  // Payment details state
+  const [paymentDetails, setPaymentDetails] = useState({
+    upiId: "",
+    upiQrCode: "",
+    bankName: "",
+    accountNumber: "",
+    ifscCode: "",
+    accountHolderName: "",
+    bankBranch: ""
+  });
+  const [isSavingDetails, setIsSavingDetails] = useState(false);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+
+  // Money / Payout Request state
+  const [payoutRequests, setPayoutRequests] = useState([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
+  const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
+  const [requestForm, setRequestForm] = useState({
+    projectId: "",
+    amount: "",
+    notes: ""
+  });
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
+
+  // Fetch payment details & proposals
+  const loadData = useCallback(async () => {
     if (!isAuthenticated) return;
+    setIsLoading(true);
 
-    let isMounted = true;
+    try {
+      const [proposalsRes, detailsRes, requestsRes] = await Promise.all([
+        authFetch("/proposals?as=freelancer"),
+        authFetch("/payout-requests/details"),
+        authFetch("/payout-requests/request/my")
+      ]);
 
-    const loadPayments = async () => {
-      setIsLoading(true);
+      const proposalsData = await proposalsRes.json().catch(() => null);
+      const detailsData = await detailsRes.json().catch(() => null);
+      const requestsData = await requestsRes.json().catch(() => null);
 
-      try {
-        const response = await authFetch("/proposals?as=freelancer");
-        const payload = await response.json().catch(() => null);
-
-        if (!response.ok) {
-          throw new Error(payload?.message || "Failed to load freelancer payments");
-        }
-
-        const proposals = Array.isArray(payload?.data) ? payload.data : [];
-        const acceptedProposals = proposals.filter(
-          (proposal) => toUpper(proposal?.status) === "ACCEPTED",
+      if (proposalsRes.ok && Array.isArray(proposalsData?.data)) {
+        const acceptedProposals = proposalsData.data.filter(
+          (p) => toUpper(p?.status) === "ACCEPTED"
         );
 
         const nextProjectRows = acceptedProposals
           .map(getProjectPaymentRow)
           .sort(
-            (left, right) =>
-              new Date(right.updatedAt || 0).getTime() -
-              new Date(left.updatedAt || 0).getTime(),
+            (l, r) => new Date(r.updatedAt || 0).getTime() - new Date(l.updatedAt || 0).getTime()
           );
 
         const nextMilestoneRows = acceptedProposals
           .flatMap(getMilestoneRows)
           .sort(
-            (left, right) =>
-              new Date(right.date || 0).getTime() - new Date(left.date || 0).getTime(),
+            (l, r) => new Date(r.date || 0).getTime() - new Date(l.date || 0).getTime()
           );
-
-        if (!isMounted) return;
 
         setProjectRows(nextProjectRows);
         setMilestoneRows(nextMilestoneRows);
-      } catch (error) {
-        console.error("Failed to load freelancer payments", error);
-        if (!isMounted) return;
-        setProjectRows([]);
-        setMilestoneRows([]);
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
       }
-    };
 
-    loadPayments();
+      if (detailsRes.ok && detailsData?.data) {
+        setPaymentDetails({
+          upiId: detailsData.data.upiId || "",
+          upiQrCode: detailsData.data.upiQrCode || "",
+          bankName: detailsData.data.bankName || "",
+          accountNumber: detailsData.data.accountNumber || "",
+          ifscCode: detailsData.data.ifscCode || "",
+          accountHolderName: detailsData.data.accountHolderName || "",
+          bankBranch: detailsData.data.bankBranch || ""
+        });
+      }
 
-    return () => {
-      isMounted = false;
-    };
+      if (requestsRes.ok && Array.isArray(requestsData?.data)) {
+        setPayoutRequests(requestsData.data);
+      }
+    } catch (error) {
+      console.error("Failed to load freelancer payment data:", error);
+    } finally {
+      setIsLoading(false);
+    }
   }, [authFetch, isAuthenticated]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // QR Code Image Upload Handler
+  const handleQrUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (PNG, JPG, WEBP)");
+      return;
+    }
+
+    // 20MB size check
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Image file size is too large. Please choose an image under 20MB.");
+      return;
+    }
+
+    setIsUploadingQr(true);
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await authFetch("/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json();
+
+      if (response.ok && data?.data?.url) {
+        setPaymentDetails((prev) => ({ ...prev, upiQrCode: data.data.url }));
+        toast.success("UPI QR Code uploaded successfully!");
+      } else {
+        toast.error(data?.message || "Failed to upload QR code image");
+      }
+    } catch (err) {
+      console.error("QR Code upload error:", err);
+      toast.error("An error occurred while uploading QR Code");
+    } finally {
+      setIsUploadingQr(false);
+    }
+  };
+
+  // Save Payment Info Form Handler
+  const handleSavePaymentDetails = async (e) => {
+    e.preventDefault();
+    setIsSavingDetails(true);
+
+    try {
+      const response = await authFetch("/payout-requests/details", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentDetails)
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success("Payment & Bank details saved successfully!");
+      } else {
+        toast.error(data?.message || "Failed to save payment details");
+      }
+    } catch (err) {
+      console.error("Save payment details error:", err);
+      toast.error("An error occurred while saving payment details");
+    } finally {
+      setIsSavingDetails(false);
+    }
+  };
+
+  // Submit Payout Money Request
+  const handleSubmitPayoutRequest = async (e) => {
+    e.preventDefault();
+
+    if (!paymentDetails.upiId && !paymentDetails.accountNumber) {
+      toast.error("Please configure your UPI ID or Bank Details below first.");
+      return;
+    }
+
+    const amount = Number(requestForm.amount);
+    if (!amount || amount <= 0) {
+      toast.error("Please enter a valid amount greater than Rs.0");
+      return;
+    }
+
+    setIsSubmittingRequest(true);
+
+    try {
+      const response = await authFetch("/payout-requests/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: requestForm.projectId || null,
+          amount,
+          notes: requestForm.notes
+        })
+      });
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success(data?.message || "Money request submitted successfully!");
+        setIsRequestModalOpen(false);
+        setRequestForm({ projectId: "", amount: "", notes: "" });
+        loadData();
+      } else {
+        toast.error(data?.message || "Failed to submit request");
+      }
+    } catch (err) {
+      console.error("Submit payout request error:", err);
+      toast.error("An error occurred while submitting request");
+    } finally {
+      setIsSubmittingRequest(false);
+    }
+  };
 
   const paymentProjects = useMemo(
     () =>
@@ -556,27 +703,15 @@ const FreelancerPayments = () => {
         id: row.projectId || row.id,
         title: row.projectTitle,
         clientName: row.clientName,
+        availableAmount: row.freelancerShare
       })),
     [projectRows],
   );
-
-  useEffect(() => {
-    if (projectFilter === PROJECT_FILTER_ALL_VALUE) return;
-
-    const projectStillExists = paymentProjects.some(
-      (project) => String(project.id) === String(projectFilter),
-    );
-
-    if (!projectStillExists) {
-      setProjectFilter(PROJECT_FILTER_ALL_VALUE);
-    }
-  }, [paymentProjects, projectFilter]);
 
   const filteredProjectRows = useMemo(() => {
     if (projectFilter === PROJECT_FILTER_ALL_VALUE) {
       return projectRows;
     }
-
     return projectRows.filter(
       (row) => String(row.projectId || row.id) === String(projectFilter),
     );
@@ -586,7 +721,6 @@ const FreelancerPayments = () => {
     if (projectFilter === PROJECT_FILTER_ALL_VALUE) {
       return milestoneRows;
     }
-
     return milestoneRows.filter(
       (row) => String(row.projectId || row.id) === String(projectFilter),
     );
@@ -596,76 +730,13 @@ const FreelancerPayments = () => {
     () => getSummaryFromRows(filteredProjectRows),
     [filteredProjectRows],
   );
+
   const monthlyTrend = useMemo(
     () => buildMonthlyTrend(filteredMilestoneRows),
     [filteredMilestoneRows],
   );
+
   const thisMonthEarnings = monthlyTrend[monthlyTrend.length - 1]?.earnings || 0;
-  const pendingMilestones = useMemo(
-    () => filteredMilestoneRows.slice(0, 5),
-    [filteredMilestoneRows],
-  );
-
-  const paymentMethods = useMemo(
-    () =>
-      PAYMENT_METHODS.map((method) =>
-        method.id === "bank-transfer" && isPayoutConnected
-          ? {
-              ...method,
-              subtitle: "Connected and ready for withdrawals.",
-              badge: "Primary",
-            }
-          : method,
-      ),
-    [isPayoutConnected],
-  );
-
-  const handleConnectPayoutAccount = useCallback(() => {
-    setIsPayoutConnected(true);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("payoutMethodConnected", "true");
-    }
-    toast.success(
-      "Bank transfer is now marked as connected. Wire this to your real payout onboarding next.",
-    );
-  }, []);
-
-  const handleManagePaymentMethod = useCallback(
-    (method) => {
-      if (method.id === "bank-transfer") {
-        handleConnectPayoutAccount();
-        return;
-      }
-
-      toast.success(`${method.label} setup flow can be connected here next.`);
-    },
-    [handleConnectPayoutAccount],
-  );
-
-  const handleWithdraw = useCallback(async () => {
-    if (!isPayoutConnected) {
-      toast.error("Connect a payout method before withdrawing funds.");
-      return;
-    }
-
-    if (summary.availableToWithdraw <= 0) {
-      toast.error("There is no available balance to withdraw yet.");
-      return;
-    }
-
-    setIsWithdrawing(true);
-
-    try {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 900);
-      });
-
-      setLastWithdrawalAt(new Date());
-      toast.success("Withdrawal request submitted. Connect this to your payout provider next.");
-    } finally {
-      setIsWithdrawing(false);
-    }
-  }, [isPayoutConnected, summary.availableToWithdraw]);
 
   return (
     <div className="flex-1 flex flex-col relative min-h-screen overflow-hidden bg-background">
@@ -674,38 +745,48 @@ const FreelancerPayments = () => {
       <main className="flex-1 overflow-y-auto p-4 md:p-8 lg:p-12 z-10 relative scroll-smooth">
         <div className="mx-auto max-w-[1600px] space-y-6">
           <ClientPageHeader
-            title="Payments"
+            title="Payments & Payouts"
             className="mt-0"
             mobileDateFirst
             actions={
-              <ProjectFilterMenu
-                projects={paymentProjects}
-                value={projectFilter}
-                onValueChange={setProjectFilter}
-              />
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  onClick={() => setIsRequestModalOpen(true)}
+                  className="h-11 rounded-[12px] bg-emerald-600 px-5 text-sm font-semibold text-white hover:bg-emerald-700 shadow-sm"
+                >
+                  <Send className="mr-2 size-4" />
+                  Request Money / Payout
+                </Button>
+                <ProjectFilterMenu
+                  projects={paymentProjects}
+                  value={projectFilter}
+                  onValueChange={setProjectFilter}
+                />
+              </div>
             }
           />
 
+          {/* Metric Cards */}
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <PaymentMetricCard
               label="Total Earnings"
               value={summary.totalShare}
-              helper="Your full Catalance earnings across accepted projects."
+              helper="Your total share across accepted projects."
               icon={Wallet}
               loading={isLoading}
             />
             <PaymentMetricCard
               label="Available Balance"
               value={summary.availableToWithdraw}
-              helper="Ready to withdraw once your payout method is connected."
+              helper="Total collected share ready for withdrawal request."
               icon={CircleDollarSign}
               loading={isLoading}
               tone="success"
             />
             <PaymentMetricCard
-              label="Pending Payments"
+              label="Pending Escrow"
               value={summary.pendingShare}
-              helper="Still in escrow or waiting for client funding."
+              helper="In escrow or pending client funding."
               icon={Clock3}
               loading={isLoading}
               tone="warning"
@@ -713,321 +794,486 @@ const FreelancerPayments = () => {
             <PaymentMetricCard
               label="This Month's Earnings"
               value={thisMonthEarnings}
-              helper={`${summary.activeContracts} active project${summary.activeContracts === 1 ? "" : "s"} in motion.`}
+              helper={`${summary.activeContracts} active project${summary.activeContracts === 1 ? "" : "s"} ongoing.`}
               icon={BriefcaseBusiness}
               loading={isLoading}
             />
           </section>
 
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.75fr)_minmax(320px,0.85fr)]">
-            <div className="space-y-6">
-              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8")}>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          {/* Money Request Modal */}
+          {isRequestModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+              <div className="w-full max-w-lg rounded-[24px] border border-border bg-card p-6 shadow-2xl animate-in fade-in zoom-in-95">
+                <div className="flex items-center justify-between border-b border-border pb-4">
                   <div>
-                    <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
-                      Wallet Balance
-                    </h2>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      See what is ready for payout, what is still protected in escrow, and
-                      what is waiting on client action.
+                    <h3 className="text-xl font-bold text-foreground">Request Money / Payout</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Submit a payout request to admin for your completed project earnings.
                     </p>
                   </div>
-                  <Badge className="h-8 self-start rounded-full border border-border bg-muted px-3 text-xs font-medium text-muted-foreground">
-                    {summary.activeContracts} active
+                  <button
+                    onClick={() => setIsRequestModalOpen(false)}
+                    className="rounded-full p-2 text-muted-foreground hover:bg-muted"
+                  >
+                    <XCircle className="size-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmitPayoutRequest} className="mt-5 space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      Select Project (Optional)
+                    </label>
+                    <select
+                      value={requestForm.projectId}
+                      onChange={(e) => {
+                        const projId = e.target.value;
+                        const proj = paymentProjects.find((p) => String(p.id) === String(projId));
+                        setRequestForm((prev) => ({
+                          ...prev,
+                          projectId: projId,
+                          amount: proj?.availableAmount ? String(proj.availableAmount) : prev.amount
+                        }));
+                      }}
+                      className="w-full h-11 rounded-[12px] border border-border bg-background px-3 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">-- General / Custom Payout --</option>
+                      {paymentProjects.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.title} (Earned: Rs.{p.availableAmount?.toLocaleString("en-IN")})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      Requested Amount (INR) *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-2.5 text-sm font-semibold text-muted-foreground">Rs.</span>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        placeholder="e.g. 15000"
+                        value={requestForm.amount}
+                        onChange={(e) => setRequestForm((prev) => ({ ...prev, amount: e.target.value }))}
+                        className="w-full h-11 rounded-[12px] border border-border bg-background pl-11 pr-4 text-sm font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      Payout Destination Details
+                    </label>
+                    <div className="rounded-[14px] border border-border bg-muted/40 p-3 text-xs space-y-1">
+                      {paymentDetails.upiId ? (
+                        <p className="font-semibold text-foreground">
+                          UPI ID: <span className="text-primary">{paymentDetails.upiId}</span>
+                        </p>
+                      ) : null}
+                      {paymentDetails.accountNumber ? (
+                        <p className="font-semibold text-foreground">
+                          Bank Account: <span className="text-foreground">{paymentDetails.accountNumber}</span> ({paymentDetails.bankName || "Bank"})
+                        </p>
+                      ) : null}
+                      {!paymentDetails.upiId && !paymentDetails.accountNumber ? (
+                        <p className="text-red-500 font-medium flex items-center gap-1">
+                          <AlertCircle className="size-3.5" /> No payout details configured below. Please save UPI or Bank details first.
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                      Notes for Admin (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Milestone 2 completed, request payout to my UPI"
+                      value={requestForm.notes}
+                      onChange={(e) => setRequestForm((prev) => ({ ...prev, notes: e.target.value }))}
+                      className="w-full rounded-[12px] border border-border bg-background p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-border">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsRequestModalOpen(false)}
+                      className="h-11 rounded-[12px]"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isSubmittingRequest || (!paymentDetails.upiId && !paymentDetails.accountNumber)}
+                      className="h-11 rounded-[12px] bg-emerald-600 font-semibold text-white hover:bg-emerald-700"
+                    >
+                      {isSubmittingRequest ? (
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 size-4" />
+                      )}
+                      Submit Request
+                    </Button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Project Payment Status Table */}
+          <section className={cn(surfaceClass, "px-5 py-6 sm:px-6 lg:px-8")}>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Project Payment Statuses</h2>
+                <p className="text-xs text-muted-foreground">
+                  Track individual project budgets, freelancer revenue shares, and status.
+                </p>
+              </div>
+              <Badge className="self-start rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                {filteredProjectRows.length} project{filteredProjectRows.length === 1 ? "" : "s"}
+              </Badge>
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-14 w-full rounded-2xl" />
+                <Skeleton className="h-14 w-full rounded-2xl" />
+              </div>
+            ) : filteredProjectRows.length === 0 ? (
+              <div className="rounded-[20px] border border-dashed border-border bg-muted/20 py-10 text-center text-sm text-muted-foreground">
+                No active or accepted projects found.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <th className="pb-3 pr-4">Project</th>
+                      <th className="pb-3 pr-4">Client</th>
+                      <th className="pb-3 pr-4">Gross Budget</th>
+                      <th className="pb-3 pr-4">Freelancer Share (70%)</th>
+                      <th className="pb-3 pr-4">Status</th>
+                      <th className="pb-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60 text-sm">
+                    {filteredProjectRows.map((row) => (
+                      <tr key={row.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-4 pr-4 font-semibold text-foreground">
+                          {row.projectTitle}
+                        </td>
+                        <td className="py-4 pr-4 text-muted-foreground">{row.clientName}</td>
+                        <td className="py-4 pr-4 font-medium">{formatINR(row.grossAmount)}</td>
+                        <td className="py-4 pr-4 font-bold text-emerald-600 dark:text-emerald-400">
+                          {formatINR(row.freelancerShare)}
+                        </td>
+                        <td className="py-4 pr-4">
+                          <MilestoneStatusBadge
+                            statusTone={
+                              row.statusType === "received"
+                                ? "paid"
+                                : row.statusType === "awaiting_deposit"
+                                ? "awaiting"
+                                : "escrow"
+                            }
+                            statusLabel={
+                              row.statusType === "received"
+                                ? "Completed & Paid"
+                                : row.statusType === "awaiting_deposit"
+                                ? "Awaiting Deposit"
+                                : "In Escrow"
+                            }
+                          />
+                        </td>
+                        <td className="py-4 text-right">
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setRequestForm({
+                                projectId: row.projectId || row.id,
+                                amount: String(row.freelancerShare),
+                                notes: `Request payout for ${row.projectTitle}`
+                              });
+                              setIsRequestModalOpen(true);
+                            }}
+                            className="h-8 rounded-lg bg-emerald-600/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white font-medium text-xs transition-colors"
+                          >
+                            <Send className="mr-1.5 size-3.5" /> Request Money
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          {/* Main Grid: Payment Details & Payout History */}
+          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)]">
+            
+            {/* Freelancer Payment Details Setup Form */}
+            <div className={cn(surfaceClass, "px-5 py-6 sm:px-6 lg:px-8 space-y-6")}>
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="flex size-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <QrCode className="size-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Payment Details</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Configure your UPI ID, QR Code image, and Bank info to receive payouts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleSavePaymentDetails} className="space-y-4">
+                {/* UPI Section */}
+                <div className="space-y-3 rounded-[18px] border border-border bg-muted/20 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                    <QrCode className="size-4" /> UPI & QR Code Information
+                  </p>
+
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      UPI ID (VPA)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9876543210@paytm or name@upi"
+                      value={paymentDetails.upiId}
+                      onChange={(e) => setPaymentDetails((prev) => ({ ...prev, upiId: e.target.value }))}
+                      className="w-full h-10 rounded-[10px] border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      UPI QR Code Image
+                    </label>
+                    <div className="flex items-center gap-4">
+                      {paymentDetails.upiQrCode ? (
+                        <div className="relative group size-20 shrink-0 rounded-xl border border-border overflow-hidden bg-white p-1">
+                          <img
+                            src={paymentDetails.upiQrCode}
+                            alt="UPI QR Code"
+                            className="size-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <div className="size-20 shrink-0 rounded-xl border border-dashed border-border bg-background flex flex-col items-center justify-center text-muted-foreground">
+                          <QrCode className="size-7 opacity-40" />
+                          <span className="text-[10px] mt-1">No QR</span>
+                        </div>
+                      )}
+
+                      <div className="flex-1 space-y-2">
+                        <label className="inline-flex h-9 cursor-pointer items-center justify-center rounded-[10px] bg-muted px-4 text-xs font-semibold text-foreground hover:bg-muted/80 transition-colors">
+                          {isUploadingQr ? (
+                            <Loader2 className="mr-2 size-3.5 animate-spin" />
+                          ) : (
+                            <Upload className="mr-2 size-3.5" />
+                          )}
+                          {paymentDetails.upiQrCode ? "Change QR Image" : "Upload QR Image"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleQrUpload}
+                            disabled={isUploadingQr}
+                            className="hidden"
+                          />
+                        </label>
+                        <p className="text-[11px] text-muted-foreground">
+                          Upload PNG, JPG, or WEBP of your Paytm/GPay/PhonePe QR code.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bank Details Section */}
+                <div className="space-y-3 rounded-[18px] border border-border bg-muted/20 p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                    <Landmark className="size-4" /> Bank Account Details
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HDFC Bank"
+                        value={paymentDetails.bankName}
+                        onChange={(e) => setPaymentDetails((prev) => ({ ...prev, bankName: e.target.value }))}
+                        className="w-full h-10 rounded-[10px] border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Account Holder Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Name as per Bank Passbook"
+                        value={paymentDetails.accountHolderName}
+                        onChange={(e) => setPaymentDetails((prev) => ({ ...prev, accountHolderName: e.target.value }))}
+                        className="w-full h-10 rounded-[10px] border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        Account Number
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Bank Account Number"
+                        value={paymentDetails.accountNumber}
+                        onChange={(e) => setPaymentDetails((prev) => ({ ...prev, accountNumber: e.target.value }))}
+                        className="w-full h-10 rounded-[10px] border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                        IFSC Code
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. HDFC0001234"
+                        value={paymentDetails.ifscCode}
+                        onChange={(e) => setPaymentDetails((prev) => ({ ...prev, ifscCode: e.target.value.toUpperCase() }))}
+                        className="w-full h-10 rounded-[10px] border border-border bg-background px-3 text-sm font-mono text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Bank Branch (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Connaught Place Branch"
+                      value={paymentDetails.bankBranch}
+                      onChange={(e) => setPaymentDetails((prev) => ({ ...prev, bankBranch: e.target.value }))}
+                      className="w-full h-10 rounded-[10px] border border-border bg-background px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={isSavingDetails}
+                  className="w-full h-11 rounded-[12px] bg-primary font-semibold text-white hover:bg-primary/90"
+                >
+                  {isSavingDetails ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-2 size-4" />
+                  )}
+                  Save Payment Information
+                </Button>
+              </form>
+            </div>
+
+            {/* Payout Request History */}
+            <div className={cn(surfaceClass, "px-5 py-6 sm:px-6 lg:px-8 flex flex-col justify-between space-y-6")}>
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">Payout Request History</h2>
+                    <p className="text-xs text-muted-foreground">
+                      Track all money withdrawal requests submitted to admin.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {payoutRequests.length} Requests
                   </Badge>
                 </div>
 
-                <div className="mt-6 grid gap-6 md:grid-cols-3 lg:mt-8">
-                  <div className="border-b border-border pb-4 md:border-b-0 md:border-r md:pb-0 md:pr-6">
-                    <p className="text-sm text-muted-foreground">Available to Withdraw</p>
-                    {isLoading ? (
-                      <Skeleton className="mt-4 h-10 w-36 rounded-xl" />
-                    ) : (
-                      <p className="mt-4 text-[1.8rem] font-semibold tracking-[-0.05em] text-emerald-600 dark:text-emerald-400 sm:text-[2.1rem]">  
-                        {formatINR(summary.availableToWithdraw)}
-                      </p>
-                    )}
-                    <p className="mt-3 text-sm text-muted-foreground">Ready for payout</p>
-                  </div>
-
-                  <div className="border-b border-border pb-4 md:border-b-0 md:border-r md:pb-0 md:px-6">
-                    <p className="text-sm text-muted-foreground">Pending in Escrow</p>
-                    {isLoading ? (
-                      <Skeleton className="mt-4 h-10 w-36 rounded-xl" />
-                    ) : (
-                      <p className="mt-4 text-[1.8rem] font-semibold tracking-[-0.05em] text-foreground sm:text-[2.1rem]">
-                        {formatINR(summary.escrowShare)}
-                      </p>
-                    )}
-                    <p className="mt-3 text-sm text-muted-foreground">Awaiting pending milestone release</p>
-                  </div>
-
-                  <div className="md:pl-6">
-                    <p className="text-sm text-muted-foreground">Awaiting Client Deposit</p>
-                    {isLoading ? (
-                      <Skeleton className="mt-4 h-10 w-36 rounded-xl" />
-                    ) : (
-                      <p className="mt-4 text-[1.8rem] font-semibold tracking-[-0.05em] text-foreground sm:text-[2.1rem]">
-                        {formatINR(summary.awaitingDepositShare)}
-                      </p>
-                    )}
-                    <p className="mt-3 text-sm text-muted-foreground">Action required by the client</p>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
-                  <Button
-                    type="button"
-                    onClick={handleWithdraw}
-                    disabled={
-                      isLoading ||
-                      isWithdrawing ||
-                      !isPayoutConnected ||
-                      summary.availableToWithdraw <= 0
-                    }
-                  className="h-12 w-full rounded-[14px] bg-[var(--primary)] px-5 text-sm font-semibold text-white hover:bg-[#f6d64e] dark:text-[#141414] sm:w-auto"
-                  >
-                    {isWithdrawing ? (
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                    ) : (
-                      <ArrowUpRight className="mr-2 size-4" />
-                    )}
-                    Withdraw Funds
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleConnectPayoutAccount}
-                    className="h-12 w-full rounded-[14px] border-border bg-muted px-5 text-sm font-semibold text-foreground hover:bg-muted/80 sm:w-auto"
-                  >
-                    <Plus className="mr-2 size-4" />
-                    Add Payment Method
-                  </Button>
-                </div>
-
-                {lastWithdrawalAt ? (
-                  <p className="mt-4 text-sm text-muted-foreground">
-                    Last withdrawal request:{" "}
-                    {new Intl.DateTimeFormat("en-IN", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    }).format(lastWithdrawalAt)}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7")}>
-                <div className="mb-6">
-                  <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
-                    Pending Milestones
-                  </h2>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Follow every milestone payout as it moves from pending funding into paid
-                    status.
-                  </p>
-                </div>
-
-                {isLoading ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-14 w-full rounded-2xl" />
-                    <Skeleton className="h-14 w-full rounded-2xl" />
-                    <Skeleton className="h-14 w-full rounded-2xl" />
-                  </div>
-                ) : pendingMilestones.length === 0 ? (
-                  <div className="rounded-[22px] border border-dashed border-border bg-muted/30 px-5 py-12 text-center">
-                    <p className="text-xl font-semibold text-foreground">No payout milestones yet</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Accepted projects with milestone schedules will start appearing here.
-                    </p>
+                {payoutRequests.length === 0 ? (
+                  <div className="rounded-[20px] border border-dashed border-border bg-muted/20 py-12 text-center text-sm text-muted-foreground">
+                    <Send className="size-8 mx-auto mb-2 opacity-40" />
+                    No money requests submitted yet.
+                    <br />
+                    Use the <strong>"Request Money"</strong> button to request payout when your projects are completed.
                   </div>
                 ) : (
-                  <>
-                    <div className="space-y-3 md:hidden">
-                      {pendingMilestones.map((row) => (
-                        <article
-                          key={row.id}
-                          className="rounded-[18px] border border-border bg-card p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-foreground">
-                                {row.projectTitle}
-                              </p>
-                              <p className="mt-1 text-xs text-muted-foreground">{row.label}</p>
-                            </div>
-                            <MilestoneStatusBadge
-                              statusTone={row.statusTone}
-                              statusLabel={row.statusLabel}
-                            />
+                  <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+                    {payoutRequests.map((req) => (
+                      <div
+                        key={req.id}
+                        className="rounded-[18px] border border-border bg-card p-4 space-y-2 hover:bg-muted/20 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {req.project?.title || "General Payout Request"}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Requested on {formatDateLabel(req.createdAt)}
+                            </p>
                           </div>
+                          <PayoutStatusBadge status={req.status} />
+                        </div>
 
-                          <div className="mt-4 grid grid-cols-2 gap-3">
-                            <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                Date
-                              </p>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {formatDateLabel(row.date)}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                Amount
-                              </p>
-                              <p className="mt-1 text-sm font-semibold text-foreground">
-                                {formatINR(row.shareAmount)}
-                              </p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                                Client
-                              </p>
-                              <p className="mt-1 text-sm font-medium text-foreground">
-                                {row.clientName}
-                              </p>
-                            </div>
+                        <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs">
+                          <div>
+                            <span className="text-muted-foreground">Amount: </span>
+                            <span className="font-bold text-foreground">{formatINR(req.amount)}</span>
                           </div>
-                        </article>
-                      ))}
-                    </div>
+                          <div className="text-muted-foreground">
+                            {req.upiId ? (
+                              <span>UPI: {req.upiId}</span>
+                            ) : req.accountNumber ? (
+                              <span>A/C: {req.accountNumber}</span>
+                            ) : null}
+                          </div>
+                        </div>
 
-                    <div className="hidden overflow-x-auto md:block">
-                      <table className="w-full min-w-[680px] text-left">
-                      <thead>
-                        <tr className="border-b border-border text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                          <th className="pb-5 pr-6 font-medium">Date</th>
-                          <th className="pb-5 pr-6 font-medium">Project</th>
-                          <th className="pb-5 pr-6 font-medium">Client</th>
-                          <th className="pb-5 pr-6 font-medium">Amount</th>
-                          <th className="pb-5 font-medium">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {pendingMilestones.map((row) => {
-                          return (
-                            <tr
-                              key={row.id}
-                              className="border-b border-border last:border-b-0"
-                            >
-                              <td className="py-5 pr-6 text-sm text-muted-foreground">
-                                {formatDateLabel(row.date)}
-                              </td>
-                              <td className="py-5 pr-6">
-                                <p className="text-sm font-medium text-foreground">{row.projectTitle}</p>
-                                <p className="mt-1 text-sm text-muted-foreground">{row.label}</p>
-                              </td>
-                              <td className="py-5 pr-6 text-sm font-medium text-foreground">
-                                {row.clientName}
-                              </td>
-                              <td className="py-5 pr-6 text-sm font-semibold text-foreground">
-                                {formatINR(row.shareAmount)}
-                              </td>
-                              <td className="py-5">
-                                <MilestoneStatusBadge
-                                  statusTone={row.statusTone}
-                                  statusLabel={row.statusLabel}
-                                />
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                      </table>
-                    </div>
-                  </>
+                        {req.adminNote && (
+                          <div className="rounded-lg bg-muted/60 p-2.5 text-xs text-muted-foreground border border-border/40">
+                            <span className="font-semibold text-foreground">Admin Note: </span>
+                            {req.adminNote}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
 
-            <div className="space-y-6">
-              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6")}>
-                <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
-                  Payment Methods
-                </h2>
-                <div className="mt-6 space-y-4">
-                  {paymentMethods.map((method) => (
-                    <PaymentMethodRow
-                      key={method.id}
-                      method={method}
-                      onClick={handleManagePaymentMethod}
-                    />
-                  ))}
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleConnectPayoutAccount}
-                  className="mt-6 h-12 w-full rounded-[16px] border-border bg-transparent text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
-                >
-                  <Plus className="mr-2 size-4 text-[var(--primary)]" />
-                  Add Payment Method
-                </Button>
-              </div>
-
-              <div className={cn(surfaceClass, "px-5 py-5 sm:px-6 sm:py-6")}>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <h2 className="text-[22px] sm:text-[1.8rem] font-semibold tracking-[-0.03em] text-foreground">
-                      Monthly Earnings
-                    </h2>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Paid milestone trend for the last three months.
-                    </p>
-                  </div>
-                  {!isLoading ? (
-                    <div className="self-start rounded-[16px] border border-border bg-card px-3 py-2">
-                      <p className="text-[11px] text-muted-foreground">
-                        {monthlyTrend[monthlyTrend.length - 1]?.month || ""}
-                      </p>
-                      <p className="mt-1 text-base font-semibold text-foreground">
-                        {formatINR(thisMonthEarnings)}
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="mt-5 h-[220px] sm:mt-6 sm:h-[260px]">
-                  {isLoading ? (
-                    <Skeleton className="h-full w-full rounded-[22px]" />
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={monthlyTrend}
-                        margin={{ top: 16, right: 8, left: -18, bottom: 0 }}
-                      >
-                        <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
-                        <XAxis
-                          dataKey="month"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: "#8f96a3", fontSize: 12 }}
-                        />
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: "#8f96a3", fontSize: 12 }}
-                          tickFormatter={formatCompactINR}
-                          width={54}
-                        />
-                        <Tooltip
-                          cursor={{ stroke: "rgba(255,255,255,0.08)" }}
-                          content={<EarningsTooltip />}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="earnings"
-                          stroke="var(--primary)"
-                          strokeWidth={3}
-                          dot={{ r: 4, fill: "var(--primary)", strokeWidth: 0 }}
-                          activeDot={{ r: 6, fill: "var(--primary)", stroke: "#1f1f1f", strokeWidth: 3 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
+              {/* Monthly Trend Chart */}
+              <div className="border-t border-border pt-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                  Earnings Trend (Last 3 Months)
+                </p>
+                <div className="h-[140px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={monthlyTrend} margin={{ top: 10, right: 8, left: -18, bottom: 0 }}>
+                      <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: "#8f96a3", fontSize: 11 }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fill: "#8f96a3", fontSize: 11 }} tickFormatter={formatCompactINR} width={46} />
+                      <Tooltip cursor={{ stroke: "rgba(255,255,255,0.08)" }} content={<EarningsTooltip />} />
+                      <Line type="monotone" dataKey="earnings" stroke="var(--primary)" strokeWidth={3} dot={{ r: 4, fill: "var(--primary)", strokeWidth: 0 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
+
           </section>
         </div>
       </main>

@@ -131,6 +131,9 @@ const NotepadPage = lazy(() => import("@/components/pages/notepad-page"));
 const AdminDashboard = lazy(
   () => import("@/components/features/admin/AdminDashboard"),
 );
+const AdminPayoutRequests = lazy(
+  () => import("@/components/features/admin/AdminPayoutRequests"),
+);
 const AdminAiUsage = lazy(
   () => import("@/components/features/admin/AdminAiUsage"),
 );
@@ -818,6 +821,14 @@ const App = () => {
               element={
                 <AdminRoute>
                   <AdminDashboard />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/payout-requests"
+              element={
+                <AdminRoute>
+                  <AdminPayoutRequests />
                 </AdminRoute>
               }
             />

@@ -187,6 +187,12 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "Payout Requests",
+      url: "/admin/payout-requests",
+      icon: CreditCard,
+      isActive: true,
+    },
+    {
       title: "WhatsApp Inbox",
       url: "/admin/whatsapp-inbox",
       icon: MessageSquare,

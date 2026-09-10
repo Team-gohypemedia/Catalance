@@ -176,7 +176,8 @@ export const AuthProvider = ({ children }) => {
 
   const authFetch = useCallback(
     async (target, options = {}) => {
-      if (!token) {
+      const activeToken = getSession()?.accessToken || token;
+      if (!activeToken) {
         expireSession({ showToast: false });
         throw new Error("No token found. Please log in again.");
       }
@@ -199,7 +200,7 @@ export const AuthProvider = ({ children }) => {
           ...fetchOptions,
           headers: buildCatalanceRequestHeaders({
             ...defaultHeaders,
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${activeToken}`,
             ...(fetchOptions.headers || {}),
           }),
         });

@@ -220,6 +220,15 @@ router.get("/whatsapp/conversations/:phone", getWhatsappMessagesByPhone);
 router.post("/whatsapp/send", sendWhatsappReply);
 router.get("/whatsapp/analytics", getWhatsappAnalytics);
 
+import {
+  getAdminPayoutRequests,
+  updateAdminPayoutRequestStatus
+} from "../controllers/payoutRequest.controller.js";
+
+// Payout Requests Management
+router.get("/payout-requests", getAdminPayoutRequests);
+router.patch("/payout-requests/:id/status", updateAdminPayoutRequestStatus);
+
 // Manual trigger for testing Profile Completion Reminders
 router.all("/trigger-profile-reminders", async (req, res) => {
   try {
@@ -232,5 +241,6 @@ router.all("/trigger-profile-reminders", async (req, res) => {
 });
 
 export default router;
+
 
 

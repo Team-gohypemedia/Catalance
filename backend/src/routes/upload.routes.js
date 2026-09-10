@@ -21,11 +21,11 @@ router.use((req, res, next) => {
   next();
 });
 
-// Avatar upload - images only, 5MB limit
+// Avatar & general image upload - images only, 25MB limit
 const avatarUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 25 * 1024 * 1024, // 25MB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("image/")) {
@@ -150,4 +150,28 @@ const resumeUpload = multer({
 
 router.post("/resume", requireAuth, resumeUpload.single("file"), uploadResume);
 
+// Multer error handling middleware
+router.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        message: "File size is too large. Maximum allowed size is 25MB."
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: `Upload error: ${err.message}`
+    });
+  }
+  if (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || "File upload failed"
+    });
+  }
+  next();
+});
+
 export const uploadRouter = router;
+
