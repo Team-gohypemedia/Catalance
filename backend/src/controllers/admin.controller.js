@@ -1685,8 +1685,8 @@ export const getUserDetails = asyncHandler(async (req, res) => {
       const pendingProposals = userProposals.filter(p => p.status === "PENDING");
       const rejectedProposals = userProposals.filter(p => p.status === "REJECTED");
 
-      // Platform fee - freelancer receives 70%
-      const PLATFORM_FEE_PERCENTAGE = 0.30;
+      // Platform fee - freelancer receives 50%
+      const PLATFORM_FEE_PERCENTAGE = 0.50;
       const FREELANCER_SHARE = 1 - PLATFORM_FEE_PERCENTAGE;
 
       // Calculate actual earnings from paid amounts (project.spent field)

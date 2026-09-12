@@ -1,4 +1,22 @@
+// Updated: FreelancerProjectDetailMainColumn component
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { cn } from "@/shared/lib/utils";
 import AlertCircle from "lucide-react/dist/esm/icons/alert-circle";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
@@ -62,21 +80,6 @@ const getMetadataIcon = (label) => {
   }
   return HelpCircle;
 };
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { cn } from "@/shared/lib/utils";
 import AIQualityAuditCard from "../../client/project-detail/AIQualityAuditCard";
 
 
@@ -563,40 +566,51 @@ const FreelancerProjectDetailMainColumn = ({
                     <div className="mt-4 space-y-3 border-b border-border/60 pb-4">
                       {phaseMilestones.map((milestone) => {
                         const isPaid = milestone.status === "paid";
-                        const isActive = milestone.status === "active";
+                        const isRequested = milestone.status === "requested";
+                        const isEligible = milestone.status === "eligible";
+                        const isNoPayout = milestone.status === "no_payout" || milestone.amount === 0;
+
                         const milestoneStatusLabel = isPaid
                           ? "Paid"
-                          : isActive
-                            ? "Next Payout"
-                            : "Upcoming";
+                          : isRequested
+                            ? "Payout Requested"
+                            : isEligible
+                              ? "Eligible for Payout"
+                              : isNoPayout
+                                ? "No Payout"
+                                : "Upcoming";
 
                         return (
                           <div
                             key={`milestone-${phaseGroup.phaseId}-${milestone.id}`}
                             className={cn(
-                              "rounded-xl border px-3.5 py-2 transition-colors",
+                              "rounded-xl border px-3.5 py-2.5 transition-colors",
                               isPaid
                                 ? "border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-500/10"
-                                : isActive
-                                  ? "border-primary/30 bg-primary/5 dark:bg-primary/10"
-                                  : "border-border/60 bg-muted/40 dark:bg-accent/65",
+                                : isRequested
+                                  ? "border-amber-500/30 bg-amber-50/40 dark:bg-amber-500/10"
+                                  : isEligible
+                                    ? "border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-500/10"
+                                    : "border-border/60 bg-muted/40 dark:bg-accent/65",
                             )}
                           >
                             <div className="grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-                              <div className="flex items-start gap-2 sm:items-center">
+                              <div className="flex items-start gap-2.5 sm:items-center">
                                 <div
                                   className={cn(
                                     "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border",
                                     isPaid
                                       ? "border-emerald-200 dark:border-emerald-500/30 bg-emerald-100/50 dark:bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
-                                      : isActive
-                                        ? "border-primary/20 dark:border-primary/30 bg-primary/10 dark:bg-primary/12 text-primary"
-                                        : "border-border/60 bg-background/70 text-muted-foreground",
+                                      : isRequested
+                                        ? "border-amber-200 dark:border-amber-500/30 bg-amber-100/50 dark:bg-amber-500/12 text-amber-600 dark:text-amber-400"
+                                        : isEligible
+                                          ? "border-emerald-200 dark:border-emerald-500/30 bg-emerald-100/50 dark:bg-emerald-500/12 text-emerald-600 dark:text-emerald-400"
+                                          : "border-border/60 bg-background/70 text-muted-foreground",
                                   )}
                                 >
-                                  <CreditCard className="h-3 w-3" />
+                                  <CreditCard className="h-3.5 w-3.5" />
                                 </div>
-                                <div className="min-w-0 flex-1 space-y-0">
+                                <div className="min-w-0 flex-1 space-y-0.5">
                                   <div className="flex flex-wrap items-center gap-2">
                                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
                                       Payout Milestone
@@ -615,21 +629,22 @@ const FreelancerProjectDetailMainColumn = ({
                                   </p>
                                 </div>
                                 <Badge
-                                  variant={isActive ? "secondary" : "outline"}
                                   className={cn(
-                                    "mt-0.5 shrink-0 self-start sm:mt-0 sm:self-center",
+                                    "mt-0.5 shrink-0 self-start sm:mt-0 sm:self-center font-medium text-xs px-2.5 py-1",
                                     isPaid
-                                      ? "border-emerald-200 dark:border-emerald-500/40 bg-emerald-100/40 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-500"
-                                      : isActive
-                                        ? "border-primary/20 dark:border-primary/40 bg-primary/10 text-primary"
-                                        : "border-border/60 bg-background/70 text-muted-foreground",
+                                      ? "border-emerald-200 dark:border-emerald-500/40 bg-emerald-100/40 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                      : isRequested
+                                        ? "border-amber-200 dark:border-amber-500/40 bg-amber-100/40 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                        : isEligible
+                                          ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
+                                          : "border-border/60 bg-background/70 text-muted-foreground",
                                   )}
                                 >
                                   {milestoneStatusLabel}
                                 </Badge>
                               </div>
 
-                              <div className="flex flex-col gap-1 sm:min-w-[118px] sm:items-end sm:border-l sm:border-border/50 sm:pl-3">
+                              <div className="flex flex-col gap-1.5 sm:min-w-[130px] sm:items-end sm:border-l sm:border-border/50 sm:pl-3">
                                 <div className="text-left sm:text-right">
                                   <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                                     Amount
@@ -639,6 +654,20 @@ const FreelancerProjectDetailMainColumn = ({
                                     {Number(milestone.amount || 0).toLocaleString()}
                                   </p>
                                 </div>
+
+                                {isEligible && milestone.amount > 0 ? (
+                                  <Button
+                                    asChild
+                                    size="sm"
+                                    className="mt-1 h-7 rounded-lg bg-emerald-600 px-2.5 text-[11px] font-semibold text-white hover:bg-emerald-700 shadow-sm"
+                                  >
+                                    <Link
+                                      to={`/freelancer/payments?projectId=${encodeURIComponent(project?.id || "")}&amount=${milestone.amount}`}
+                                    >
+                                      Request Payout
+                                    </Link>
+                                  </Button>
+                                ) : null}
                               </div>
                             </div>
                           </div>

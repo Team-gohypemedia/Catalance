@@ -631,8 +631,8 @@ enum PaymentStatus {
 model Payment {
   id               String        @id @default(cuid())
   amount           Int // Total amount from client
-  platformFee      Int           @default(0) // 30% platform fee
-  freelancerAmount Int // Amount after fee (70%)
+  platformFee      Int           @default(0) // 50% platform fee
+  freelancerAmount Int // Amount after fee (50%)
   currency         String        @default("INR")
   status           PaymentStatus @default(PENDING)
   description      String?       @db.Text

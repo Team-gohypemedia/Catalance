@@ -3,6 +3,7 @@ import {
   getAcceptedProposal,
   getProjectPhaseCompletionSummary,
   normalizeProjectAmount,
+  resolveProjectAmount,
 } from "./project-payment-plan.js";
 
 const ACTIVE_PAYOUT_STATUSES = new Set(["PENDING", "PROCESSING", "COMPLETED"]);
@@ -11,30 +12,39 @@ const SETTLED_PAYOUT_STATUS = "COMPLETED";
 export const PROJECT_PAYOUT_DEFINITIONS = Object.freeze([
   {
     sequence: 1,
-    key: "phase_2_payout",
-    label: "2nd Phase payout",
-    percentage: 25,
-    phaseNumber: 2,
-    releaseAfterCompletedPhases: 2,
-    dueLabel: "Release after phase 2 is fully verified.",
+    key: "phase_1_payout",
+    label: "Phase 1 Completed Payout",
+    percentage: 0,
+    phaseNumber: 1,
+    releaseAfterCompletedPhases: 1,
+    dueLabel: "No payout released after Phase 1.",
   },
   {
     sequence: 2,
-    key: "phase_3_payout",
-    label: "3rd Phase payout",
-    percentage: 25,
-    phaseNumber: 3,
-    releaseAfterCompletedPhases: 3,
-    dueLabel: "Release after phase 3 is fully verified.",
+    key: "phase_2_payout",
+    label: "Phase 2 Completed Payout",
+    percentage: 20,
+    phaseNumber: 2,
+    releaseAfterCompletedPhases: 2,
+    dueLabel: "Release 20% of freelancer share after Phase 2 is fully verified.",
   },
   {
     sequence: 3,
+    key: "phase_3_payout",
+    label: "Phase 3 Completed Payout",
+    percentage: 30,
+    phaseNumber: 3,
+    releaseAfterCompletedPhases: 3,
+    dueLabel: "Release 30% of freelancer share after Phase 3 is fully verified.",
+  },
+  {
+    sequence: 4,
     key: "final_payout",
-    label: "Final Phase payout",
+    label: "Phase 4 Final Payout",
     percentage: 50,
     phaseNumber: 4,
     releaseAfterCompletedPhases: 4,
-    dueLabel: "Release after the final phase is fully verified.",
+    dueLabel: "Release 50% of freelancer share after Phase 4 is fully verified.",
   },
 ]);
 
@@ -46,13 +56,14 @@ const compareDatesDescending = (left, right) =>
   new Date(right?.paidAt || right?.updatedAt || right?.createdAt || 0).getTime() -
   new Date(left?.paidAt || left?.updatedAt || left?.createdAt || 0).getTime();
 
-const buildPayoutAmounts = (totalAmount) => {
-  const safeTotal = normalizeProjectAmount(totalAmount);
-  const firstAmount = Math.round(safeTotal * 0.25);
-  const secondAmount = Math.round(safeTotal * 0.25);
-  const finalAmount = Math.max(0, safeTotal - firstAmount - secondAmount);
+const buildPayoutAmounts = (freelancerTotalShare) => {
+  const safeTotal = normalizeProjectAmount(freelancerTotalShare);
+  const phase1Amount = 0;
+  const phase2Amount = Math.round(safeTotal * 0.20);
+  const phase3Amount = Math.round(safeTotal * 0.30);
+  const phase4Amount = Math.max(0, safeTotal - phase1Amount - phase2Amount - phase3Amount);
 
-  return [firstAmount, secondAmount, finalAmount];
+  return [phase1Amount, phase2Amount, phase3Amount, phase4Amount];
 };
 
 export const resolveProjectPayoutPlan = (project, options = {}) => {
@@ -66,16 +77,18 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
     return null;
   }
 
-  const totalAmount = resolveProjectAmount(project, acceptedProposal);
-  if (totalAmount <= 0) {
+  const projectBaseValue = resolveProjectAmount(project, acceptedProposal);
+  if (projectBaseValue <= 0) {
     if (requireAcceptedProposal) {
       throw new AppError("Invalid project amount for payout", 400);
     }
     return null;
   }
 
-  const clientPaidAmount = Math.min(normalizeProjectAmount(project?.spent || 0), totalAmount);
-  const payoutAmounts = buildPayoutAmounts(totalAmount);
+  const platformShare = Math.round(projectBaseValue * 0.5);
+  const freelancerTotalShare = Math.round(projectBaseValue * 0.5);
+  const clientPaidAmount = Math.min(normalizeProjectAmount(project?.spent || 0), projectBaseValue);
+  const payoutAmounts = buildPayoutAmounts(freelancerTotalShare);
   const phaseSummary = getProjectPhaseCompletionSummary(project);
   const payments = toPaymentArray(project?.payments);
   const activePayments = payments.filter((payment) =>
@@ -85,16 +98,16 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
     (payment) => toUpper(payment?.status) === SETTLED_PAYOUT_STATUS
   );
   const committedAmount = Math.min(
-    totalAmount,
+    freelancerTotalShare,
     activePayments.reduce(
-      (sum, payment) => sum + normalizeProjectAmount(payment?.amount || 0),
+      (sum, payment) => sum + normalizeProjectAmount(payment?.freelancerAmount || payment?.amount || 0),
       0
     )
   );
   const settledAmount = Math.min(
-    totalAmount,
+    freelancerTotalShare,
     settledPayments.reduce(
-      (sum, payment) => sum + normalizeProjectAmount(payment?.amount || 0),
+      (sum, payment) => sum + normalizeProjectAmount(payment?.freelancerAmount || payment?.amount || 0),
       0
     )
   );
@@ -117,9 +130,8 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
     const stagePayment = stagePayments[0] || null;
     const stagePaymentStatus = toUpper(stagePayment?.status);
 
-    const isCommitted = Boolean(stagePayment) || committedAmount >= cumulativeAmount;
-    const isPaid =
-      stagePaymentStatus === SETTLED_PAYOUT_STATUS || settledAmount >= cumulativeAmount;
+    const isCommitted = amount === 0 ? true : Boolean(stagePayment) || committedAmount >= cumulativeAmount;
+    const isPaid = amount === 0 ? true : stagePaymentStatus === SETTLED_PAYOUT_STATUS || settledAmount >= cumulativeAmount;
     const phaseGateReached =
       phaseSummary.completedPhaseCount >= definition.releaseAfterCompletedPhases;
     const escrowAvailableBeforePayout = Math.max(
@@ -128,9 +140,9 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
     );
     const escrowCoverageReached = escrowAvailableBeforePayout >= amount;
     const isDue =
-      !isCommitted && allPreviousCommitted && phaseGateReached && escrowCoverageReached;
+      amount > 0 && !isCommitted && allPreviousCommitted && phaseGateReached && escrowCoverageReached;
 
-    let status = "UPCOMING";
+    let status = amount === 0 ? "PAID" : "UPCOMING";
     if (isPaid) {
       status = "PAID";
     } else if (["PENDING", "PROCESSING"].includes(stagePaymentStatus)) {
@@ -150,7 +162,7 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
       ...definition,
       amount,
       cumulativeAmount,
-      remainingAfterPayout: Math.max(0, totalAmount - cumulativeAmount),
+      remainingAfterPayout: Math.max(0, freelancerTotalShare - cumulativeAmount),
       phaseGateReached,
       escrowAvailableBeforePayout,
       escrowCoverageReached,
@@ -163,14 +175,21 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
   });
 
   const nextDuePayout = payouts.find((payout) => payout.isDue) || null;
-  const nextUnpaidPayout = payouts.find((payout) => !payout.isCommitted) || null;
+  const nextUnpaidPayout = payouts.find((payout) => payout.amount > 0 && !payout.isCommitted) || null;
 
   return {
-    totalAmount,
+    projectBaseValue,
+    platformShare,
+    freelancerTotalShare,
+    totalAmount: freelancerTotalShare, // Total freelancer share
     clientPaidAmount,
+    clientPendingAmount: Math.max(0, projectBaseValue - clientPaidAmount),
     committedAmount,
     settledAmount,
-    remainingAmount: Math.max(0, totalAmount - committedAmount),
+    freelancerAmountReleased: settledAmount,
+    freelancerPendingBalance: Math.max(0, freelancerTotalShare - settledAmount),
+    remainingAmount: Math.max(0, freelancerTotalShare - committedAmount),
+    currentProjectPhase: phaseSummary.completedPhaseCount,
     completedPhaseCount: phaseSummary.completedPhaseCount,
     completedPhaseIds: phaseSummary.completedPhaseIds,
     phases: phaseSummary.phases,
@@ -178,9 +197,9 @@ export const resolveProjectPayoutPlan = (project, options = {}) => {
     nextDuePayout,
     nextUnpaidPayout,
     availableEscrowAmount: Math.max(0, clientPaidAmount - committedAmount),
-    isFullyPaidOut: committedAmount >= totalAmount,
+    isFullyPaidOut: settledAmount >= freelancerTotalShare,
     acceptedProposalId: acceptedProposal.id,
-    acceptedProposalAmount: totalAmount,
+    acceptedProposalAmount: projectBaseValue,
   };
 };
 
@@ -188,4 +207,5 @@ export const attachProjectPayoutPlan = (project) => ({
   ...project,
   payoutPlan: resolveProjectPayoutPlan(project),
 });
+
 

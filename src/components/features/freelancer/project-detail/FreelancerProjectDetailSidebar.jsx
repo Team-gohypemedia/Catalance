@@ -357,12 +357,26 @@ const FreelancerProjectDetailSidebar = ({
       <CardHeader className="px-4 pb-2 pt-4">
         <CardTitle className={cn(eyebrowClassName, "flex items-center gap-1.5")}>
           <IndianRupee className="h-3 w-3" />
-          Earnings Summary
+          Earnings Summary (50/50 Revenue Split)
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 px-4 pb-4 pt-2 text-sm text-foreground dark:text-white">
         <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
-          <span>Your Total Share</span>
+          <span className="text-muted-foreground">Project Base Budget</span>
+          <span className="font-semibold text-foreground dark:text-white">
+            {project?.currency || "₹"}
+            {(totalBudget * 2).toLocaleString()}
+          </span>
+        </div>
+        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
+          <span className="text-muted-foreground">Platform Share (50%)</span>
+          <span className="font-semibold text-muted-foreground">
+            {project?.currency || "₹"}
+            {totalBudget.toLocaleString()}
+          </span>
+        </div>
+        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
+          <span>Freelancer Total Share (50%)</span>
           <span className="font-semibold text-foreground dark:text-white">
             {project?.currency || "₹"}
             {totalBudget.toLocaleString()}
@@ -389,54 +403,82 @@ const FreelancerProjectDetailSidebar = ({
       <CardHeader className="pb-3">
         <CardTitle className={eyebrowClassName}>Payout Schedule</CardTitle>
         <CardDescription className={subheadingClassName}>
-          Track your payout releases: 20% kickoff, 40% progress review, 40%
-          final handover.
+          4-Phase Payouts based on your 50% share: Phase 1 (0%), Phase 2 (20%), Phase 3 (30%), Phase 4 (50%).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
-        {billingRoadmap.map((milestone) => (
-          <div
-            key={milestone.id}
-            className={cn(
-              insetPanelClassName,
-              "space-y-3 p-4",
-              milestone.status === "active" && "border-primary/25 bg-primary/10",
-              milestone.status === "paid" && "border-emerald-500/20 bg-emerald-500/10",
-            )}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {milestone.label}
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
-                  {project?.currency || "₹"}
-                  {milestone.amount.toLocaleString()}
-                </p>
+        {billingRoadmap.map((milestone) => {
+          const isPaid = milestone.status === "paid";
+          const isRequested = milestone.status === "requested";
+          const isEligible = milestone.status === "eligible";
+          const isNoPayout = milestone.status === "no_payout" || milestone.amount === 0;
+
+          const milestoneStatusLabel = isPaid
+            ? "Paid"
+            : isRequested
+              ? "Payout Requested"
+              : isEligible
+                ? "Eligible for Payout"
+                : isNoPayout
+                  ? "No Payout"
+                  : "Upcoming";
+
+          return (
+            <div
+              key={milestone.id}
+              className={cn(
+                insetPanelClassName,
+                "space-y-3 p-4",
+                isPaid && "border-emerald-500/20 bg-emerald-500/10",
+                isRequested && "border-amber-500/20 bg-amber-500/10",
+                isEligible && "border-emerald-500/30 bg-emerald-500/10",
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {milestone.label}
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
+                    {project?.currency || "₹"}
+                    {milestone.amount.toLocaleString()}
+                  </p>
+                </div>
+                <Badge
+                  className={cn(
+                    "border px-2.5 py-1 text-[10px] font-medium",
+                    isPaid &&
+                      "border-emerald-200 dark:border-emerald-500/10 bg-emerald-100/40 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200",
+                    isRequested &&
+                      "border-amber-200 dark:border-amber-500/10 bg-amber-100/40 dark:bg-amber-500/15 text-amber-700 dark:text-amber-200",
+                    isEligible &&
+                      "border-emerald-500/30 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold",
+                    (!isPaid && !isRequested && !isEligible) &&
+                      "border-border bg-muted dark:border-white/[0.08] dark:bg-[#111111] text-muted-foreground",
+                  )}
+                >
+                  {milestoneStatusLabel}
+                </Badge>
               </div>
-              <Badge
-                className={cn(
-                  "border px-2.5 py-1 text-[10px] font-medium",
-                  milestone.status === "paid" &&
-                    "border-emerald-200 dark:border-emerald-500/10 bg-emerald-100/40 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200",
-                  milestone.status === "active" &&
-                    "border-primary/10 bg-primary/15 text-primary",
-                  milestone.status === "scheduled" &&
-                    "border-border bg-muted dark:border-white/[0.08] dark:bg-[#111111] text-muted-foreground",
-                )}
-              >
-                {milestone.status === "paid"
-                  ? "Paid"
-                  : milestone.status === "active"
-                    ? "Next Payout"
-                    : "Upcoming"}
-              </Badge>
+              <p className="text-xs leading-5 text-muted-foreground">
+                {milestone.note}
+              </p>
+              {isEligible && milestone.amount > 0 ? (
+                <Button
+                  asChild
+                  size="sm"
+                  className="mt-2 h-8 w-full gap-1.5 rounded-lg bg-emerald-600 px-3 text-xs font-semibold text-white hover:bg-emerald-700 shadow-sm"
+                >
+                  <Link
+                    to={`/freelancer/payments?projectId=${encodeURIComponent(project?.id || "")}&amount=${milestone.amount}`}
+                  >
+                    Request Payout (₹{milestone.amount.toLocaleString()})
+                  </Link>
+                </Button>
+              ) : null}
             </div>
-            <p className="text-xs leading-5 text-muted-foreground">
-              {milestone.note}
-            </p>
-          </div>
-        ))}
+          );
+        })}
       </CardContent>
     </Card>
   </div>

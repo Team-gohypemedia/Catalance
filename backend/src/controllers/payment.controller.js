@@ -122,8 +122,8 @@ export const createPayment = async (req, res) => {
       });
     }
 
-    // Calculate platform fee (30%) and freelancer amount (70%)
-    const platformFee = Math.round(amount * 0.3);
+    // Calculate platform fee (50%) and freelancer amount (50%)
+    const platformFee = Math.round(amount * 0.5);
     const freelancerAmount = amount - platformFee;
 
     const payment = await prisma.payment.create({

@@ -233,7 +233,7 @@ const AdminDashboard = () => {
       const budget = Number(project?.budget || 0);
       row.projectVolume += 1;
       row.grossVolume += budget;
-      row.platformFees = Math.round(row.grossVolume * 0.3);
+      row.platformFees = Math.round(row.grossVolume * 0.5);
       map.set(key, row);
     });
 

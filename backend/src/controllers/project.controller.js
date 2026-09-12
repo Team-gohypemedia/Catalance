@@ -2496,7 +2496,7 @@ export const releaseEscrow = asyncHandler(async (req, res) => {
   }
 
   const amountToRelease = nextInstallment.amount;
-  const platformFee = Math.round(amountToRelease * 0.3);
+  const platformFee = Math.round(amountToRelease * 0.5);
   const freelancerAmount = amountToRelease - platformFee;
 
   let payment;

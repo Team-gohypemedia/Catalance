@@ -51,6 +51,8 @@ import { FREELANCER_BUDGET_SHARE, formatINR } from "@/shared/lib/currency";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";
 
+import { useSearchParams } from "react-router-dom";
+
 const surfaceClass =
   "rounded-[24px] border border-border bg-card sm:rounded-[28px]";
 
@@ -139,8 +141,18 @@ const getActivityDate = (...values) => {
   return null;
 };
 
+const getGrossAmount = (proposal = {}) =>
+  Number(
+    proposal?.amount ||
+      proposal?.budget ||
+      proposal?.project?.budget ||
+      proposal?.project?.proposalJson?.structuredFields?.budget?.value ||
+      proposal?.project?.proposalJson?.amount ||
+      0
+  );
+
 const getProjectPaymentRow = (proposal = {}) => {
-  const grossAmount = Number(proposal?.amount) || 0;
+  const grossAmount = getGrossAmount(proposal);
   const freelancerShare = toShareAmount(grossAmount);
   const projectStatus = toUpper(proposal?.project?.status);
   const awaitingDeposit = isAwaitingDeposit(projectStatus);
@@ -171,19 +183,22 @@ const getProjectPaymentRow = (proposal = {}) => {
   };
 };
 
-const getFallbackInstallment = (proposal = {}, { isCompleted, awaitingDeposit }) => ({
-  sequence: 1,
-  label: "Project payout",
-  amount: Number(proposal?.amount) || 0,
-  isPaid: isCompleted,
-  isDue: !isCompleted && !awaitingDeposit,
-  amountPaid: isCompleted ? Number(proposal?.amount) || 0 : 0,
-  updatedAt: getActivityDate(
-    proposal?.project?.updatedAt,
-    proposal?.updatedAt,
-    proposal?.createdAt,
-  ),
-});
+const getFallbackInstallment = (proposal = {}, { isCompleted, awaitingDeposit }) => {
+  const gross = getGrossAmount(proposal);
+  return {
+    sequence: 1,
+    label: "Project payout",
+    amount: gross,
+    isPaid: isCompleted,
+    isDue: !isCompleted && !awaitingDeposit,
+    amountPaid: isCompleted ? gross : 0,
+    updatedAt: getActivityDate(
+      proposal?.project?.updatedAt,
+      proposal?.updatedAt,
+      proposal?.createdAt,
+    ),
+  };
+};
 
 const getMilestoneRows = (proposal = {}) => {
   const projectStatus = toUpper(proposal?.project?.status);
@@ -199,7 +214,7 @@ const getMilestoneRows = (proposal = {}) => {
     [getFallbackInstallment(proposal, { isCompleted, awaitingDeposit })];
 
   return installments.map((installment, index) => {
-    const grossAmount = Number(installment?.amount) || Number(proposal?.amount) || 0;
+    const grossAmount = Number(installment?.amount) || getGrossAmount(proposal);
     const shareAmount = toShareAmount(grossAmount);
     const amountPaid = Number(
       installment?.amountPaid ?? (installment?.isPaid ? grossAmount : 0),
@@ -581,9 +596,24 @@ const FreelancerPayments = () => {
     }
   }, [authFetch, isAuthenticated]);
 
+  const [searchParams] = useSearchParams();
+
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    const paramProjectId = searchParams.get("projectId");
+    const paramAmount = searchParams.get("amount");
+    if (paramProjectId || paramAmount) {
+      setRequestForm((prev) => ({
+        ...prev,
+        projectId: paramProjectId || prev.projectId,
+        amount: paramAmount || prev.amount,
+      }));
+      setIsRequestModalOpen(true);
+    }
+  }, [searchParams]);
 
   // QR Code Image Upload Handler
   const handleQrUpload = async (event) => {
@@ -840,7 +870,7 @@ const FreelancerPayments = () => {
                       <option value="">-- General / Custom Payout --</option>
                       {paymentProjects.map((p) => (
                         <option key={p.id} value={p.id}>
-                          {p.title} (Earned: Rs.{p.availableAmount?.toLocaleString("en-IN")})
+                          {p.title} (Earned/Share: Rs.{(p.availableAmount || 0).toLocaleString("en-IN")})
                         </option>
                       ))}
                     </select>

@@ -426,8 +426,7 @@ const ClientProjectDetailSidebar = ({
       <CardHeader className="pb-3">
         <CardTitle className={eyebrowClassName}>Payment Schedule</CardTitle>
         <CardDescription className={subheadingClassName}>
-          Track your project payments: 20% kickoff, 40% progress review, 40%
-          final handover.
+          Track your 3 project installments: 20% Advance, 40% after Phase 2, 40% after Phase 4.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">

@@ -1,3 +1,4 @@
+// Updated: FreelancerProjectDetailPage component
 "use client";
 
 import React, {
@@ -279,6 +280,7 @@ const FreelancerProjectDetailContent = () => {
     totalPaid: 0,
     totalPending: 0,
   });
+  const [payoutRequestsList, setPayoutRequestsList] = useState([]);
   const [aiUsage, setAiUsage] = useState(null);
   const [isAuditingHeader, setIsAuditingHeader] = useState(false);
   const fileInputRef = useRef(null);
@@ -467,10 +469,10 @@ const FreelancerProjectDetailContent = () => {
     const rawBudget = extractField("Budget");
     let budget = rawBudget;
     if (rawBudget) {
-      // Parse numeric value, reduce by 30%, and reformat
+      // Parse numeric value, reduce by 50%, and reformat
       const numericBudget = parseFloat(rawBudget.replace(/[^0-9.]/g, ""));
       if (!isNaN(numericBudget)) {
-        const reducedBudget = Math.round(numericBudget * 0.7);
+        const reducedBudget = Math.round(numericBudget * 0.5);
         const currency = rawBudget.match(/[A-Z$€£¥₹]+/i)?.[0] || "INR";
         budget = `${currency} ${reducedBudget.toLocaleString()}`;
       }
@@ -781,8 +783,26 @@ const FreelancerProjectDetailContent = () => {
           })();
 
           const normalizedBudget = (() => {
-            const value = Number(match.project.budget ?? match.budget ?? 0);
-            return Number.isFinite(value) ? Math.max(0, value) : 0;
+            const candidateValues = [
+              match.amount,
+              match.budget,
+              match.project?.budget,
+              match.project?.budgetTotal,
+              match.project?.budgetSummary,
+              match.project?.proposalJson?.structuredFields?.budget?.value,
+              match.project?.proposalJson?.amount,
+              match.project?.proposalJson?.budget,
+              match.project?.proposalJson?.totalAmount,
+            ];
+            for (const val of candidateValues) {
+              if (val === undefined || val === null) continue;
+              const strVal = String(val).replace(/[^0-9.]/g, "");
+              const num = Number(strVal);
+              if (Number.isFinite(num) && num > 0) {
+                return num;
+              }
+            }
+            return 0;
           })();
 
           setProject({
@@ -803,6 +823,9 @@ const FreelancerProjectDetailContent = () => {
             owner: match.project.owner, // Store full owner object for details card
             externalLink: match.project.externalLink || null, // Project link
             description: match.project.description || null, // Project description
+            proposals: Array.isArray(match.project.proposals) && match.project.proposals.length > 0
+              ? match.project.proposals
+              : [match],
             customSop: typeof match.project.customSop === "string" 
               ? (() => { try { return JSON.parse(match.project.customSop); } catch { return null; } })()
               : (match.project.customSop || null),
@@ -847,7 +870,11 @@ const FreelancerProjectDetailContent = () => {
 
     const fetchPayments = async () => {
       try {
-        const res = await authFetch(`/payments/project/${project.id}/summary`);
+        const [res, reqRes] = await Promise.all([
+          authFetch(`/payments/project/${project.id}/summary`),
+          authFetch(`/payout-requests/request/my`),
+        ]);
+
         if (res.ok) {
           const data = await res.json();
           if (data?.data) {
@@ -855,6 +882,13 @@ const FreelancerProjectDetailContent = () => {
               totalPaid: data.data.totalPaid || 0,
               totalPending: data.data.totalPending || 0,
             });
+          }
+        }
+
+        if (reqRes.ok) {
+          const reqData = await reqRes.json();
+          if (Array.isArray(reqData?.data)) {
+            setPayoutRequestsList(reqData.data);
           }
         }
       } catch (error) {
@@ -1427,13 +1461,12 @@ const FreelancerProjectDetailContent = () => {
       return 0;
     }
 
-    const milestones = derivedPhases.length > 0
-      ? derivedPhases.map((p, i) => ({ phaseOrder: Number(p.id) || (i + 1), percentage: p.progress || 0 }))
-      : [
-          { phaseOrder: 1, percentage: 20 },
-          { phaseOrder: 2, percentage: 40 },
-          { phaseOrder: 4, percentage: 40 },
-        ];
+    const milestones = [
+      { phaseOrder: 1, percentage: 0 },
+      { phaseOrder: 2, percentage: 20 },
+      { phaseOrder: 3, percentage: 30 },
+      { phaseOrder: 4, percentage: 50 },
+    ];
 
     const firstIncompletePhaseIndex = derivedPhases.findIndex(
       (phase) => phase?.status !== "completed",
@@ -1648,85 +1681,84 @@ const FreelancerProjectDetailContent = () => {
   }, [project, totalBudget]);
 
   const billingRoadmap = useMemo(() => {
-    const milestones = derivedPhases.length > 0
-      ? derivedPhases.map((p, i) => ({
-          id: `phase-${p.id}`,
-          label: p.name || `Phase ${i + 1} Payout`,
-          phaseOrder: Number(p.id) || (i + 1),
-          percentage: p.progress || 0,
-          note: `Payout for Phase ${i + 1}.`,
-        }))
-      : [
-          {
-            id: "kickoff",
-            label: "Phase 1 / Kickoff Payout",
-            phaseOrder: 1,
-            percentage: 20,
-            note: "Released to you after kickoff is approved.",
-          },
-          {
-            id: "review",
-            label: "Phase 2 / Progress Payout",
-            phaseOrder: 2,
-            percentage: 40,
-            note: "Released to you after the mid-project review is approved.",
-          },
-          {
-            id: "handover",
-            label: "Phase 4 / Final Payout",
-            phaseOrder: 4,
-            percentage: 40,
-            note: "Released upon final handover and closure.",
-          },
-        ];
+    const defaultMilestones = [
+      {
+        id: "phase-1",
+        label: "Phase 1 / Kickoff Completed",
+        phaseOrder: 1,
+        percentage: 0,
+        note: "No payout released after Phase 1.",
+      },
+      {
+        id: "phase-2",
+        label: "Phase 2 Completed Payout (20%)",
+        phaseOrder: 2,
+        percentage: 20,
+        note: "20% of your total share released after Phase 2 is completed.",
+      },
+      {
+        id: "phase-3",
+        label: "Phase 3 Completed Payout (30%)",
+        phaseOrder: 3,
+        percentage: 30,
+        note: "30% of your total share released after Phase 3 is completed.",
+      },
+      {
+        id: "phase-4",
+        label: "Phase 4 Final Payout (50%)",
+        phaseOrder: 4,
+        percentage: 50,
+        note: "50% of your total share released upon final completion.",
+      },
+    ];
 
-    const hasPhaseProgress = Array.isArray(derivedPhases) && derivedPhases.length > 0;
-    const firstIncompletePhaseIndex = hasPhaseProgress
-      ? derivedPhases.findIndex((phase) => phase?.status !== "completed")
-      : -1;
-    const currentPhaseIndex = hasPhaseProgress
-      ? firstIncompletePhaseIndex >= 0
-        ? firstIncompletePhaseIndex
-        : Math.max(derivedPhases.length - 1, 0)
-      : -1;
-    const currentPhaseOrder = currentPhaseIndex >= 0 ? currentPhaseIndex + 1 : null;
+    const projectRequests = (payoutRequestsList || []).filter(
+      (r) => !r.projectId || String(r.projectId) === String(project?.id)
+    );
 
-    return milestones.map((milestone, index) => {
+    return defaultMilestones.map((milestone) => {
       const amount = Math.round((totalBudget * milestone.percentage) / 100);
-      const isPaidByPhase =
-        hasPhaseProgress &&
-        currentPhaseOrder !== null &&
-        (milestone.phaseOrder < currentPhaseOrder ||
-          (milestone.phaseOrder === currentPhaseOrder &&
-            String(derivedPhases[currentPhaseIndex]?.status || "") === "completed"));
 
-      const isCurrentByPhase =
-        hasPhaseProgress && currentPhaseOrder !== null && milestone.phaseOrder === currentPhaseOrder;
+      if (amount === 0 || milestone.percentage === 0) {
+        return {
+          ...milestone,
+          amount: 0,
+          status: "no_payout",
+        };
+      }
 
-      const fallbackThresholdPercent =
-        milestones
-          .slice(0, index + 1)
-          .reduce((sum, item) => sum + (Number(item.percentage) || 0), 0) / 100;
-      const fallbackPreviousThresholdPercent =
-        milestones
-          .slice(0, index)
-          .reduce((sum, item) => sum + (Number(item.percentage) || 0), 0) / 100;
-      const isPaidByAmount = amount > 0 && spentBudget >= totalBudget * fallbackThresholdPercent;
-      const isCurrentByAmount =
-        !isPaidByAmount &&
-        amount > 0 &&
-        spentBudget >= totalBudget * fallbackPreviousThresholdPercent;
+      const targetPhase = Array.isArray(derivedPhases)
+        ? derivedPhases.find((p) => Number(p.id) === milestone.phaseOrder)
+        : null;
+      const isPhaseCompleted = targetPhase ? targetPhase.status === "completed" : false;
 
-      const isPaid = hasPhaseProgress ? isPaidByPhase : isPaidByAmount;
-      const isCurrent = hasPhaseProgress ? isCurrentByPhase : isCurrentByAmount;
+      const matchedPaidRequest = projectRequests.find(
+        (r) => String(r.status).toUpperCase() === "PAID" && Math.abs(Number(r.amount) - amount) < 100
+      );
+      const matchedPendingRequest = projectRequests.find(
+        (r) => ["PENDING", "APPROVED", "PROCESSING"].includes(String(r.status).toUpperCase()) &&
+          Math.abs(Number(r.amount) - amount) < 100
+      );
+
+      let status = "upcoming";
+      if (matchedPaidRequest || paidAmountFromApi >= amount) {
+        status = "paid";
+      } else if (matchedPendingRequest) {
+        status = "requested";
+      } else if (isPhaseCompleted) {
+        status = "eligible";
+      } else {
+        status = "upcoming";
+      }
 
       return {
         ...milestone,
         amount,
-        status: isPaid ? "paid" : isCurrent ? "active" : "scheduled",
+        status,
+        requestStatus: matchedPendingRequest?.status || matchedPaidRequest?.status || null,
       };
     });
-  }, [derivedPhases, spentBudget, totalBudget]);
+  }, [derivedPhases, totalBudget, payoutRequestsList, paidAmountFromApi, project?.id]);
 
   const pageTitle =
     String(
