@@ -416,8 +416,35 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
     filtered = filtered.filter((item) => item.status === filterStatus);
   }
 
-  if (filterHasDocument) {
+  if (req.query.hasDocument === "true") {
     filtered = filtered.filter((item) => item.documentData.hasDocument);
+  } else if (req.query.hasDocument === "false") {
+    filtered = filtered.filter((item) => !item.documentData.hasDocument);
+  }
+
+  const rawStepQuery = String(req.query.step || "ALL").trim();
+  if (rawStepQuery !== "ALL") {
+    if (rawStepQuery.endsWith("+")) {
+      const minStep = parseInt(rawStepQuery.replace("+", ""), 10);
+      if (!isNaN(minStep)) {
+        filtered = filtered.filter((item) => ((item.currentStep || 0) + 1) >= minStep);
+      }
+    } else if (rawStepQuery.includes("-")) {
+      const [minStr, maxStr] = rawStepQuery.split("-");
+      const minStep = parseInt(minStr, 10);
+      const maxStep = parseInt(maxStr, 10);
+      if (!isNaN(minStep) && !isNaN(maxStep)) {
+        filtered = filtered.filter((item) => {
+          const step = (item.currentStep || 0) + 1;
+          return step >= minStep && step <= maxStep;
+        });
+      }
+    } else {
+      const exactStep = parseInt(rawStepQuery, 10);
+      if (!isNaN(exactStep) && exactStep > 0) {
+        filtered = filtered.filter((item) => ((item.currentStep || 0) + 1) === exactStep);
+      }
+    }
   }
 
   const totalSessions = enrichedSessions.length;
@@ -442,6 +469,53 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
     .sort((a, b) => b.count - a.count)
     .slice(0, 5);
 
+  // Calculate step progression & milestone breakdown
+  const maxStepFound = Math.max(1, ...enrichedSessions.map((s) => (s.currentStep || 0) + 1));
+  const stepCountMap = new Map();
+  for (const session of enrichedSessions) {
+    const stepNum = (session.currentStep || 0) + 1;
+    stepCountMap.set(stepNum, (stepCountMap.get(stepNum) || 0) + 1);
+  }
+
+  // Milestone Funnel Ranges
+  const milestoneRanges = [
+    { label: "Step 1 - 3", min: 1, max: 3, key: "1-3" },
+    { label: "Step 4 - 7", min: 4, max: 7, key: "4-7" },
+    { label: "Step 8 - 12", min: 8, max: 12, key: "8-12" },
+    { label: "Step 13 - 20", min: 13, max: 20, key: "13-20" },
+    { label: "Step 21+", min: 21, max: Infinity, key: "21+" },
+  ];
+
+  const milestoneFunnel = milestoneRanges.map((range) => {
+    const reachedCount = enrichedSessions.filter((s) => ((s.currentStep || 0) + 1) >= range.min).length;
+    const countAtRange = enrichedSessions.filter((s) => {
+      const step = (s.currentStep || 0) + 1;
+      return step >= range.min && step <= range.max;
+    }).length;
+    return {
+      ...range,
+      reachedCount,
+      countAtRange,
+      percentage: totalSessions > 0 ? Math.round((reachedCount / totalSessions) * 100) : 0,
+    };
+  });
+
+  const stepBreakdown = [];
+  const limitStepToRender = Math.min(50, Math.max(maxStepFound, 10));
+  for (let i = 1; i <= limitStepToRender; i++) {
+    const countAtStep = stepCountMap.get(i) || 0;
+    const reachedCount = enrichedSessions.filter((s) => ((s.currentStep || 0) + 1) >= i).length;
+    if (reachedCount > 0 || i <= 10) {
+      stepBreakdown.push({
+        step: i,
+        label: `Step ${i}`,
+        countAtStep,
+        reachedCount,
+        percentage: totalSessions > 0 ? Math.round((reachedCount / totalSessions) * 100) : 0,
+      });
+    }
+  }
+
   const totalRecords = filtered.length;
   const totalPages = Math.ceil(totalRecords / limit) || 1;
   const startIndex = (page - 1) * limit;
@@ -463,6 +537,9 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
         formattedTotalAiCostUSD: `$${totalAiCostUSD.toFixed(2)}`,
         totalAiCalls,
         topServices,
+        maxStepFound,
+        milestoneFunnel,
+        stepBreakdown,
       },
       pagination: {
         page,

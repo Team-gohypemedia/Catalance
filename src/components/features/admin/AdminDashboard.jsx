@@ -1,89 +1,44 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Legend,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { toast } from "sonner";
 import { useAuth } from "@/shared/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import Activity from "lucide-react/dist/esm/icons/activity";
 import AlertTriangle from "lucide-react/dist/esm/icons/alert-triangle";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import Bot from "lucide-react/dist/esm/icons/bot";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
 import Check from "lucide-react/dist/esm/icons/check";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
+import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import DollarSign from "lucide-react/dist/esm/icons/dollar-sign";
 import FileText from "lucide-react/dist/esm/icons/file-text";
-import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Mail from "lucide-react/dist/esm/icons/mail";
+import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import Newspaper from "lucide-react/dist/esm/icons/newspaper";
 import ShieldAlert from "lucide-react/dist/esm/icons/shield-alert";
+import UserCheck from "lucide-react/dist/esm/icons/user-check";
+import User from "lucide-react/dist/esm/icons/user";
 import Users from "lucide-react/dist/esm/icons/users";
-import Wallet from "lucide-react/dist/esm/icons/wallet";
-import CreditCard from "lucide-react/dist/esm/icons/credit-card";
 import AdminLayout from "./AdminLayout";
 import { AdminTopBar } from "./AdminTopBar";
-import { AdminPayoutRequestsContent } from "./AdminPayoutRequests";
 
 const formatINR = (value) =>
   `INR ${Number(value || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 
 const formatCount = (value) => Number(value || 0).toLocaleString("en-IN");
 
-const formatDateTime = (value) => {
+const formatDate = (value) => {
+  if (!value) return "N/A";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unknown";
-  return date.toLocaleString("en-IN", {
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
-};
-
-const getRecentMonthKeys = (count = 6) => {
-  const keys = [];
-  const now = new Date();
-
-  for (let i = count - 1; i >= 0; i -= 1) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    keys.push(key);
-  }
-  return keys;
-};
-
-const monthLabelFromKey = (key) => {
-  const [year, month] = key.split("-").map(Number);
-  const d = new Date(year, month - 1, 1);
-  return d.toLocaleDateString("en-IN", { month: "short" });
-};
-
-const toMonthKey = (value) => {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-};
-
-const buildAdminUsersQuery = (params = {}) => {
-  const query = new URLSearchParams();
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      query.set(key, String(value));
-    }
-  });
-
-  return query.toString();
 };
 
 const extractUsers = (payload) =>
@@ -99,68 +54,87 @@ const AdminDashboard = () => {
     totalProposals: 0,
     totalRevenue: 0,
   });
-  const [allProjects, setAllProjects] = useState([]);
-  const [allDisputes, setAllDisputes] = useState([]);
-  const [recentDisputes, setRecentDisputes] = useState([]);
-  const [recentFreelancers, setRecentFreelancers] = useState([]);
+  const [freelancerCount, setFreelancerCount] = useState(0);
+  const [clientCount, setClientCount] = useState(0);
+  const [aiUsageOverview, setAiUsageOverview] = useState(null);
+  const [activeProjectsCount, setActiveProjectsCount] = useState(0);
+
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [recentProjects, setRecentProjects] = useState([]);
   const [pendingFreelancers, setPendingFreelancers] = useState([]);
-  const [recentClients, setRecentClients] = useState([]);
-  const [recentContactInquiries, setRecentContactInquiries] = useState([]);
-  const [aiUsageSummary, setAiUsageSummary] = useState(null);
+  const [activeDisputes, setActiveDisputes] = useState([]);
+  const [contactInquiries, setContactInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [overrideLoadingId, setOverrideLoadingId] = useState(null);
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, disputesRes, activeFreelancersRes, pendingFreelancersRes, activeClientsRes, projectsRes, contactInquiriesRes, aiUsageRes] = await Promise.all([
+      const [
+        statsRes,
+        pendingRes,
+        disputesRes,
+        inquiriesRes,
+        freelancersRes,
+        clientsRes,
+        aiUsageRes,
+        projectsRes,
+      ] = await Promise.all([
         authFetch("/admin/stats"),
+        authFetch("/admin/users?role=FREELANCER&status=PENDING_APPROVAL&limit=10"),
         authFetch("/disputes"),
-        authFetch(`/admin/users?${buildAdminUsersQuery({ role: "FREELANCER", status: "ACTIVE", limit: 4 })}`),
-        authFetch(`/admin/users?${buildAdminUsersQuery({ role: "FREELANCER", status: "PENDING_APPROVAL", limit: 6 })}`),
-        authFetch(`/admin/users?${buildAdminUsersQuery({ role: "CLIENT", status: "ACTIVE", limit: 4 })}`),
+        authFetch("/admin/contact-inquiries?limit=5"),
+        authFetch("/admin/users?role=FREELANCER&limit=1"),
+        authFetch("/admin/users?role=CLIENT&limit=1"),
+        authFetch("/admin/ai-usage/summary?days=30&limit=1"),
         authFetch("/admin/projects"),
-        authFetch("/admin/contact-inquiries?limit=6"),
-        authFetch("/admin/ai-usage/summary?days=30&limit=5"),
       ]);
 
       const statsData = await statsRes.json().catch(() => null);
+      const pendingData = await pendingRes.json().catch(() => null);
       const disputesData = await disputesRes.json().catch(() => null);
-      const activeFreelancersData = await activeFreelancersRes.json().catch(() => null);
-      const pendingFreelancersData = await pendingFreelancersRes.json().catch(() => null);
-      const activeClientsData = await activeClientsRes.json().catch(() => null);
-      const projectsData = await projectsRes.json().catch(() => null);
-      const contactInquiriesData = await contactInquiriesRes.json().catch(() => null);
+      const inquiriesData = await inquiriesRes.json().catch(() => null);
+      const freelancersData = await freelancersRes.json().catch(() => null);
+      const clientsData = await clientsRes.json().catch(() => null);
       const aiUsageData = await aiUsageRes.json().catch(() => null);
+      const projectsData = await projectsRes.json().catch(() => null);
 
-      if (statsData?.data?.stats) {
-        setStats(statsData.data.stats);
+      if (statsData?.data) {
+        if (statsData.data.stats) setStats(statsData.data.stats);
+        if (Array.isArray(statsData.data.recentUsers)) setRecentUsers(statsData.data.recentUsers.slice(0, 5));
+        if (Array.isArray(statsData.data.recentProjects)) setRecentProjects(statsData.data.recentProjects.slice(0, 5));
       }
 
+      setPendingFreelancers(extractUsers(pendingData));
+
       if (Array.isArray(disputesData?.data)) {
-        const all = disputesData.data;
-        setAllDisputes(all);
-        setRecentDisputes(all.filter((d) => d.status !== "RESOLVED").slice(0, 6));
+        setActiveDisputes(disputesData.data.filter((d) => d.status !== "RESOLVED").slice(0, 5));
+      }
+
+      if (Array.isArray(inquiriesData?.data?.inquiries)) {
+        setContactInquiries(inquiriesData.data.inquiries.slice(0, 5));
+      }
+
+      if (freelancersData?.data?.pagination?.total !== undefined) {
+        setFreelancerCount(freelancersData.data.pagination.total);
+      }
+
+      if (clientsData?.data?.pagination?.total !== undefined) {
+        setClientCount(clientsData.data.pagination.total);
+      }
+
+      if (aiUsageData?.data?.overview) {
+        setAiUsageOverview(aiUsageData.data.overview);
       }
 
       if (Array.isArray(projectsData?.data?.projects)) {
-        setAllProjects(projectsData.data.projects);
-      }
-
-      setRecentFreelancers(extractUsers(activeFreelancersData));
-      setPendingFreelancers(extractUsers(pendingFreelancersData));
-      setRecentClients(extractUsers(activeClientsData));
-
-      if (Array.isArray(contactInquiriesData?.data?.inquiries)) {
-        setRecentContactInquiries(contactInquiriesData.data.inquiries);
-      }
-
-      if (aiUsageData?.data) {
-        setAiUsageSummary(aiUsageData.data);
+        const activeCount = projectsData.data.projects.filter((p) =>
+          ["OPEN", "IN_PROGRESS", "ASSIGNED"].includes(String(p.status || "").toUpperCase())
+        ).length;
+        setActiveProjectsCount(activeCount);
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error);
-      toast.error("Failed to load admin dashboard data");
+      toast.error("Failed to load dashboard statistics");
     } finally {
       setLoading(false);
     }
@@ -183,7 +157,7 @@ const AdminDashboard = () => {
         return;
       }
 
-      toast.success("Freelancer approved");
+      toast.success("Freelancer approved successfully");
       await fetchDashboardData();
     } catch (error) {
       console.error("Failed to approve user:", error);
@@ -191,808 +165,480 @@ const AdminDashboard = () => {
     }
   };
 
-  const financialSummary = useMemo(() => {
-    const grossVolume = Number(stats.totalRevenue || 0);
-    const platformRevenue = Math.round(grossVolume * 0.3);
-
-    const escrowStatuses = new Set(["OPEN", "IN_PROGRESS", "AWAITING_PAYMENT", "PAUSED"]);
-    const escrowLocked = allProjects
-      .filter((project) => escrowStatuses.has(String(project?.status || "").toUpperCase()))
-      .reduce((sum, project) => sum + Number(project?.budget || 0), 0);
-
-    const activeDisputeLiability = allDisputes
-      .filter((dispute) => dispute?.status !== "RESOLVED")
-      .reduce((sum, dispute) => sum + Number(dispute?.project?.budget || 0), 0);
-
-    return {
-      grossVolume,
-      platformRevenue,
-      escrowLocked,
-      activeDisputeLiability,
-    };
-  }, [allDisputes, allProjects, stats.totalRevenue]);
-
-  const trendData = useMemo(() => {
-    const monthKeys = getRecentMonthKeys(6);
-    const map = new Map(
-      monthKeys.map((key) => [
-        key,
-        {
-          month: monthLabelFromKey(key),
-          projectVolume: 0,
-          grossVolume: 0,
-          platformFees: 0,
-        },
-      ])
-    );
-
-    allProjects.forEach((project) => {
-      const key = toMonthKey(project?.createdAt);
-      if (!key || !map.has(key)) return;
-      const row = map.get(key);
-      const budget = Number(project?.budget || 0);
-      row.projectVolume += 1;
-      row.grossVolume += budget;
-      row.platformFees = Math.round(row.grossVolume * 0.5);
-      map.set(key, row);
-    });
-
-    return monthKeys.map((key) => map.get(key));
-  }, [allProjects]);
-
-  const statCards = [
+  const primaryStatCards = [
     {
       title: "Total Users",
       value: stats.totalUsers,
       icon: Users,
-      description: "Active users on platform",
+      description: "Registered platform users",
+      link: "/admin/users",
+      actionLabel: "Manage Users",
     },
     {
       title: "Projects Posted",
       value: stats.totalProjects,
       icon: Briefcase,
       description: "Total projects created",
+      link: "/admin/projects",
+      actionLabel: "View Projects",
     },
     {
       title: "Proposals Sent",
       value: stats.totalProposals,
       icon: FileText,
-      description: "Total proposals submitted",
+      description: "Submitted proposals",
+      link: "/admin/projects",
+      actionLabel: "View Activity",
     },
     {
       title: "Total Revenue",
       value: formatINR(stats.totalRevenue),
       icon: DollarSign,
-      description: "Amount paid by clients",
+      description: "Gross completed payments",
+      link: "/admin/payout-requests",
+      actionLabel: "Payout Requests",
     },
   ];
 
-  const financeCards = [
+  const secondaryStatCards = [
     {
-      title: "Gross Volume",
-      value: formatINR(financialSummary.grossVolume),
-      icon: Wallet,
-      description: "Total transaction volume",
-    },
-    {
-      title: "Platform Revenue (30%)",
-      value: formatINR(financialSummary.platformRevenue),
-      icon: DollarSign,
-      description: "Estimated fee collection",
-    },
-    {
-      title: "Funds in Escrow",
-      value: formatINR(financialSummary.escrowLocked),
-      icon: Wallet,
-      description: "Budget tied to active projects",
-    },
-    {
-      title: "Active Dispute Liability",
-      value: formatINR(financialSummary.activeDisputeLiability),
-      icon: ShieldAlert,
-      description: "Exposure on unresolved disputes",
-    },
-  ];
-
-  const aiOverview = aiUsageSummary?.overview || null;
-  const aiUsageCards = [
-    {
-      title: "AI Calls",
-      value: formatCount(aiOverview?.totalCalls),
-      icon: Bot,
-      description: "Tracked over the last 30 days",
-    },
-    {
-      title: "AI Tokens",
-      value: formatCount(aiOverview?.totalTokens),
-      icon: FileText,
-      description: "Prompt + completion tokens",
-    },
-    {
-      title: "AI Spend",
-      value: formatINR(aiOverview?.totalCostInRupees),
-      icon: DollarSign,
-      description: "Estimated OpenRouter cost",
-    },
-    {
-      title: "Guest Sessions",
-      value: formatCount(aiOverview?.uniqueGuestSessions),
+      title: "Total Clients",
+      value: clientCount,
       icon: Users,
-      description: "Distinct guest AI sessions",
+      description: "Registered client accounts",
+      link: "/admin/clients",
+    },
+    {
+      title: "Total Freelancers",
+      value: freelancerCount,
+      icon: User,
+      description: "Registered freelancer accounts",
+      link: "/admin/freelancers",
+    },
+    {
+      title: "Active Open Projects",
+      value: activeProjectsCount,
+      icon: Activity,
+      description: "Projects currently active",
+      link: "/admin/projects",
+    },
+    {
+      title: "AI Calls (30d)",
+      value: formatCount(aiUsageOverview?.totalCalls || 0),
+      icon: Bot,
+      description: `${formatCount(aiUsageOverview?.totalTokens || 0)} tokens tracked`,
+      link: "/admin/ai-usage",
     },
   ];
 
-  const getDisputeStatusBadge = (status) => {
-    const colors = {
-      OPEN: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-      IN_PROGRESS: "bg-primary/10 text-primary dark:bg-primary/10/30 dark:text-primary",
-      RESOLVED: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-    };
-    return <Badge className={`${colors[status] || "bg-gray-100"} border-0`}>{status}</Badge>;
-  };
-
-  const resolveDisputeWithNote = async (disputeId, note) => {
-    const patchRes = await authFetch(`/disputes/${disputeId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: "RESOLVED",
-        resolutionNotes: note,
-      }),
-    });
-
-    return patchRes.ok;
-  };
-
-  const handleForcePayout = async (dispute) => {
-    setOverrideLoadingId(dispute.id);
-    try {
-      const acceptedProposal =
-        dispute?.project?.proposals?.find((proposal) => proposal?.status === "ACCEPTED") ||
-        dispute?.project?.proposals?.[0];
-      const freelancerId = acceptedProposal?.freelancerId || acceptedProposal?.freelancer?.id;
-      const amount = Number(acceptedProposal?.amount || dispute?.project?.budget || 0);
-
-      if (!freelancerId || amount <= 0) {
-        const done = await resolveDisputeWithNote(
-          dispute.id,
-          "[ADMIN_OVERRIDE] FORCE_PAYOUT requested but payout payload was incomplete."
-        );
-        if (done) {
-          toast.success("Dispute resolved with override note");
-          await fetchDashboardData();
-        } else {
-          toast.error("Unable to resolve dispute");
-        }
-        return;
-      }
-
-      const createRes = await authFetch("/payments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId: dispute.projectId,
-          freelancerId,
-          amount,
-          description: `Force payout by admin for dispute ${dispute.id}`,
-        }),
-      });
-
-      if (!createRes.ok) {
-        toast.error("Failed to create payout payment");
-        return;
-      }
-
-      const createData = await createRes.json().catch(() => null);
-      const paymentId = createData?.data?.id;
-
-      if (paymentId) {
-        await authFetch(`/payments/${paymentId}/status`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "COMPLETED" }),
-        });
-      }
-
-      await resolveDisputeWithNote(
-        dispute.id,
-        `[ADMIN_OVERRIDE] FORCE_PAYOUT executed. Payment ${paymentId || "created"} marked for payout.`
-      );
-      toast.success("Force payout completed");
-      await fetchDashboardData();
-    } catch (error) {
-      console.error("Force payout failed:", error);
-      toast.error("Force payout failed");
-    } finally {
-      setOverrideLoadingId(null);
-    }
-  };
-
-  const handleForceRefund = async (dispute) => {
-    setOverrideLoadingId(dispute.id);
-    try {
-      const paymentRes = await authFetch(`/payments/project/${dispute.projectId}`);
-      let refunded = false;
-
-      if (paymentRes.ok) {
-        const paymentData = await paymentRes.json().catch(() => null);
-        const payments = Array.isArray(paymentData?.data) ? paymentData.data : [];
-        const latestPaid =
-          payments.find((payment) => payment.status === "COMPLETED") ||
-          payments.find((payment) => payment.status === "PROCESSING") ||
-          payments.find((payment) => payment.status === "PENDING");
-
-        if (latestPaid?.id) {
-          const refundRes = await authFetch(`/payments/${latestPaid.id}/status`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "REFUNDED" }),
-          });
-          refunded = refundRes.ok;
-        }
-      }
-
-      const note = refunded
-        ? "[ADMIN_OVERRIDE] FORCE_REFUND_CLIENT executed and payment marked REFUNDED."
-        : "[ADMIN_OVERRIDE] FORCE_REFUND_CLIENT requested. No eligible payment record was found.";
-
-      const resolved = await resolveDisputeWithNote(dispute.id, note);
-      if (resolved) {
-        toast.success(refunded ? "Client refund override executed" : "Dispute resolved with refund override note");
-        await fetchDashboardData();
-      } else {
-        toast.error("Unable to resolve dispute");
-      }
-    } catch (error) {
-      console.error("Force refund failed:", error);
-      toast.error("Force refund failed");
-    } finally {
-      setOverrideLoadingId(null);
-    }
-  };
+  const quickNavModules = [
+    {
+      title: "Payout Requests",
+      description: "Review and approve freelancer withdrawal requests",
+      icon: CreditCard,
+      link: "/admin/payout-requests",
+      color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400",
+    },
+    {
+      title: "User Management",
+      description: "Manage clients, freelancers, roles & limits",
+      icon: Users,
+      link: "/admin/users",
+      color: "text-blue-600 bg-blue-50 dark:bg-blue-950/40 dark:text-blue-400",
+    },
+    {
+      title: "Projects & Services",
+      description: "Oversee project postings & service catalog",
+      icon: Briefcase,
+      link: "/admin/projects",
+      color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/40 dark:text-indigo-400",
+    },
+    {
+      title: "Dispute Center",
+      description: "Resolve client-freelancer project disputes",
+      icon: ShieldAlert,
+      link: "/admin/disputes",
+      color: "text-amber-600 bg-amber-50 dark:bg-amber-950/40 dark:text-amber-400",
+    },
+    {
+      title: "AI Intelligence",
+      description: "Track AI token usage, costs, and calls",
+      icon: Bot,
+      link: "/admin/ai-usage",
+      color: "text-purple-600 bg-purple-50 dark:bg-purple-950/40 dark:text-purple-400",
+    },
+    {
+      title: "Contact Inquiries",
+      description: "View messages sent from the public website",
+      icon: Mail,
+      link: "/admin/contact-inquiries",
+      color: "text-rose-600 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-400",
+    },
+    {
+      title: "Blogs & SEO",
+      description: "Manage public blogs and SEO content",
+      icon: Newspaper,
+      link: "/admin/blogs",
+      color: "text-teal-600 bg-teal-50 dark:bg-teal-950/40 dark:text-teal-400",
+    },
+    {
+      title: "WhatsApp Inbox",
+      description: "Monitor WhatsApp chats & campaign analytics",
+      icon: MessageSquare,
+      link: "/admin/whatsapp-inbox",
+      color: "text-green-600 bg-green-50 dark:bg-green-950/40 dark:text-green-400",
+    },
+  ];
 
   return (
     <AdminLayout>
-      <div className="relative flex flex-col gap-6 p-6">
+      <div className="relative flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
         <AdminTopBar label="Dashboard" />
 
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          {/* Header */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-5">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-              <p className="mt-2 text-muted-foreground">Overview of your platform performance.</p>
+              <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+              <p className="mt-1 text-muted-foreground">
+                Real-time platform overview and system management shortcuts.
+              </p>
             </div>
-            <Button
-              onClick={() => navigate("/admin/payout-requests")}
-              className="h-11 rounded-[14px] bg-emerald-600 font-semibold text-white hover:bg-emerald-700 shadow-sm"
-            >
-              <CreditCard className="mr-2 size-4" /> Freelancer Payout Requests
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                onClick={() => navigate("/admin/payout-requests")}
+                className="h-10 rounded-lg bg-emerald-600 font-semibold text-white hover:bg-emerald-700 shadow-sm"
+              >
+                <CreditCard className="mr-2 h-4 w-4" /> Payout Requests
+              </Button>
+            </div>
           </div>
 
-          {/* Freelancer Payout Requests Section */}
-          <div className="border-t border-border/80 pt-6">
-            <AdminPayoutRequestsContent />
-          </div>
-
+          {/* Primary Key Metrics */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {statCards.map((stat) => (
-              <Card key={stat.title}>
+            {primaryStatCards.map((stat) => (
+              <Card key={stat.title} className="hover:border-primary/30 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
+                  <CardTitle className="text-sm font-medium text-muted-foreground">{stat.title}</CardTitle>
+                  <div className="p-2 rounded-lg bg-muted">
+                    <stat.icon className="h-4 w-4 text-foreground" />
+                  </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-2">
                   <div className="text-2xl font-bold">
                     {loading ? <div className="h-8 w-24 animate-pulse rounded bg-muted" /> : stat.value}
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">{stat.description}</p>
+                    <button
+                      onClick={() => navigate(stat.link)}
+                      className="text-xs font-medium text-primary hover:underline flex items-center gap-0.5"
+                    >
+                      {stat.actionLabel} <ChevronRight className="h-3 w-3" />
+                    </button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
 
+          {/* Platform Breakdown Metrics */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {financeCards.map((stat) => (
-              <Card key={stat.title}>
+            {secondaryStatCards.map((stat) => (
+              <Card
+                key={stat.title}
+                onClick={() => navigate(stat.link)}
+                className="cursor-pointer hover:border-primary/40 hover:shadow-xs transition-all border-border/70"
+              >
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                  <stat.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {loading ? <div className="h-8 w-24 animate-pulse rounded bg-muted" /> : stat.value}
-                  </div>
-                  <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <Card className="border-primary/10">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Bot className="h-5 w-5 text-primary" />
-                  AI Usage Intelligence
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Usage tracked by page, user, and guest session across AI features.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">
-                  Last 30 days
-                </Badge>
-                <Button variant="outline" size="sm" onClick={() => navigate("/admin/ai-usage")}>
-                  Open full view
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {aiUsageCards.map((stat) => (
-                  <Card key={stat.title} className="border-border/60 shadow-none">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
-                      <stat.icon className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-2xl font-bold">
-                        {loading ? <div className="h-8 w-24 animate-pulse rounded bg-muted" /> : stat.value}
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              <div className="grid min-w-0 gap-6 lg:grid-cols-3">
-                <div className="min-w-0 space-y-3">
-                  <h3 className="text-sm font-semibold">Top Pages</h3>
-                  {loading ? (
-                    [...Array(4)].map((_, index) => (
-                      <div key={`ai-page-${index}`} className="h-14 animate-pulse rounded-lg bg-muted" />
-                    ))
-                  ) : (aiUsageSummary?.topPages || []).length === 0 ? (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      No tracked page usage yet.
-                    </div>
-                  ) : (
-                    (aiUsageSummary?.topPages || []).map((page) => (
-                      <div key={page.pagePath} className="min-w-0 rounded-lg border p-4">
-                        <div className="break-words font-medium [overflow-wrap:anywhere]">
-                          {page.pagePath || "Unknown page"}
-                        </div>
-                        <div className="mt-1 text-sm text-muted-foreground">
-                          {formatCount(page.calls)} calls • {formatCount(page.totalTokens)} tokens
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="min-w-0 space-y-3">
-                  <h3 className="text-sm font-semibold">Top Users</h3>
-                  {loading ? (
-                    [...Array(4)].map((_, index) => (
-                      <div key={`ai-user-${index}`} className="h-14 animate-pulse rounded-lg bg-muted" />
-                    ))
-                  ) : (aiUsageSummary?.topUsers || []).length === 0 ? (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      No authenticated AI usage yet.
-                    </div>
-                  ) : (
-                    (aiUsageSummary?.topUsers || []).map((user) => (
-                      <div key={user.userId} className="min-w-0 rounded-lg border p-4">
-                        <div className="truncate font-medium" title={user.fullName}>
-                          {user.fullName}
-                        </div>
-                        <div className="truncate text-xs text-muted-foreground" title={user.email}>
-                          {user.email}
-                        </div>
-                        <div className="mt-1 text-sm text-muted-foreground">
-                          {formatCount(user.calls)} calls • {formatCount(user.totalTokens)} tokens
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="min-w-0 space-y-3">
-                  <h3 className="text-sm font-semibold">Recent AI Activity</h3>
-                  {loading ? (
-                    [...Array(4)].map((_, index) => (
-                      <div key={`ai-recent-${index}`} className="h-16 animate-pulse rounded-lg bg-muted" />
-                    ))
-                  ) : (aiUsageSummary?.recentUsage || []).length === 0 ? (
-                    <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                      No recent AI activity found.
-                    </div>
-                  ) : (
-                    (aiUsageSummary?.recentUsage || []).slice(0, 5).map((entry) => (
-                      <div key={entry.id} className="min-w-0 rounded-lg border p-4">
-                        <div className="break-words font-medium [overflow-wrap:anywhere]">
-                          {entry.pagePath || entry.featureKey || entry.title || "AI event"}
-                        </div>
-                        <div className="truncate text-xs text-muted-foreground" title={entry.user?.fullName || entry.visitorType}>
-                          {entry.user?.fullName || entry.visitorType}
-                        </div>
-                        <div className="mt-1 text-sm text-muted-foreground">
-                          {formatCount(entry.totalTokens)} tokens • {formatDateTime(entry.createdAt)}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Gross Volume vs Platform Fees</CardTitle>
-              </CardHeader>
-              <CardContent className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trendData}>
-                    <defs>
-                      <linearGradient id="grossFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
-                      </linearGradient>
-                      <linearGradient id="feeFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.05} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatINR(value)} />
-                    <Legend />
-                    <Area type="monotone" dataKey="grossVolume" name="Gross Volume" stroke="#10b981" fill="url(#grossFill)" />
-                    <Area type="monotone" dataKey="platformFees" name="Platform Fees" stroke="#3b82f6" fill="url(#feeFill)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Project Volume Trend</CardTitle>
-              </CardHeader>
-              <CardContent className="h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={trendData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Line type="monotone" dataKey="projectVolume" name="Projects" stroke="var(--primary)" strokeWidth={2} />
-                    <Line type="monotone" dataKey="platformFees" name="Fee Collection (Est.)" stroke="#8b5cf6" strokeWidth={2} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            {pendingFreelancers.length > 0 && (
-              <Card className="border-primary/20/50 bg-primary/10/5 md:col-span-2">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-primary dark:text-primary">
-                    <AlertTriangle className="h-5 w-5" />
-                    Pending Approvals
+                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    {stat.title}
                   </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-primary hover:text-primary dark:text-primary dark:hover:text-primary"
-                    onClick={() => navigate("/admin/approvals")}
-                  >
-                    See More
-                  </Button>
+                  <stat.icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {pendingFreelancers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex cursor-pointer items-center justify-between rounded-lg border bg-background p-4 transition-colors hover:border-primary/20/50"
-                        onClick={() => navigate(`/admin/users/${user.id}`)}
-                      >
-                        <div className="flex items-center gap-3 min-w-0 mr-4">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-bold">
-                            {user.fullName.charAt(0)}
+                <CardContent className="pt-1">
+                  <div className="text-xl font-bold">
+                    {loading ? <div className="h-7 w-20 animate-pulse rounded bg-muted" /> : stat.value}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{stat.description}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Quick Navigation Hub */}
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-tight">Quick Navigation</h2>
+              <p className="text-sm text-muted-foreground">Direct links to access any admin portal module</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {quickNavModules.map((item) => (
+                <Card
+                  key={item.title}
+                  onClick={() => navigate(item.link)}
+                  className="group cursor-pointer hover:border-primary/50 hover:shadow-md transition-all border-border/80"
+                >
+                  <CardContent className="p-5 flex flex-col justify-between h-full space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className={`p-2.5 rounded-xl ${item.color}`}>
+                        <item.icon className="h-5 w-5" />
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-base group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                        {item.description}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Platform Activity */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Recent Users */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div>
+                  <CardTitle className="text-lg">Recent Registered Users</CardTitle>
+                  <CardDescription>Latest users joined on platform</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => navigate("/admin/users")}>
+                  View All <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-3">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-12 animate-pulse rounded bg-muted" />
+                    ))}
+                  </div>
+                ) : recentUsers.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">No recent users.</div>
+                ) : (
+                  <div className="divide-y border-t border-b">
+                    {recentUsers.map((user) => (
+                      <div key={user.id} className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 font-bold text-primary text-sm">
+                            {user.fullName?.charAt(0) || "U"}
                           </div>
-                          <div className="min-w-0 overflow-hidden">
-                            <p className="truncate font-medium">{user.fullName}</p>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-sm">{user.fullName}</p>
                             <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                           </div>
                         </div>
-                        <Button
-                          size="sm"
-                          className="shrink-0 bg-green-600 hover:bg-green-700"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleApproveUser(user.id);
-                          }}
-                        >
-                          <Check className="mr-1 h-4 w-4" /> Approve
-                        </Button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className="text-xs">
+                            {user.role}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground hidden sm:inline">
+                            {formatDate(user.createdAt)}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            <Card className="md:col-span-2">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Dispute Command Center</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Active disputes and admin override controls for emergency resolution.
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/admin/project-managers")}>
-                  See More
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Project</TableHead>
-                        <TableHead>Raised By</TableHead>
-                        <TableHead>Issue</TableHead>
-                        <TableHead>Manager</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Overrides</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        [...Array(3)].map((_, i) => (
-                          <TableRow key={i}>
-                            <TableCell><div className="h-4 w-32 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="h-4 w-48 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="h-4 w-16 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="ml-auto h-4 w-28 animate-pulse rounded bg-muted" /></TableCell>
-                          </TableRow>
-                        ))
-                      ) : recentDisputes.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                            No active disputes found.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        recentDisputes.map((dispute) => (
-                          <TableRow key={dispute.id}>
-                            <TableCell className="font-medium">{dispute.project?.title || "Unknown"}</TableCell>
-                            <TableCell>{dispute.raisedBy?.fullName}</TableCell>
-                            <TableCell className="max-w-[220px] truncate text-muted-foreground">
-                              {dispute.description}
-                            </TableCell>
-                            <TableCell>
-                              {dispute.manager ? (
-                                <span className="font-medium text-emerald-600 dark:text-emerald-400">
-                                  {dispute.manager.fullName}
-                                </span>
-                              ) : (
-                                <span className="italic text-muted-foreground">Unassigned</span>
-                              )}
-                            </TableCell>
-                            <TableCell>{getDisputeStatusBadge(dispute.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8 text-xs"
-                                  disabled={overrideLoadingId === dispute.id}
-                                  onClick={() => handleForceRefund(dispute)}
-                                >
-                                  {overrideLoadingId === dispute.id ? (
-                                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                                  ) : null}
-                                  Force Refund
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="h-8 bg-emerald-600 text-xs hover:bg-emerald-700"
-                                  disabled={overrideLoadingId === dispute.id}
-                                  onClick={() => handleForcePayout(dispute)}
-                                >
-                                  {overrideLoadingId === dispute.id ? (
-                                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                                  ) : null}
-                                  Force Payout
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                )}
               </CardContent>
             </Card>
 
+            {/* Recent Projects */}
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
                 <div>
-                  <CardTitle>Active Freelancers</CardTitle>
-                  <p className="text-sm text-muted-foreground">Recently active freelancers</p>
+                  <CardTitle className="text-lg">Recent Projects</CardTitle>
+                  <CardDescription>Latest projects posted by clients</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/admin/freelancers")}>
-                  See More
+                <Button variant="ghost" size="sm" onClick={() => navigate("/admin/projects")}>
+                  View All <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {loading ? (
-                    [...Array(3)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-4">
-                        <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
-                        <div className="space-y-2">
-                          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-                          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+                {loading ? (
+                  <div className="space-y-3">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-12 animate-pulse rounded bg-muted" />
+                    ))}
+                  </div>
+                ) : recentProjects.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">No recent projects.</div>
+                ) : (
+                  <div className="divide-y border-t border-b">
+                    {recentProjects.map((project) => (
+                      <div key={project.id} className="flex items-center justify-between py-3">
+                        <div className="min-w-0 mr-2">
+                          <p className="truncate font-medium text-sm">{project.title}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            By {project.owner?.fullName || "Client"} • {formatINR(project.budget)}
+                          </p>
                         </div>
-                      </div>
-                    ))
-                  ) : recentFreelancers.length === 0 ? (
-                    <div className="py-8 text-center text-muted-foreground">No freelancers found.</div>
-                  ) : (
-                    recentFreelancers.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
-                            {user.fullName.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{user.fullName}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </div>
-                        <div
-                          className={`rounded-full px-2 py-1 text-xs ${
-                            user.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                          }`}
+                        <Badge
+                          variant="secondary"
+                          className="shrink-0 text-xs uppercase text-[10px]"
                         >
-                          {user.status}
-                        </div>
+                          {project.status || "OPEN"}
+                        </Badge>
                       </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Active Clients</CardTitle>
-                  <p className="text-sm text-muted-foreground">Recently active clients</p>
-                </div>
-                <Button variant="outline" size="sm" onClick={() => navigate("/admin/clients")}>
-                  See More
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {loading ? (
-                    [...Array(3)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-4">
-                        <div className="h-10 w-10 animate-pulse rounded-full bg-muted" />
-                        <div className="space-y-2">
-                          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
-                          <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-                        </div>
-                      </div>
-                    ))
-                  ) : recentClients.length === 0 ? (
-                    <div className="py-8 text-center text-muted-foreground">No clients found.</div>
-                  ) : (
-                    recentClients.map((user) => (
-                      <div key={user.id} className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
-                            {user.fullName.charAt(0)}
-                          </div>
-                          <div>
-                            <p className="font-medium">{user.fullName}</p>
-                            <p className="text-xs text-muted-foreground">{user.email}</p>
-                          </div>
-                        </div>
-                        <div
-                          className={`rounded-full px-2 py-1 text-xs ${
-                            user.status === "ACTIVE" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {user.status}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2">
-              <CardHeader>
-                <div>
-                  <CardTitle>Recent Contact Inquiries</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Latest messages submitted from the public contact page.
-                  </p>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Contact</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead>Message</TableHead>
-                        <TableHead className="text-right">Submitted</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        [...Array(3)].map((_, i) => (
-                          <TableRow key={i}>
-                            <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="h-4 w-32 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="h-4 w-24 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="h-4 w-48 animate-pulse rounded bg-muted" /></TableCell>
-                            <TableCell><div className="ml-auto h-4 w-28 animate-pulse rounded bg-muted" /></TableCell>
-                          </TableRow>
-                        ))
-                      ) : recentContactInquiries.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                            No contact inquiries yet.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        recentContactInquiries.map((inquiry) => (
-                          <TableRow key={inquiry.id}>
-                            <TableCell className="font-medium">{inquiry.name}</TableCell>
-                            <TableCell>
-                              <div className="space-y-1">
-                                <div className="text-sm">{inquiry.email}</div>
-                                <div className="text-xs text-muted-foreground">
-                                  {inquiry.phone || "No phone provided"}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>{inquiry.subject}</TableCell>
-                            <TableCell className="max-w-[360px] whitespace-normal break-words text-muted-foreground">
-                              {inquiry.message}
-                            </TableCell>
-                            <TableCell className="text-right text-sm text-muted-foreground">
-                              {formatDateTime(inquiry.createdAt)}
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
+
+          {/* Action Summaries: Active Disputes & Contact Inquiries */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Active Disputes Summary */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ShieldAlert className="h-5 w-5 text-amber-600" /> Active Disputes
+                  </CardTitle>
+                  <CardDescription>Disputes requiring admin mediation</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate("/admin/disputes")}>
+                  Open Disputes Center
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="h-20 animate-pulse rounded bg-muted" />
+                ) : activeDisputes.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
+                    No active disputes requiring resolution.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {activeDisputes.map((dispute) => (
+                      <div key={dispute.id} className="rounded-lg border p-3 flex items-center justify-between">
+                        <div className="min-w-0 mr-3">
+                          <p className="font-medium text-sm truncate">{dispute.project?.title || "Project Dispute"}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            Raised by {dispute.raisedBy?.fullName || "User"}: {dispute.description}
+                          </p>
+                        </div>
+                        <Badge variant="destructive" className="shrink-0 text-xs">
+                          {dispute.status}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Contact Inquiries */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Mail className="h-5 w-5 text-blue-600" /> Recent Contact Messages
+                  </CardTitle>
+                  <CardDescription>Inquiries sent from public website</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigate("/admin/contact-inquiries")}>
+                  View All Messages
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="h-20 animate-pulse rounded bg-muted" />
+                ) : contactInquiries.length === 0 ? (
+                  <div className="py-6 text-center text-sm text-muted-foreground border border-dashed rounded-lg">
+                    No contact inquiries submitted yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {contactInquiries.map((inquiry) => (
+                      <div key={inquiry.id} className="rounded-lg border p-3 flex items-center justify-between">
+                        <div className="min-w-0 mr-3">
+                          <p className="font-medium text-sm truncate">{inquiry.subject}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            From {inquiry.name} ({inquiry.email})
+                          </p>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatDate(inquiry.createdAt)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Pending Approvals Section (MOVED TO BOTTOM AS REQUESTED) */}
+          <Card className="border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-400 text-lg">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  Freelancers Awaiting Approval
+                  {pendingFreelancers.length > 0 && (
+                    <Badge variant="secondary" className="bg-amber-200 text-amber-900 font-bold ml-2">
+                      {pendingFreelancers.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription className="text-amber-700/80 dark:text-amber-400/80">
+                  Review new freelancer registrations and enable their platform profiles.
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:text-amber-400 dark:hover:bg-amber-900/40"
+                onClick={() => navigate("/admin/approvals")}
+              >
+                View Full Approvals Queue <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="h-20 animate-pulse rounded bg-muted" />
+              ) : pendingFreelancers.length === 0 ? (
+                <div className="py-6 text-center text-sm text-amber-800/70 dark:text-amber-400/70 border border-dashed border-amber-300 rounded-lg">
+                  No freelancers currently awaiting approval.
+                </div>
+              ) : (
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {pendingFreelancers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center justify-between rounded-md border border-amber-200 bg-background p-3 shadow-xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 mr-2">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 font-bold text-amber-800 text-sm">
+                          {user.fullName?.charAt(0) || "U"}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium">{user.fullName}</p>
+                          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        className="shrink-0 bg-green-600 hover:bg-green-700 h-8 text-xs"
+                        onClick={() => handleApproveUser(user.id)}
+                      >
+                        <Check className="mr-1 h-3.5 w-3.5" /> Approve
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AdminLayout>

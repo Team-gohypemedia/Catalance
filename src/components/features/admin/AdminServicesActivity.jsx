@@ -34,6 +34,8 @@ import {
 import { useAuth } from "@/shared/context/AuthContext";
 import Activity from "lucide-react/dist/esm/icons/activity";
 import Bot from "lucide-react/dist/esm/icons/bot";
+import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
+import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import Copy from "lucide-react/dist/esm/icons/copy";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Download from "lucide-react/dist/esm/icons/download";
@@ -96,7 +98,43 @@ const AdminServicesActivity = () => {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [serviceFilter, setServiceFilter] = useState("ALL");
   const [documentFilter, setDocumentFilter] = useState("ALL");
+  const [stepFilter, setStepFilter] = useState("ALL");
   const [page, setPage] = useState(1);
+  const [servicesList, setServicesList] = useState([]);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await authFetch("/admin/services");
+        if (res.ok) {
+          const result = await res.json();
+          if (Array.isArray(result?.data)) {
+            setServicesList(result.data);
+          }
+        }
+      } catch (e) {
+        console.error("Error loading services for filter:", e);
+      }
+    };
+    fetchServices();
+  }, [authFetch]);
+
+  const clearAllFilters = () => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setServiceFilter("ALL");
+    setDocumentFilter("ALL");
+    setStepFilter("ALL");
+    setPage(1);
+  };
+
+  const hasActiveFilters = Boolean(
+    search.trim() ||
+    statusFilter !== "ALL" ||
+    serviceFilter !== "ALL" ||
+    documentFilter !== "ALL" ||
+    stepFilter !== "ALL"
+  );
 
   // Session Detail Modal State
   const [selectedSessionId, setSelectedSessionId] = useState(null);
@@ -114,6 +152,8 @@ const AdminServicesActivity = () => {
       if (statusFilter !== "ALL") params.append("status", statusFilter);
       if (serviceFilter !== "ALL") params.append("serviceId", serviceFilter);
       if (documentFilter === "DOCUMENTS_ONLY") params.append("hasDocument", "true");
+      if (documentFilter === "NO_DOCUMENTS") params.append("hasDocument", "false");
+      if (stepFilter !== "ALL") params.append("step", stepFilter);
 
       const response = await authFetch(`/admin/services-activity?${params.toString()}`);
       if (!response.ok) {
@@ -129,7 +169,7 @@ const AdminServicesActivity = () => {
     } finally {
       setLoading(false);
     }
-  }, [authFetch, page, search, statusFilter, serviceFilter, documentFilter]);
+  }, [authFetch, page, search, statusFilter, serviceFilter, documentFilter, stepFilter]);
 
   useEffect(() => {
     fetchServicesActivity();
@@ -171,8 +211,12 @@ const AdminServicesActivity = () => {
     totalDropOffs: 0,
     totalInProgress: 0,
     topServices: [],
+    stepBreakdown: [],
+    milestoneFunnel: [],
   };
 
+  const stepBreakdown = metrics.stepBreakdown || [];
+  const milestoneFunnel = metrics.milestoneFunnel || [];
   const sessions = activityData?.sessions || [];
   const pagination = activityData?.pagination || { page: 1, totalPages: 1, totalRecords: 0 };
 
@@ -204,9 +248,12 @@ const AdminServicesActivity = () => {
           </Button>
         </div>
 
-        {/* KPI Grid - 6 Analytics Cards */}
+        {/* KPI Grid - 6 Interactive Analytics Cards */}
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all rounded-2xl bg-white">
+          <Card
+            onClick={clearAllFilters}
+            className="border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition-all rounded-2xl bg-white hover:border-orange-300"
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Total Sessions
@@ -220,12 +267,20 @@ const AdminServicesActivity = () => {
                 {metrics.totalSessions}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Total client chats started
+                Click to view all chats
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all rounded-2xl bg-white">
+          <Card
+            onClick={() => {
+              setStatusFilter("PROPOSAL_GENERATED");
+              setPage(1);
+            }}
+            className={`border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition-all rounded-2xl bg-white hover:border-emerald-400 ${
+              statusFilter === "PROPOSAL_GENERATED" ? "ring-2 ring-emerald-500 bg-emerald-50/20" : ""
+            }`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Proposals Created
@@ -244,7 +299,15 @@ const AdminServicesActivity = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all rounded-2xl bg-white">
+          <Card
+            onClick={() => {
+              setDocumentFilter("DOCUMENTS_ONLY");
+              setPage(1);
+            }}
+            className={`border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition-all rounded-2xl bg-white hover:border-indigo-400 ${
+              documentFilter === "DOCUMENTS_ONLY" ? "ring-2 ring-indigo-500 bg-indigo-50/20" : ""
+            }`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Docs Uploaded
@@ -263,7 +326,10 @@ const AdminServicesActivity = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all rounded-2xl bg-white">
+          <Card
+            onClick={() => navigate("/admin/ai-usage")}
+            className="border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition-all rounded-2xl bg-white hover:border-purple-400"
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 AI Usage & Cost
@@ -283,7 +349,15 @@ const AdminServicesActivity = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all rounded-2xl bg-white">
+          <Card
+            onClick={() => {
+              setStatusFilter("DROPPED_OFF");
+              setPage(1);
+            }}
+            className={`border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition-all rounded-2xl bg-white hover:border-amber-400 ${
+              statusFilter === "DROPPED_OFF" ? "ring-2 ring-amber-500 bg-amber-50/20" : ""
+            }`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 Dropped Off
@@ -302,7 +376,15 @@ const AdminServicesActivity = () => {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-all rounded-2xl bg-white">
+          <Card
+            onClick={() => {
+              setStatusFilter("IN_PROGRESS");
+              setPage(1);
+            }}
+            className={`border-slate-200 shadow-sm hover:shadow-md cursor-pointer transition-all rounded-2xl bg-white hover:border-blue-400 ${
+              statusFilter === "IN_PROGRESS" ? "ring-2 ring-blue-500 bg-blue-50/20" : ""
+            }`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                 In Progress
@@ -322,26 +404,155 @@ const AdminServicesActivity = () => {
           </Card>
         </div>
 
-        {/* Filter Card */}
+        {/* Step Progression Funnel Card */}
+        {stepBreakdown.length > 0 && (
+          <Card className="border-slate-200 rounded-2xl shadow-sm bg-white overflow-hidden">
+            <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Layers className="h-5 w-5 text-orange-500" />
+                  Client Funnel & Step Progression Analytics
+                </CardTitle>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Milestone summary and scrollable step-by-step progression. Click any card to filter sessions.
+                </p>
+              </div>
+              {stepFilter !== "ALL" && (
+                <Badge
+                  variant="secondary"
+                  className="bg-orange-100 text-orange-800 border-orange-200 cursor-pointer hover:bg-orange-200"
+                  onClick={() => { setStepFilter("ALL"); setPage(1); }}
+                >
+                  Filtering: Step {stepFilter} <X className="h-3 w-3 ml-1" />
+                </Badge>
+              )}
+            </CardHeader>
+            <CardContent className="pt-4 space-y-4">
+              {/* 5 Milestone Range Summary Cards */}
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
+                {(milestoneFunnel.length > 0 ? milestoneFunnel : [
+                  { label: "Step 1 - 3", key: "1-3" },
+                  { label: "Step 4 - 7", key: "4-7" },
+                  { label: "Step 8 - 12", key: "8-12" },
+                  { label: "Step 13 - 20", key: "13-20" },
+                  { label: "Step 21+", key: "21+" },
+                ]).map((milestone) => {
+                  const isSelected = stepFilter === milestone.key;
+                  return (
+                    <div
+                      key={milestone.key}
+                      onClick={() => {
+                        setStepFilter(isSelected ? "ALL" : milestone.key);
+                        setPage(1);
+                      }}
+                      className={`cursor-pointer rounded-xl border p-3.5 flex flex-col justify-between transition-all hover:shadow-md ${
+                        isSelected
+                          ? "border-orange-500 bg-orange-50/80 ring-2 ring-orange-400"
+                          : "border-slate-200 bg-slate-50/60 hover:border-slate-300 hover:bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-800">{milestone.label}</span>
+                        <span className="text-[11px] font-bold text-orange-600">{milestone.percentage || 0}%</span>
+                      </div>
+                      <div className="mt-2.5">
+                        <div className="text-xl font-black text-slate-900">
+                          {milestone.reachedCount || 0}
+                        </div>
+                        <span className="text-[11px] text-slate-500 block">reached stage</span>
+                      </div>
+                      <div className="mt-2.5 pt-1.5 border-t border-slate-200/70 flex items-center justify-between text-[11px] text-slate-500">
+                        <span>Currently at:</span>
+                        <span className="font-bold text-slate-800">{milestone.countAtRange || 0}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Single-Line Horizontal Scroll Bar for All Detailed Steps */}
+              <div className="pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    Step-by-Step Breakdown ({stepBreakdown.length} steps recorded)
+                  </span>
+                  <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                    Scroll horizontally <ChevronRight className="h-3 w-3" />
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-200">
+                  {stepBreakdown.map((item) => {
+                    const isSelected = stepFilter === String(item.step);
+                    return (
+                      <div
+                        key={item.step}
+                        onClick={() => {
+                          setStepFilter(isSelected ? "ALL" : String(item.step));
+                          setPage(1);
+                        }}
+                        className={`shrink-0 w-[115px] cursor-pointer rounded-xl border p-2.5 flex flex-col justify-between transition-all hover:shadow-sm ${
+                          isSelected
+                            ? "border-orange-500 bg-orange-50/90 ring-2 ring-orange-400"
+                            : "border-slate-200 bg-white hover:border-orange-300"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-slate-700">Step {item.step}</span>
+                          <span className="text-[10px] font-semibold text-orange-600">{item.percentage}%</span>
+                        </div>
+                        <div className="mt-1.5">
+                          <div className="text-base font-extrabold text-slate-900">
+                            {item.reachedCount}
+                          </div>
+                          <span className="text-[10px] text-slate-500 block truncate">reached</span>
+                        </div>
+                        <div className="mt-1.5 pt-1 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500">
+                          <span>At step:</span>
+                          <span className="font-bold text-slate-800">{item.countAtStep}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Complete Filter Bar Card */}
         <Card className="border-slate-200 rounded-2xl shadow-sm bg-white">
-          <CardContent className="pt-6">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="relative flex-1">
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              {/* Search Bar */}
+              <div className="relative flex-1 min-w-[240px]">
                 <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="Search by client name, phone, email, session ID..."
+                  placeholder="Search client name, email, phone, session ID..."
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
                     setPage(1);
                   }}
-                  className="pl-10 rounded-xl border-slate-200 bg-white"
+                  className="pl-10 pr-9 rounded-xl border-slate-200 bg-white"
                 />
+                {search && (
+                  <button
+                    onClick={() => {
+                      setSearch("");
+                      setPage(1);
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
+              {/* Filters Group */}
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-slate-400" />
+                {/* Status Filter */}
+                <div className="flex items-center gap-1.5">
+                  <Filter className="h-4 w-4 text-slate-400 hidden sm:inline" />
                   <Select
                     value={statusFilter}
                     onValueChange={(val) => {
@@ -349,8 +560,8 @@ const AdminServicesActivity = () => {
                       setPage(1);
                     }}
                   >
-                    <SelectTrigger className="w-[170px] rounded-xl border-slate-200 bg-white">
-                      <SelectValue placeholder="Status Filter" />
+                    <SelectTrigger className="w-[160px] rounded-xl border-slate-200 bg-white">
+                      <SelectValue placeholder="All Statuses" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">All Statuses</SelectItem>
@@ -361,23 +572,134 @@ const AdminServicesActivity = () => {
                   </Select>
                 </div>
 
-                <Select
-                  value={documentFilter}
-                  onValueChange={(val) => {
-                    setDocumentFilter(val);
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger className="w-[180px] rounded-xl border-slate-200 bg-white">
-                    <SelectValue placeholder="Document Filter" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Sessions</SelectItem>
-                    <SelectItem value="DOCUMENTS_ONLY">📄 Uploaded Docs Only</SelectItem>
-                  </SelectContent>
-                </Select>
+                {/* Service Category Filter */}
+                <div className="flex items-center gap-1.5">
+                  <Layers className="h-4 w-4 text-slate-400 hidden sm:inline" />
+                  <Select
+                    value={serviceFilter}
+                    onValueChange={(val) => {
+                      setServiceFilter(val);
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[175px] rounded-xl border-slate-200 bg-white">
+                      <SelectValue placeholder="All Services" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Services</SelectItem>
+                      {servicesList.map((srv) => (
+                        <SelectItem key={srv.id || srv.slug} value={srv.slug || srv.id}>
+                          {srv.title || srv.name || srv.slug}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Step Range Filter */}
+                <div className="flex items-center gap-1.5">
+                  <Select
+                    value={stepFilter}
+                    onValueChange={(val) => {
+                      setStepFilter(val);
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[155px] rounded-xl border-slate-200 bg-white">
+                      <SelectValue placeholder="All Steps" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Steps</SelectItem>
+                      <SelectItem value="1-3">Step 1 - 3 (Initial)</SelectItem>
+                      <SelectItem value="4-7">Step 4 - 7 (Requirements)</SelectItem>
+                      <SelectItem value="8-12">Step 8 - 12 (Refinement)</SelectItem>
+                      <SelectItem value="13-20">Step 13 - 20 (Deep Chat)</SelectItem>
+                      <SelectItem value="21+">Step 21+ (Extended)</SelectItem>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 20].map((st) => (
+                        <SelectItem key={st} value={String(st)}>
+                          Exact Step {st}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Document Filter */}
+                <div className="flex items-center gap-1.5">
+                  <Paperclip className="h-4 w-4 text-slate-400 hidden sm:inline" />
+                  <Select
+                    value={documentFilter}
+                    onValueChange={(val) => {
+                      setDocumentFilter(val);
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-[170px] rounded-xl border-slate-200 bg-white">
+                      <SelectValue placeholder="All Sessions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Sessions</SelectItem>
+                      <SelectItem value="DOCUMENTS_ONLY">📄 Docs Uploaded Only</SelectItem>
+                      <SelectItem value="NO_DOCUMENTS">🚫 No Docs Uploaded</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Reset / Clear All Filters Button */}
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="h-10 px-3 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 text-xs font-medium"
+                  >
+                    <X className="mr-1.5 h-3.5 w-3.5" /> Clear All Filters
+                  </Button>
+                )}
               </div>
             </div>
+
+            {/* Active Filters Badges Row */}
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-100">
+                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">
+                  Active Filters:
+                </span>
+                {search && (
+                  <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200 gap-1 rounded-lg text-xs font-normal">
+                    Search: "{search}"
+                    <X className="h-3 w-3 cursor-pointer ml-1" onClick={() => { setSearch(""); setPage(1); }} />
+                  </Badge>
+                )}
+                {statusFilter !== "ALL" && (
+                  <Badge variant="secondary" className="bg-orange-50 text-orange-700 hover:bg-orange-100 gap-1 rounded-lg text-xs font-normal">
+                    Status: {statusFilter.replace("_", " ")}
+                    <X className="h-3 w-3 cursor-pointer ml-1" onClick={() => { setStatusFilter("ALL"); setPage(1); }} />
+                  </Badge>
+                )}
+                {serviceFilter !== "ALL" && (
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-100 gap-1 rounded-lg text-xs font-normal">
+                    Service: {serviceFilter}
+                    <X className="h-3 w-3 cursor-pointer ml-1" onClick={() => { setServiceFilter("ALL"); setPage(1); }} />
+                  </Badge>
+                )}
+                {stepFilter !== "ALL" && (
+                  <Badge variant="secondary" className="bg-amber-50 text-amber-800 hover:bg-amber-100 gap-1 rounded-lg text-xs font-normal">
+                    Step: Step {stepFilter}
+                    <X className="h-3 w-3 cursor-pointer ml-1" onClick={() => { setStepFilter("ALL"); setPage(1); }} />
+                  </Badge>
+                )}
+                {documentFilter !== "ALL" && (
+                  <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-100 gap-1 rounded-lg text-xs font-normal">
+                    Docs: {documentFilter === "DOCUMENTS_ONLY" ? "Uploaded Only" : "No Docs"}
+                    <X className="h-3 w-3 cursor-pointer ml-1" onClick={() => { setDocumentFilter("ALL"); setPage(1); }} />
+                  </Badge>
+                )}
+                <span className="text-xs text-slate-400 ml-auto font-medium">
+                  Showing {pagination.totalRecords || sessions.length} matching sessions
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -402,7 +724,7 @@ const AdminServicesActivity = () => {
                 </p>
               </div>
             ) : (
-              <Table className="min-w-[1470px] w-full">
+              <Table className="min-w-[1650px] w-full">
                 <TableHeader className="bg-slate-50">
                   <TableRow>
                     <TableHead className="font-semibold text-slate-700 whitespace-nowrap w-[250px] min-w-[250px]">Client & Direct Contact</TableHead>
@@ -410,9 +732,9 @@ const AdminServicesActivity = () => {
                     <TableHead className="font-semibold text-slate-700 whitespace-nowrap w-[180px] min-w-[180px]">Service & Session</TableHead>
                     <TableHead className="font-semibold text-slate-700 whitespace-nowrap w-[200px] min-w-[200px]">AI Consumption & Cost</TableHead>
                     <TableHead className="font-semibold text-slate-700 whitespace-nowrap w-[220px] min-w-[220px]">Progress & Stage</TableHead>
-                    <TableHead className="font-semibold text-slate-700 whitespace-nowrap w-[150px] min-w-[150px]">Status</TableHead>
+                    <TableHead className="font-semibold text-slate-700 whitespace-nowrap w-[190px] min-w-[190px] pr-4">Status</TableHead>
                     <TableHead className="font-semibold text-slate-700 whitespace-nowrap w-[150px] min-w-[150px]">Last Active</TableHead>
-                    <TableHead className="text-right font-semibold text-slate-700 whitespace-nowrap w-[160px] min-w-[160px] sticky right-0 bg-slate-50 z-20 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)]">Actions</TableHead>
+                    <TableHead className="text-right font-semibold text-slate-700 whitespace-nowrap w-[160px] min-w-[160px] sticky right-0 bg-slate-50 z-30 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.12)] border-l border-slate-200/80">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -553,20 +875,20 @@ const AdminServicesActivity = () => {
                         </TableCell>
 
                         {/* Status Badge */}
-                        <TableCell className="w-[150px] min-w-[150px]">
+                        <TableCell className="w-[190px] min-w-[190px] pr-4">
                           {session.status === "PROPOSAL_GENERATED" ? (
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 rounded-lg font-semibold">
-                              <FileCheck className="h-3 w-3 mr-1" />
+                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 rounded-lg font-semibold whitespace-nowrap">
+                              <FileCheck className="h-3 w-3 mr-1 shrink-0" />
                               Proposal Generated
                             </Badge>
                           ) : session.status === "DROPPED_OFF" ? (
-                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 rounded-lg font-semibold">
-                              <UserX className="h-3 w-3 mr-1" />
+                            <Badge className="bg-amber-50 text-amber-700 border-amber-200 rounded-lg font-semibold whitespace-nowrap">
+                              <UserX className="h-3 w-3 mr-1 shrink-0" />
                               Dropped Off
                             </Badge>
                           ) : (
-                            <Badge className="bg-blue-50 text-blue-700 border-blue-200 rounded-lg font-semibold">
-                              <Activity className="h-3 w-3 mr-1" />
+                            <Badge className="bg-blue-50 text-blue-700 border-blue-200 rounded-lg font-semibold whitespace-nowrap">
+                              <Activity className="h-3 w-3 mr-1 shrink-0" />
                               In Progress
                             </Badge>
                           )}
@@ -578,7 +900,7 @@ const AdminServicesActivity = () => {
                         </TableCell>
 
                         {/* Action - Sticky Right */}
-                        <TableCell className="text-right whitespace-nowrap w-[160px] min-w-[160px] sticky right-0 bg-white group-hover:bg-slate-50 z-20 shadow-[-6px_0_12px_-4px_rgba(0,0,0,0.08)]">
+                        <TableCell className="text-right whitespace-nowrap w-[160px] min-w-[160px] sticky right-0 bg-white group-hover:bg-slate-50 z-30 shadow-[-8px_0_12px_-4px_rgba(0,0,0,0.12)] border-l border-slate-200/80">
                           <div className="flex items-center justify-end gap-1.5">
                             <Button
                               size="sm"
