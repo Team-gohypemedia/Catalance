@@ -3089,7 +3089,23 @@ const inferBriefingService = (services = [], answers = {}) => {
         answers?.role,
         answers?.goal,
     ].filter(Boolean).join(' '));
-    if (!source) return null;
+    if (!source) {
+        // Fallback: match service from query parameter (e.g. ?service=website_uiux) or return first available service
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const serviceParam = normalizeServiceLogoKey(params.get('service'));
+            if (serviceParam && Array.isArray(services)) {
+                const paramMatch = services.find((service) =>
+                    normalizeServiceLogoKey(service?.slug) === serviceParam ||
+                    normalizeServiceLogoKey(service?.id) === serviceParam ||
+                    normalizeServiceLogoKey(service?.name) === serviceParam ||
+                    normalizeServiceLogoKey(service?.title) === serviceParam
+                );
+                if (paramMatch) return paramMatch;
+            }
+        }
+        return Array.isArray(services) && services.length > 0 ? services[0] : null;
+    }
 
     const normalizedServices = Array.isArray(services)
         ? services.map((service) => ({
@@ -4557,7 +4573,7 @@ const GuestAIDemo = () => {
     const isCurrentBriefingStepValid = useMemo(() => {
         if (isExtractingDocPoints) return false;
         if (currentBriefingStepKey === 'role') return normalizeBriefingFragment(briefingAnswers.role).length >= 3;
-        if (currentBriefingStepKey === 'goal') return normalizeBriefingFragment(briefingAnswers.goal).length >= 8 || briefingFiles.length > 0;
+        if (currentBriefingStepKey === 'goal') return true; // Goal description is optional
         if (currentBriefingStepKey === 'budget') return Boolean(formatBriefingBudgetRange(briefingAnswers.budgetMin, briefingAnswers.budgetMax));
         if (currentBriefingStepKey === 'kickoff') return Boolean(normalizeBriefingFragment(briefingAnswers.kickoff));
         if (currentBriefingStepKey === 'duration') return Boolean(normalizeBriefingFragment(briefingAnswers.duration));
@@ -4762,11 +4778,6 @@ const GuestAIDemo = () => {
 
     const startServiceConversation = useCallback(async (service, options = {}) => {
         if (!service) return null;
-
-        if (!isUserLoggedIn) {
-            setShowLoginFirstModal(true);
-            return null;
-        }
 
         const routeServiceId = String(service.slug || service.id || '').trim();
         syncServiceRouteQuery({ serviceId: routeServiceId, chatId: '' });
@@ -6321,21 +6332,7 @@ const GuestAIDemo = () => {
                                             </div>
                                         )}
 
-                                        {/* Status summary banner */}
-                                        {(briefingAnswers.goal?.trim() || briefingFiles.length > 0) && (
-                                            <div className="flex items-center justify-between rounded-2xl bg-primary/[0.06] border border-primary/20 px-4 py-2.5 text-xs font-semibold text-foreground">
-                                                <span className="flex items-center gap-2 text-primary font-bold">
-                                                    <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
-                                                    Requirement ready for analysis
-                                                </span>
-                                                <span className="text-[11px] font-mono font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-lg border border-primary/15">
-                                                    {[
-                                                        briefingAnswers.goal?.trim() ? `${briefingAnswers.goal.trim().split(/\s+/).length} words` : null,
-                                                        briefingFiles.length > 0 ? `${briefingFiles.length} file(s)` : null,
-                                                    ].filter(Boolean).join(' + ')}
-                                                </span>
-                                            </div>
-                                        )}
+
                                     </div>
                                 ) : null}
 
@@ -6562,7 +6559,7 @@ const GuestAIDemo = () => {
                                             onClick={() => (
                                                 isAgencySelectionMode
                                                     ? toggleAgencyServiceSelection(feature)
-                                                    : handleServiceSelect(feature)
+                                                    : startServiceConversation(feature)
                                             )}
                                             onMouseMove={handleCardGlowMouseMove}
                                             style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
