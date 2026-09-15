@@ -7597,9 +7597,13 @@ const GuestAIDemo = () => {
                                     variant="ghost"
                                     onClick={toggleVoiceInput}
                                     disabled={isTyping || isUploadingAttachment}
-                                    className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full md:h-9 md:w-9 ${isListening ? 'bg-primary/20 text-primary animate-pulse' : isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/5'}`}
+                                    className={`h-[clamp(2rem,8vw,2.25rem)] w-[clamp(2rem,8vw,2.25rem)] rounded-full transition-all duration-300 md:h-9 md:w-9 ${
+                                        isListening
+                                            ? 'bg-primary text-primary-foreground scale-110 shadow-md shadow-primary/30 ring-4 ring-primary/20 animate-pulse'
+                                            : isDark ? 'text-slate-300 hover:bg-white/10' : 'text-slate-600 hover:bg-black/5'
+                                    }`}
                                 >
-                                    {isListening ? <MicOff className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" /> : <Mic className="h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4" />}
+                                    <Mic className={`h-[clamp(0.9rem,3.5vw,1rem)] w-[clamp(0.9rem,3.5vw,1rem)] md:h-4 md:w-4 transition-transform duration-200 ${isListening ? 'scale-110' : ''}`} />
                                 </Button>
                             )}
                             <Button
