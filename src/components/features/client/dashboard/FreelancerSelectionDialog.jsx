@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useRef } from "react";
 import { useAuth } from "@/shared/context/AuthContext";
+import { cn } from "@/shared/lib/utils";
 
 
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
@@ -427,10 +428,10 @@ const FreelancerSelectionCard = memo(({
   return (
     <Card
       key={freelancer.id}
-      className="group relative flex min-h-[22.5rem] w-full flex-col overflow-hidden rounded-[20px] border border-border/70 bg-background/40 p-3 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55"
+      className="group relative flex min-h-0 sm:min-h-[22.5rem] w-full flex-col overflow-hidden rounded-[18px] sm:rounded-[20px] border border-border/70 bg-background/40 p-2.5 sm:p-3 shadow-none transition-colors duration-200 hover:border-border hover:bg-background/55"
     >
       <div
-        className="relative isolate h-24 min-h-24 shrink-0 overflow-visible rounded-xl border border-border/70 shadow-none"
+        className="relative isolate h-20 sm:h-24 min-h-20 sm:min-h-24 shrink-0 overflow-visible rounded-xl border border-border/70 shadow-none"
         style={bannerStyle}
       >
         {hasValidCover ? (
@@ -464,23 +465,23 @@ const FreelancerSelectionCard = memo(({
             Cata AI Top Pick
           </div>
         )}
-        <Avatar className="absolute -bottom-6 left-3 z-10 h-16 w-16 border-4 border-card shadow-md">
+        <Avatar className="absolute -bottom-5 sm:-bottom-6 left-3 z-10 h-14 w-14 sm:h-16 sm:w-16 border-3 sm:border-4 border-card shadow-md">
           <AvatarImage
             src={freelancer.avatar}
             alt={displayName}
             className="object-cover"
           />
-          <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold tracking-wide">
+          <AvatarFallback className="bg-primary text-primary-foreground text-base sm:text-lg font-bold tracking-wide">
             {displayInitials}
           </AvatarFallback>
         </Avatar>
       </div>
 
-      <div className="mt-6 flex min-h-0 flex-1 flex-col px-0.5">
-        <div className="flex items-start justify-between gap-2 border-b border-border dark:border-white/10 pb-1.5">
+      <div className="mt-5 sm:mt-6 flex min-h-0 flex-1 flex-col px-0.5">
+        <div className="flex items-start justify-between gap-2 border-b border-border dark:border-white/10 pb-1 sm:pb-1.5">
           <div className="min-w-0">
             <div className="flex min-w-0 items-center gap-1">
-              <h3 className="min-w-0 truncate text-base leading-tight font-semibold tracking-tight text-foreground">
+              <h3 className="min-w-0 truncate text-sm sm:text-base leading-tight font-semibold tracking-tight text-foreground">
                 {displayName}
               </h3>
               {isVerified && (
@@ -502,7 +503,7 @@ const FreelancerSelectionCard = memo(({
                 </div>
               )}
             </div>
-            <p className="mt-0.5 pr-1 text-[11px] leading-4 text-muted-foreground line-clamp-1">
+            <p className="mt-0.5 pr-1 text-[10px] sm:text-[11px] leading-4 text-muted-foreground line-clamp-1">
               {matchedServiceLabel || freelancer.title || "Freelancer"}
             </p>
             <div className="mt-0.5 flex flex-wrap gap-1">
@@ -535,46 +536,46 @@ const FreelancerSelectionCard = memo(({
         </div>
 
         <div className="mt-1">
-          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
+          <p className="mb-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/90">
             Project Skills Match
           </p>
-          <div className="flex min-h-5 flex-wrap gap-1">
+          <div className="flex min-h-4 sm:min-h-5 flex-wrap items-center gap-1">
             {matchedSkillBadges.length > 0 ? (
               matchedSkillBadges.map((skill, index) => (
-                  <Badge
-                    key={`${freelancer.id}-matched-${index}`}
-                    variant="outline"
-                    className="h-4 border-border/80 bg-transparent px-1 text-[9px] whitespace-nowrap text-foreground"
-                  >
-                    {skill}
-                  </Badge>
+                <Badge
+                  key={`${freelancer.id}-matched-${index}`}
+                  variant="outline"
+                  className="h-4 border-border/80 bg-transparent px-1 text-[9px] whitespace-nowrap text-foreground"
+                >
+                  {skill}
+                </Badge>
               ))
             ) : (
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground">
                 No direct skill match
               </span>
             )}
           </div>
         </div>
 
-        <div className="mt-1 flex min-h-0 items-center px-1 py-0.5">
+        <div className="mt-1 flex min-h-0 items-center px-0.5 sm:px-1 py-0.5">
           <div className="grid w-full grid-cols-3">
             {performanceStats.map((stat, index) => (
               <div
                 key={`${freelancer.id}-${stat.key}`}
-                className={`flex min-w-0 flex-col items-center justify-center px-1 py-1 text-center ${
+                className={`flex min-w-0 flex-col items-center justify-center px-1 py-0.5 sm:py-1 text-center ${
                   index < performanceStats.length - 1
                     ? "border-r border-border dark:border-white/10"
                     : ""
                 }`}
               >
-                  <div className="flex items-center gap-1 text-[13px] font-semibold tracking-tight text-foreground">
+                <div className="flex items-center gap-1 text-[12px] sm:text-[13px] font-semibold tracking-tight text-foreground">
                   {stat.showStar && (
                     <Star className="h-3.5 w-3.5 shrink-0 fill-primary text-primary" />
                   )}
                   <span className="truncate">{stat.value}</span>
                 </div>
-                  <p className="mt-0.5 max-w-[84px] text-[9px] leading-3 font-medium text-muted-foreground/85">
+                <p className="mt-0.5 max-w-[84px] text-[8px] sm:text-[9px] leading-3 font-medium text-muted-foreground/85">
                   {stat.label}
                 </p>
               </div>
@@ -583,14 +584,14 @@ const FreelancerSelectionCard = memo(({
         </div>
 
         {aiMatch ? (
-          <div className="mt-2 rounded-[16px] border border-primary/15 bg-primary/[0.04] px-2.5 py-2">
+          <div className="mt-1.5 sm:mt-2 rounded-[12px] sm:rounded-[16px] border border-primary/15 bg-primary/[0.04] px-2 sm:px-2.5 py-1.5 sm:py-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/90">
+                <p className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.18em] text-primary/90">
                   <Sparkles className="h-3 w-3 shrink-0" />
                   Cata AI Predicted Fit
                 </p>
-                <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground sm:line-clamp-none">
+                <p className="mt-0.5 line-clamp-1 sm:line-clamp-none text-[10px] sm:text-[11px] leading-4 text-muted-foreground">
                   {aiShortlistRank === 1
                     ? "Cata AI ranked this freelancer first for your proposal."
                     : aiShortlistRank
@@ -601,23 +602,23 @@ const FreelancerSelectionCard = memo(({
               <Button
                 type="button"
                 variant="outline"
-                className="h-7 shrink-0 rounded-full border-primary/20 bg-background/80 px-3 text-[10px] font-semibold text-primary shadow-none hover:bg-primary/10"
+                className="h-6 sm:h-7 shrink-0 rounded-full border-primary/20 bg-background/80 px-2.5 sm:px-3 text-[9px] sm:text-[10px] font-semibold text-primary shadow-none hover:bg-primary/10"
                 onClick={(event) => {
                   event.stopPropagation();
                   setActiveAiFreelancerId(freelancer.id);
                 }}
               >
-                <Sparkles className="mr-1.5 h-3 w-3" />
+                <Sparkles className="mr-1 h-3 w-3" />
                 Cata AI
               </Button>
             </div>
           </div>
         ) : null}
 
-        <div className="mt-auto pt-2 shrink-0 grid grid-cols-2 gap-2">
+        <div className="mt-auto pt-1.5 sm:pt-2 shrink-0 grid grid-cols-2 gap-2">
           <Button
             variant="outline"
-            className="h-8 rounded-[12px] border border-border bg-background/35 text-xs font-semibold text-foreground shadow-none hover:bg-background"
+            className="h-8 rounded-[10px] sm:rounded-[12px] border border-border bg-background/35 text-xs font-semibold text-foreground shadow-none hover:bg-background"
             onClick={(event) => {
               event.stopPropagation();
               onViewFreelancer(freelancer);
@@ -626,7 +627,7 @@ const FreelancerSelectionCard = memo(({
             View Profile
           </Button>
           <Button
-            className="h-8 rounded-[12px] bg-primary text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
+            className="h-8 rounded-[10px] sm:rounded-[12px] bg-primary text-xs font-semibold text-primary-foreground shadow-none hover:bg-primary/90"
             onClick={(event) => {
               event.stopPropagation();
               onSendProposal(freelancer);
@@ -727,7 +728,7 @@ const FreelancerSelectionDialog = ({
           event.preventDefault();
         }
       }}
-      className="flex max-h-[88vh] h-[86vh] w-[95vw] max-w-5xl flex-col overflow-hidden rounded-[24px] border border-border bg-card p-4 sm:p-6 shadow-2xl"
+      className="flex max-h-[92dvh] h-[90dvh] sm:h-[86vh] sm:max-h-[88vh] w-[96vw] sm:w-[95vw] max-w-5xl flex-col overflow-hidden rounded-[20px] sm:rounded-[24px] border border-border bg-card p-3 sm:p-6 shadow-2xl"
     >
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-lg">
@@ -741,8 +742,8 @@ const FreelancerSelectionDialog = ({
           </span>
         </DialogDescription>
       </DialogHeader>
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-2 px-1">
-        <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden py-1.5 sm:py-2 px-1">
+        <div className="mb-2.5 sm:mb-3 flex items-center justify-between gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -752,29 +753,29 @@ const FreelancerSelectionDialog = ({
               className="h-9 pl-9 pr-4 text-xs sm:text-sm"
             />
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
             {isFreelancerAiLoading && filteredFreelancers.length > 0 && (
               <Badge
                 variant="outline"
                 title="Cata AI analyzing"
                 aria-label="Cata AI analyzing"
-                className="flex h-9 w-9 items-center justify-center rounded-lg border-primary/20 bg-primary/5 p-0 text-xs font-medium text-primary sm:w-auto sm:px-2.5"
+                className="flex h-8 sm:h-9 w-8 sm:w-9 items-center justify-center rounded-lg border-primary/20 bg-primary/5 p-0 text-xs font-medium text-primary sm:w-auto sm:px-2.5"
               >
                 <Loader2 className="h-3.5 w-3.5 animate-spin sm:mr-1.5 sm:h-3 sm:w-3" />
                 <span className="hidden whitespace-nowrap sm:inline">Cata AI analyzing</span>
               </Badge>
             )}
-            <Badge className="h-9 px-2.5 border-primary/20 bg-primary/10 text-primary font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
+            <Badge className="h-8 sm:h-9 px-2 sm:px-2.5 border-primary/20 bg-primary/10 text-primary font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
               {filteredFreelancers.length} available
             </Badge>
             {freelancerSelectionData.invitedCount > 0 && (
-              <Badge variant="outline" className="h-9 px-2.5 text-muted-foreground font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
+              <Badge variant="outline" className="h-8 sm:h-9 px-2 sm:px-2.5 text-muted-foreground font-medium text-xs rounded-lg flex items-center justify-center whitespace-nowrap">
                 Invited {freelancerSelectionData.invitedCount}
               </Badge>
             )}
           </div>
         </div>
-        <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain pr-2 pb-4 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
+        <div className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain px-0.5 sm:pr-2 pb-2 sm:pb-4 [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent] [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
           <div className="grid grid-cols-1 items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {(() => {
               const hasSearchQuery = String(freelancerSearch || "").trim().length > 0;
@@ -865,8 +866,8 @@ const FreelancerSelectionDialog = ({
               const showGroupCount = freelancerGroups.length > 1;
 
               return freelancerGroups.map((group) => (
-                <div key={group.key} className="col-span-full">
-                  <div className="mb-2 flex flex-col gap-0.5 px-1 pb-1 pt-1.5 border-b border-border/40">
+                <div key={group.key} className="col-span-full mb-2 sm:mb-0">
+                  <div className="mb-1.5 sm:mb-2 flex flex-col gap-0.5 px-0.5 sm:px-1 pb-1 pt-1 border-b border-border/40">
                     <div className="flex items-center gap-1.5">
                       {group.key === "multi-service" ? (
                         <Layers3 className="h-3.5 w-3.5 text-muted-foreground" />
@@ -881,19 +882,7 @@ const FreelancerSelectionDialog = ({
                     <p className="text-[10px] text-muted-foreground leading-relaxed">{group.description}</p>
                   </div>
                   <div
-                    onScroll={(e) => {
-                      const container = e.currentTarget;
-                      const firstCard = container.firstElementChild;
-                      const cardWidth = firstCard
-                        ? firstCard.getBoundingClientRect().width + 12
-                        : 302;
-                      const newIndex = Math.round(container.scrollLeft / cardWidth);
-                      setActiveIndices((prev) => {
-                        if (prev[group.key] === newIndex) return prev;
-                        return { ...prev, [group.key]: newIndex };
-                      });
-                    }}
-                    className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-3 w-full"
+                    className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 w-full"
                   >
                     {group.freelancers.map((freelancer) => (
                       <FreelancerSelectionCard
@@ -909,21 +898,6 @@ const FreelancerSelectionDialog = ({
                       />
                     ))}
                   </div>
-                  {group.freelancers.length > 1 && (
-                    <div className="flex items-center justify-center gap-1.5 mt-1 pb-2.5 sm:hidden">
-                      {group.freelancers.map((_, idx) => {
-                        const isActive = (activeIndices[group.key] || 0) === idx;
-                        return (
-                          <div
-                            key={idx}
-                            className={`h-1 rounded-full transition-all duration-300 ${
-                              isActive ? "w-3 bg-primary" : "w-1.5 bg-border"
-                            }`}
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               ));
             })()}
@@ -1039,12 +1013,11 @@ const FreelancerSelectionDialog = ({
           </div>
         </div>
       ) : null}
-      <DialogFooter className="sm:justify-between items-center w-full mt-2 border-t pt-4">
+      <DialogFooter className="flex sm:justify-between items-center w-full mt-1.5 sm:mt-2 border-t pt-2.5 sm:pt-4">
         <div className="flex w-full items-center justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-
         </div>
       </DialogFooter>
     </DialogContent>
