@@ -38,6 +38,7 @@ import Upload from "lucide-react/dist/esm/icons/upload";
 import X from "lucide-react/dist/esm/icons/x";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import Phone from "lucide-react/dist/esm/icons/phone";
+import Check from "lucide-react/dist/esm/icons/check";
 import {
   Select,
   SelectContent,
@@ -209,7 +210,6 @@ function PhoneRoleOnboarding() {
   const [fullName, setFullName] = useState(() => getInitialName(user));
   const [email, setEmail] = useState(() => getInitialEmail(user));
   const initialPhoneValue = normalizePhoneNumber(user?.phoneNumber || user?.phone);
-  const isPhoneLocked = !isFromEmailAuth && Boolean(initialPhoneValue);
   const [countryCode, setCountryCode] = useState(() =>
     getInitialCountryCode(initialPhoneValue),
   );
@@ -236,7 +236,10 @@ function PhoneRoleOnboarding() {
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [verifiedPhoneNumber, setVerifiedPhoneNumber] = useState("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isOtpSent, setIsOtpSent] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otp, setOtp] = useState("");
   const [otpError, setOtpError] = useState("");
   const [isResending, setIsResending] = useState(false);
@@ -268,6 +271,36 @@ function PhoneRoleOnboarding() {
   const selectedCountry = COUNTRY_OPTION_BY_CODE[countryCode] || COUNTRY_OPTION_BY_CODE[DEFAULT_COUNTRY_CODE];
   const isLastSlide = activeSlide === SLIDES.length - 1;
 
+  const initialFullPhone = useMemo(() => {
+    if (isFromEmailAuth || !initialPhoneValue) return "";
+    const initialDial = COUNTRY_OPTION_BY_CODE[getInitialCountryCode(initialPhoneValue)]?.dialCode || "";
+    let rawNum = initialPhoneValue.replace(
+      new RegExp(`^${normalizePhoneNumber(initialDial)}`),
+      "",
+    );
+    if (rawNum.startsWith("0") && rawNum.length === 11) {
+      rawNum = rawNum.slice(1);
+    }
+    return normalizePhoneNumber(initialDial + rawNum);
+  }, [initialPhoneValue, isFromEmailAuth]);
+
+  const currentFullPhone = normalizePhoneNumber(
+    (selectedCountry?.dialCode || "") + phoneDigits,
+  );
+
+  const isNumberChanged = Boolean(
+    initialFullPhone ? currentFullPhone !== initialFullPhone : phoneDigits.length > 0,
+  );
+
+  const isPhoneVerified = Boolean(
+    (!isNumberChanged && initialFullPhone) ||
+    (verifiedPhoneNumber && currentFullPhone === verifiedPhoneNumber),
+  );
+
+  const isPhoneValid = countryCode === "IN"
+    ? phoneDigits.length === 10 && /^[6-9]/.test(phoneDigits)
+    : phoneDigits.length >= 6;
+
   const validateCurrentSlide = (roleCandidate = selectedRole) => {
     if (slide.id === "details") {
       if (!fullName.trim()) {
@@ -293,6 +326,10 @@ function PhoneRoleOnboarding() {
         }
       } else if (phoneDigits.length < 6) {
         return "Enter a valid phone number to continue.";
+      }
+
+      if (!isPhoneVerified) {
+        return "Please verify your phone number to continue.";
       }
     }
 
@@ -421,53 +458,6 @@ function PhoneRoleOnboarding() {
 
     setFormErrors({});
 
-    const currentFullPhone = normalizePhoneNumber((selectedCountry?.dialCode || "") + phoneDigits);
-    if (slide.id === "details" && phoneDigits && (currentFullPhone !== normalizePhoneNumber(initialPhoneValue) || !initialPhoneValue)) {
-      if (!isOtpStep) {
-        setIsSaving(true);
-        const toastId = toast.loading("Sending WhatsApp code...");
-        try {
-          await requestWhatsappOtp({
-            countryCode: selectedCountry.dialCode,
-            phoneNumber: phoneDigits,
-          });
-          setResendCooldownAt(Date.now() + 60 * 1000); // 1 minute cooldown
-          toast.success(`6-digit WhatsApp code sent!`, { id: toastId });
-          setIsOtpStep(true);
-          setOtpError("");
-          setOtp("");
-        } catch (error) {
-          toast.error(error?.message || "Failed to send WhatsApp code.", { id: toastId });
-        } finally {
-          setIsSaving(false);
-        }
-        return;
-      } else {
-        if (!otp || otp.length < 6) {
-          setOtpError("Please enter the 6-digit WhatsApp code.");
-          return;
-        }
-        setIsSaving(true);
-        const toastId = toast.loading("Verifying code...");
-        try {
-          await verifyWhatsappOtp({
-            countryCode: selectedCountry.dialCode,
-            phoneNumber: phoneDigits,
-            otp,
-          });
-          toast.success("Phone verified!", { id: toastId });
-          setOtpError("");
-        } catch (error) {
-          const errMsg = error?.message || "Invalid or expired WhatsApp code.";
-          setOtpError(errMsg);
-          toast.error(errMsg, { id: toastId });
-          setIsSaving(false);
-          return;
-        }
-        setIsSaving(false);
-      }
-    }
-
     if (!isLastSlide && !hasLockedRole) {
       setIsTransitioning(true);
       const progressToastId = toast.loading("Preparing the next step...");
@@ -555,8 +545,75 @@ function PhoneRoleOnboarding() {
     setActiveSlide((current) => Math.max(current - 1, 0));
   };
 
+  const handleSendOtp = async () => {
+    if (isSendingOtp || isSaving || isVerifyingOtp) return;
+    if (countryCode === "IN") {
+      if (phoneDigits.length !== 10) {
+        toast.error("Please enter a valid 10-digit phone number.", { id: "invalid-phone" });
+        return;
+      }
+      if (!/^[6-9]/.test(phoneDigits)) {
+        toast.error("Indian phone numbers must start with 6, 7, 8, or 9.", { id: "invalid-phone" });
+        return;
+      }
+    } else if (phoneDigits.length < 6) {
+      toast.error("Please enter a valid phone number.", { id: "invalid-phone" });
+      return;
+    }
+
+    setIsSendingOtp(true);
+    setOtpError("");
+    const toastId = toast.loading("Sending WhatsApp code...");
+    try {
+      await requestWhatsappOtp({
+        countryCode: selectedCountry.dialCode,
+        phoneNumber: phoneDigits,
+      });
+      setResendCooldownAt(Date.now() + 60 * 1000); // 1 minute cooldown
+      setIsOtpSent(true);
+      setOtp("");
+      toast.success("6-digit WhatsApp code sent!", { id: toastId });
+    } catch (error) {
+      toast.error(error?.message || "Failed to send WhatsApp code.", { id: toastId });
+    } finally {
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleVerifyOtp = async (codeToVerify = otp) => {
+    const cleanOtp = String(codeToVerify || "").trim();
+    if (cleanOtp.length < 6) {
+      setOtpError("Please enter the 6-digit WhatsApp code.");
+      return;
+    }
+    if (isVerifyingOtp || isSaving) return;
+
+    setIsVerifyingOtp(true);
+    setOtpError("");
+    const toastId = toast.loading("Verifying code...");
+    try {
+      await verifyWhatsappOtp({
+        countryCode: selectedCountry.dialCode,
+        phoneNumber: phoneDigits,
+        otp: cleanOtp,
+      });
+      toast.success("Phone verified!", { id: toastId });
+      setVerifiedPhoneNumber(currentFullPhone);
+      setIsOtpSent(false);
+      setOtp("");
+      setOtpError("");
+      setFormErrors({});
+    } catch (error) {
+      const errMsg = error?.message || "Invalid or expired WhatsApp code.";
+      setOtpError(errMsg);
+      toast.error(errMsg, { id: toastId });
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
   const handleResendOtp = async () => {
-    if (resendCooldownSeconds > 0 || isResending || isSaving) return;
+    if (resendCooldownSeconds > 0 || isResending || isSaving || isSendingOtp || isVerifyingOtp) return;
 
     setIsResending(true);
     setOtpError("");
@@ -568,7 +625,7 @@ function PhoneRoleOnboarding() {
         phoneNumber: phoneDigits,
       });
       setResendCooldownAt(Date.now() + 60 * 1000); // 1 minute cooldown
-      toast.success(`6-digit WhatsApp code resent!`, { id: toastId });
+      toast.success("6-digit WhatsApp code resent!", { id: toastId });
     } catch (error) {
       toast.error(error?.message || "Failed to resend WhatsApp code.", { id: toastId });
     } finally {
@@ -580,298 +637,345 @@ function PhoneRoleOnboarding() {
     if (slide.id === "details") {
       return (
         <div className="space-y-2.5">
-          {isOtpStep ? (
-            <div className="flex flex-col items-center justify-center space-y-6 py-6">
-              <div className="text-center">
-                <h3 className="text-xl font-semibold mb-2 text-black dark:text-white">Verify your phone</h3>
-                <p className="text-sm text-black/60 dark:text-white/60">
-                  Enter the 6-digit WhatsApp code sent to<br/>
-                  <span className="font-medium text-black dark:text-white">+{selectedCountry?.dialCode?.replace(/\D/g, "")} {phoneDigits}</span>
+          <div className="flex h-full flex-col items-center text-center">
+            <div className="flex flex-col items-center gap-2 md:pt-1 lg:gap-2 lg:pt-0">
+              <div className="relative w-fit">
+                <Popover open={isPhotoMenuOpen} onOpenChange={setIsPhotoMenuOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
+                      className="group relative flex size-24 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-black/10 dark:border-white/20 bg-black/5 dark:bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-background sm:size-28"
+                    >
+                      {hasProfilePhoto ? (
+                        <img
+                          src={profileImage}
+                          alt="Profile preview"
+                          className="size-full object-cover"
+                          onError={() => setProfileImage("")}
+                        />
+                      ) : (
+                        <Camera className="size-7 transition group-hover:scale-[1.04]" />
+                      )}
+                    </button>
+                  </PopoverTrigger>
+
+                  <PopoverContent
+                    align="center"
+                    sideOffset={10}
+                    className="w-56 rounded-[18px] border border-black/10 dark:border-white/10 bg-white dark:bg-[#161616] p-1 text-black dark:text-white shadow-2xl backdrop-blur-xl"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPhotoMenuOpen(false);
+                        setIsCameraOpen(true);
+                      }}
+                      disabled={isSaving}
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Camera className="size-4 text-primary" />
+                      <span>Take a picture</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsPhotoMenuOpen(false);
+                        deviceInputRef.current?.click();
+                      }}
+                      disabled={isSaving}
+                      className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Upload className="size-4 text-primary" />
+                      <span>Choose from device</span>
+                    </button>
+                  </PopoverContent>
+                </Popover>
+
+                <input
+                  ref={deviceInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleProfileImageChange}
+                  disabled={isSaving}
+                />
+
+                {hasProfilePhoto ? (
+                  <button
+                    type="button"
+                    onClick={handleProfileImageRemove}
+                    aria-label="Remove profile photo"
+                    className="absolute right-0 top-0 flex size-7 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-white dark:bg-[#101010] text-black/75 dark:text-white/75 shadow-md transition-colors hover:border-black/20 dark:hover:border-white/20 hover:text-black dark:hover:text-white"
+                  >
+                    <X className="size-3" />
+                  </button>
+                ) : null}
+
+                <ProfilePhotoCameraDialog
+                  open={isCameraOpen}
+                  onOpenChange={setIsCameraOpen}
+                  onCapture={handleProfileImageSelect}
+                />
+              </div>
+
+              <div className="space-y-0.5">
+                <p className={cn(fieldLabelClassName, "text-black dark:text-white mb-0")}>
+                  Profile Photo
+                </p>
+                <p className="text-xs text-black/55 dark:text-white/55">
+                  JPG, PNG or GIF. Max 5MB.
                 </p>
               </div>
-              <div className="flex flex-col items-center w-full max-w-[380px] mx-auto">
-                <InputOTP
-                  maxLength={6}
-                  pattern={REGEXP_ONLY_DIGITS}
-                  value={otp}
-                  onChange={(val) => {
-                    setOtp(val);
-                    setOtpError("");
-                  }}
-                  disabled={isSaving}
-                  autoFocus
-                  containerClassName="w-full justify-center px-2"
-                >
-                  <InputOTPGroup className="justify-center">
-                    <InputOTPSlot index={0} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
-                    <InputOTPSlot index={1} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
-                    <InputOTPSlot index={2} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
-                    <InputOTPSlot index={3} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
-                    <InputOTPSlot index={4} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
-                    <InputOTPSlot index={5} className="h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base font-semibold" />
-                  </InputOTPGroup>
-                </InputOTP>
-                {otpError && (
-                  <p className="mt-3 text-sm font-medium text-red-500">{otpError}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsOtpStep(false);
-                    setOtpError("");
-                    setOtp("");
-                  }}
-                  disabled={isSaving || isResending}
-                  className="text-sm font-medium text-primary hover:underline"
-                >
-                  Change phone number
-                </button>
-                <span className="text-black/20 dark:text-white/20">|</span>
-                <button
-                  type="button"
-                  onClick={handleResendOtp}
-                  disabled={resendCooldownSeconds > 0 || isSaving || isResending}
-                  className="text-sm font-medium text-primary hover:underline disabled:opacity-50 disabled:hover:no-underline"
-                >
-                  {isResending
-                    ? "Resending..."
-                    : resendCooldownSeconds > 0
-                      ? `Resend in ${resendCooldownSeconds}s`
-                      : "Resend code"}
-                </button>
-              </div>
             </div>
-          ) : (
-            <>
-              <div className="flex h-full flex-col items-center text-center">
-                <div className="flex flex-col items-center gap-2 md:pt-1 lg:gap-2 lg:pt-0">
-                  <div className="relative w-fit">
-                    <Popover open={isPhotoMenuOpen} onOpenChange={setIsPhotoMenuOpen}>
-                      <PopoverTrigger asChild>
-                        <button
-                          type="button"
-                          disabled={isSaving}
-                          aria-label={hasProfilePhoto ? "Change profile photo" : "Add profile photo"}
-                          className="group relative flex size-24 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-black/10 dark:border-white/20 bg-black/5 dark:bg-[#1a1a1a] text-primary transition hover:border-primary/60 focus:outline-none focus:ring-2 focus:ring-primary/55 focus:ring-offset-2 focus:ring-offset-background sm:size-28"
-                        >
-                          {hasProfilePhoto ? (
-                            <img
-                              src={profileImage}
-                              alt="Profile preview"
-                              className="size-full object-cover"
-                              onError={() => setProfileImage("")}
-                            />
-                          ) : (
-                            <Camera className="size-7 transition group-hover:scale-[1.04]" />
-                          )}
-                        </button>
-                      </PopoverTrigger>
+          </div>
 
-                      <PopoverContent
-                        align="center"
-                        sideOffset={10}
-                        className="w-56 rounded-[18px] border border-black/10 dark:border-white/10 bg-white dark:bg-[#161616] p-1 text-black dark:text-white shadow-2xl backdrop-blur-xl"
+          <ProfileImageCropDialog
+            key={profileImageCropSession}
+            open={isProfileCropOpen}
+            file={pendingProfileImageFile}
+            maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
+            onApply={handleProfileImageCropped}
+            onCancel={handleProfileImageCropCancel}
+          />
+
+          <div className="grid gap-3">
+            <label className="block space-y-0.5 text-left">
+              <span className={fieldLabelClassName}>
+                Full name
+              </span>
+              <div className="relative">
+                <Input
+                  type="text"
+                  autoComplete="name"
+                  value={fullName}
+                  disabled={isSaving}
+                  onChange={(event) => {
+                    setFullName(event.target.value);
+                    setFormErrors({});
+                  }}
+                  placeholder="Enter your full name"
+                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                />
+                <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+              </div>
+            </label>
+
+            <label className="block space-y-0.5 text-left">
+              <span className={fieldLabelClassName}>
+                {isEmailRequired ? "Email address" : "Email address (optional)"}
+              </span>
+              <div className="relative">
+                <Input
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  disabled={isSaving || isEmailLocked}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setFormErrors({});
+                  }}
+                  placeholder="Enter your email address"
+                  className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
+                />
+                <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+              </div>
+            </label>
+
+            <div className="block space-y-0.5 text-left">
+              <span className={fieldLabelClassName}>
+                Phone number <span className="text-muted-foreground font-normal text-xs ml-1">(required)</span>
+              </span>
+              <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
+                <Select
+                  value={countryCode}
+                  onValueChange={(value) => {
+                    setCountryCode(value);
+                    if (isOtpSent) {
+                      setIsOtpSent(false);
+                      setOtp("");
+                      setOtpError("");
+                    }
+                    setFormErrors({});
+                  }}
+                  disabled={isSaving || isSendingOtp || isVerifyingOtp}
+                >
+                  <SelectTrigger
+                    type="button"
+                    aria-label="Select country code"
+                    className="!h-10 w-full cursor-pointer rounded-md border-black/15 dark:border-white/10 bg-black/[0.03] dark:bg-[#171717] px-2.5 text-black dark:text-white"
+                  >
+                    <div className="pointer-events-none flex items-center justify-center select-none">
+                      <FlagIcon code={selectedCountry.code} className="h-5 w-5" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    sideOffset={8}
+                    className="z-[60] min-w-[18rem] border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] text-black dark:text-white shadow-2xl sm:min-w-[26rem]"
+                  >
+                    {COUNTRY_OPTIONS.map((option) => (
+                      <SelectItem
+                        key={option.code}
+                        value={option.code}
+                        className="group cursor-pointer text-black dark:text-white data-[highlighted]:bg-black/5 dark:data-[highlighted]:bg-white/5 data-[highlighted]:text-black dark:data-[highlighted]:text-white pr-8 group-data-[state=checked]:pr-14"
                       >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsPhotoMenuOpen(false);
-                            setIsCameraOpen(true);
-                          }}
-                          disabled={isSaving}
-                          className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <Camera className="size-4 text-primary" />
-                          <span>Take a picture</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsPhotoMenuOpen(false);
-                            deviceInputRef.current?.click();
-                          }}
-                          disabled={isSaving}
-                          className="flex w-full items-center gap-3 rounded-[14px] px-3 py-2.5 text-left text-sm text-black dark:text-white transition-colors hover:bg-black/5 dark:hover:bg-white/8 focus:bg-black/5 dark:focus:bg-white/8 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          <Upload className="size-4 text-primary" />
-                          <span>Choose from device</span>
-                        </button>
-                      </PopoverContent>
-                    </Popover>
+                        <span className="flex w-full items-center gap-0">
+                          <FlagIcon code={option.code} className="h-5 w-5" />
+                          <span className="min-w-0 flex-1 truncate text-[13px] ml-3">{option.label}</span>
+                          <span className="text-black/45 dark:text-white/45 text-[13px] absolute right-3 group-data-[state=checked]:right-8">
+                            +{option.dialCode.replace(/\D/g, "")}
+                          </span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                    <input
-                      ref={deviceInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={handleProfileImageChange}
-                      disabled={isSaving}
-                    />
+                <div className="relative">
+                  <Input
+                    type="tel"
+                    inputMode="numeric"
+                    autoComplete="tel"
+                    value={phoneNumber}
+                    disabled={isSaving || isVerifyingOtp}
+                    onChange={(event) => {
+                      let digits = event.target.value.replace(/\D/g, "");
+                      if (digits.startsWith("0") && digits.length === 11) {
+                        digits = digits.slice(1);
+                      }
+                      if (countryCode === "IN") {
+                        if (/^[^6-9]/.test(digits)) {
+                          toast.error("Indian phone numbers must start with 6, 7, 8, or 9.", { id: "invalid-in-phone" });
+                        }
+                        digits = digits.replace(/^[^6-9]+/, "");
+                        digits = digits.slice(0, 10);
+                      } else {
+                        digits = digits.slice(0, 15);
+                      }
+                      setPhoneNumber(digits);
+                      if (isOtpSent) {
+                        setIsOtpSent(false);
+                        setOtp("");
+                        setOtpError("");
+                      }
+                      setFormErrors({});
+                    }}
+                    placeholder={countryCode === "IN" ? "9876543210" : "1234567890"}
+                    className={cn(
+                      "!h-10 w-full rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20",
+                      verifiedPhoneNumber && currentFullPhone === verifiedPhoneNumber
+                        ? "pr-24"
+                        : isNumberChanged && isPhoneValid
+                          ? "pr-24"
+                          : "pr-11"
+                    )}
+                  />
 
-                    {hasProfilePhoto ? (
-                      <button
-                        type="button"
-                        onClick={handleProfileImageRemove}
-                        aria-label="Remove profile photo"
-                        className="absolute right-0 top-0 flex size-7 items-center justify-center rounded-full border border-black/10 dark:border-white/10 bg-white dark:bg-[#101010] text-black/75 dark:text-white/75 shadow-md transition-colors hover:border-black/20 dark:hover:border-white/20 hover:text-black dark:hover:text-white"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    ) : null}
-
-                    <ProfilePhotoCameraDialog
-                      open={isCameraOpen}
-                      onOpenChange={setIsCameraOpen}
-                      onCapture={handleProfileImageSelect}
-                    />
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <p className={cn(fieldLabelClassName, "text-black dark:text-white mb-0")}>
-                      Profile Photo
-                    </p>
-                    <p className="text-xs text-black/55 dark:text-white/55">
-                      JPG, PNG or GIF. Max 5MB.
-                    </p>
-                  </div>
+                  {verifiedPhoneNumber && currentFullPhone === verifiedPhoneNumber ? (
+                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60 select-none">
+                      <Check className="size-3 stroke-[2.5]" />
+                      <span>Verified</span>
+                    </div>
+                  ) : isNumberChanged && isPhoneValid ? (
+                    <button
+                      type="button"
+                      onClick={() => void handleSendOtp()}
+                      disabled={isSendingOtp || isSaving || isVerifyingOtp}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all keep-white"
+                    >
+                      {isSendingOtp ? (
+                        <span className="flex items-center gap-1">
+                          <Loader2 className="size-3 animate-spin text-white keep-white" />
+                          <span>Sending</span>
+                        </span>
+                      ) : isOtpSent ? (
+                        "Resend"
+                      ) : (
+                        "Send OTP"
+                      )}
+                    </button>
+                  ) : (
+                    <Phone className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
+                  )}
                 </div>
               </div>
 
-              <ProfileImageCropDialog
-                key={profileImageCropSession}
-                open={isProfileCropOpen}
-                file={pendingProfileImageFile}
-                maxUploadBytes={AVATAR_UPLOAD_MAX_BYTES}
-                onApply={handleProfileImageCropped}
-                onCancel={handleProfileImageCropCancel}
-              />
-
-              <div className="grid gap-3">
-                <label className="block space-y-0.5 text-left">
-                  <span className={fieldLabelClassName}>
-                    Full name
-                  </span>
-                  <div className="relative">
-                    <Input
-                      type="text"
-                      autoComplete="name"
-                      value={fullName}
-                      disabled={isSaving}
-                      onChange={(event) => {
-                        setFullName(event.target.value);
-                        setFormErrors({});
-                      }}
-                      placeholder="Enter your full name"
-                      className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                    />
-                    <User className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
-                  </div>
-                </label>
-
-                <label className="block space-y-0.5 text-left">
-                  <span className={fieldLabelClassName}>
-                    {isEmailRequired ? "Email address" : "Email address (optional)"}
-                  </span>
-                  <div className="relative">
-                    <Input
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      disabled={isSaving || isEmailLocked}
-                      onChange={(event) => {
-                        setEmail(event.target.value);
-                        setFormErrors({});
-                      }}
-                      placeholder="Enter your email address"
-                      className="!h-10 rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                    />
-                    <Mail className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
-                  </div>
-                </label>
-
-                <label className="block space-y-0.5 text-left">
-                  <span className={fieldLabelClassName}>
-                    Phone number <span className="text-muted-foreground font-normal text-xs ml-1">(required)</span>
-                  </span>
-                  <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] gap-2 sm:grid-cols-[4.5rem_minmax(0,1fr)]">
-                    <Select
-                      value={countryCode}
-                      onValueChange={(value) => {
-                        setCountryCode(value);
-                        setFormErrors({});
-                      }}
-                      disabled={isSaving || isPhoneLocked}
+              {/* Inline OTP Section - stays in the same section without switching views */}
+              {isOtpSent && !isPhoneVerified && (
+                <div className="mt-2.5 rounded-xl border border-black/10 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] p-3.5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-black/70 dark:text-white/70 font-medium">
+                      Enter 6-digit WhatsApp code
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void handleResendOtp()}
+                      disabled={resendCooldownSeconds > 0 || isSendingOtp || isResending}
+                      className="text-xs font-medium text-primary hover:underline disabled:opacity-50 disabled:hover:no-underline"
                     >
-                      <SelectTrigger
-                        type="button"
-                        aria-label="Select country code"
-                        className="!h-10 w-full cursor-pointer rounded-md border-black/15 dark:border-white/10 bg-black/[0.03] dark:bg-[#171717] px-2.5 text-black dark:text-white"
-                      >
-                        <div className="pointer-events-none flex items-center justify-center select-none">
-                          <FlagIcon code={selectedCountry.code} className="h-5 w-5" />
-                        </div>
-                      </SelectTrigger>
-                      <SelectContent
-                        position="popper"
-                        sideOffset={8}
-                        className="z-[60] min-w-[18rem] border-black/10 dark:border-white/10 bg-white dark:bg-[#121212] text-black dark:text-white shadow-2xl sm:min-w-[26rem]"
-                      >
-                        {COUNTRY_OPTIONS.map((option) => (
-                          <SelectItem
-                            key={option.code}
-                            value={option.code}
-                            className="group cursor-pointer text-black dark:text-white data-[highlighted]:bg-black/5 dark:data-[highlighted]:bg-white/5 data-[highlighted]:text-black dark:data-[highlighted]:text-white pr-8 group-data-[state=checked]:pr-14"
-                          >
-                            <span className="flex w-full items-center gap-0">
-                              <FlagIcon code={option.code} className="h-5 w-5" />
-                              <span className="min-w-0 flex-1 truncate text-[13px] ml-3">{option.label}</span>
-                              <span className="text-black/45 dark:text-white/45 text-[13px] absolute right-3 group-data-[state=checked]:right-8">
-                                +{option.dialCode.replace(/\D/g, "")}
-                              </span>
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="relative">
-                      <Input
-                        type="tel"
-                        inputMode="numeric"
-                        autoComplete="tel"
-                        value={phoneNumber}
-                        disabled={isSaving || isPhoneLocked}
-                        onChange={(event) => {
-                          let digits = event.target.value.replace(/\D/g, "");
-                          if (digits.startsWith("0") && digits.length === 11) {
-                            digits = digits.slice(1);
-                          }
-                          if (countryCode === "IN") {
-                            if (/^[^6-9]/.test(digits)) {
-                              toast.error("Indian phone numbers must start with 6, 7, 8, or 9.", { id: "invalid-in-phone" });
-                            }
-                            digits = digits.replace(/^[^6-9]+/, "");
-                            setPhoneNumber(digits.slice(0, 10));
-                          } else {
-                            setPhoneNumber(digits.slice(0, 15));
-                          }
-                          setFormErrors({});
-                        }}
-                        placeholder="1234567890"
-                        className="!h-10 w-full rounded-md border-black/15 dark:border-[#ffffff]/10 bg-black/[0.03] dark:bg-[#171717] px-3 pr-11 text-[13px] text-black dark:text-[#ffffff]/90 placeholder:font-normal placeholder:text-[#1c1b1f]/30 dark:placeholder:text-[#ffffff]/30 focus-visible:border-primary/60 focus-visible:ring-primary/20"
-                      />
-                      <Phone className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-black/35 dark:text-white/35" />
-                    </div>
+                      {isResending
+                        ? "Resending..."
+                        : resendCooldownSeconds > 0
+                          ? `Resend in ${resendCooldownSeconds}s`
+                          : "Resend code"}
+                    </button>
                   </div>
-                </label>
-              </div>
 
-              {formErrors.details && (
-                <p className="text-xs text-red-500">{formErrors.details}</p>
+                  <div className="flex flex-col items-center">
+                    <InputOTP
+                      maxLength={6}
+                      pattern={REGEXP_ONLY_DIGITS}
+                      value={otp}
+                      onChange={(val) => {
+                        setOtp(val);
+                        setOtpError("");
+                        if (val.length === 6) {
+                          void handleVerifyOtp(val);
+                        }
+                      }}
+                      disabled={isVerifyingOtp}
+                      autoFocus
+                      containerClassName="w-full justify-center"
+                    >
+                      <InputOTPGroup className="justify-center gap-1.5 sm:gap-2">
+                        <InputOTPSlot index={0} className="h-9 w-9 sm:h-10 sm:w-10 rounded-md border-black/15 dark:border-white/15 text-sm font-semibold" />
+                        <InputOTPSlot index={1} className="h-9 w-9 sm:h-10 sm:w-10 rounded-md border-black/15 dark:border-white/15 text-sm font-semibold" />
+                        <InputOTPSlot index={2} className="h-9 w-9 sm:h-10 sm:w-10 rounded-md border-black/15 dark:border-white/15 text-sm font-semibold" />
+                        <InputOTPSlot index={3} className="h-9 w-9 sm:h-10 sm:w-10 rounded-md border-black/15 dark:border-white/15 text-sm font-semibold" />
+                        <InputOTPSlot index={4} className="h-9 w-9 sm:h-10 sm:w-10 rounded-md border-black/15 dark:border-white/15 text-sm font-semibold" />
+                        <InputOTPSlot index={5} className="h-9 w-9 sm:h-10 sm:w-10 rounded-md border-black/15 dark:border-white/15 text-sm font-semibold" />
+                      </InputOTPGroup>
+                    </InputOTP>
+
+                    {otpError && (
+                      <p className="mt-2 text-xs font-medium text-red-500 text-center">{otpError}</p>
+                    )}
+                  </div>
+
+                  <Button
+                    type="button"
+                    onClick={() => void handleVerifyOtp(otp)}
+                    disabled={isVerifyingOtp || otp.length < 6}
+                    className="w-full h-9 rounded-lg bg-primary text-white text-xs font-semibold hover:brightness-110 active:scale-[0.99] disabled:opacity-50 transition-all keep-white"
+                  >
+                    {isVerifyingOtp ? (
+                      <span className="flex items-center justify-center gap-1.5">
+                        <Loader2 className="size-3.5 animate-spin text-white keep-white" />
+                        <span>Verifying...</span>
+                      </span>
+                    ) : (
+                      "Verify OTP"
+                    )}
+                  </Button>
+                </div>
               )}
-            </>
+            </div>
+          </div>
+
+          {formErrors.details && (
+            <p className="text-xs text-red-500">{formErrors.details}</p>
           )}
         </div>
       );
@@ -1096,10 +1200,26 @@ function PhoneRoleOnboarding() {
                   if (["checkbox", "radio", "file", "submit", "button"].includes(type)) {
                     return;
                   }
+                  if (!isPhoneVerified) {
+                    if (type === "tel" && isPhoneValid) {
+                      e.preventDefault();
+                      void handleSendOtp();
+                      return;
+                    }
+                    if (otp.length === 6) {
+                      e.preventDefault();
+                      void handleVerifyOtp(otp);
+                      return;
+                    }
+                    e.preventDefault();
+                    return;
+                  }
                 }
 
                 e.preventDefault();
-                void handleNext();
+                if (isPhoneVerified) {
+                  void handleNext();
+                }
               }
             }}
             className={cn("w-full max-w-md rounded-3xl border p-6 sm:p-7 shadow-2xl shadow-black/5 dark:shadow-black/40", isDark ? "border-white/[0.07] bg-white/[0.04] backdrop-blur-xl" : "border-black/[0.06] bg-white")}
@@ -1118,29 +1238,36 @@ function PhoneRoleOnboarding() {
 
             {formErrors.submit && <p className="mt-2 text-xs text-red-500">{formErrors.submit}</p>}
 
-            {/* CTA & Security Note (Sticky on mobile) */}
-            <div className={cn(
-              "sticky bottom-0 z-20 -mx-6 mt-4 px-6 pb-6 pt-4 sm:-mx-7 sm:px-7 sm:pb-7 rounded-b-3xl",
-              isDark ? "bg-[#18181b]/95 backdrop-blur-xl" : "bg-white/95 backdrop-blur-xl"
-            )}>
-              <button
-                type="submit"
-                disabled={isSaving}
-                className={cn(
-                  "group flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[0.95rem] font-bold transition-all duration-200 keep-white",
-                  "bg-primary text-white shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
-                )}
-              >
-                {isSaving ? <Loader2 className="size-4 animate-spin text-white keep-white" /> : null}
-                {isSaving ? "Saving..." : "Continue"}
-              </button>
+            {/* CTA & Security Note (Sticky on mobile, shown only when verified) */}
+            {isPhoneVerified ? (
+              <div className={cn(
+                "sticky bottom-0 z-20 -mx-6 mt-4 px-6 pb-6 pt-4 sm:-mx-7 sm:px-7 sm:pb-7 rounded-b-3xl animate-in fade-in slide-in-from-bottom-2 duration-200",
+                isDark ? "bg-[#18181b]/95 backdrop-blur-xl" : "bg-white/95 backdrop-blur-xl"
+              )}>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className={cn(
+                    "group flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[0.95rem] font-bold transition-all duration-200 keep-white",
+                    "bg-primary text-white shadow-lg shadow-primary/30 hover:brightness-110 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                  )}
+                >
+                  {isSaving ? <Loader2 className="size-4 animate-spin text-white keep-white" /> : null}
+                  {isSaving ? "Saving..." : "Continue"}
+                </button>
 
-              {/* Security note */}
-              <div className="mt-3.5 flex items-center justify-center gap-2">
+                {/* Security note */}
+                <div className="mt-3.5 flex items-center justify-center gap-2">
+                  <Lock className={cn("size-3.5", isDark ? "text-white/30" : "text-black/30")} />
+                  <p className={cn("text-[0.72rem]", isDark ? "text-white/30" : "text-black/35")}>Your information is secure and will never be shared.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex items-center justify-center gap-2 py-2">
                 <Lock className={cn("size-3.5", isDark ? "text-white/30" : "text-black/30")} />
                 <p className={cn("text-[0.72rem]", isDark ? "text-white/30" : "text-black/35")}>Your information is secure and will never be shared.</p>
               </div>
-            </div>
+            )}
           </form>
         </main>
       </div>
