@@ -46,11 +46,39 @@ const getDisplayInitials = (name = "") => {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 };
 
+const isSeededServiceCoverImage = (value = "") =>
+  /(?:^|\/)assets\/services\/[^/]+-cover\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i.test(
+    String(value || "").trim(),
+  );
+
+const defaultGenerateGradient = (id) => {
+  if (!id) return "linear-gradient(135deg, hsl(210, 80%, 55%), hsl(260, 80%, 50%))";
+
+  let hash = 0;
+  const str = String(id);
+  for (let index = 0; index < str.length; index += 1) {
+    hash = str.charCodeAt(index) + ((hash << 5) - hash);
+  }
+
+  const firstHue = Math.abs(hash % 360);
+  const secondHue = (firstHue + 44) % 360;
+  return `linear-gradient(135deg, hsl(${firstHue}, 78%, 58%), hsl(${secondHue}, 78%, 48%))`;
+};
+
 const resolveImageUrl = (value) => {
   if (!value) return "";
   if (typeof value === "string") {
     const url = value.trim();
-    if (!url || url.startsWith("blob:")) return "";
+    if (
+      !url ||
+      url === "null" ||
+      url === "undefined" ||
+      url === "[object Object]" ||
+      url.startsWith("blob:") ||
+      isSeededServiceCoverImage(url)
+    ) {
+      return "";
+    }
     return url;
   }
   if (typeof value === "object") {
@@ -84,15 +112,17 @@ const resolveFreelancerCoverImage = (freelancer = {}) => {
   const serviceCoverImage = Object.values(serviceDetails)
     .filter((detail) => detail && typeof detail === "object")
     .map((detail) => resolveImageUrl(detail?.coverImage || detail?.image))
-    .find(Boolean);
+    .find((url) => Boolean(url) && !isSeededServiceCoverImage(url));
 
-  return (
+  const candidate = (
     resolveImageUrl(freelancer?.coverImage) ||
     resolveImageUrl(freelancer?.personal?.coverImage) ||
     resolveImageUrl(identity?.coverImage) ||
     serviceCoverImage ||
     ""
   );
+
+  return isSeededServiceCoverImage(candidate) ? "" : candidate;
 };
 const getDeliveredProjectCount = (freelancer = {}) => {
   if (Number.isFinite(Number(freelancer?.projectsDelivered))) {
@@ -313,8 +343,22 @@ const FreelancerSelectionCard = memo(({
     freelancer.fullName || freelancer.name || freelancer.freelancerName || "Freelancer";
   const displayInitials = getDisplayInitials(displayName);
   const coverImage = resolveFreelancerCoverImage(freelancer);
-  const bannerGradient = generateGradient(
-    freelancer.id || freelancer.freelancerId || freelancer.name || freelancer.freelancerName,
+  const [coverImageFailed, setCoverImageFailed] = useState(false);
+
+  useEffect(() => {
+    setCoverImageFailed(false);
+  }, [coverImage]);
+
+  const hasValidCover = Boolean(coverImage) && !coverImageFailed;
+
+  const gradientFn =
+    typeof generateGradient === "function" ? generateGradient : defaultGenerateGradient;
+  const bannerGradient = gradientFn(
+    freelancer.id ||
+      freelancer.freelancerId ||
+      freelancer.name ||
+      freelancer.freelancerName ||
+      displayName,
   );
   const bannerStyle = {
     backgroundImage: `linear-gradient(140deg, rgba(9,11,16,0.14) 0%, rgba(9,11,16,0.38) 100%), radial-gradient(100% 130% at 0% 0%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 52%), radial-gradient(75% 100% at 100% 0%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 55%), ${bannerGradient}`,
@@ -387,15 +431,17 @@ const FreelancerSelectionCard = memo(({
     >
       <div
         className="relative isolate h-24 min-h-24 shrink-0 overflow-visible rounded-xl border border-border/70 shadow-none"
-        style={coverImage ? undefined : bannerStyle}
+        style={bannerStyle}
       >
-        {coverImage ? (
+        {hasValidCover ? (
           <div className="absolute inset-0 overflow-hidden rounded-xl">
             <img
               src={coverImage}
-              alt={`${displayName} cover image`}
+              alt=""
+              aria-hidden="true"
               className="h-full w-full object-cover"
               loading="lazy"
+              onError={() => setCoverImageFailed(true)}
             />
             <div className="absolute inset-0 bg-linear-to-b from-black/5 via-black/24 to-black/52" />
             <div className="absolute inset-0 bg-[radial-gradient(120%_96%_at_0%_0%,rgba(255,255,255,0.28),transparent_48%),radial-gradient(100%_90%_at_100%_0%,rgba(255,255,255,0.18),transparent_50%)]" />

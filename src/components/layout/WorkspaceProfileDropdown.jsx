@@ -3,7 +3,6 @@
 import PropTypes from "prop-types";
 import React from "react";
 import { Link } from "react-router-dom";
-import BadgeCheck from "lucide-react/dist/esm/icons/badge-check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import House from "lucide-react/dist/esm/icons/house";
 import LogOut from "lucide-react/dist/esm/icons/log-out";
@@ -12,7 +11,6 @@ import Repeat2 from "lucide-react/dist/esm/icons/repeat-2";
 import UserRound from "lucide-react/dist/esm/icons/user-round";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import {
   Popover,
   PopoverContent,
@@ -56,7 +54,6 @@ const WorkspaceProfileDropdown = ({
   displayName,
   profile,
   profileInitial,
-  showVerifiedBadge = false,
   portalled = true,
 }) => {
   const { logout, user } = useAuth();
@@ -93,20 +90,7 @@ const WorkspaceProfileDropdown = ({
             </AvatarFallback>
           </Avatar>
 
-          {showVerifiedBadge && profile?.isVerified ? (
-            <span className="flex min-w-0 flex-col items-start gap-0.5 leading-none">
-              <span className="max-w-[104px] truncate whitespace-nowrap text-[#1C1B1F] dark:text-white">{displayName}</span>
-              <Badge
-                title="This freelancer has successfully completed at least one project on our platform."
-                className="h-4.5 border-emerald-500/20 bg-emerald-500/10 px-1.5 text-[8px] font-semibold uppercase tracking-[0.14em] text-emerald-300"
-              >
-                <BadgeCheck className="h-2.5 w-2.5" aria-hidden="true" />
-                Verified Freelancer
-              </Badge>
-            </span>
-          ) : (
-            <span className="max-w-[104px] truncate whitespace-nowrap text-[#1C1B1F] dark:text-white">{displayName}</span>
-          )}
+          <span className="max-w-[104px] truncate whitespace-nowrap text-[#1C1B1F] dark:text-white">{displayName}</span>
 
           <ChevronDown
             className={cn(
@@ -244,7 +228,6 @@ WorkspaceProfileDropdown.propTypes = {
     isVerified: PropTypes.bool,
   }),
   profileInitial: PropTypes.string.isRequired,
-  showVerifiedBadge: PropTypes.bool,
 };
 
 export default WorkspaceProfileDropdown;

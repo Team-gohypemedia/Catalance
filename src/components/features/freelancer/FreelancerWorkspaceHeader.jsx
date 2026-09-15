@@ -417,7 +417,6 @@ const FreelancerWorkspaceHeader = ({
                 displayName={displayName}
                 profileInitial={profileInitial}
                 currentDashboard="freelancer"
-                showVerifiedBadge
               />
             </div>
           </div>
