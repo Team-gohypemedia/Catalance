@@ -6,6 +6,12 @@ import { SEO_DATA } from "@/shared/lib/seo-config";
 
 const MATRIX_SPOTLIGHT_RADIUS = 250;
 
+const WhatsappIcon = ({ className = "w-5 h-5" }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347m-5.421 7.461c-1.926 0-3.805-.515-5.454-1.493l-.391-.233-4.053 1.063 1.082-3.953-.255-.406c-1.077-1.713-1.645-3.702-1.644-5.74.004-5.94 4.832-10.768 10.774-10.768 2.877.001 5.58 1.121 7.611 3.155 2.032 2.034 3.149 4.739 3.148 7.617-.003 5.941-4.832 10.768-10.772 10.768m0-20.083c-6.702 0-12.152 5.45-12.155 12.154-.001 2.141.558 4.232 1.619 6.071l-1.718 6.273 6.417-1.683c1.782.972 3.79 1.485 5.834 1.486h.005c6.702 0 12.153-5.45 12.156-12.155.001-3.248-1.261-6.303-3.555-8.599-2.295-2.296-5.349-3.56-8.598-3.56" />
+    </svg>
+);
+
 function MatrixPattern({ mouseX, mouseY, randomString }) {
     const maskImage = useMotionTemplate`radial-gradient(${MATRIX_SPOTLIGHT_RADIUS}px at ${mouseX}px ${mouseY}px, rgba(255,255,255,1) 0%, rgba(255,255,255,0.85) 20%, rgba(255,255,255,0.6) 40%, rgba(255,255,255,0.35) 60%, rgba(255,255,255,0.15) 80%, transparent 100%)`;
     const style = { maskImage, WebkitMaskImage: maskImage };
@@ -3279,6 +3285,11 @@ const GuestAIDemo = () => {
     const [activeResourceLibrary, setActiveResourceLibrary] = useState(null);
     const [chatToDelete, setChatToDelete] = useState(null);
     const [showLoginFirstModal, setShowLoginFirstModal] = useState(false);
+
+    const handleOpenWhatsappHelp = useCallback(() => {
+        const whatsappUrl = `https://wa.me/918447788703?text=${encodeURIComponent("Hi Catalance support team, I need help with my project requirement.")}`;
+        window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
+    }, []);
     const [activeDocPointsModalFile, setActiveDocPointsModalFile] = useState(null);
     const [isExtractingDocPoints, setIsExtractingDocPoints] = useState(false);
     const [docScanProgress, setDocScanProgress] = useState(0);
@@ -6086,28 +6097,43 @@ const GuestAIDemo = () => {
                             className={`relative z-10 overflow-hidden backdrop-blur rounded-[1.5rem] sm:rounded-[2rem] ${briefingCardClasses}`}
                         >
                             <div className="px-6 pt-7 pb-3 sm:px-8 sm:pt-8">
-                                <div className="flex gap-4 items-start">
-                                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
-                                        {String(briefingStepIndex + 1).padStart(2, '0')}
-                                    </span>
-                                    <div className="flex-1 min-w-0">
-                                        <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
-                                            {currentBriefingStep.key === 'role' ? (
-                                                'Choose the direction that best describes your project.'
-                                            ) : (
-                                                <>
-                                                    Briefly describe your{' '}
-                                                    <span className="text-primary">
-                                                        {briefingAnswers.role ? String(briefingAnswers.role).toLowerCase() : 'project'}
-                                                    </span>{' '}
-                                                    requirement.
-                                                </>
-                                            )}
-                                        </h2>
-                                        <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
-                                            {currentBriefingStep.label}
-                                        </p>
+                                <div className="flex gap-4 items-start justify-between">
+                                    <div className="flex gap-4 items-start flex-1 min-w-0">
+                                        <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
+                                            {String(briefingStepIndex + 1).padStart(2, '0')}
+                                        </span>
+                                        <div className="flex-1 min-w-0">
+                                            <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
+                                                {currentBriefingStep.key === 'role' ? (
+                                                    'Choose the direction that best describes your project.'
+                                                ) : (
+                                                    <>
+                                                        Briefly describe your{' '}
+                                                        <span className="text-primary">
+                                                            {briefingAnswers.role ? String(briefingAnswers.role).toLowerCase() : 'project'}
+                                                        </span>{' '}
+                                                        requirement.
+                                                    </>
+                                                )}
+                                            </h2>
+                                            <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
+                                                {currentBriefingStep.label}
+                                            </p>
+                                        </div>
                                     </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleOpenWhatsappHelp}
+                                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-xs transition-all duration-200 border cursor-pointer ${
+                                            isDark
+                                                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/80 hover:border-emerald-500/50'
+                                                : 'bg-emerald-50 text-emerald-700 border-emerald-300/80 hover:bg-emerald-100 hover:border-emerald-400'
+                                        }`}
+                                        title="Get Help via WhatsApp"
+                                    >
+                                        <WhatsappIcon className="w-3.5 h-3.5 fill-current text-emerald-600 dark:text-emerald-400" />
+                                        <span>Help</span>
+                                    </button>
                                 </div>
                             </div>
 
@@ -6894,6 +6920,7 @@ const GuestAIDemo = () => {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+
             </>
         );
     }
@@ -8014,6 +8041,23 @@ const GuestAIDemo = () => {
                     </Button>
                 </div>
 
+                {/* Help button in top-right of chat area */}
+                <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={handleOpenWhatsappHelp}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-xs transition-all duration-200 border cursor-pointer ${
+                            isDark
+                                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/80 hover:border-emerald-500/50'
+                                : 'bg-emerald-50 text-emerald-700 border-emerald-300/80 hover:bg-emerald-100 hover:border-emerald-400'
+                        }`}
+                        title="Get Help via WhatsApp"
+                    >
+                        <WhatsappIcon className="w-3.5 h-3.5 fill-current text-emerald-600 dark:text-emerald-400" />
+                        <span>Help</span>
+                    </button>
+                </div>
+
                 <ScrollArea
                     ref={scrollRef}
                     className={`w-full flex-1 min-h-0 pt-4 transition-[padding-left] duration-300 ease-in-out ${!isSidebarCompact ? 'lg:pl-72' : ''}`}
@@ -8628,6 +8672,8 @@ const GuestAIDemo = () => {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+
 
             {/* AI Document Requirement Points Popup Modal */}
             <AlertDialog open={Boolean(activeDocPointsModalFile) && !sessionId} onOpenChange={(open) => !open && setActiveDocPointsModalFile(null)}>
