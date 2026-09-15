@@ -6121,19 +6121,6 @@ const GuestAIDemo = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    <button
-                                        type="button"
-                                        onClick={handleOpenWhatsappHelp}
-                                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-xs transition-all duration-200 border cursor-pointer ${
-                                            isDark
-                                                ? 'bg-emerald-950/60 text-emerald-400 border-emerald-500/30 hover:bg-emerald-900/80 hover:border-emerald-500/50'
-                                                : 'bg-emerald-50 text-emerald-700 border-emerald-300/80 hover:bg-emerald-100 hover:border-emerald-400'
-                                        }`}
-                                        title="Get Help via WhatsApp"
-                                    >
-                                        <WhatsappIcon className="w-3.5 h-3.5 fill-current text-emerald-600 dark:text-emerald-400" />
-                                        <span>Help</span>
-                                    </button>
                                 </div>
                             </div>
 
@@ -8041,7 +8028,7 @@ const GuestAIDemo = () => {
                     </Button>
                 </div>
 
-                {/* Help button in top-right of chat area */}
+                {/* Help button in top-right of chat workspace */}
                 <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
                     <button
                         type="button"
@@ -8057,6 +8044,8 @@ const GuestAIDemo = () => {
                         <span>Help</span>
                     </button>
                 </div>
+
+
 
                 <ScrollArea
                     ref={scrollRef}
