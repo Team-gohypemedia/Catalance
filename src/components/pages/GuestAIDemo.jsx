@@ -3394,10 +3394,8 @@ const GuestAIDemo = () => {
 
             if (hasChatParam) {
                 setShowLoginFirstModal(true);
-            } else {
-                setShowLoginFirstModal(false);
             }
-        } else {
+        } else if (isUserLoggedIn) {
             setShowLoginFirstModal(false);
         }
     }, [isAuthLoading, isUserLoggedIn, location.search]);
@@ -4594,7 +4592,8 @@ const GuestAIDemo = () => {
     }, []);
 
     async function startBriefingConversation() {
-        if (!inferredBriefingService) {
+        const targetService = inferredBriefingService || services[0] || { id: 'website_uiux', name: 'Website Development', slug: 'website_uiux' };
+        if (!targetService) {
             toast.error(servicesError || 'We could not match the brief to a service yet.');
             return;
         }
@@ -4666,6 +4665,24 @@ const GuestAIDemo = () => {
             aiBulletPoints,
         });
 
+        if (!isUserLoggedIn) {
+            const pendingBriefData = {
+                content: summary,
+                serviceId: targetService.slug || targetService.id,
+                serviceName: targetService.name || targetService.title,
+                createdAt: Date.now(),
+            };
+            try {
+                localStorage.setItem('catalance_pending_brief', JSON.stringify(pendingBriefData));
+            } catch (err) {
+                console.warn('[GuestAIDemo] Failed to save pending brief:', err);
+            }
+            setBriefingSubmitting(false);
+            setScanProgress(0);
+            setShowLoginFirstModal(true);
+            return;
+        }
+
         setPendingBriefSubmission({
             content: summary,
             attachments: briefingFiles,
@@ -4677,7 +4694,7 @@ const GuestAIDemo = () => {
 
         setActiveDocPointsModalFile(null);
 
-        const started = await startServiceConversation(inferredBriefingService, {
+        const started = await startServiceConversation(targetService, {
             preserveExistingMessages: false,
             flowMode: SERVICE_SELECTION_MODES.FREELANCER,
         });
@@ -5085,11 +5102,17 @@ const GuestAIDemo = () => {
                         role: matchedService.name || matchedService.title
                     }));
                     setBriefingStepIndex(1);
-                } else {
+                } else if (queryChatId) {
                     startServiceConversation(matchedService, {
                         preserveExistingMessages: false,
                         flowMode: SERVICE_SELECTION_MODES.FREELANCER,
                     });
+                } else if (!selectedService && !sessionId) {
+                    setBriefingAnswers(prev => ({
+                        ...prev,
+                        role: matchedService.name || matchedService.title
+                    }));
+                    setBriefingStepIndex(1);
                 }
             }
         }
@@ -5107,6 +5130,37 @@ const GuestAIDemo = () => {
         sessionId,
         startServiceConversation,
     ]);
+
+    useEffect(() => {
+        if (!isUserLoggedIn || !services.length || loading) return;
+
+        try {
+            const rawPendingBrief = localStorage.getItem('catalance_pending_brief');
+            if (rawPendingBrief) {
+                const pendingBrief = JSON.parse(rawPendingBrief);
+                localStorage.removeItem('catalance_pending_brief');
+
+                if (pendingBrief?.content) {
+                    const targetService = services.find(
+                        (s) => s.slug === pendingBrief.serviceId || s.id === pendingBrief.serviceId || s.name === pendingBrief.serviceName
+                    ) || services[0];
+
+                    if (targetService) {
+                        setPendingBriefSubmission({
+                            content: pendingBrief.content,
+                            attachments: [],
+                        });
+                        void startServiceConversation(targetService, {
+                            preserveExistingMessages: false,
+                            flowMode: SERVICE_SELECTION_MODES.FREELANCER,
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('[GuestAIDemo] Failed to restore pending brief from localStorage:', err);
+        }
+    }, [isUserLoggedIn, services, loading, startServiceConversation]);
 
     const handleLoadPreviousChat = useCallback(async (chatMeta) => {
         if (!chatMeta?.sessionId) return;
@@ -5388,6 +5442,19 @@ const GuestAIDemo = () => {
     const handleSendMessage = async (e, forcedContent = null, options = {}) => {
         if (e) e.preventDefault();
         if (!isUserLoggedIn) {
+            const textToSave = forcedContent || input;
+            if (textToSave && textToSave.trim()) {
+                try {
+                    localStorage.setItem('catalance_pending_brief', JSON.stringify({
+                        content: textToSave,
+                        serviceId: selectedService?.slug || selectedService?.id,
+                        serviceName: selectedService?.name,
+                        createdAt: Date.now(),
+                    }));
+                } catch (err) {
+                    console.warn('[GuestAIDemo] Failed to save pending brief:', err);
+                }
+            }
             setShowLoginFirstModal(true);
             return;
         }
@@ -5905,7 +5972,7 @@ const GuestAIDemo = () => {
     const currentBriefingStep = BRIEFING_STEP_DEFINITIONS[briefingStepIndex] || BRIEFING_STEP_DEFINITIONS[0];
     const isLastBriefingStep = briefingStepIndex === BRIEFING_STEP_DEFINITIONS.length - 1;
     const canContinueBriefing = isLastBriefingStep
-        ? Boolean(inferredBriefingService) && !briefingSubmitting && !isExtractingDocPoints
+        ? !briefingSubmitting && !isExtractingDocPoints
         : isCurrentBriefingStepValid && !isExtractingDocPoints;
     const briefingBackdropClasses = isDark
         ? 'bg-[radial-gradient(circle_at_top,rgba(var(--brand-rgb),0.14),transparent_30%),radial-gradient(circle_at_bottom,rgba(var(--brand-rgb),0.08),transparent_24%),linear-gradient(180deg,rgba(24,24,27,1)_0%,rgba(15,15,18,1)_100%)]'
@@ -6751,6 +6818,82 @@ const GuestAIDemo = () => {
                         </section>
                     </div>
                 </main>
+
+                {/* Login First popup modal for briefing form view */}
+                <AlertDialog open={showLoginFirstModal} onOpenChange={(open) => {
+                    if (!open) setShowLoginFirstModal(false);
+                }}>
+                    <AlertDialogContent className={`max-w-[420px] w-[calc(100%-2rem)] rounded-[28px] p-6 border shadow-2xl backdrop-blur-2xl relative overflow-hidden transition-all ${
+                        isDark
+                            ? 'bg-[#121216]/98 border-white/15 text-white shadow-[0_28px_80px_-20px_rgba(0,0,0,0.9)]'
+                            : 'bg-[#FAF6F0]/98 border-[#e4dbd0] text-foreground shadow-[0_28px_80px_-20px_rgba(0,0,0,0.15)]'
+                    }`}>
+                        {/* Ambient Glow */}
+                        <div className="absolute -top-16 left-1/2 -translate-x-1/2 h-32 w-48 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
+
+                        <AlertDialogHeader className="space-y-2.5 pt-0.5">
+                            <div className="flex flex-col items-center gap-2">
+                                <div className="relative">
+                                    <div className="absolute -inset-1 rounded-full bg-primary/20 blur-md pointer-events-none" />
+                                    <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-md shadow-primary/25">
+                                        <img
+                                            src={cataLogo}
+                                            alt="Catalance Logo"
+                                            className={`h-9 w-9 object-contain ${isDark ? 'brightness-0' : 'brightness-0 invert'}`}
+                                        />
+                                    </div>
+                                </div>
+                                <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary tracking-widest uppercase">
+                                    <ShieldCheck className="w-3 h-3" /> Account Required
+                                </span>
+                            </div>
+
+                            <div className="space-y-1 text-center">
+                                <AlertDialogTitle className={`text-lg sm:text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-foreground'}`}>
+                                    Sign In to Continue
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className={`text-xs leading-relaxed ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
+                                    Sign in to access this interactive AI consultation, review proposal breakdowns, and match with verified talent.
+                                </AlertDialogDescription>
+                            </div>
+                        </AlertDialogHeader>
+
+                        {/* Value Proposition List */}
+                        <div className="my-3.5 rounded-2xl bg-white/80 dark:bg-white/[0.03] border border-[#e8dfd3] dark:border-white/10 p-3 space-y-2 text-xs">
+                            <div className="flex items-center gap-2 text-foreground/90">
+                                <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                    <Sparkles className="h-3 w-3" />
+                                </div>
+                                <span className="font-medium text-[11px]">Save & resume your project requirements</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-foreground/90">
+                                <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                    <ShieldCheck className="h-3 w-3" />
+                                </div>
+                                <span className="font-medium text-[11px]">Unlock full scope & pricing recommendations</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-foreground/90">
+                                <div className="flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                    <Users className="h-3 w-3" />
+                                </div>
+                                <span className="font-medium text-[11px]">Connect directly with vetted freelancers & agencies</span>
+                            </div>
+                        </div>
+
+                        <AlertDialogFooter className="flex flex-col gap-2 sm:flex-col mt-1">
+                            <AlertDialogAction
+                                onClick={() => {
+                                    const currentUrl = `${location.pathname}${location.search}`;
+                                    navigate(`/signin/phone?role=client&redirect=${encodeURIComponent(currentUrl)}`);
+                                }}
+                                className="h-11 w-full rounded-2xl bg-primary hover:bg-primary/90 active:scale-[0.99] px-6 text-sm font-bold text-white dark:text-black shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2 cursor-pointer border-0"
+                            >
+                                <LogIn className="h-4 w-4" />
+                                <span>Sign In to Continue</span>
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </>
         );
     }
@@ -8408,7 +8551,7 @@ const GuestAIDemo = () => {
 
             {/* Proper Login First popup modal */}
             <AlertDialog open={showLoginFirstModal} onOpenChange={(open) => {
-                if (!open && isUserLoggedIn) setShowLoginFirstModal(false);
+                if (!open) setShowLoginFirstModal(false);
             }}>
                 <AlertDialogContent className={`max-w-[420px] w-[calc(100%-2rem)] rounded-[28px] p-6 border shadow-2xl backdrop-blur-2xl relative overflow-hidden transition-all ${
                     isDark
