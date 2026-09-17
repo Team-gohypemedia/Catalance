@@ -1694,21 +1694,21 @@ const FreelancerProjectDetailContent = () => {
         label: "Phase 2 Completed Payout (20%)",
         phaseOrder: 2,
         percentage: 20,
-        note: "20% of your total share released after Phase 2 is completed.",
+        note: "20% payout released after Phase 2 is completed.",
       },
       {
         id: "phase-3",
         label: "Phase 3 Completed Payout (30%)",
         phaseOrder: 3,
         percentage: 30,
-        note: "30% of your total share released after Phase 3 is completed.",
+        note: "30% payout released after Phase 3 is completed.",
       },
       {
         id: "phase-4",
         label: "Phase 4 Final Payout (50%)",
         phaseOrder: 4,
         percentage: 50,
-        note: "50% of your total share released upon final completion.",
+        note: "50% payout released upon final completion.",
       },
     ];
 

@@ -4,7 +4,6 @@ import Check from "lucide-react/dist/esm/icons/check";
 import CheckCheck from "lucide-react/dist/esm/icons/check-check";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Image from "lucide-react/dist/esm/icons/image";
-import IndianRupee from "lucide-react/dist/esm/icons/indian-rupee";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Send from "lucide-react/dist/esm/icons/send";
 import Upload from "lucide-react/dist/esm/icons/upload";
@@ -354,56 +353,10 @@ const FreelancerProjectDetailSidebar = ({
     </Card>
 
     <Card className={panelClassName}>
-      <CardHeader className="px-4 pb-2 pt-4">
-        <CardTitle className={cn(eyebrowClassName, "flex items-center gap-1.5")}>
-          <IndianRupee className="h-3 w-3" />
-          Earnings Summary (50/50 Revenue Split)
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2 px-4 pb-4 pt-2 text-sm text-foreground dark:text-white">
-        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
-          <span className="text-muted-foreground">Project Base Budget</span>
-          <span className="font-semibold text-foreground dark:text-white">
-            {project?.currency || "₹"}
-            {(totalBudget * 2).toLocaleString()}
-          </span>
-        </div>
-        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
-          <span className="text-muted-foreground">Platform Share (50%)</span>
-          <span className="font-semibold text-muted-foreground">
-            {project?.currency || "₹"}
-            {totalBudget.toLocaleString()}
-          </span>
-        </div>
-        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
-          <span>Freelancer Total Share (50%)</span>
-          <span className="font-semibold text-foreground dark:text-white">
-            {project?.currency || "₹"}
-            {totalBudget.toLocaleString()}
-          </span>
-        </div>
-        <div className="flex items-center justify-between border-b border-border dark:border-white/[0.06] pb-2">
-          <span>Paid to You</span>
-          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-            {project?.currency || "₹"}
-            {spentBudget.toLocaleString()}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span>Pending Payout</span>
-          <span className="font-semibold text-foreground dark:text-white">
-            {project?.currency || "₹"}
-            {remainingBudget.toLocaleString()}
-          </span>
-        </div>
-      </CardContent>
-    </Card>
-
-    <Card className={panelClassName}>
       <CardHeader className="pb-3">
         <CardTitle className={eyebrowClassName}>Payout Schedule</CardTitle>
         <CardDescription className={subheadingClassName}>
-          4-Phase Payouts based on your 50% share: Phase 1 (0%), Phase 2 (20%), Phase 3 (30%), Phase 4 (50%).
+          4-Phase Payouts: Phase 1 (0%), Phase 2 (20%), Phase 3 (30%), Phase 4 (50%).
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
