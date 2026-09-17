@@ -151,7 +151,6 @@ const AuthButtons = ({ showAuthenticatedNav, currentDashboard, user }) => {
             isVerified: Boolean(user?.isVerified || user?.freelancerProfile?.isVerified),
           }}
           profileInitial={getInitials(displayName)}
-          showVerifiedBadge={currentDashboard === "freelancer"}
         />
       </div>
     );

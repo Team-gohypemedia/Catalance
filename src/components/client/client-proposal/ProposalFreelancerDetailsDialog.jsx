@@ -22,6 +22,7 @@ import {
   resolveProposalTitle,
   statusLabels,
   formatRating,
+  generateFreelancerGradient,
 } from "./proposal-utils.js";
 import { useAuth } from "@/shared/context/AuthContext";
 
@@ -81,12 +82,27 @@ const FreelancerDetailCard = memo(({
   const isSkillMatch = matchedSkills.length > 0;
 
   // Cover image from fetched profile
-  const coverImage = fetchedProfile?.coverImage || invitee?.freelancer?.coverImage || invitee?.coverImage;
+  const rawCoverImage = fetchedProfile?.coverImage || invitee?.freelancer?.coverImage || invitee?.coverImage;
+  const isSeededCover =
+    typeof rawCoverImage === "string" &&
+    /(?:^|\/)assets\/services\/[^/]+-cover\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i.test(
+      rawCoverImage.trim(),
+    );
+  const coverImage =
+    rawCoverImage &&
+    typeof rawCoverImage === "string" &&
+    !isSeededCover &&
+    rawCoverImage !== "null" &&
+    rawCoverImage !== "undefined" &&
+    rawCoverImage !== "[object Object]"
+      ? rawCoverImage.trim()
+      : "";
   const avatarSrc = invitee?.avatar || fetchedProfile?.avatar;
+  const bannerGradient = generateFreelancerGradient(freelancerId || displayName);
   const bannerStyle = {
     backgroundImage: coverImage 
       ? `url(${coverImage})`
-      : `linear-gradient(140deg, rgba(9,11,16,0.14) 0%, rgba(9,11,16,0.38) 100%), radial-gradient(100% 130% at 0% 0%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 52%), radial-gradient(75% 100% at 100% 0%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 55%), linear-gradient(135deg, #a1a1aa, #3f3f46)`,
+      : `linear-gradient(140deg, rgba(9,11,16,0.14) 0%, rgba(9,11,16,0.38) 100%), radial-gradient(100% 130% at 0% 0%, rgba(255,255,255,0.24) 0%, rgba(255,255,255,0) 52%), radial-gradient(75% 100% at 100% 0%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 55%), ${bannerGradient}`,
     backgroundBlendMode: "normal,screen,screen,normal",
     backgroundSize: "cover",
     backgroundPosition: "center",
