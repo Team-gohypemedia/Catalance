@@ -2092,9 +2092,14 @@ export const createUpfrontPaymentOrder = asyncHandler(async (req, res) => {
   const { acceptedProposal, paymentPlan, installment } =
     resolveDueInstallmentForPayment(project);
 
+  const baseAmount = installment.amount;
+  const gstRate = 0.18;
+  const gstAmount = Math.round(baseAmount * gstRate);
+  const totalPayableAmount = baseAmount + gstAmount;
+
   const receipt = `payment_${installment.sequence}_${id.slice(-8)}_${Date.now()}`.slice(0, 40);
   const order = await razorpay.orders.create({
-    amount: installment.amount * 100,
+    amount: totalPayableAmount * 100,
     currency: "INR",
     receipt,
     notes: {
@@ -2103,6 +2108,10 @@ export const createUpfrontPaymentOrder = asyncHandler(async (req, res) => {
       freelancerId: acceptedProposal.freelancerId,
       paymentType: installment.key,
       paymentSequence: String(installment.sequence),
+      baseAmount: String(baseAmount),
+      gstAmount: String(gstAmount),
+      gstRate: "0.18",
+      totalPayableAmount: String(totalPayableAmount),
     },
   });
 
@@ -2110,11 +2119,21 @@ export const createUpfrontPaymentOrder = asyncHandler(async (req, res) => {
     data: {
       key: env.RAZORPAY_API_KEY,
       orderId: order.id,
-      amount: installment.amount,
+      baseAmount,
+      gstRate,
+      gstAmount,
+      totalPayableAmount,
+      amount: totalPayableAmount,
       amountPaise: order.amount,
       currency: order.currency,
       percentage: installment.percentage,
-      installment,
+      installment: {
+        ...installment,
+        baseAmount,
+        gstRate,
+        gstAmount,
+        totalWithGst: totalPayableAmount,
+      },
       paymentPlan,
       projectId: id,
       projectTitle: project.title,
@@ -2179,8 +2198,15 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
     throw new AppError("Razorpay order does not match the payment installment due", 400);
   }
 
-  if (Number(orderDetails.amount || 0) !== installment.amount * 100) {
-    throw new AppError("Paid amount does not match the required installment", 400);
+  const baseAmount = installment.amount;
+  const gstRate = 0.18;
+  const gstAmount = Math.round(baseAmount * gstRate);
+  const expectedTotalPaise = (baseAmount + gstAmount) * 100;
+  const fallbackBasePaise = baseAmount * 100;
+
+  const orderAmount = Number(orderDetails.amount || 0);
+  if (orderAmount !== expectedTotalPaise && orderAmount !== fallbackBasePaise) {
+    throw new AppError("Paid amount does not match the required installment + 18% GST", 400);
   }
 
   if (!["authorized", "captured"].includes(String(paymentDetails.status || ""))) {
@@ -2219,10 +2245,10 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
 
   const paymentMessage =
     installment.sequence === 1
-      ? `Initial 20% payment completed. "${project.title}" is now active.`
+      ? `Initial 20% payment (₹${(baseAmount + gstAmount).toLocaleString()} incl. 18% GST) completed. "${project.title}" is now active.`
       : installment.sequence === 2
-        ? `40% payment completed after phase 2 for "${project.title}".`
-        : `Final 40% payment completed for "${project.title}".`;
+        ? `40% payment (₹${(baseAmount + gstAmount).toLocaleString()} incl. 18% GST) completed after phase 2 for "${project.title}".`
+        : `Final 40% payment (₹${(baseAmount + gstAmount).toLocaleString()} incl. 18% GST) completed for "${project.title}".`;
 
   try {
     await sendNotificationToUser(acceptedProposal.freelancerId, {
@@ -2234,6 +2260,9 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
         projectId: id,
         paymentId: razorpayPaymentId,
         installmentSequence: installment.sequence,
+        baseAmount,
+        gstAmount,
+        totalAmount: baseAmount + gstAmount,
       },
     });
   } catch (notificationError) {
@@ -2243,14 +2272,27 @@ export const verifyUpfrontPayment = asyncHandler(async (req, res) => {
   res.json({
     data: {
       project: updatedProject,
-      paymentAmount: installment.amount,
-      installment,
+      basePaymentAmount: baseAmount,
+      gstRate,
+      gstAmount,
+      totalPaymentAmount: baseAmount + gstAmount,
+      paymentAmount: baseAmount + gstAmount,
+      installment: {
+        ...installment,
+        baseAmount,
+        gstRate,
+        gstAmount,
+        totalWithGst: baseAmount + gstAmount,
+      },
       paymentPlan: updatedProject.paymentPlan,
       message: paymentMessage,
       payment: {
         orderId: razorpayOrderId,
         paymentId: razorpayPaymentId,
         status: paymentDetails.status,
+        baseAmount,
+        gstAmount,
+        totalPaid: baseAmount + gstAmount,
       },
     },
   });
@@ -2273,6 +2315,11 @@ export const payUpfront = asyncHandler(async (req, res) => {
   const project = await getProjectForUpfrontPayment(id);
   assertProjectOwnerCanPay(project, userId);
   const { acceptedProposal, paymentPlan, installment } = resolveDueInstallmentForPayment(project);
+
+  const baseAmount = installment.amount;
+  const gstRate = 0.18;
+  const gstAmount = Math.round(baseAmount * gstRate);
+  const totalPayableAmount = baseAmount + gstAmount;
 
   const nextSpentAmount = Math.min(
     paymentPlan.totalAmount,
@@ -2306,16 +2353,26 @@ export const payUpfront = asyncHandler(async (req, res) => {
 
   const message =
     installment.sequence === 1
-      ? `Initial 20% payment processed. "${project.title}" is now active.`
+      ? `Initial 20% payment (₹${totalPayableAmount.toLocaleString()} incl. 18% GST) processed. "${project.title}" is now active.`
       : installment.sequence === 2
-        ? `40% payment processed after phase 2 for "${project.title}".`
-        : `Final 40% payment processed for "${project.title}".`;
+        ? `40% payment (₹${totalPayableAmount.toLocaleString()} incl. 18% GST) processed after phase 2 for "${project.title}".`
+        : `Final 40% payment (₹${totalPayableAmount.toLocaleString()} incl. 18% GST) processed for "${project.title}".`;
 
   res.json({
     data: {
       project: updatedProject,
-      paymentAmount: installment.amount,
-      installment,
+      basePaymentAmount: baseAmount,
+      gstRate,
+      gstAmount,
+      totalPaymentAmount: totalPayableAmount,
+      paymentAmount: totalPayableAmount,
+      installment: {
+        ...installment,
+        baseAmount,
+        gstRate,
+        gstAmount,
+        totalWithGst: totalPayableAmount,
+      },
       paymentPlan: updatedProject.paymentPlan,
       message,
     },

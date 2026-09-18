@@ -1,6 +1,8 @@
 import { AppError } from "../../utils/app-error.js";
 import { getSopFromTitle } from "../../../../src/shared/data/sopTemplates.js";
 
+export const GST_RATE = 0.18;
+
 const INSTALLMENT_DEFINITIONS_V1 = Object.freeze([
   {
     sequence: 1,
@@ -218,6 +220,8 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
 
   const installments = INSTALLMENT_DEFINITIONS.map((definition, index) => {
     const amount = installmentAmounts[index] || 0;
+    const gstAmount = Math.round(amount * GST_RATE);
+    const totalWithGst = amount + gstAmount;
     cumulativeAmount += amount;
 
     const isPaid = paidAmount >= cumulativeAmount;
@@ -232,7 +236,14 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
     return {
       ...definition,
       amount,
+      baseAmount: amount,
+      gstRate: GST_RATE,
+      gstAmount,
+      totalWithGst,
+      totalPayable: totalWithGst,
       cumulativeAmount,
+      cumulativeBaseAmount: cumulativeAmount,
+      cumulativeTotalWithGst: cumulativeAmount + Math.round(cumulativeAmount * GST_RATE),
       remainingAfterPayment: Math.max(0, totalAmount - cumulativeAmount),
       phaseGateReached,
       status,
@@ -245,10 +256,27 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
   const nextUnpaidInstallment =
     installments.find((installment) => !installment.isPaid) || null;
 
+  const gstTotalAmount = Math.round(totalAmount * GST_RATE);
+  const totalAmountWithGst = totalAmount + gstTotalAmount;
+  const paidGstAmount = Math.round(paidAmount * GST_RATE);
+  const paidTotalWithGst = paidAmount + paidGstAmount;
+  const remainingGstAmount = Math.round(remainingAmount * GST_RATE);
+  const remainingTotalWithGst = remainingAmount + remainingGstAmount;
+
   return {
     totalAmount,
+    baseTotalAmount: totalAmount,
+    gstRate: GST_RATE,
+    gstTotalAmount,
+    totalAmountWithGst,
     paidAmount,
+    paidBaseAmount: paidAmount,
+    paidGstAmount,
+    paidTotalWithGst,
     remainingAmount,
+    remainingBaseAmount: remainingAmount,
+    remainingGstAmount,
+    remainingTotalWithGst,
     paidPercentage: Math.round((paidAmount / totalAmount) * 100),
     completedPhaseCount: phaseSummary.completedPhaseCount,
     completedPhaseIds: phaseSummary.completedPhaseIds,
@@ -326,5 +354,3 @@ export const attachProjectPaymentPlan = (project) => ({
   ...project,
   paymentPlan: resolveProjectPaymentPlan(project),
 });
-
-

@@ -36,6 +36,7 @@ export const processProjectInstallmentPayment = async ({
 
   const orderData = orderPayload?.data || {};
   const installment = orderData.installment || orderData.paymentPlan?.nextDueInstallment || null;
+  const totalAmountFormatted = Number(orderData.totalPayableAmount || orderData.amount || 0).toLocaleString();
   const paymentProof = await openRazorpayCheckout({
     key: orderData.key,
     amountPaise: orderData.amountPaise,
@@ -43,13 +44,15 @@ export const processProjectInstallmentPayment = async ({
     orderId: orderData.orderId,
     description:
       description ||
-      `${installment?.label || "Project payment"} for ${
+      `${installment?.label || "Project payment"} - ₹${totalAmountFormatted} (incl. 18% GST) for ${
         orderData.projectTitle || "project"
       }`,
     prefill,
     notes: {
       projectId: orderData.projectId,
       installmentSequence: installment?.sequence,
+      baseAmount: orderData.baseAmount,
+      gstAmount: orderData.gstAmount,
     },
   });
 

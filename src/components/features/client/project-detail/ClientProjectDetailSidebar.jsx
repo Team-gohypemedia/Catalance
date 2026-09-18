@@ -419,6 +419,12 @@ const ClientProjectDetailSidebar = ({
             ₹{remainingBudget.toLocaleString()}
           </span>
         </div>
+        <div className="flex items-center justify-between border-t border-border/40 pt-2 text-xs text-muted-foreground">
+          <span>Applicable GST (18%)</span>
+          <span className="font-medium text-foreground">
+            + ₹{Math.round(totalBudget * 0.18).toLocaleString()}
+          </span>
+        </div>
       </CardContent>
     </Card>
 
@@ -426,57 +432,74 @@ const ClientProjectDetailSidebar = ({
       <CardHeader className="pb-3">
         <CardTitle className={eyebrowClassName}>Payment Schedule</CardTitle>
         <CardDescription className={subheadingClassName}>
-          Track your 3 project installments: 20% Advance, 40% after Phase 2, 40% after Phase 4.
+          Track your 3 project installments (Amount + 18% GST): 20% Advance, 40% after Phase 2, 40% after Phase 4.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pt-0">
         {Array.isArray(paymentPlan?.installments) && paymentPlan.installments.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 xl:grid-cols-1">
-            {paymentPlan.installments.map((installment) => (
-              <div
-                key={installment.sequence}
-                className={cn(
-                  insetPanelClassName,
-                  "relative flex flex-col justify-between space-y-2 p-3.5 sm:p-4 bg-card",
-                  installment.isDue && "border-primary/25 bg-primary/10",
-                  installment.isPaid && "border-emerald-500/20 bg-emerald-500/10",
-                )}
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1.5">
-                    <Badge
-                      className={cn(
-                        "border px-2 py-0.5 text-[9px] font-medium sm:px-2.5 sm:py-1 sm:text-[10px]",
-                        installment.isPaid
-                          ? "border-emerald-500/20 dark:border-emerald-500/10 bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200"
+            {paymentPlan.installments.map((installment) => {
+              const baseAmt = Number(installment.baseAmount || installment.amount || 0);
+              const gstAmt = Number(
+                installment.gstAmount !== undefined
+                  ? installment.gstAmount
+                  : Math.round(baseAmt * 0.18)
+              );
+              const totalAmt = Number(
+                installment.totalWithGst || installment.totalPayable || baseAmt + gstAmt
+              );
+
+              return (
+                <div
+                  key={installment.sequence}
+                  className={cn(
+                    insetPanelClassName,
+                    "relative flex flex-col justify-between space-y-2 p-3.5 sm:p-4 bg-card",
+                    installment.isDue && "border-primary/25 bg-primary/10",
+                    installment.isPaid && "border-emerald-500/20 bg-emerald-500/10",
+                  )}
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-1.5">
+                      <Badge
+                        className={cn(
+                          "border px-2 py-0.5 text-[9px] font-medium sm:px-2.5 sm:py-1 sm:text-[10px]",
+                          installment.isPaid
+                            ? "border-emerald-500/20 dark:border-emerald-500/10 bg-emerald-500/10 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-200"
+                            : installment.isDue
+                              ? "border-primary/10 bg-primary/15 text-primary"
+                              : "border-border dark:border-white/[0.08] bg-muted dark:bg-[#111111] text-muted-foreground",
+                        )}
+                      >
+                        {installment.isPaid
+                          ? "Paid"
                           : installment.isDue
-                            ? "border-primary/10 bg-primary/15 text-primary"
-                            : "border-border dark:border-white/[0.08] bg-muted dark:bg-[#111111] text-muted-foreground",
-                      )}
-                    >
-                      {installment.isPaid
-                        ? "Paid"
-                        : installment.isDue
-                          ? "Next Payment"
-                          : "Upcoming"}
-                    </Badge>
-                    <span className="text-[10px] sm:text-[11px] font-semibold uppercase leading-[1.4] tracking-[0.1em] text-muted-foreground break-words">
-                      {installment.label}
-                    </span>
+                            ? "Next Payment"
+                            : "Upcoming"}
+                      </Badge>
+                      <span className="text-[10px] sm:text-[11px] font-semibold uppercase leading-[1.4] tracking-[0.1em] text-muted-foreground break-words">
+                        {installment.label}
+                      </span>
+                    </div>
+                    <div className="mt-0.5">
+                      <p className="text-xl sm:text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
+                        ₹{totalAmt.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground font-medium">
+                        Base: ₹{baseAmt.toLocaleString()} + 18% GST: ₹{gstAmt.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <p className="mt-0.5 text-xl sm:text-2xl font-semibold tracking-[-0.03em] text-foreground dark:text-white">
-                    ₹{Number(installment.amount || 0).toLocaleString()}
+                  
+                  <p className="text-[11px] leading-[1.35] text-muted-foreground">
+                    {getInstallmentScheduleNote(
+                      installment,
+                      paymentPlan.installments,
+                    )}
                   </p>
                 </div>
-                
-                <p className="text-[11px] leading-[1.35] text-muted-foreground">
-                  {getInstallmentScheduleNote(
-                    installment,
-                    paymentPlan.installments,
-                  )}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
@@ -484,31 +507,60 @@ const ClientProjectDetailSidebar = ({
           </p>
         )}
 
-        {dueInstallment ? (
-          <div className="rounded-lg border border-primary/30 bg-card p-3">
-            <p className="text-sm font-semibold text-foreground">
-              Current payment due: {dueInstallment.label}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Pay {dueInstallment.percentage}% now to keep the project billing on
-              schedule.
-            </p>
-            <Button
-              className="mt-3 w-full gap-2"
-              disabled={isProcessingInstallment}
-              onClick={handlePayDueInstallment}
-            >
-              {isProcessingInstallment ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <CreditCard className="h-4 w-4" />
-              )}
-              {isProcessingInstallment
-                ? "Processing..."
-                : `Pay ${dueInstallment.percentage}%`}
-            </Button>
-          </div>
-        ) : paymentPlan?.isFullyPaid ? (
+        {dueInstallment ? (() => {
+          const dueBase = Number(dueInstallment.baseAmount || dueInstallment.amount || 0);
+          const dueGst = Number(
+            dueInstallment.gstAmount !== undefined
+              ? dueInstallment.gstAmount
+              : Math.round(dueBase * 0.18)
+          );
+          const dueTotal = Number(
+            dueInstallment.totalWithGst || dueInstallment.totalPayable || dueBase + dueGst
+          );
+
+          return (
+            <div className="rounded-lg border border-primary/30 bg-card p-3 space-y-2.5">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Current payment due: {dueInstallment.label}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Pay {dueInstallment.percentage}% now to keep the project billing on schedule.
+                </p>
+              </div>
+
+              <div className="rounded-md bg-muted/40 p-2.5 text-xs space-y-1.5 border border-border/50">
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Milestone ({dueInstallment.percentage}%):</span>
+                  <span className="font-medium text-foreground">₹{dueBase.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>GST (18%):</span>
+                  <span className="font-medium text-foreground">₹{dueGst.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between border-t border-border/60 pt-1.5 font-semibold text-foreground">
+                  <span>Total Payable:</span>
+                  <span className="text-primary font-bold">₹{dueTotal.toLocaleString()}</span>
+                </div>
+              </div>
+
+              <Button
+                className="w-full gap-2"
+                disabled={isProcessingInstallment}
+                onClick={handlePayDueInstallment}
+              >
+                {isProcessingInstallment ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
+                {isProcessingInstallment
+                  ? "Processing..."
+                  : `Pay ₹${dueTotal.toLocaleString()} (incl. 18% GST)`}
+              </Button>
+            </div>
+          );
+        })() : paymentPlan?.isFullyPaid ? (
           <div className="rounded-lg border border-emerald-500/30 bg-card p-3 text-sm text-emerald-400">
             All scheduled client payments are complete.
           </div>
