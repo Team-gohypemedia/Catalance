@@ -1234,6 +1234,11 @@ input[data-input-otp-input] {
 }
 
 /* Prevent Radix UI (Select/Dialog) scroll lock from causing page layout shifts */
+/* Keep floating support out of dialogs, confirmation popups, and drawers. */
+body:has(:is([role="dialog"], [role="alertdialog"]):not([data-state="closed"]):not([hidden]):not([aria-hidden="true"])) [data-floating-help] {
+  display: none;
+}
+
 html {
   scrollbar-gutter: stable;
 }

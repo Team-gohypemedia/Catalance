@@ -117,6 +117,7 @@ export const CataButton = () => {
 
   return (
     <div
+      data-floating-help
       className={cn(
         "fixed right-3 z-[100] origin-bottom-right scale-90 group cursor-grab active:cursor-grabbing sm:right-8 sm:scale-100 touch-none select-none",
         isDragging && "cursor-grabbing",

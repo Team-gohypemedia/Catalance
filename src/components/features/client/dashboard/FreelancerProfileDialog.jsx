@@ -28,21 +28,6 @@ import {
   resolveFreelancerMatchPercent,
 } from "@/shared/lib/proposal-match";
 
-const PROJECT_IMAGE_PLACEHOLDER = `data:image/svg+xml;utf8,${encodeURIComponent(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" fill="none">
-    <defs>
-      <linearGradient id="grad" x1="0" y1="0" x2="960" y2="540" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#1f2937"/>
-        <stop offset="1" stop-color="#111827"/>
-      </linearGradient>
-    </defs>
-    <rect width="960" height="540" fill="url(#grad)"/>
-    <circle cx="144" cy="122" r="88" fill="white" fill-opacity="0.06"/>
-    <circle cx="844" cy="412" r="120" fill="white" fill-opacity="0.04"/>
-    <text x="480" y="286" fill="white" fill-opacity="0.8" font-family="Arial" font-size="34" text-anchor="middle">Catalance Portfolio</text>
-  </svg>`,
-)}`;
-
 const normalizePlainText = (value) => String(value || "").trim();
 const asObject = (value) =>
   value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -202,7 +187,7 @@ const buildServiceBadges = (
 
 const formatRating = (value) => {
   const numeric = Number(value);
-  if (!Number.isFinite(numeric) || numeric <= 0) return "N/A";
+  if (!Number.isFinite(numeric) || numeric <= 0) return null;
   return numeric.toFixed(1);
 };
 
@@ -397,6 +382,50 @@ const resolvePortfolioProjects = (freelancer = {}) => {
     .slice(0, 12);
 };
 
+const PortfolioProjectCard = ({ project, index }) => {
+  const [failedImage, setFailedImage] = useState("");
+  const title = project.title || `Project ${index + 1}`;
+  const showImage = Boolean(project.image) && failedImage !== project.image;
+  const Wrapper = project.link ? "a" : "div";
+
+  return (
+    <Wrapper
+      className="group block min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card transition-colors hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      {...(project.link ? { href: project.link, target: "_blank", rel: "noopener noreferrer" } : {})}
+    >
+      {showImage && (
+        <div className="aspect-[2/1] overflow-hidden bg-muted sm:aspect-video">
+          <img
+            src={project.image}
+            alt={title}
+            loading="lazy"
+            className="h-full w-full object-cover"
+            onError={() => setFailedImage(project.image)}
+          />
+        </div>
+      )}
+      <div className="space-y-2 p-3.5 sm:p-4">
+        <div className="flex items-start gap-2">
+          <h4 className="min-w-0 flex-1 break-words text-[13px] font-semibold leading-snug text-foreground [overflow-wrap:anywhere] sm:text-sm">
+            {title}
+          </h4>
+          {project.link && <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
+        </div>
+        {project.subtitle && (
+          <p className="break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
+            {project.subtitle}
+          </p>
+        )}
+        {project.link && (
+          <span className="inline-flex min-h-8 items-center text-xs font-semibold text-primary">
+            View project <span className="sr-only">(opens in a new tab)</span>
+          </span>
+        )}
+      </div>
+    </Wrapper>
+  );
+};
+
 const TagListCard = ({
   title,
   icon: Icon,
@@ -404,8 +433,8 @@ const TagListCard = ({
   emptyLabel,
   highlightKey = "",
 }) => (
-  <Card className="border-border/60 bg-muted/15 p-4">
-    <h3 className="mb-3 flex items-center gap-2 text-base font-semibold text-foreground">
+  <Card className="border-border/60 bg-muted/15 p-3.5 shadow-none sm:p-4">
+    <h3 className="mb-3 flex items-center gap-2 text-sm sm:text-base font-semibold text-foreground">
       <Icon className="h-4 w-4 text-primary" />
       {title}
     </h3>
@@ -621,7 +650,9 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     profileDetails?.summary,
     profileDetails?.profileSummary,
   );
-  const profileSubline = profileHeadline || profileBio;
+  const profileSubline = /^(individual|freelancer)$/i.test(profileHeadline)
+    ? ""
+    : profileHeadline;
   const responseTimeLabel = firstNonEmptyText(
     viewingFreelancer?.responseTime,
     viewingFreelancer?.avgResponseTime,
@@ -740,13 +771,13 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[90vh] w-[96vw] max-w-6xl flex-col gap-0 overflow-hidden border border-border/70 bg-card p-0">
+      <DialogContent className="flex h-[90dvh] w-full max-w-6xl rounded-2xl flex-col gap-0 overflow-hidden border border-border/70 bg-card p-0">
         {viewingFreelancer ? (
           <>
             <div className="relative shrink-0 overflow-hidden border-b border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))]">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_130%_at_0%_0%,rgba(var(--brand-rgb),0.14)_0%,rgba(var(--brand-rgb),0)_56%),radial-gradient(120%_120%_at_100%_0%,rgba(59,130,246,0.14)_0%,rgba(59,130,246,0)_54%)]" />
 
-              <DialogHeader className="relative p-4 pr-12 sm:px-6 sm:pt-6 sm:pb-5 sm:pr-14 text-left">
+              <DialogHeader className="relative p-4 sm:px-6 sm:pt-6 sm:pb-5 text-left">
                 <DialogTitle className="sr-only">
                   {displayName} Freelancer Profile
                 </DialogTitle>
@@ -754,19 +785,20 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                   Profile overview with services, skills, languages, and projects.
                 </DialogDescription>
 
-                <div className="flex items-start gap-3 sm:gap-4">
-                  <Avatar className="h-16 w-16 sm:h-24 sm:w-24 border-2 sm:border-4 border-card shadow-[0_10px_25px_-5px_rgba(0,0,0,0.2)] shrink-0">
+                <div className="grid grid-cols-[3rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5 sm:flex sm:gap-4">
+                  <Avatar className="h-12 w-12 sm:h-24 sm:w-24 border-2 sm:border-4 border-card shadow-sm shrink-0">
                     <AvatarImage src={avatarSrc} alt={displayName} />
                     <AvatarFallback className="bg-primary text-primary-foreground text-lg sm:text-2xl font-bold tracking-wide">
                       {displayInitials}
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2.5">
-                      <h2 className="truncate text-lg sm:text-3xl font-bold leading-tight tracking-tight text-foreground">
+                  <div className="contents sm:block sm:min-w-0 sm:flex-1 sm:space-y-2">
+                    <div className="contents sm:flex sm:flex-wrap sm:items-center sm:gap-2.5">
+                      <h2 className="min-w-0 self-center break-words pr-7 text-[15px] font-bold leading-snug tracking-tight text-foreground sm:w-full sm:text-3xl">
                         {displayName}
                       </h2>
+                      <div className="col-span-2 flex flex-wrap items-center gap-1.5 sm:contents">
                       <Badge className="border-primary/20 bg-primary/15 text-primary text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5">
                         {roleLabel}
                       </Badge>
@@ -786,22 +818,23 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                           {matchScore} Match
                         </Badge>
                       )}
+                      </div>
                     </div>
 
                     {profileSubline && (
-                      <p className="truncate text-xs sm:text-sm text-muted-foreground leading-none text-left">
+                      <p className="col-span-2 break-words text-xs sm:text-sm text-muted-foreground leading-relaxed text-left">
                         {profileSubline}
                       </p>
                     )}
 
-                    <div className="flex flex-wrap items-center justify-start gap-1.5 sm:gap-2">
-                      <Badge
+                    <div className="col-span-2 flex flex-wrap items-center justify-start gap-1.5 sm:gap-2">
+                      {ratingLabel && <Badge
                         variant="outline"
                         className="border-primary/20 bg-primary/5 text-primary text-[10px] sm:text-xs px-1.5 py-0 sm:px-2.5 sm:py-0.5"
                       >
                         <Star className="mr-1 h-3 w-3 sm:h-3.5 sm:w-3.5 fill-current" />
                         {ratingLabel}
-                      </Badge>
+                      </Badge>}
 
                       {locationLabel && (
                         <Badge
@@ -829,28 +862,28 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
             </div>
 
             <ScrollArea className="min-h-0 flex-1">
-              <div className="space-y-3 p-4 sm:p-6">
-                <div className="space-y-4">
-                  <Card className="border-border/60 bg-muted/15 p-4">
-                    <h3 className="mb-2 flex items-center gap-2 text-base font-semibold text-foreground">
+              <div className="space-y-3 p-3 sm:p-6">
+                <div className="space-y-3 sm:space-y-4">
+                  <Card className="border-border/60 bg-muted/15 p-3.5 shadow-none sm:p-4">
+                    <h3 className="mb-2 flex items-center gap-2 text-sm sm:text-base font-semibold text-foreground">
                       <User className="h-4 w-4 text-primary" />
                       About
                     </h3>
-                    <p className="text-sm leading-relaxed text-muted-foreground">
+                    <p className="whitespace-pre-line break-words text-[13px] leading-relaxed text-muted-foreground [overflow-wrap:anywhere] sm:text-sm">
                       {profileBio || "No bio available for this freelancer yet."}
                     </p>
                   </Card>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid grid-cols-1 gap-2 ${stats.length > 1 ? "sm:grid-cols-2" : ""}`}>
                     {stats.map((item) => (
                       <div
                         key={`freelancer-stat-${item.label}`}
-                        className="rounded-lg border border-border/60 bg-muted/15 p-3"
+                        className="flex min-w-0 items-baseline justify-between gap-4 rounded-xl border border-border/60 bg-muted/15 px-3.5 py-3 sm:block sm:p-3"
                       >
-                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                        <p className="shrink-0 text-[11px] text-muted-foreground sm:uppercase sm:tracking-wide">
                           {item.label}
                         </p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">
+                        <p className="min-w-0 break-words text-right text-xs font-semibold leading-relaxed text-foreground [overflow-wrap:anywhere] sm:mt-1 sm:text-left sm:text-sm">
                           {item.value}
                         </p>
                       </div>
@@ -880,72 +913,26 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                   />
                 </div>
 
-                <Card className="border-border/60 bg-muted/15 p-4">
+                <Card className="border-border/60 bg-muted/15 p-3.5 shadow-none sm:p-4">
                   <div className="mb-3 flex items-center justify-between gap-3">
-                    <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                    <h3 className="flex items-center gap-2 text-sm sm:text-base font-semibold text-foreground">
                       <Briefcase className="h-4 w-4 text-primary" />
                       Projects
                     </h3>
                     <Badge variant="outline" className="border-border/70 text-xs">
-                      {portfolioProjects.length} items
+                      {portfolioProjects.length} {portfolioProjects.length === 1 ? "project" : "projects"}
                     </Badge>
                   </div>
 
                   {portfolioProjects.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      {portfolioProjects.map((project, index) => {
-                        const title = project.title || `Project ${index + 1}`;
-                        const imageSrc = project.image || PROJECT_IMAGE_PLACEHOLDER;
-                        const projectLink = project.link;
-                        const projectSubtitle =
-                          project.subtitle ||
-                          (projectLink
-                            ? projectLink.replace(/^https?:\/\//i, "")
-                            : "Project details available in profile");
-                        const Wrapper = projectLink ? "a" : "div";
-                        const wrapperProps = projectLink
-                          ? {
-                              href: projectLink,
-                              target: "_blank",
-                              rel: "noopener noreferrer",
-                            }
-                          : {};
-
-                        return (
-                          <Wrapper
-                            key={`portfolio-project-${index}`}
-                            className="group block overflow-hidden rounded-xl border border-border/60 bg-card/80 transition-all hover:border-primary/30 hover:shadow-[0_12px_30px_rgba(0,0,0,0.2)]"
-                            {...wrapperProps}
-                          >
-                            <div className="relative aspect-video overflow-hidden bg-muted">
-                              <img
-                                src={imageSrc}
-                                alt={title}
-                                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                onError={(event) => {
-                                  event.currentTarget.onerror = null;
-                                  event.currentTarget.src = PROJECT_IMAGE_PLACEHOLDER;
-                                }}
-                              />
-                              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
-                              {projectLink && (
-                                <span className="absolute right-2 top-2 rounded-full bg-black/50 p-1.5 text-white backdrop-blur-sm">
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="p-3">
-                              <p className="truncate text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
-                                {title}
-                              </p>
-                              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                                {projectSubtitle}
-                              </p>
-                            </div>
-                          </Wrapper>
-                        );
-                      })}
+                      {portfolioProjects.map((project, index) => (
+                        <PortfolioProjectCard
+                          key={`${project.title}-${project.link}-${index}`}
+                          project={project}
+                          index={index}
+                        />
+                      ))}
                     </div>
                   ) : (
                     <div className="rounded-xl border border-dashed border-border/70 bg-background/30 p-10 text-center">
@@ -958,13 +945,13 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
               </div>
             </ScrollArea>
 
+            {primaryPortfolioUrl && (
             <DialogFooter className="shrink-0 border-t border-border/60 p-3 sm:px-6 sm:py-4 sm:justify-between flex-row items-center justify-end gap-2">
               <p className="hidden sm:block text-xs text-muted-foreground">
                 Review services, skills, languages, pricing, and projects before sending a proposal.
               </p>
-              <div className="flex gap-2">
-                {primaryPortfolioUrl && (
-                  <Button variant="outline" asChild>
+              <div className="flex w-full gap-2 sm:w-auto">
+                  <Button variant="outline" className="min-h-10 flex-1 sm:flex-none" asChild>
                     <a
                       href={primaryPortfolioUrl}
                       target="_blank"
@@ -974,12 +961,9 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                       Visit Portfolio
                     </a>
                   </Button>
-                )}
-                <Button variant="outline" onClick={() => onOpenChange(false)}>
-                  Close
-                </Button>
               </div>
             </DialogFooter>
+            )}
           </>
         ) : (
           <div className="p-8 text-center text-sm text-muted-foreground">

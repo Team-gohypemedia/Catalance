@@ -1,6 +1,7 @@
 import React, { startTransition, useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { generateRandomString } from "@/components/ui/evervault-card";
+import GuestBriefDialog from './GuestBriefDialog';
 import SeoMeta from "@/components/common/SeoMeta";
 import { SEO_DATA } from "@/shared/lib/seo-config";
 
@@ -3295,7 +3296,6 @@ const GuestAIDemo = () => {
     const [isExtractingDocPoints, setIsExtractingDocPoints] = useState(false);
     const [docScanProgress, setDocScanProgress] = useState(0);
     const [docScanStepText, setDocScanStepText] = useState('');
-    const [docPointsModalText, setDocPointsModalText] = useState('');
     const [sidebarDropdowns, setSidebarDropdowns] = useState({
         proposals: false,
         links: false,
@@ -4528,13 +4528,11 @@ const GuestAIDemo = () => {
             return deduped.slice(0, 5);
         });
 
-        // Open Document Scanner Popup Modal IMMEDIATELY upon file pick
+        // Keep scan progress inline; open the brief only when requested.
         const targetFile = nextValidFiles[0];
-        setActiveDocPointsModalFile(targetFile);
         setIsExtractingDocPoints(true);
         setDocScanProgress(25);
         setDocScanStepText(`Scanning "${targetFile.name}" & reading document content...`);
-        setDocPointsModalText('');
 
         try {
             const text = await extractBriefingTextFromFile(targetFile);
@@ -4546,7 +4544,6 @@ const GuestAIDemo = () => {
                 const finalPoints = parseDocumentRequirementBullets(text, targetFile.name);
 
                 targetFile._aiBulletPoints = finalPoints;
-                setDocPointsModalText(finalPoints);
                 setDocScanProgress(100);
                 setDocScanStepText('Document Scanned & Scope Extracted Successfully!');
 
@@ -4563,7 +4560,6 @@ const GuestAIDemo = () => {
             } else {
                 const fallbackMsg = '• Reference document attached successfully for project context.';
                 targetFile._aiBulletPoints = fallbackMsg;
-                setDocPointsModalText(fallbackMsg);
                 setDocScanProgress(100);
                 setDocScanStepText('Document Attached');
                 setBriefingFiles((current) => [...current]);
@@ -4572,7 +4568,6 @@ const GuestAIDemo = () => {
             console.warn('[Doc AI Extraction] Error:', err);
             const fallbackMsg = '• Reference document attached successfully for project context.';
             targetFile._aiBulletPoints = fallbackMsg;
-            setDocPointsModalText(fallbackMsg);
             setDocScanProgress(100);
             setBriefingFiles((current) => [...current]);
         } finally {
@@ -6092,9 +6087,17 @@ const GuestAIDemo = () => {
 
     const visibleRoleServices = showAllRoleServices ? roleServicesList : roleServicesList.slice(0, 7);
 
+    const briefDialog = (
+        <GuestBriefDialog
+            file={activeDocPointsModalFile}
+            onClose={() => setActiveDocPointsModalFile(null)}
+        />
+    );
+
     if (!selectedService) {
         return (
             <>
+                {briefDialog}
                 <SeoMeta
                     title={SEO_DATA.services.title}
                     description={SEO_DATA.services.description}
@@ -6108,7 +6111,7 @@ const GuestAIDemo = () => {
                         <div className="absolute inset-0 opacity-[0.06] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:72px_72px] [mask-image:radial-gradient(circle_at_center,black,transparent_78%)]" />
                     </div>
 
-                    <div className={`relative z-10 mx-auto w-full px-5 py-6 sm:py-10 sm:px-10 max-w-[840px]`}>
+                    <div className={`relative z-10 mx-auto w-full px-3 py-5 sm:py-10 sm:px-10 max-w-[840px]`}>
                         <div className={`mx-auto flex w-full flex-col justify-center min-h-0 max-w-full`}>
 
                         <form
@@ -6127,14 +6130,14 @@ const GuestAIDemo = () => {
                             }}
                             className={`relative z-10 overflow-hidden backdrop-blur rounded-[1.5rem] sm:rounded-[2rem] ${briefingCardClasses}`}
                         >
-                            <div className="px-6 pt-7 pb-3 sm:px-8 sm:pt-8">
+                            <div className="px-4 pt-5 pb-3 sm:px-8 sm:pt-8">
                                 <div className="flex gap-4 items-start justify-between">
                                     <div className="flex gap-4 items-start flex-1 min-w-0">
                                         <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.65rem] bg-primary text-[15px] font-bold text-primary-foreground">
                                             {String(briefingStepIndex + 1).padStart(2, '0')}
                                         </span>
                                         <div className="flex-1 min-w-0">
-                                            <h2 className={`text-lg font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
+                                            <h2 className={`text-base font-bold leading-snug tracking-[-0.01em] sm:text-xl ${isDark ? 'text-white' : 'text-foreground'}`}>
                                                 {currentBriefingStep.key === 'role' ? (
                                                     'Choose the direction that best describes your project.'
                                                 ) : (
@@ -6147,7 +6150,7 @@ const GuestAIDemo = () => {
                                                     </>
                                                 )}
                                             </h2>
-                                            <p className={`mt-2 text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
+                                            <p className={`mt-2 text-xs sm:text-sm ${isDark ? 'text-zinc-400' : 'text-muted-foreground'}`}>
                                                 {currentBriefingStep.label}
                                             </p>
                                         </div>
@@ -6155,7 +6158,7 @@ const GuestAIDemo = () => {
                                 </div>
                             </div>
 
-                            <div className={`space-y-5 px-6 py-4 sm:px-8 sm:py-5`}>
+                            <div className={`space-y-5 px-4 py-4 sm:px-8 sm:py-5`}>
                                 {currentBriefingStep.key === 'role' ? (
                                     <>
                                         <div className="space-y-3">
@@ -6202,7 +6205,7 @@ const GuestAIDemo = () => {
                                                     setBriefingInputTab('text');
                                                     trackClientActivity('BRIEF_TAB_SWITCH', { metadata: { tab: 'text' } });
                                                 }}
-                                                className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-semibold transition-all duration-200 ${
+                                                className={`flex items-center justify-center gap-1.5 rounded-xl min-h-11 py-2.5 px-2 sm:gap-2 sm:px-3 text-xs font-semibold transition-all duration-200 ${
                                                     briefingInputTab === 'text'
                                                         ? (isDark
                                                             ? 'bg-zinc-800 text-white shadow-md border border-white/10'
@@ -6225,7 +6228,7 @@ const GuestAIDemo = () => {
                                                     setBriefingInputTab('upload');
                                                     trackClientActivity('BRIEF_TAB_SWITCH', { metadata: { tab: 'upload' } });
                                                 }}
-                                                className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-semibold transition-all duration-200 ${
+                                                className={`flex items-center justify-center gap-1.5 rounded-xl min-h-11 py-2.5 px-2 sm:gap-2 sm:px-3 text-xs font-semibold transition-all duration-200 ${
                                                     briefingInputTab === 'upload'
                                                         ? (isDark
                                                             ? 'bg-zinc-800 text-white shadow-md border border-white/10'
@@ -6253,10 +6256,11 @@ const GuestAIDemo = () => {
                                                         rows={5}
                                                         value={briefingAnswers.goal}
                                                         onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
-                                                        placeholder="Describe your project requirements, target audience, core features, or design preferences in detail..."
-                                                        className={`w-full rounded-2xl border p-4 text-sm outline-none resize-none transition-all duration-200 focus:ring-2 focus:ring-primary/20 ${briefingBudgetFieldClasses} ${briefingFieldTextClasses}`}
+                                                        aria-label="Project requirements"
+                                                        placeholder="What are you building? Share your goals, audience, and must-have features."
+                                                        className={`block min-h-40 w-full rounded-2xl border px-4 pt-3.5 pb-9 text-base leading-relaxed placeholder:text-xs placeholder:leading-relaxed sm:text-sm sm:placeholder:text-sm outline-none resize-y transition-colors duration-200 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 ${briefingBudgetFieldClasses} ${briefingFieldTextClasses}`}
                                                     />
-                                                    <div className="absolute bottom-3 right-3 text-[11px] text-muted-foreground/70 font-mono">
+                                                    <div className="pointer-events-none absolute bottom-3 right-4 text-[10px] tabular-nums text-muted-foreground">
                                                         {briefingAnswers.goal?.trim()?.length || 0} chars
                                                     </div>
                                                 </div>
@@ -6265,10 +6269,16 @@ const GuestAIDemo = () => {
                                                     <button
                                                         type="button"
                                                         onClick={() => setBriefingInputTab('upload')}
-                                                        className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline pt-0.5 font-semibold"
+                                                        className="group flex min-h-14 w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                                                     >
-                                                        <UploadCloud className="w-3.5 h-3.5" />
-                                                        Have a requirement document or PDF? Switch to upload mode
+                                                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                                                            <UploadCloud className="h-4 w-4" />
+                                                        </span>
+                                                        <span className="min-w-0 flex-1 space-y-0.5">
+                                                            <span className="block text-[11px] text-muted-foreground">Already have a project brief?</span>
+                                                            <span className="block text-xs font-semibold text-primary">Upload a document</span>
+                                                        </span>
+                                                        <ArrowRight className="h-4 w-4 shrink-0 text-primary" />
                                                     </button>
                                                 )}
                                             </div>
@@ -6277,7 +6287,7 @@ const GuestAIDemo = () => {
                                         {/* Tab 2: Document Upload */}
                                         {briefingInputTab === 'upload' && (
                                             <div className="space-y-4 pt-1">
-                                                <label className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 transition-all duration-300 ${
+                                                <label className={`group relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-5 sm:p-6 transition-all duration-300 ${
                                                     isExtractingDocPoints
                                                         ? 'opacity-70 pointer-events-none cursor-not-allowed border-primary/40 bg-primary/5'
                                                         : 'cursor-pointer border-[#d8cdbf] dark:border-white/15 bg-[#faf7f2]/50 dark:bg-white/[0.02] hover:border-primary/60 hover:bg-primary/[0.03]'
@@ -6303,6 +6313,12 @@ const GuestAIDemo = () => {
                                                                     <p className="text-xs font-bold text-primary">Analyzing Document & Extracting Scope...</p>
                                                                     <p className="text-[11px] text-muted-foreground">{docScanStepText || 'Parsing specifications, please wait...'}</p>
                                                                 </div>
+                                                                <progress
+                                                                    aria-label="Document scan progress"
+                                                                    value={docScanProgress}
+                                                                    max={100}
+                                                                    className="h-1.5 w-full max-w-48 overflow-hidden rounded-full accent-primary"
+                                                                />
                                                             </div>
                                                         ) : (
                                                             <>
@@ -6310,8 +6326,9 @@ const GuestAIDemo = () => {
                                                                     <UploadCloud className="w-6 h-6" />
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <p className="text-sm font-bold text-foreground tracking-tight">
-                                                                        Click to upload or drag & drop project files
+                                                                    <p className="text-xs sm:text-sm font-bold text-foreground tracking-tight">
+                                                                        <span className="sm:hidden">Tap to upload project files</span>
+                                                                        <span className="hidden sm:inline">Click to upload or drag & drop project files</span>
                                                                     </p>
                                                                     <p className="text-xs text-muted-foreground">
                                                                         Supports PDF, DOCX, TXT, PNG, JPG (up to 10MB per file)
@@ -6343,43 +6360,42 @@ const GuestAIDemo = () => {
                                                                 return (
                                                                     <div
                                                                         key={`${file.name}-${idx}`}
-                                                                        className="rounded-2xl border border-[#e4dbd0] dark:border-white/10 bg-white dark:bg-zinc-900/70 p-4 transition-all duration-200 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-none space-y-3.5"
+                                                                        className="rounded-2xl border border-[#e4dbd0] dark:border-white/10 bg-white dark:bg-zinc-900/70 p-3 sm:p-4 transition-all duration-200 shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-none space-y-3.5"
                                                                     >
                                                                         {/* File Header Row */}
-                                                                        <div className="flex items-center justify-between gap-3">
-                                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                                                            <div className="flex min-w-0 flex-1 items-start gap-3 sm:items-center">
                                                                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-bold text-xs border bg-primary/10 text-primary border-primary/25">
                                                                                     {fileExt}
                                                                                 </div>
-                                                                                <div className="min-w-0">
-                                                                                    <p className="truncate text-sm font-bold text-foreground">
+                                                                                <div className="min-w-0 flex-1">
+                                                                                    <p className="break-words [overflow-wrap:anywhere] text-xs sm:text-sm font-bold leading-snug text-foreground sm:truncate" title={file.name}>
                                                                                         {file.name}
                                                                                     </p>
-                                                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap text-xs text-muted-foreground">
-                                                                                        <span>{(file.size / 1024).toFixed(0)} KB</span>
+                                                                                    <div className="flex items-center gap-x-2 gap-y-1 mt-1 flex-wrap text-xs text-muted-foreground">
+                                                                                        <span className="whitespace-nowrap">{(file.size / 1024).toFixed(0)} KB</span>
                                                                                         {wordCount ? (
                                                                                             <>
                                                                                                 <span>•</span>
-                                                                                                <span>{wordCount} words</span>
+                                                                                                <span className="whitespace-nowrap">{wordCount} words</span>
                                                                                             </>
                                                                                         ) : null}
                                                                                         <span>•</span>
-                                                                                        <span className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                                        <span className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-emerald-600 dark:text-emerald-400">
                                                                                             <CheckCircle2 className="w-3 h-3" /> Scanned
                                                                                         </span>
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
 
-                                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                            <div className="flex w-full items-center justify-between gap-2 border-t border-border/60 pt-3 sm:w-auto sm:shrink-0 sm:border-0 sm:pt-0">
                                                                                 {file._aiBulletPoints && (
                                                                                     <button
                                                                                         type="button"
                                                                                         onClick={() => {
                                                                                             setActiveDocPointsModalFile(file);
-                                                                                            setIsExtractingDocPoints(false);
                                                                                         }}
-                                                                                        className="inline-flex items-center gap-1.5 rounded-xl border border-primary/20 bg-primary/5 hover:bg-primary hover:text-white px-3 py-1.5 text-xs font-semibold text-primary transition-all duration-200 shadow-2xs"
+                                                                                        className="inline-flex min-h-9 flex-none items-center justify-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                                                                     >
                                                                                         <FileText className="w-3.5 h-3.5" />
                                                                                         <span>View Full Brief</span>
@@ -6388,8 +6404,9 @@ const GuestAIDemo = () => {
                                                                                 <button
                                                                                     type="button"
                                                                                     onClick={() => removeBriefingFile(idx)}
-                                                                                    className="rounded-xl p-2 text-muted-foreground/60 transition-colors hover:bg-red-500/10 hover:text-red-600"
+                                                                                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl p-2 sm:h-9 sm:w-9 text-muted-foreground/60 transition-colors hover:bg-red-500/10 hover:text-red-600"
                                                                                     title="Remove file"
+                                                                                    aria-label={`Remove ${file.name}`}
                                                                                 >
                                                                                     <Trash2 className="w-4 h-4" />
                                                                                 </button>
@@ -6398,8 +6415,8 @@ const GuestAIDemo = () => {
 
                                                                         {/* Integrated Requirement Scope - Single Clean Surface without Nested Boxes */}
                                                                         {file._aiBulletPoints && (
-                                                                            <div className="rounded-xl bg-[#FAF6F0] dark:bg-white/[0.03] border border-[#e8dfd3] dark:border-white/10 p-3.5 space-y-2.5">
-                                                                                <div className="flex items-center justify-between">
+                                                                            <div className="rounded-xl bg-[#FAF6F0] dark:bg-white/[0.03] border border-[#e8dfd3] dark:border-white/10 p-3 sm:p-3.5 space-y-2.5">
+                                                                                <div className="flex flex-col items-start gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                                                                                     <span className="text-xs font-bold text-foreground">
                                                                                         Key Requirement Highlights
                                                                                     </span>
@@ -6408,7 +6425,7 @@ const GuestAIDemo = () => {
                                                                                     </span>
                                                                                 </div>
 
-                                                                                <div className="max-h-60 overflow-y-auto pr-1 space-y-2 text-xs">
+                                                                                <div className="max-h-64 overflow-y-auto overscroll-y-contain pr-2 space-y-2 text-xs sm:max-h-60">
                                                                                     {(() => {
                                                                                         const raw = file._aiBulletPoints || '';
                                                                                         let lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -6436,7 +6453,7 @@ const GuestAIDemo = () => {
                                                                                             return (
                                                                                                 <div key={lIdx} className="flex items-start gap-2.5 pl-0.5 leading-relaxed text-foreground/90">
                                                                                                     <span className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" />
-                                                                                                    <span className="font-medium text-xs text-foreground/90">{cleanedText}</span>
+                                                                                                    <span className="min-w-0 break-words [overflow-wrap:anywhere] font-medium text-xs leading-relaxed text-foreground/90">{cleanedText}</span>
                                                                                                 </div>
                                                                                             );
                                                                                         });
@@ -6542,7 +6559,7 @@ const GuestAIDemo = () => {
 
                             </div>
 
-                            <div className={`flex flex-row items-center justify-between gap-4 border-t px-6 py-4 sm:px-8 ${briefingCardDividerClasses}`}>
+                            <div className={`flex flex-row items-center justify-between gap-4 border-t px-4 py-4 sm:px-8 ${briefingCardDividerClasses}`}>
                                 <button
                                     type="button"
                                     onClick={goToPreviousBriefingStep}
@@ -8715,151 +8732,7 @@ const GuestAIDemo = () => {
 
 
 
-            {/* AI Document Requirement Points Popup Modal */}
-            <AlertDialog open={Boolean(activeDocPointsModalFile) && !sessionId} onOpenChange={(open) => !open && setActiveDocPointsModalFile(null)}>
-                <AlertDialogContent className={`max-w-lg rounded-[28px] p-7 border shadow-2xl backdrop-blur-xl relative overflow-hidden transition-all ${
-                    isDark
-                        ? 'bg-[#121216]/95 border-white/15 text-white shadow-black/80'
-                        : 'bg-[#FAF6F0]/98 border-[#e4dbd0] text-foreground shadow-[0_24px_60px_-15px_rgba(0,0,0,0.15)]'
-                }`}>
-                    {/* Ambient glow */}
-                    <div className="absolute -top-20 -left-20 h-40 w-40 rounded-full bg-primary/15 blur-3xl pointer-events-none" />
-
-                    <AlertDialogHeader className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3.5 min-w-0">
-                                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
-                                    <FileText className="h-5 w-5 text-primary" />
-                                </div>
-                                <div className="min-w-0">
-                                    <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[10px] font-bold text-primary tracking-wide uppercase mb-0.5">
-                                        {isExtractingDocPoints ? (
-                                            <span className="flex items-center gap-1">
-                                                <span className="relative flex h-1.5 w-1.5">
-                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
-                                                </span>
-                                                Document Processing Active
-                                            </span>
-                                        ) : (
-                                            <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                                                <Check className="w-3 h-3" /> Analysis Complete
-                                            </span>
-                                        )}
-                                    </div>
-                                    <AlertDialogTitle className={`text-lg sm:text-xl font-extrabold tracking-tight ${isDark ? 'text-white' : 'text-foreground'}`}>
-                                        Document Requirement Analysis
-                                    </AlertDialogTitle>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className={`flex items-center gap-2 rounded-xl px-3.5 py-2 border text-xs ${
-                            isDark ? 'bg-white/4 border-white/8 text-zinc-300' : 'bg-white/90 border-[#e8dfd3] text-foreground'
-                        }`}>
-                            <FileText className="w-4 h-4 text-primary shrink-0" />
-                            <span className="truncate font-semibold">{activeDocPointsModalFile?.name}</span>
-                            <span className="text-[10px] font-mono text-muted-foreground ml-auto shrink-0">
-                                {activeDocPointsModalFile?.size ? `${(activeDocPointsModalFile.size / 1024).toFixed(0)} KB` : ''}
-                            </span>
-                        </div>
-                    </AlertDialogHeader>
-
-                    <div className="mt-4 mb-2 space-y-4">
-                        {isExtractingDocPoints ? (
-                            <div className="flex flex-col items-center justify-center py-8 space-y-4 text-center">
-                                <div className="relative flex items-center justify-center">
-                                    <div className="absolute h-20 w-20 rounded-full bg-primary/20 animate-ping blur-sm" />
-                                    <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20">
-                                        <Loader2 className="h-7 w-7 animate-spin text-primary" />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1 max-w-xs">
-                                    <p className={`text-sm font-bold ${isDark ? 'text-white' : 'text-foreground'}`}>
-                                        Analyzing Document Requirements...
-                                    </p>
-                                    <p className={`text-xs font-medium text-muted-foreground animate-pulse`}>
-                                        {docScanStepText || 'Processing document specifications...'}
-                                    </p>
-                                </div>
-
-                                <div className="w-full max-w-xs space-y-1.5">
-                                    <div className="flex justify-between text-[11px] font-semibold">
-                                        <span className="text-muted-foreground">Processing Progress</span>
-                                        <span className="text-primary font-mono font-bold">{docScanProgress}%</span>
-                                    </div>
-                                    <div className="h-2 w-full rounded-full bg-muted/60 overflow-hidden border border-border/40 p-0.5">
-                                        <div
-                                            className="h-full rounded-full bg-gradient-to-r from-primary via-orange-500 to-emerald-500 transition-all duration-300 shadow-sm"
-                                            style={{ width: `${Math.max(10, docScanProgress)}%` }}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between text-xs">
-                                    <span className="font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                                        Parsed Project Specifications:
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground font-mono">Ready for Scope Matching</span>
-                                </div>
-
-                                <div className={`rounded-2xl p-4 border text-xs max-h-64 overflow-y-auto space-y-2 ${
-                                    isDark ? 'bg-zinc-900/70 border-white/10 text-zinc-200' : 'bg-white border-[#e6ddd2] text-foreground'
-                                }`}>
-                                    {(() => {
-                                        const textToRender = docPointsModalText || activeDocPointsModalFile?._aiBulletPoints || '• Document attached successfully for project reference.';
-                                        let cleanLines = textToRender.split('\n').map((l) => l.trim()).filter(Boolean);
-
-                                        if (cleanLines.length === 1 && cleanLines[0].length > 120) {
-                                            const parts = cleanLines[0].split(/(?<=[.!?])\s+(?=[A-Z0-9•\-])/g).filter(Boolean);
-                                            if (parts.length > 1) {
-                                                cleanLines = parts;
-                                            }
-                                        }
-
-                                        return cleanLines.map((line, lIdx) => {
-                                            const cleanedText = line.replace(/^[#*\-\s\u2022]+/, '').replace(/\*\*/g, '').trim();
-                                            if (!cleanedText) return null;
-                                            const isHeading = line.startsWith('#') || line.startsWith('**') || line.endsWith(':') || /^- \*\*/.test(line);
-
-                                            if (isHeading) {
-                                                return (
-                                                    <div key={lIdx} className="pt-2 flex items-center gap-2 border-b border-primary/10 pb-1 mt-1">
-                                                        <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                                                        <span className="font-bold text-foreground text-[12px] tracking-tight">{cleanedText}</span>
-                                                    </div>
-                                                );
-                                            }
-
-                                            return (
-                                                <div key={lIdx} className="flex items-start gap-2 pl-1.5 text-muted-foreground leading-relaxed">
-                                                    <span className="text-primary font-bold text-xs leading-none mt-1">•</span>
-                                                    <span className="text-foreground/90 font-medium">{cleanedText}</span>
-                                                </div>
-                                            );
-                                        });
-                                    })()}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <AlertDialogFooter className="mt-5 flex justify-end">
-                        <AlertDialogAction
-                            disabled={isExtractingDocPoints}
-                            onClick={() => setActiveDocPointsModalFile(null)}
-                            className="w-full sm:w-auto rounded-2xl bg-primary px-6 py-3 font-semibold text-white shadow-lg shadow-primary/20 transition-all hover:opacity-90 flex items-center justify-center gap-2"
-                        >
-                            <Check className="w-4 h-4" />
-                            Use These Requirements
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
+            {briefDialog}
         </div>
     );
 };
