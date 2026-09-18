@@ -15,6 +15,7 @@ import { useAuth } from "@/shared/context/AuthContext";
 import Activity from "lucide-react/dist/esm/icons/activity";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import Bot from "lucide-react/dist/esm/icons/bot";
+import Compass from "lucide-react/dist/esm/icons/compass";
 import Copy from "lucide-react/dist/esm/icons/copy";
 import Cpu from "lucide-react/dist/esm/icons/cpu";
 import Download from "lucide-react/dist/esm/icons/download";
@@ -25,6 +26,7 @@ import Layers from "lucide-react/dist/esm/icons/layers";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Mail from "lucide-react/dist/esm/icons/mail";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import MousePointerClick from "lucide-react/dist/esm/icons/mouse-pointer-click";
 import Paperclip from "lucide-react/dist/esm/icons/paperclip";
 import Phone from "lucide-react/dist/esm/icons/phone";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
@@ -249,26 +251,113 @@ const AdminServicesActivityDetail = () => {
               </div>
             </div>
 
-            {/* 4-Tab View: Transcript vs Document Data vs AI Usage vs Extracted Answers */}
-            <Tabs defaultValue={sessionDetail.documentData?.hasDocument ? "documents" : "transcript"} className="w-full">
-              <TabsList className="grid w-full grid-cols-4 rounded-2xl bg-slate-100 p-1 border border-slate-200">
+            {/* 5-Tab View: Journey Timeline vs Transcript vs Documents vs AI Usage vs Extracted Answers */}
+            <Tabs defaultValue={Array.isArray(sessionDetail.activityTimeline) && sessionDetail.activityTimeline.length > 0 ? "timeline" : (sessionDetail.documentData?.hasDocument ? "documents" : "transcript")} className="w-full">
+              <TabsList className="grid w-full grid-cols-5 rounded-2xl bg-slate-100 p-1 border border-slate-200">
+                <TabsTrigger value="timeline" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
+                  <Compass className="h-4 w-4 mr-1.5 text-blue-500" />
+                  Journey ({sessionDetail.activityTimeline?.length || 0})
+                </TabsTrigger>
                 <TabsTrigger value="transcript" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
-                  <MessageSquare className="h-4 w-4 mr-2 text-orange-500" />
+                  <MessageSquare className="h-4 w-4 mr-1.5 text-orange-500" />
                   Transcript ({sessionDetail.messages?.length || 0})
                 </TabsTrigger>
                 <TabsTrigger value="documents" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
-                  <FileText className="h-4 w-4 mr-2 text-indigo-500" />
+                  <FileText className="h-4 w-4 mr-1.5 text-indigo-500" />
                   Documents ({sessionDetail.documentData?.attachmentCount || 0})
                 </TabsTrigger>
                 <TabsTrigger value="ai_usage" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
-                  <Cpu className="h-4 w-4 mr-2 text-purple-600" />
+                  <Cpu className="h-4 w-4 mr-1.5 text-purple-600" />
                   AI Cost & Tokens
                 </TabsTrigger>
                 <TabsTrigger value="answers" className="rounded-xl text-xs font-semibold py-2.5 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm">
-                  <Layers className="h-4 w-4 mr-2 text-emerald-500" />
+                  <Layers className="h-4 w-4 mr-1.5 text-emerald-500" />
                   Brief & Answers
                 </TabsTrigger>
               </TabsList>
+
+              {/* Tab 0: Client Journey & Clickstream Timeline */}
+              <TabsContent value="timeline" className="mt-6 space-y-4">
+                <Card className="border-slate-200 rounded-3xl p-6 shadow-sm bg-white">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                        <Compass className="h-5 w-5 text-blue-500" />
+                        Client Clickstream & Journey Timeline
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Chronological sequence of pages visited, services clicked, and interactions leading to this session.
+                      </p>
+                    </div>
+                    {sessionDetail.visitorId && (
+                      <span className="text-xs font-mono bg-slate-100 px-2.5 py-1 rounded-lg text-slate-600 border border-slate-200">
+                        Visitor ID: {sessionDetail.visitorId}
+                      </span>
+                    )}
+                  </div>
+
+                  {!sessionDetail.activityTimeline || sessionDetail.activityTimeline.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400 text-sm">
+                      No prior clickstream telemetry recorded for this visitor.
+                    </div>
+                  ) : (
+                    <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                      {sessionDetail.activityTimeline.map((item, idx) => (
+                        <div key={item.id || idx} className="relative group">
+                          <div className={`absolute -left-6 top-1.5 h-5 w-5 rounded-full border-2 border-white shadow-xs flex items-center justify-center ${
+                            item.eventType === "CHAT_LAUNCH" ? "bg-purple-600 ring-4 ring-purple-100" :
+                            item.eventType === "SERVICE_CLICK" ? "bg-orange-500 ring-4 ring-orange-100" :
+                            item.eventType === "DIRECTION_CLICK" ? "bg-amber-500 ring-4 ring-amber-100" :
+                            item.eventType === "BRIEF_STEP" ? "bg-indigo-500 ring-4 ring-indigo-100" :
+                            item.eventType === "DOCUMENT_UPLOAD" ? "bg-emerald-500 ring-4 ring-emerald-100" :
+                            "bg-blue-500 ring-4 ring-blue-100"
+                          }`}>
+                            <div className="h-1.5 w-1.5 rounded-full bg-white" />
+                          </div>
+
+                          <div className="rounded-2xl border border-slate-100 bg-slate-50/70 p-4 hover:bg-slate-50 transition-all">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <Badge className={`text-[10px] font-bold ${
+                                  item.eventType === "CHAT_LAUNCH" ? "bg-purple-100 text-purple-800 border-purple-200" :
+                                  item.eventType === "SERVICE_CLICK" ? "bg-orange-100 text-orange-800 border-orange-200" :
+                                  item.eventType === "DIRECTION_CLICK" ? "bg-amber-100 text-amber-800 border-amber-200" :
+                                  item.eventType === "BRIEF_STEP" ? "bg-indigo-100 text-indigo-800 border-indigo-200" :
+                                  item.eventType === "DOCUMENT_UPLOAD" ? "bg-emerald-100 text-emerald-800 border-emerald-200" :
+                                  "bg-blue-100 text-blue-800 border-blue-200"
+                                }`}>
+                                  {item.eventType}
+                                </Badge>
+                                {item.serviceName && (
+                                  <span className="text-xs font-bold text-slate-800">
+                                    {item.serviceName}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs font-medium text-slate-400">
+                                {formatDate(item.createdAt)}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-slate-600 mt-2">
+                              Path: <span className="font-mono text-[11px] text-slate-800">{item.pageUrl || "/services"}</span>
+                              {item.referrer && (
+                                <span className="text-slate-400 ml-2">Referrer: {item.referrer}</span>
+                              )}
+                            </p>
+
+                            {item.metadata && Object.keys(item.metadata).length > 0 && (
+                              <div className="mt-2 text-[11px] font-mono bg-white p-2 rounded-xl border border-slate-200 text-slate-600">
+                                {JSON.stringify(item.metadata, null, 2)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
 
               {/* Tab 1: Chat Messages Transcript */}
               <TabsContent value="transcript" className="mt-6 space-y-4">

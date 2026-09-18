@@ -55,6 +55,14 @@ import Search from "lucide-react/dist/esm/icons/search";
 import Send from "lucide-react/dist/esm/icons/send";
 import UserX from "lucide-react/dist/esm/icons/user-x";
 import X from "lucide-react/dist/esm/icons/x";
+import Compass from "lucide-react/dist/esm/icons/compass";
+import Globe from "lucide-react/dist/esm/icons/globe";
+import MousePointerClick from "lucide-react/dist/esm/icons/mouse-pointer-click";
+import TrendingUp from "lucide-react/dist/esm/icons/trending-up";
+import Users from "lucide-react/dist/esm/icons/users";
+import Flame from "lucide-react/dist/esm/icons/flame";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 import { toast } from "sonner";
 import cataLogo from "@/assets/logos/logo.svg";
 
@@ -213,7 +221,32 @@ const AdminServicesActivity = () => {
     topServices: [],
     stepBreakdown: [],
     milestoneFunnel: [],
+    trafficMetrics: {
+      totalPageViews: 0,
+      uniqueVisitors: 0,
+      totalServiceClicks: 0,
+      totalBriefInteractions: 0,
+      visitorToChatRate: "0%",
+      chatToProposalRate: "0%",
+    },
+    trafficFunnel: [],
+    serviceClickRankings: [],
+    recentActivityFeed: [],
   };
+
+  const trafficMetrics = metrics.trafficMetrics || {
+    totalPageViews: 0,
+    uniqueVisitors: 0,
+    totalServiceClicks: 0,
+    totalBriefInteractions: 0,
+    visitorToChatRate: "0%",
+    chatToProposalRate: "0%",
+  };
+  const trafficFunnel = metrics.trafficFunnel || [];
+  const serviceClickRankings = metrics.serviceClickRankings || [];
+  const recentActivityFeed = metrics.recentActivityFeed || [];
+
+  const [activityFeedOpen, setActivityFeedOpen] = useState(false);
 
   const stepBreakdown = metrics.stepBreakdown || [];
   const milestoneFunnel = metrics.milestoneFunnel || [];
@@ -236,16 +269,74 @@ const AdminServicesActivity = () => {
               Comprehensive tracking for client chats, contact details (Call, WhatsApp, Email), uploaded documents, and AI usage & cost analytics.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={fetchServicesActivity}
-            disabled={loading}
-            className="flex items-center gap-1.5 self-start sm:self-auto rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh Data
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActivityFeedOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border-slate-200 bg-white text-indigo-700 hover:bg-indigo-50 border-indigo-200 shadow-xs"
+            >
+              <Activity className="h-4 w-4 text-indigo-600" />
+              Live Visitor Clickstream ({recentActivityFeed.length})
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchServicesActivity}
+              disabled={loading}
+              className="flex items-center gap-1.5 self-start sm:self-auto rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+              Refresh Data
+            </Button>
+          </div>
+        </div>
+
+        {/* Top of Funnel Traffic & Telemetry Cards */}
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <Card className="border-slate-200 rounded-2xl bg-gradient-to-br from-white to-slate-50/80 shadow-sm border p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Services Page Visitors</p>
+              <div className="text-2xl font-black text-slate-900 mt-1">{trafficMetrics.uniqueVisitors || 0}</div>
+              <p className="text-[11px] text-slate-500 mt-0.5">{trafficMetrics.totalPageViews || 0} page impressions</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100">
+              <Globe className="h-5 w-5" />
+            </div>
+          </Card>
+
+          <Card className="border-slate-200 rounded-2xl bg-gradient-to-br from-white to-slate-50/80 shadow-sm border p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Service & Direction Clicks</p>
+              <div className="text-2xl font-black text-orange-600 mt-1">{trafficMetrics.totalServiceClicks || 0}</div>
+              <p className="text-[11px] text-slate-500 mt-0.5">Card & chip interactions</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-orange-50 text-orange-600 border border-orange-100">
+              <MousePointerClick className="h-5 w-5" />
+            </div>
+          </Card>
+
+          <Card className="border-slate-200 rounded-2xl bg-gradient-to-br from-white to-slate-50/80 shadow-sm border p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Visitor → Chat Rate</p>
+              <div className="text-2xl font-black text-indigo-600 mt-1">{trafficMetrics.visitorToChatRate || "0%"}</div>
+              <p className="text-[11px] text-slate-500 mt-0.5">{metrics.totalSessions} started chats</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+          </Card>
+
+          <Card className="border-slate-200 rounded-2xl bg-gradient-to-br from-white to-slate-50/80 shadow-sm border p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Chat → Proposal Rate</p>
+              <div className="text-2xl font-black text-emerald-600 mt-1">{trafficMetrics.chatToProposalRate || "0%"}</div>
+              <p className="text-[11px] text-slate-500 mt-0.5">{metrics.totalProposals} proposals generated</p>
+            </div>
+            <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+              <Sparkles className="h-5 w-5" />
+            </div>
+          </Card>
         </div>
 
         {/* KPI Grid - 6 Interactive Analytics Cards */}
@@ -518,6 +609,156 @@ const AdminServicesActivity = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* End-to-End Traffic Conversion Funnel & Click Rankings */}
+        <div className="grid gap-6 lg:grid-cols-12">
+          {/* Funnel Progress (7 Cols) */}
+          <Card className="lg:col-span-7 border-slate-200 rounded-2xl shadow-sm bg-white overflow-hidden">
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Compass className="h-5 w-5 text-orange-500" />
+                End-to-End Client Conversion Funnel
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Tracks visitor drop-offs from landing on /services to exploring, briefing, chatting, and creating proposals.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-4 space-y-3">
+              {trafficFunnel.map((stage, idx) => (
+                <div key={idx} className="p-3 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-xs font-bold text-slate-800">{stage.stage}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-slate-900">{stage.count}</span>
+                      <Badge variant="outline" className="text-[10px] font-bold bg-white text-slate-700 border-slate-200">
+                        {stage.conversionPct}%
+                      </Badge>
+                      {stage.dropOffPct > 0 && (
+                        <span className="text-[10px] font-semibold text-rose-500">
+                          (-{stage.dropOffPct}% drop-off)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-slate-200/80 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        idx === 0 ? "bg-blue-500" :
+                        idx === 1 ? "bg-orange-500" :
+                        idx === 2 ? "bg-indigo-500" :
+                        idx === 3 ? "bg-purple-500" : "bg-emerald-500"
+                      }`}
+                      style={{ width: `${Math.max(4, stage.conversionPct)}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">{stage.subtext}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Top Clicked Services (5 Cols) */}
+          <Card className="lg:col-span-5 border-slate-200 rounded-2xl shadow-sm bg-white overflow-hidden">
+            <CardHeader className="pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Flame className="h-5 w-5 text-orange-500" />
+                Most Clicked Services
+              </CardTitle>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Top services clicked on the catalog & popular direction chips.
+              </p>
+            </CardHeader>
+            <CardContent className="pt-3">
+              {serviceClickRankings.length === 0 ? (
+                <div className="text-center py-10 text-xs text-slate-400">
+                  No service clicks tracked yet. They will appear here in real-time as users browse.
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {serviceClickRankings.slice(0, 6).map((service, idx) => (
+                    <div key={idx} className="py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">
+                          {idx + 1}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-800 truncate" title={service.name}>
+                          {service.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs font-bold text-orange-600">
+                          {service.clicks} <span className="font-normal text-[10px] text-slate-400">clicks</span>
+                        </span>
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]">
+                          {service.chats} chats ({service.conversionRate})
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Live Visitor Clickstream Activity Dialog */}
+        <Dialog open={activityFeedOpen} onOpenChange={setActivityFeedOpen}>
+          <DialogContent className="max-w-3xl rounded-3xl p-6 bg-white max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-indigo-600" />
+                  Live Visitor Clickstream & Activity Feed
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time log of every visitor impression, card click, brief step, and chat launch.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3 mt-4">
+              {recentActivityFeed.length === 0 ? (
+                <div className="text-center py-16 text-slate-400 text-sm">
+                  No activity events recorded yet.
+                </div>
+              ) : (
+                recentActivityFeed.map((event) => (
+                  <div key={event.id} className="p-3.5 rounded-2xl border border-slate-100 bg-slate-50/60 hover:bg-slate-50 transition-colors flex items-start justify-between gap-3">
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge className={`text-[10px] font-bold ${
+                          event.eventType === "CHAT_LAUNCH" ? "bg-purple-100 text-purple-800 border-purple-200" :
+                          event.eventType === "SERVICE_CLICK" ? "bg-orange-100 text-orange-800 border-orange-200" :
+                          event.eventType === "DIRECTION_CLICK" ? "bg-amber-100 text-amber-800 border-amber-200" :
+                          event.eventType === "BRIEF_STEP" ? "bg-indigo-100 text-indigo-800 border-indigo-200" :
+                          event.eventType === "DOCUMENT_UPLOAD" ? "bg-emerald-100 text-emerald-800 border-emerald-200" :
+                          "bg-slate-200 text-slate-700 border-slate-300"
+                        }`}>
+                          {event.eventType}
+                        </Badge>
+                        {event.serviceName && (
+                          <span className="text-xs font-bold text-slate-800 truncate">
+                            {event.serviceName}
+                          </span>
+                        )}
+                        <span className="text-[11px] font-mono text-slate-400">
+                          ID: {event.visitorId.slice(0, 8)}...
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 truncate">
+                        URL: <span className="font-mono text-[11px]">{event.pageUrl || "/services"}</span>
+                        {event.referrer && <span className="ml-2 text-slate-400">via {event.referrer}</span>}
+                      </p>
+                    </div>
+                    <span className="text-[11px] text-slate-400 shrink-0">
+                      {formatDate(event.createdAt)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Complete Filter Bar Card */}
         <Card className="border-slate-200 rounded-2xl shadow-sm bg-white">

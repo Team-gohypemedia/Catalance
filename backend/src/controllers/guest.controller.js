@@ -353,6 +353,7 @@ const SERVICE_QUESTIONS_INCLUDE = Object.freeze({
 const buildGuestSessionCoreSelect = () => ({
     id: true,
     serviceId: true,
+    visitorId: true,
     currentStep: true,
     answers: true,
     messages: {
@@ -7489,13 +7490,17 @@ const generateProposalResponseForSession = async ({
             }
         );
 
-    const nextAnswers = mergeAnswersUiState(
-        proposalAnswersPayload,
-        {
-            [PROPOSAL_GENERATED_AT_KEY]: new Date().toISOString(),
-            [PENDING_PROPOSAL_STATE_KEY]: null
-        }
-    );
+    const nextAnswers = {
+        ...mergeAnswersUiState(
+            proposalAnswersPayload,
+            {
+                [PROPOSAL_GENERATED_AT_KEY]: new Date().toISOString(),
+                [PENDING_PROPOSAL_STATE_KEY]: null
+            }
+        ),
+        hasProposal: true,
+        proposalGeneratedAt: new Date().toISOString(),
+    };
 
     if (
         JSON.stringify(nextAnswers) !== JSON.stringify(session.answers || {})
@@ -7519,6 +7524,27 @@ const generateProposalResponseForSession = async ({
                 data: { answers: nextAnswers }
             });
         }
+    }
+
+    // Asynchronously log PROPOSAL_GENERATED activity event if visitorId is present
+    if (session.visitorId) {
+        prisma.clientActivityEvent.create({
+            data: {
+                visitorId: session.visitorId,
+                userId: session.userId || null,
+                sessionId: session.id,
+                eventType: "PROPOSAL_GENERATED",
+                serviceId: service.slug,
+                serviceName: service.title || service.name || service.slug,
+                pageUrl: `/services?service=${service.slug}&chat=${session.id}`,
+                metadata: {
+                    brandName: proposalAnswersPayload?.bySlug?.brand_name || null,
+                    serviceName: service.name,
+                },
+            },
+        }).catch((err) => {
+            console.error("[generateAndPersistProposal] Failed to log PROPOSAL_GENERATED event:", err?.message || err);
+        });
     }
 
     return responseContent;
@@ -7843,7 +7869,8 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         routeLabel: "/guest/start",
         requestLabel: `service=${String(req.body?.serviceId || "").trim() || "unknown"}`,
     });
-    const { serviceId, prefillName = "", sharedAnswers = {} } = req.body; // Can be slug or ID
+    const { serviceId, prefillName = "", sharedAnswers = {}, visitorId = null } = req.body; // Can be slug or ID
+    const clientVisitorId = visitorId ? String(visitorId).trim() : null;
 
     if (!serviceId) {
         throw new AppError("Service ID is required", 400);
@@ -7905,6 +7932,7 @@ export const startGuestSession = asyncHandler(async (req, res) => {
         () => prisma.aiGuestSession.create({
             data: {
                 serviceId: service.slug, // Store slug for consistency
+                visitorId: clientVisitorId,
                 currentStep,
                 answers: answersPayload,
             },
@@ -7915,6 +7943,29 @@ export const startGuestSession = asyncHandler(async (req, res) => {
             detail: "Saving the new guest session row.",
         },
     );
+
+    // Asynchronously log CHAT_LAUNCH activity event if visitorId is present
+    if (clientVisitorId) {
+        prisma.clientActivityEvent.create({
+            data: {
+                visitorId: clientVisitorId,
+                userId: req.user?.id || null,
+                sessionId: session.id,
+                eventType: "CHAT_LAUNCH",
+                serviceId: service.slug,
+                serviceName: service.title || service.name || service.slug,
+                pageUrl: `/services?service=${service.slug}&chat=${session.id}`,
+                metadata: {
+                    prefillName: prefillName || null,
+                    flowMode: sharedAnswers?.flowMode || "FREELANCER",
+                },
+                userAgent: req.headers["user-agent"] || null,
+                ipAddress: req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip || null,
+            },
+        }).catch((err) => {
+            console.error("[startGuestSession] Failed to log CHAT_LAUNCH event:", err?.message || err);
+        });
+    }
 
     // 3. Create Initial assistant message (The First Question)
     await requestTimingTracker.measure(
@@ -8013,6 +8064,27 @@ export const guestChat = asyncHandler(async (req, res) => {
     if (!service) {
         throw new AppError("Service context lost", 404);
     }
+
+    // Asynchronously log DOCUMENT_UPLOAD activity event if visitorId is present
+    if (uploadedAttachments.length > 0 && session.visitorId) {
+        prisma.clientActivityEvent.create({
+            data: {
+                visitorId: session.visitorId,
+                sessionId: session.id,
+                eventType: "DOCUMENT_UPLOAD",
+                serviceId: service.slug,
+                serviceName: service.title || service.name || service.slug,
+                pageUrl: `/services?service=${service.slug}&chat=${session.id}`,
+                metadata: {
+                    attachments: uploadedAttachments.map((a) => a.name),
+                    count: uploadedAttachments.length,
+                },
+            },
+        }).catch((err) => {
+            console.error("[guestChat] Failed to log DOCUMENT_UPLOAD event:", err?.message || err);
+        });
+    }
+
     const serviceAiInstructions = buildServiceAiInstructions(service);
 
     const questions = service.questions;

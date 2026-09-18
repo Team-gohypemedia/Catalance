@@ -175,6 +175,7 @@ model User {
   userRequests           UserRequest[] @relation("UserRequestUser")
   reviewedUserRequests   UserRequest[] @relation("UserRequestReviewer")
   payoutRequests         PayoutRequest[]       @relation("FreelancerPayoutRequests")
+  clientActivityEvents   ClientActivityEvent[]
 
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
@@ -804,13 +805,17 @@ model FreelancerSkill {
 }
 
 model AiGuestSession {
-  id          String           @id @default(cuid())
-  serviceId   String
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
-  currentStep Int              @default(0)
-  answers     Json?            @default("{}")
-  messages    AiGuestMessage[]
+  id             String                @id @default(cuid())
+  serviceId      String
+  visitorId      String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  currentStep    Int                   @default(0)
+  answers        Json?                 @default("{}")
+  messages       AiGuestMessage[]
+  activityEvents ClientActivityEvent[]
+
+  @@index([visitorId])
 }
 
 model AiGuestMessage {
@@ -822,6 +827,33 @@ model AiGuestMessage {
   createdAt DateTime       @default(now())
 
   @@index([sessionId, createdAt])
+}
+
+model ClientActivityEvent {
+  id          String          @id @default(cuid())
+  visitorId   String
+  userId      String?
+  sessionId   String?
+  eventType   String          // PAGE_VIEW, SERVICE_CLICK, DIRECTION_CLICK, BRIEF_TAB_SWITCH, BRIEF_STEP, DOCUMENT_UPLOAD, CHAT_LAUNCH, MESSAGE_SENT, PROPOSAL_GENERATED, etc.
+  serviceId   String?
+  serviceName String?
+  pageUrl     String?
+  referrer    String?
+  metadata    Json?           @default("{}")
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime        @default(now())
+
+  user        User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  session     AiGuestSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([visitorId])
+  @@index([userId])
+  @@index([sessionId])
+  @@index([eventType])
+  @@index([serviceId])
+  @@index([createdAt])
+  @@map("client_activity_events")
 }
 
 model ProjectTask {

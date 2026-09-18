@@ -109,6 +109,7 @@ import cataLogo from '@/assets/logos/logo.svg';
 import * as pdfjsLib from 'pdfjs-dist';
 import mammoth from 'mammoth';
 import '@/shared/lib/pdf-worker-setup';
+import { getVisitorId, trackClientActivity } from '@/shared/lib/activityTracker';
 
 const { primaryKey: GUEST_CHAT_STORAGE_KEY } = getGuestChatStorageKeys();
 const { primaryKey: GUEST_CHAT_SIDEBAR_SIZE_KEY } =
@@ -4032,6 +4033,13 @@ const GuestAIDemo = () => {
 
     useEffect(() => {
         fetchServices();
+        trackClientActivity('PAGE_VIEW', {
+            metadata: {
+                pathname: typeof window !== 'undefined' ? window.location.pathname : '/services',
+                search: typeof window !== 'undefined' ? window.location.search : '',
+                referrer: typeof document !== 'undefined' ? (document.referrer || null) : null,
+            }
+        });
     }, []);
 
     useEffect(() => {
@@ -4591,10 +4599,21 @@ const GuestAIDemo = () => {
 
     const goToNextBriefingStep = useCallback(() => {
         if (!isCurrentBriefingStepValid) return;
-        startTransition(() => {
-            setBriefingStepIndex((current) => Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, current + 1));
+        const nextIndex = Math.min(BRIEFING_STEP_DEFINITIONS.length - 1, briefingStepIndex + 1);
+        const nextStep = BRIEFING_STEP_DEFINITIONS[nextIndex];
+        trackClientActivity('BRIEF_STEP', {
+            serviceId: inferredBriefingService?.slug || inferredBriefingService?.id || null,
+            serviceName: inferredBriefingService?.name || inferredBriefingService?.title || null,
+            metadata: {
+                stepIndex: nextIndex,
+                stepKey: nextStep?.key,
+                role: briefingAnswers.role,
+            }
         });
-    }, [isCurrentBriefingStepValid]);
+        startTransition(() => {
+            setBriefingStepIndex(nextIndex);
+        });
+    }, [briefingAnswers.role, briefingStepIndex, inferredBriefingService, isCurrentBriefingStepValid]);
 
     const goToPreviousBriefingStep = useCallback(() => {
         startTransition(() => {
@@ -4832,12 +4851,24 @@ const GuestAIDemo = () => {
         }
 
         try {
+            const visitorId = getVisitorId();
+            trackClientActivity('CHAT_LAUNCH', {
+                serviceId: service.slug || service.id,
+                serviceName: service.name || service.title || service.slug,
+                metadata: {
+                    flowMode,
+                    prefillName: userPrefillName || null,
+                    hasDoc: Boolean(pendingBriefSubmission?.attachments?.length),
+                }
+            });
+
             const requestStartedAt = getNowTimestamp();
             const response = await request('/guest/start', {
                 method: 'POST',
                 timeout: 120000,
                 body: JSON.stringify({
                     serviceId: service.slug || service.id,
+                    visitorId,
                     ...(userPrefillName ? { prefillName: userPrefillName } : {}),
                     ...(Object.keys(sharedAnswers).length > 0 ? { sharedAnswers } : {}),
                 })
@@ -6136,6 +6167,10 @@ const GuestAIDemo = () => {
                                                         type="button"
                                                         onClick={() => {
                                                             const targetServiceId = service?.slug || service?.id;
+                                                            trackClientActivity('DIRECTION_CLICK', {
+                                                                serviceId: targetServiceId,
+                                                                serviceName: service?.name || service?.title,
+                                                            });
                                                             navigate(`${location.pathname}?service=${targetServiceId}`, { state: { fromWizard: true } });
                                                         }}
                                                         className={`rounded-full border px-4 py-2 text-xs transition-colors ${briefingChipClasses}`}
@@ -6163,7 +6198,10 @@ const GuestAIDemo = () => {
                                         <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-[#f0eae1]/80 dark:bg-white/[0.04] p-1.5 border border-[#e8dfd3] dark:border-white/10">
                                             <button
                                                 type="button"
-                                                onClick={() => setBriefingInputTab('text')}
+                                                onClick={() => {
+                                                    setBriefingInputTab('text');
+                                                    trackClientActivity('BRIEF_TAB_SWITCH', { metadata: { tab: 'text' } });
+                                                }}
                                                 className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-semibold transition-all duration-200 ${
                                                     briefingInputTab === 'text'
                                                         ? (isDark
@@ -6183,7 +6221,10 @@ const GuestAIDemo = () => {
 
                                             <button
                                                 type="button"
-                                                onClick={() => setBriefingInputTab('upload')}
+                                                onClick={() => {
+                                                    setBriefingInputTab('upload');
+                                                    trackClientActivity('BRIEF_TAB_SWITCH', { metadata: { tab: 'upload' } });
+                                                }}
                                                 className={`flex items-center justify-center gap-2 rounded-xl py-2.5 px-3 text-xs font-semibold transition-all duration-200 ${
                                                     briefingInputTab === 'upload'
                                                         ? (isDark
@@ -6636,11 +6677,21 @@ const GuestAIDemo = () => {
                                     return (
                                         <div
                                             key={feature.id || index}
-                                            onClick={() => (
-                                                isAgencySelectionMode
-                                                    ? toggleAgencyServiceSelection(feature)
-                                                    : startServiceConversation(feature)
-                                            )}
+                                            onClick={() => {
+                                                const featureId = getServiceIdentifier(feature);
+                                                trackClientActivity('SERVICE_CLICK', {
+                                                    serviceId: featureId,
+                                                    serviceName: feature.title || feature.name,
+                                                    metadata: {
+                                                        isAgencyMode: isAgencySelectionMode,
+                                                    }
+                                                });
+                                                if (isAgencySelectionMode) {
+                                                    toggleAgencyServiceSelection(feature);
+                                                } else {
+                                                    startServiceConversation(feature);
+                                                }
+                                            }}
                                             onMouseMove={handleCardGlowMouseMove}
                                             style={{ '--card-glow-x': '50%', '--card-glow-y': '50%', '--primary': isDark ? '#F9D949' : '#D9692A' }}
                                             className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border transition-all duration-500 hover:-translate-y-2 ${isCardSelected

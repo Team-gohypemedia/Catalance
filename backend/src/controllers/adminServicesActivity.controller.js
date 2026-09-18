@@ -102,35 +102,93 @@ const resolveClientIdentity = (session, userMapById = new Map(), userMapByName =
   };
 };
 
+const ATTACHMENT_TOKEN_GLOBAL_REGEX = /\[\[ATTACHMENT\]\]([^|\n\r]+)\|([^|\n\r]+)\|([^|\n\r]*)\|(\d+)/g;
+
+const safeDecode = (str = "") => {
+  if (!str || typeof str !== "string") return str || "";
+  try {
+    return decodeURIComponent(str);
+  } catch {
+    return str;
+  }
+};
+
+const PROPOSAL_CONTENT_REGEX =
+  /(?:client name\s*:|project overview\s*:|primary objectives\s*:|features\/deliverables included\s*:|^#+\s*proposal|^#+\s*project overview|service breakdown\s*:)/i;
+
+const isProposalMessage = (content = "") => {
+  if (!content || typeof content !== "string") return false;
+  return PROPOSAL_CONTENT_REGEX.test(content);
+};
+
 /**
  * Helper to extract document attachments & extracted text from session answers or messages
  */
 const resolveDocumentData = (session) => {
   const answers = session?.answers || {};
+  const uiState = answers?.uiState || {};
+  const bySlug = answers?.bySlug || {};
   const attachmentContextText = String(
     answers?.attachmentContextText ||
     answers?.docText ||
     answers?.extractedDocText ||
-    answers?.bySlug?.attachmentContextText ||
+    uiState?.attachmentContextText ||
+    bySlug?.attachmentContextText ||
     ""
   ).trim();
 
-  let attachments = [];
+  const attachments = [];
+  const seenUrls = new Set();
+
+  const addAttachment = (name, url, type, size) => {
+    if (!url || seenUrls.has(url)) return;
+    seenUrls.add(url);
+    attachments.push({
+      name: safeDecode(name || "Document Attachment"),
+      url: safeDecode(url),
+      type: type || "application/octet-stream",
+      size: Number(size) || 0,
+    });
+  };
+
   if (Array.isArray(answers?.attachments)) {
-    attachments = [...answers.attachments];
-  } else if (answers?.attachment && typeof answers.attachment === "object") {
-    attachments = [answers.attachment];
-  } else if (Array.isArray(answers?.uploadedFiles)) {
-    attachments = [...answers.uploadedFiles];
+    for (const a of answers.attachments) {
+      if (a && typeof a === "object") addAttachment(a.name, a.url, a.type, a.size);
+    }
+  }
+  if (answers?.attachment && typeof answers.attachment === "object") {
+    addAttachment(answers.attachment.name, answers.attachment.url, answers.attachment.type, answers.attachment.size);
+  }
+  if (Array.isArray(answers?.uploadedFiles)) {
+    for (const a of answers.uploadedFiles) {
+      if (a && typeof a === "object") addAttachment(a.name, a.url, a.type, a.size);
+    }
+  }
+  if (Array.isArray(uiState?.attachments)) {
+    for (const a of uiState.attachments) {
+      if (a && typeof a === "object") addAttachment(a.name, a.url, a.type, a.size);
+    }
   }
 
-  // Also check messages for attachments
+  // Check messages for attachment tokens & direct upload links
   if (Array.isArray(session?.messages)) {
     for (const msg of session.messages) {
       if (msg?.attachment && typeof msg.attachment === "object") {
-        const att = msg.attachment;
-        if (!attachments.some((a) => a.name === att.name || a.url === att.url)) {
-          attachments.push(att);
+        addAttachment(msg.attachment.name, msg.attachment.url, msg.attachment.type, msg.attachment.size);
+      }
+      const content = String(msg?.content || "");
+      if (content.includes("[[ATTACHMENT]]")) {
+        const regex = new RegExp(ATTACHMENT_TOKEN_GLOBAL_REGEX);
+        let match;
+        while ((match = regex.exec(content)) !== null) {
+          addAttachment(match[1], match[2], match[3], match[4]);
+        }
+      }
+      const chatUploadMatches = content.match(/https?:\/\/[^\s)<>]+(?:\/api\/images\/chat\/|\/uploads\/)[^\s)<>]+/g);
+      if (chatUploadMatches) {
+        for (const rawUrl of chatUploadMatches) {
+          const filename = rawUrl.split("/").pop() || "uploaded-file.pdf";
+          addAttachment(filename, rawUrl, "application/pdf", 0);
         }
       }
     }
@@ -172,6 +230,8 @@ const resolveAiUsageAndCost = (session, usageRecordsMap = new Map()) => {
   const assistantMessages = messages.filter((m) => m.role === "assistant");
   
   const answers = session?.answers || {};
+  const uiState = answers?.uiState || {};
+  const bySlug = answers?.bySlug || {};
   const attachmentText = answers?.attachmentContextText || answers?.docText || answers?.extractedDocText || "";
 
   let userChars = 0;
@@ -186,7 +246,16 @@ const resolveAiUsageAndCost = (session, usageRecordsMap = new Map()) => {
   }
 
   const callCount = Math.max(dbCallCount, assistantMessages.length);
-  const hasProposal = Boolean(answers?.hasProposal || answers?.generatedProposal || answers?.proposal || answers?.bySlug?.generated_proposal);
+  const hasProposalInAnswers = Boolean(
+    uiState?.proposalGeneratedAt ||
+    answers?.proposalGeneratedAt ||
+    answers?.hasProposal ||
+    answers?.generatedProposal ||
+    answers?.proposal ||
+    bySlug?.generated_proposal
+  );
+  const hasProposalInMsgs = assistantMessages.some((m) => isProposalMessage(m.content));
+  const hasProposal = hasProposalInAnswers || hasProposalInMsgs;
 
   // Estimation math (if DB logs don't capture full token count):
   const estPromptTokens = Math.max(
@@ -245,14 +314,31 @@ const formatServiceLabel = (serviceId = "") => {
  */
 const resolveSessionStatus = (session) => {
   const answers = session?.answers || {};
+  const uiState = answers?.uiState || {};
+  const bySlug = answers?.bySlug || {};
   const currentStep = Number(session?.currentStep || 0);
 
-  const hasProposal = Boolean(
+  const hasProposalInAnswers = Boolean(
+    uiState?.proposalGeneratedAt ||
+    answers?.proposalGeneratedAt ||
     answers?.hasProposal ||
     answers?.generatedProposal ||
     answers?.proposal ||
-    answers?.bySlug?.generated_proposal
+    bySlug?.generated_proposal ||
+    bySlug?.hasProposal
   );
+
+  let hasProposalInMessages = false;
+  if (Array.isArray(session?.messages)) {
+    for (const msg of session.messages) {
+      if (msg?.role === "assistant" && isProposalMessage(msg?.content)) {
+        hasProposalInMessages = true;
+        break;
+      }
+    }
+  }
+
+  const hasProposal = hasProposalInAnswers || hasProposalInMessages;
 
   let status = "IN_PROGRESS";
   if (hasProposal) {
@@ -516,6 +602,122 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
     }
   }
 
+  // --- Fetch Client Activity Events for Full Funnel & Clickstream ---
+  let activityEvents = [];
+  try {
+    activityEvents = await prisma.clientActivityEvent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 1000,
+    });
+  } catch (err) {
+    activityEvents = [];
+  }
+
+  const uniqueVisitorsSet = new Set();
+  const visitorsWhoClickedSet = new Set();
+  const visitorsWhoBriefedSet = new Set();
+  const visitorsWhoChattedSet = new Set();
+  const serviceClickCounts = new Map();
+
+  let totalPageViews = 0;
+  let totalServiceClicks = 0;
+  let totalBriefInteractions = 0;
+
+  for (const ev of activityEvents) {
+    if (ev.visitorId) uniqueVisitorsSet.add(ev.visitorId);
+
+    if (ev.eventType === "PAGE_VIEW") {
+      totalPageViews++;
+    } else if (ev.eventType === "SERVICE_CLICK" || ev.eventType === "DIRECTION_CLICK") {
+      totalServiceClicks++;
+      if (ev.visitorId) visitorsWhoClickedSet.add(ev.visitorId);
+      const sId = ev.serviceId || "unknown";
+      const sName = ev.serviceName || formatServiceLabel(sId);
+      const current = serviceClickCounts.get(sId) || { serviceId: sId, name: sName, clicks: 0, chats: 0 };
+      current.clicks++;
+      serviceClickCounts.set(sId, current);
+    } else if (ev.eventType === "BRIEF_STEP" || ev.eventType === "DOCUMENT_UPLOAD" || ev.eventType === "BRIEF_TAB_SWITCH") {
+      totalBriefInteractions++;
+      if (ev.visitorId) visitorsWhoBriefedSet.add(ev.visitorId);
+    } else if (ev.eventType === "CHAT_LAUNCH") {
+      if (ev.visitorId) visitorsWhoChattedSet.add(ev.visitorId);
+      const sId = ev.serviceId || "unknown";
+      const sName = ev.serviceName || formatServiceLabel(sId);
+      const current = serviceClickCounts.get(sId) || { serviceId: sId, name: sName, clicks: 0, chats: 0 };
+      current.chats++;
+      serviceClickCounts.set(sId, current);
+    }
+  }
+
+  const uniqueVisitorsCount = Math.max(uniqueVisitorsSet.size, totalSessions);
+  const totalServiceClicksCount = totalServiceClicks;
+  const visitorsClickedCount = visitorsWhoClickedSet.size;
+  const visitorsBriefedCount = visitorsWhoBriefedSet.size;
+  const visitorsChattedCount = Math.max(visitorsWhoChattedSet.size, totalSessions);
+
+  // Conversion Funnel Stages
+  const trafficFunnel = [
+    {
+      stage: "1. Services Page Visitors",
+      count: uniqueVisitorsCount,
+      subtext: `${totalPageViews} total page impressions`,
+      conversionPct: 100,
+      dropOffPct: 0,
+    },
+    {
+      stage: "2. Explored / Clicked Services",
+      count: visitorsClickedCount,
+      subtext: `${totalServiceClicksCount} total card & direction clicks`,
+      conversionPct: uniqueVisitorsCount > 0 ? Math.round((visitorsClickedCount / uniqueVisitorsCount) * 100) : 0,
+      dropOffPct: uniqueVisitorsCount > 0 ? Math.max(0, 100 - Math.round((visitorsClickedCount / uniqueVisitorsCount) * 100)) : 0,
+    },
+    {
+      stage: "3. Brief Wizard / Doc Upload",
+      count: visitorsBriefedCount,
+      subtext: `${totalBriefInteractions} briefing interactions`,
+      conversionPct: uniqueVisitorsCount > 0 ? Math.round((visitorsBriefedCount / uniqueVisitorsCount) * 100) : 0,
+      dropOffPct: visitorsClickedCount > 0 ? Math.max(0, 100 - Math.round((visitorsBriefedCount / visitorsClickedCount) * 100)) : 0,
+    },
+    {
+      stage: "4. Launched AI Chat",
+      count: totalSessions,
+      subtext: `${totalSessions} interactive chat sessions`,
+      conversionPct: uniqueVisitorsCount > 0 ? Math.round((totalSessions / uniqueVisitorsCount) * 100) : 0,
+      dropOffPct: visitorsBriefedCount > 0 ? Math.max(0, 100 - Math.round((totalSessions / visitorsBriefedCount) * 100)) : 0,
+    },
+    {
+      stage: "5. Generated Proposal",
+      count: totalProposals,
+      subtext: `${totalProposals} complete client proposals`,
+      conversionPct: totalSessions > 0 ? Math.round((totalProposals / totalSessions) * 100) : 0,
+      dropOffPct: totalSessions > 0 ? Math.max(0, 100 - Math.round((totalProposals / totalSessions) * 100)) : 0,
+    },
+  ];
+
+  // Ranked services by clicks
+  const serviceClickRankings = Array.from(serviceClickCounts.values())
+    .map((s) => ({
+      ...s,
+      conversionRate: s.clicks > 0 ? `${Math.round((s.chats / s.clicks) * 100)}%` : "0%",
+    }))
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 10);
+
+  // Recent 25 live visitor activity events
+  const recentActivityFeed = activityEvents.slice(0, 30).map((ev) => ({
+    id: ev.id,
+    visitorId: ev.visitorId,
+    eventType: ev.eventType,
+    serviceId: ev.serviceId,
+    serviceName: ev.serviceName || formatServiceLabel(ev.serviceId),
+    pageUrl: ev.pageUrl,
+    referrer: ev.referrer,
+    metadata: ev.metadata,
+    createdAt: ev.createdAt,
+    userAgent: ev.userAgent,
+    ipAddress: ev.ipAddress,
+  }));
+
   const totalRecords = filtered.length;
   const totalPages = Math.ceil(totalRecords / limit) || 1;
   const startIndex = (page - 1) * limit;
@@ -540,6 +742,18 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
         maxStepFound,
         milestoneFunnel,
         stepBreakdown,
+        // New Traffic & Telemetry Metrics
+        trafficMetrics: {
+          totalPageViews,
+          uniqueVisitors: uniqueVisitorsCount,
+          totalServiceClicks: totalServiceClicksCount,
+          totalBriefInteractions,
+          visitorToChatRate: uniqueVisitorsCount > 0 ? `${Math.round((totalSessions / uniqueVisitorsCount) * 100)}%` : "0%",
+          chatToProposalRate: totalSessions > 0 ? `${Math.round((totalProposals / totalSessions) * 100)}%` : "0%",
+        },
+        trafficFunnel,
+        serviceClickRankings,
+        recentActivityFeed,
       },
       pagination: {
         page,
@@ -554,7 +768,7 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
 
 /**
  * GET /api/admin/services-activity/:sessionId
- * Returns full details, document analytics, & conversation transcript for a single chat session
+ * Returns full details, document analytics, clickstream timeline & conversation transcript for a single chat session
  */
 export const getServicesActivitySessionDetail = asyncHandler(async (req, res) => {
   const { sessionId } = req.params;
@@ -590,6 +804,21 @@ export const getServicesActivitySessionDetail = asyncHandler(async (req, res) =>
   const usageRecordsMap = new Map();
   usageRecordsMap.set(sessionId, dbAiUsageRecords);
 
+  // Fetch clickstream events for this session and visitor
+  let activityTimeline = [];
+  try {
+    const whereConditions = [{ sessionId }];
+    if (session.visitorId) {
+      whereConditions.push({ visitorId: session.visitorId });
+    }
+    activityTimeline = await prisma.clientActivityEvent.findMany({
+      where: { OR: whereConditions },
+      orderBy: { createdAt: "asc" },
+    });
+  } catch (err) {
+    activityTimeline = [];
+  }
+
   const answers = session.answers || {};
   const bySlug = answers?.bySlug || {};
   const userId = answers?.userId || session?.userId || null;
@@ -624,10 +853,40 @@ export const getServicesActivitySessionDetail = asyncHandler(async (req, res) =>
   const { status, hasProposal } = resolveSessionStatus(session);
   const aiUsage = resolveAiUsageAndCost(session, usageRecordsMap);
 
+  // Format messages to extract attachments and clean token tags
+  const formattedMessages = (session.messages || []).map((msg) => {
+    let rawContent = String(msg.content || "");
+    let msgAttachment = msg.attachment || null;
+
+    if (!msgAttachment && rawContent.includes("[[ATTACHMENT]]")) {
+      const regex = /\[\[ATTACHMENT\]\]([^|\n\r]+)\|([^|\n\r]+)\|([^|\n\r]*)\|(\d+)/;
+      const match = regex.exec(rawContent);
+      if (match) {
+        msgAttachment = {
+          name: safeDecode(match[1] || "Attachment"),
+          url: safeDecode(match[2] || ""),
+          type: safeDecode(match[3] || "application/octet-stream"),
+          size: Number(match[4]) || 0,
+        };
+      }
+    }
+
+    const cleanContent = rawContent.replace(/\[\[ATTACHMENT\]\][^\n\r]+/g, "").trim();
+
+    return {
+      id: msg.id,
+      role: msg.role,
+      content: cleanContent || (msgAttachment ? `[Uploaded Document: ${msgAttachment.name}]` : rawContent),
+      attachment: msgAttachment,
+      createdAt: msg.createdAt,
+    };
+  });
+
   return res.json({
     success: true,
     data: {
       id: session.id,
+      visitorId: session.visitorId || null,
       serviceId: session.serviceId,
       serviceLabel,
       createdAt: session.createdAt,
@@ -638,8 +897,10 @@ export const getServicesActivitySessionDetail = asyncHandler(async (req, res) =>
       aiUsage,
       status,
       hasProposal,
+      activityTimeline,
       answers: session.answers || {},
-      messages: session.messages || [],
+      messages: formattedMessages,
     },
   });
 });
+
