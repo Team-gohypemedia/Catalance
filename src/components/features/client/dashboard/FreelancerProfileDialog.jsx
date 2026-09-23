@@ -1,7 +1,12 @@
 import { memo, useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/shared/context/AuthContext";
 import Briefcase from "lucide-react/dist/esm/icons/briefcase";
+import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
+import Clock from "lucide-react/dist/esm/icons/clock";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
+import FileText from "lucide-react/dist/esm/icons/file-text";
 import Globe from "lucide-react/dist/esm/icons/globe";
 import Languages from "lucide-react/dist/esm/icons/languages";
 import MapPin from "lucide-react/dist/esm/icons/map-pin";
@@ -325,76 +330,248 @@ const resolveAvatarSrc = (freelancer = {}) => {
   );
 };
 
+const TIMELINE_LABELS = {
+  less_than_1_month: "Less than 1 month",
+  "1_3_months": "1–3 months",
+  "3_6_months": "3–6 months",
+  more_than_6_months: "6+ months",
+  "1_2_weeks": "1–2 weeks",
+  "2_4_weeks": "2–4 weeks",
+  "4_6_weeks": "4–6 weeks",
+  "6_8_weeks": "6–8 weeks",
+  "8_12_weeks": "8–12 weeks",
+};
+
+const formatProjectTimeline = (value) => {
+  if (!value) return "";
+  const raw = normalizePlainText(value);
+  if (!raw) return "";
+  const lower = raw.toLowerCase();
+  if (TIMELINE_LABELS[lower]) return TIMELINE_LABELS[lower];
+  const cleaned = raw.replace(/_/g, " ");
+  return cleaned.replace(/\b(\d+)\s+(\d+)\s+weeks?\b/i, "$1–$2 weeks");
+};
+
+const ROLE_LABELS = {
+  full_execution: "Full Execution",
+  lead_developer: "Lead Developer",
+  consultant: "Consultant",
+  designer: "Designer",
+  contributor: "Contributor",
+};
+
+const formatProjectRole = (value) => {
+  if (!value) return "";
+  const raw = normalizePlainText(value);
+  if (!raw) return "";
+  const lower = raw.toLowerCase();
+  if (ROLE_LABELS[lower]) return ROLE_LABELS[lower];
+  const cleaned = raw.replace(/_/g, " ");
+  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+};
+
+const formatProjectBudget = (value) => {
+  if (value === undefined || value === null || value === "") return "";
+  const raw = normalizePlainText(value);
+  if (!raw) return "";
+  const numeric = Number(raw.replace(/[^0-9.]/g, ""));
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return `₹${Math.round(numeric).toLocaleString("en-IN")}`;
+  }
+  return raw;
+};
+
 const resolvePortfolioProjects = (freelancer = {}) => {
   const profileDetails = asObject(
     freelancer?.profileDetails || freelancer?.freelancerProfile,
   );
-  let projects = [];
+  const collectedProjects = [];
 
   const candidatePortfolios = [
     freelancer?.portfolioProjects,
+    freelancer?.freelancerProjects,
     profileDetails?.portfolioProjects,
+    profileDetails?.freelancerProjects,
     freelancer?.portfolio,
     profileDetails?.portfolio,
   ];
 
   for (const portfolioValue of candidatePortfolios) {
     if (Array.isArray(portfolioValue) && portfolioValue.length > 0) {
-      projects = portfolioValue;
-      break;
-    }
-    if (typeof portfolioValue === "string" && portfolioValue.startsWith("[")) {
+      collectedProjects.push(...portfolioValue);
+    } else if (typeof portfolioValue === "string" && portfolioValue.startsWith("[")) {
       try {
-        projects = JSON.parse(portfolioValue);
-        if (Array.isArray(projects) && projects.length > 0) break;
+        const parsed = JSON.parse(portfolioValue);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          collectedProjects.push(...parsed);
+        }
       } catch {
-        projects = [];
+        // ignore invalid json
       }
     }
   }
 
-  return projects
-    .map((project) => {
+  // Also collect case studies and projects from serviceDetails
+  if (profileDetails?.serviceDetails && typeof profileDetails.serviceDetails === "object") {
+    Object.entries(profileDetails.serviceDetails).forEach(([serviceKey, detail]) => {
+      if (!detail || typeof detail !== "object" || serviceKey.startsWith("__")) return;
+      const serviceName = detail?.title || detail?.name || serviceKey;
+      if (Array.isArray(detail.caseStudies)) {
+        detail.caseStudies.forEach((cs) => {
+          if (cs && typeof cs === "object") {
+            collectedProjects.push({ ...cs, serviceKey, serviceName: cs.serviceName || serviceName });
+          }
+        });
+      } else if (detail.caseStudy && typeof detail.caseStudy === "object") {
+        collectedProjects.push({ ...detail.caseStudy, serviceKey, serviceName: detail.caseStudy.serviceName || serviceName });
+      } else if (Array.isArray(detail.projects)) {
+        detail.projects.forEach((proj) => {
+          if (proj && typeof proj === "object") {
+            collectedProjects.push({ ...proj, serviceKey, serviceName: proj.serviceName || serviceName });
+          }
+        });
+      }
+    });
+  }
+
+  const seenKeys = new Set();
+
+  return collectedProjects
+    .map((project, index) => {
       if (typeof project === "string") {
-        const title = normalizePlainText(project);
+        const trimmed = normalizePlainText(project);
+        const link = normalizeProjectUrl(project);
         return {
-          title,
-          link: normalizeProjectUrl(project),
+          title: trimmed && !link ? trimmed : `Project ${index + 1}`,
+          link,
           subtitle: "",
           image: "",
+          serviceName: "",
+          rawTitle: trimmed,
+          timeline: "",
+          role: "",
+          budget: "",
+          techStack: [],
+          documentUrl: "",
         };
       }
 
+      const rawTitle = normalizePlainText(
+        project?.title ||
+          project?.projectTitle ||
+          project?.name ||
+          project?.projectName ||
+          project?.caseStudyTitle ||
+          project?.caseStudy?.title ||
+          "",
+      );
+      const link = normalizeProjectUrl(
+        project?.link ||
+          project?.projectLink ||
+          project?.url ||
+          project?.projectUrl ||
+          project?.website ||
+          project?.liveUrl ||
+          project?.demoUrl ||
+          project?.externalLink ||
+          project?.readme ||
+          project?.readmeUrl ||
+          project?.fileUrl,
+      );
+      const subtitle = normalizePlainText(
+        project?.subtitle ||
+          project?.description ||
+          project?.summary ||
+          project?.overview ||
+          project?.goal ||
+          project?.caseStudy?.description ||
+          project?.category,
+      );
+      const image = normalizePlainText(
+        project?.image ||
+          project?.imageUrl ||
+          project?.thumbnail ||
+          project?.coverImage ||
+          project?.previewImage ||
+          project?.fileUrl ||
+          project?.projectFile,
+      );
+      const serviceName = normalizePlainText(
+        project?.serviceName ||
+          project?.serviceTitle ||
+          project?.serviceKey ||
+          "",
+      );
+      const rawTimeline = normalizePlainText(project?.timeline || project?.deliveryTime || "");
+      const timeline = formatProjectTimeline(rawTimeline);
+      const rawRole = normalizePlainText(project?.role || "");
+      const role = formatProjectRole(rawRole);
+      const rawBudget = project?.budget ?? project?.averageProjectPriceRange ?? null;
+      const budget = formatProjectBudget(rawBudget);
+      const techStack = Array.isArray(project?.techStack) && project.techStack.length > 0
+        ? project.techStack
+        : Array.isArray(project?.tags) && project.tags.length > 0
+          ? project.tags
+          : Array.isArray(project?.activeTechnologies) && project.activeTechnologies.length > 0
+            ? project.activeTechnologies
+            : Array.isArray(project?.skills) && project.skills.length > 0
+              ? project.skills
+              : [];
+      const documentUrl = normalizeProjectUrl(
+        project?.fileUrl || project?.projectFile || project?.readme || project?.readmeUrl,
+      );
+
+      const isGenericTitle = !rawTitle || /^project$/i.test(rawTitle);
+      const title = !isGenericTitle
+        ? rawTitle
+        : serviceName
+          ? `${serviceName} Project`
+          : subtitle
+            ? subtitle.length > 50
+              ? `${subtitle.slice(0, 47)}...`
+              : subtitle
+            : `Project ${index + 1}`;
+
       return {
-        title: normalizePlainText(project?.title || project?.name || "Project"),
-        link: normalizeProjectUrl(
-          project?.link || project?.url || project?.projectUrl || project?.website,
-        ),
-        subtitle: normalizePlainText(
-          project?.subtitle || project?.description || project?.category,
-        ),
-        image: normalizePlainText(
-          project?.image || project?.imageUrl || project?.thumbnail,
-        ),
+        title,
+        link,
+        subtitle,
+        image,
+        serviceName,
+        rawTitle,
+        timeline,
+        role,
+        budget,
+        techStack,
+        documentUrl,
       };
     })
-    .filter((project) => project.title || project.link)
+    .filter((project) => {
+      const hasContent = Boolean(project.subtitle || project.link || project.image);
+      const hasRealTitle = Boolean(project.rawTitle && !/^project$/i.test(project.rawTitle));
+      if (!hasContent && !hasRealTitle) return false;
+
+      const key = project.title.toLowerCase() + "|" + project.link.toLowerCase();
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    })
     .slice(0, 12);
 };
 
 const PortfolioProjectCard = ({ project, index }) => {
   const [failedImage, setFailedImage] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const title = project.title || `Project ${index + 1}`;
   const showImage = Boolean(project.image) && failedImage !== project.image;
-  const Wrapper = project.link ? "a" : "div";
+  const description = project.subtitle || "";
+  const isLongDescription = description.length > 150 || description.includes("\n");
 
   return (
-    <Wrapper
-      className="group block min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card transition-colors hover:border-primary/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      {...(project.link ? { href: project.link, target: "_blank", rel: "noopener noreferrer" } : {})}
-    >
+    <div className="group flex flex-col min-w-0 overflow-hidden rounded-xl border border-border/60 bg-card transition-colors hover:border-primary/30">
       {showImage && (
-        <div className="aspect-[2/1] overflow-hidden bg-muted sm:aspect-video">
+        <div className="aspect-[2/1] overflow-hidden bg-muted sm:aspect-video shrink-0">
           <img
             src={project.image}
             alt={title}
@@ -404,25 +581,133 @@ const PortfolioProjectCard = ({ project, index }) => {
           />
         </div>
       )}
-      <div className="space-y-2 p-3.5 sm:p-4">
-        <div className="flex items-start gap-2">
+      <div className="flex flex-col flex-1 space-y-2.5 p-3.5 sm:p-4">
+        <div className="flex items-start justify-between gap-2">
           <h4 className="min-w-0 flex-1 break-words text-[13px] font-semibold leading-snug text-foreground [overflow-wrap:anywhere] sm:text-sm">
             {title}
           </h4>
-          {project.link && <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />}
+          {project.link && (
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-1 -mr-1 -mt-0.5 rounded-md text-primary hover:bg-primary/10 transition-colors shrink-0"
+              title="Open project in new tab"
+            >
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">Open project in new tab</span>
+            </a>
+          )}
         </div>
-        {project.subtitle && (
-          <p className="break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere]">
-            {project.subtitle}
-          </p>
+
+        {/* Metadata Badges */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {project.serviceName && (
+            <Badge variant="secondary" className="text-[10px] font-medium h-5 px-1.5 bg-muted text-muted-foreground border-none">
+              {project.serviceName}
+            </Badge>
+          )}
+          {project.role && (
+            <Badge variant="outline" className="text-[10px] font-medium h-5 px-1.5 border-border/70 text-foreground/80">
+              {project.role}
+            </Badge>
+          )}
+          {project.timeline && (
+            <Badge variant="outline" className="text-[10px] font-medium h-5 px-1.5 border-border/70 text-foreground/80 flex items-center gap-1">
+              <Clock className="h-2.5 w-2.5 text-muted-foreground" />
+              {project.timeline}
+            </Badge>
+          )}
+          {project.budget && (
+            <Badge variant="outline" className="text-[10px] font-semibold h-5 px-1.5 border-primary/20 bg-primary/[0.04] text-primary">
+              {project.budget}
+            </Badge>
+          )}
+        </div>
+
+        {/* Project Description with Full Details toggle */}
+        {description && (
+          <div className="space-y-1.5">
+            <p
+              className={`break-words text-xs leading-relaxed text-muted-foreground [overflow-wrap:anywhere] whitespace-pre-line ${
+                !isExpanded && isLongDescription ? "line-clamp-3" : ""
+              }`}
+            >
+              {description}
+            </p>
+            {isLongDescription && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsExpanded((prev) => !prev);
+                }}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary rounded py-0.5 cursor-pointer"
+              >
+                {isExpanded ? (
+                  <>
+                    <span>Show less</span>
+                    <ChevronUp className="h-3 w-3" />
+                  </>
+                ) : (
+                  <>
+                    <span>Read full details</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
-        {project.link && (
-          <span className="inline-flex min-h-8 items-center text-xs font-semibold text-primary">
-            View project <span className="sr-only">(opens in a new tab)</span>
-          </span>
+
+        {/* Tech Stack tags */}
+        {Array.isArray(project.techStack) && project.techStack.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+            {project.techStack.slice(0, 8).map((tech, idx) => (
+              <span
+                key={`${tech}-${idx}`}
+                className="inline-flex items-center text-[9px] font-medium px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/40"
+              >
+                {tech}
+              </span>
+            ))}
+          </div>
         )}
+
+        {/* Footer actions */}
+        <div className="mt-auto pt-2.5 flex items-center justify-between gap-2 border-t border-border/40">
+          {project.link ? (
+            <a
+              href={project.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+            >
+              <span>View project</span>
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              Verified Project Experience
+            </span>
+          )}
+
+          {project.documentUrl && (
+            <a
+              href={project.documentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <FileText className="h-3 w-3" />
+              <span>Docs</span>
+            </a>
+          )}
+        </div>
       </div>
-    </Wrapper>
+    </div>
   );
 };
 
@@ -561,8 +846,10 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     return {
       ...viewingFreelancer,
       ...fetchedData,
-      freelancerProfile: fetchedData.freelancerProfile || viewingFreelancer?.freelancerProfile,
+      freelancerProfile:
+        fetchedData.freelancerProfile || viewingFreelancer?.freelancerProfile,
       profileDetails:
+        fetchedData.profileDetails ||
         fetchedData.freelancerProfile?.profileDetails ||
         viewingFreelancer?.profileDetails ||
         viewingFreelancer?.freelancerProfile,
@@ -654,26 +941,26 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     ? ""
     : profileHeadline;
   const responseTimeLabel = firstNonEmptyText(
-    viewingFreelancer?.responseTime,
-    viewingFreelancer?.avgResponseTime,
+    activeFreelancer?.responseTime,
+    activeFreelancer?.avgResponseTime,
     profileDetails?.responseTime,
     profileDetails?.avgResponseTime,
   );
   const currentServiceKey = normalizeServiceIdentifier(
     firstNonEmptyText(
-      viewingFreelancer?.matchedService?.serviceKey,
-      viewingFreelancer?.serviceKey,
-      viewingFreelancer?.matchedService?.serviceName,
-      viewingFreelancer?.serviceName,
-      viewingFreelancer?.service,
+      activeFreelancer?.matchedService?.serviceKey,
+      activeFreelancer?.serviceKey,
+      activeFreelancer?.matchedService?.serviceName,
+      activeFreelancer?.serviceName,
+      activeFreelancer?.service,
     ),
   );
   const currentServiceLabel = firstNonEmptyText(
-    viewingFreelancer?.matchedService?.serviceName,
-    viewingFreelancer?.matchedService?.serviceKey,
-    viewingFreelancer?.serviceName,
-    viewingFreelancer?.serviceKey,
-    viewingFreelancer?.service,
+    activeFreelancer?.matchedService?.serviceName,
+    activeFreelancer?.matchedService?.serviceKey,
+    activeFreelancer?.serviceName,
+    activeFreelancer?.serviceKey,
+    activeFreelancer?.service,
   );
   const matchedFreelancerProject = currentServiceKey
     ? freelancerProjects.find(
@@ -692,7 +979,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
   const services = buildServiceBadges(
     [
       currentServiceLabel || currentServiceKey,
-      viewingFreelancer?.services,
+      activeFreelancer?.services,
       profileDetails?.services,
       freelancerProjects.map(
         (project) => project?.serviceKey || project?.serviceName,
@@ -708,7 +995,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
 
   const skills = buildDisplayLabels(
     [
-      viewingFreelancer?.skills,
+      activeFreelancer?.skills,
       profileDetails?.skills,
       matchedServiceDetail?.serviceTools,
       matchedServiceDetail?.skillsAndTechnologies,
@@ -722,7 +1009,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
     [
       identityDetails?.languages,
       identityDetails?.otherLanguage,
-      viewingFreelancer?.languages,
+      activeFreelancer?.languages,
       profileDetails?.languages,
       freelancerProjects.flatMap((project) =>
         Array.isArray(project?.languages) ? project.languages : [],
@@ -736,25 +1023,25 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
   );
 
   const portfolioProjects = useMemo(
-    () => resolvePortfolioProjects(viewingFreelancer),
-    [viewingFreelancer],
+    () => resolvePortfolioProjects(activeFreelancer),
+    [activeFreelancer],
   );
 
   const primaryPortfolioUrl = useMemo(
     () =>
       normalizeProjectUrl(
         firstNonEmptyText(
-          viewingFreelancer?.portfolio,
+          activeFreelancer?.portfolio,
           profileDetails?.portfolio,
           profileDetails?.portfolioUrl,
         ),
       ),
-    [viewingFreelancer?.portfolio, profileDetails?.portfolio, profileDetails?.portfolioUrl],
+    [activeFreelancer?.portfolio, profileDetails?.portfolio, profileDetails?.portfolioUrl],
   );
 
   const startingPrice = useMemo(
-    () => getStartingPrice(viewingFreelancer),
-    [viewingFreelancer],
+    () => getStartingPrice(activeFreelancer),
+    [activeFreelancer],
   );
 
   const stats = [
@@ -772,7 +1059,7 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex h-[90dvh] w-full max-w-6xl rounded-2xl flex-col gap-0 overflow-hidden border border-border/70 bg-card p-0">
-        {viewingFreelancer ? (
+        {activeFreelancer ? (
           <>
             <div className="relative shrink-0 overflow-hidden border-b border-border/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))]">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(110%_130%_at_0%_0%,rgba(var(--brand-rgb),0.14)_0%,rgba(var(--brand-rgb),0)_56%),radial-gradient(120%_120%_at_100%_0%,rgba(59,130,246,0.14)_0%,rgba(59,130,246,0)_54%)]" />

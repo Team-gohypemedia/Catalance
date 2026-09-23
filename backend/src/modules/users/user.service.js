@@ -1603,13 +1603,29 @@ const normalizeFreelancerProjectEntries = ({
       entry && typeof entry === "object" ? entry : { title: String(entry || "") };
     const title = String(project.title || "").trim();
     const description = String(project.description || "").trim() || null;
-    const link = normalizeOptionalProjectUrl(project.link || project.url || "");
+    const link = normalizeOptionalProjectUrl(
+      project.projectLink ||
+      project.link ||
+      project.url ||
+      project.projectUrl ||
+      project.website ||
+      project.liveUrl ||
+      project.demoUrl ||
+      ""
+    );
     const readme = normalizeOptionalProjectUrl(
       project.readme || project.readmeUrl || project.readmeLink || ""
     );
     const fileName = String(project?.file?.name || project.fileName || "").trim() || null;
     const fileUrl = normalizeOptionalProjectUrl(
-      project?.file?.url || project.fileUrl || project.image || project.coverImage || ""
+      project?.file?.url ||
+      project.fileUrl ||
+      project.image ||
+      project.imageUrl ||
+      project.thumbnail ||
+      project.coverImage ||
+      project.previewImage ||
+      ""
     );
     const role = String(project.role || "").trim() || null;
     const timeline = String(project.timeline || "").trim() || null;
@@ -1727,7 +1743,16 @@ const deriveFreelancerProjects = ({
         ? project
         : { title: String(project || "") };
     const title = String(normalized.title || "").trim();
-    const link = normalizeOptionalProjectUrl(normalized.link || normalized.url || "");
+    const link = normalizeOptionalProjectUrl(
+      normalized.projectLink ||
+      normalized.link ||
+      normalized.url ||
+      normalized.projectUrl ||
+      normalized.website ||
+      normalized.liveUrl ||
+      normalized.demoUrl ||
+      ""
+    );
     const readme = normalizeOptionalProjectUrl(
       normalized.readme || normalized.readmeUrl || normalized.readmeLink || ""
     );
@@ -3869,6 +3894,24 @@ export const getUserById = async (id) => {
             serviceDetails: true,
           },
         },
+        freelancerProjects: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            serviceKey: true,
+            serviceName: true,
+            title: true,
+            description: true,
+            link: true,
+            fileUrl: true,
+            fileName: true,
+            role: true,
+            timeline: true,
+            budget: true,
+            tags: true,
+            techStack: true,
+            sortOrder: true,
+          },
+        },
       },
     })
   );
@@ -3891,6 +3934,24 @@ export const getUserByEmail = async (email) => {
             serviceKey: true,
             service: true,
             serviceDetails: true,
+          },
+        },
+        freelancerProjects: {
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+          select: {
+            serviceKey: true,
+            serviceName: true,
+            title: true,
+            description: true,
+            link: true,
+            fileUrl: true,
+            fileName: true,
+            role: true,
+            timeline: true,
+            budget: true,
+            tags: true,
+            techStack: true,
+            sortOrder: true,
           },
         },
       },
@@ -4108,10 +4169,16 @@ export const sanitizeUser = (user) => {
     profileDetails: resolvedProfileDetails,
     services: resolvedFreelancerProfile.services
   });
+  const candidatePortfolioProjects = [
+    ...(Array.isArray(safeUser.portfolioProjects) ? safeUser.portfolioProjects : []),
+    ...(Array.isArray(safeUser.freelancerProjects) ? safeUser.freelancerProjects : []),
+    ...(Array.isArray(resolvedProfileDetails?.portfolioProjects) ? resolvedProfileDetails.portfolioProjects : []),
+    ...(Array.isArray(resolvedFreelancerProfile?.portfolioProjects) ? resolvedFreelancerProfile.portfolioProjects : [])
+  ];
   const normalizedPortfolioProjects = normalizePortfolioProjects(
     deriveFreelancerProjects({
       profileDetails: resolvedProfileDetails,
-      portfolioProjects: []
+      portfolioProjects: candidatePortfolioProjects
     })
   );
   const resolvedAvatar = safeUser.avatar || identityAvatar || null;
