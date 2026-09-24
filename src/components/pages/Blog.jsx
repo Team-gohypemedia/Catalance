@@ -22,33 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/shared/context/AuthContext";
 import { request } from "@/shared/lib/api-client";
-import { blogPosts } from "@/shared/data/blogPosts";
-
 const BLOG_PAGE_TITLE = SEO_DATA.blog.title;
 const BLOG_PAGE_DESCRIPTION = SEO_DATA.blog.description;
 
-const normalizeStaticPost = (post) => ({
-  id: post.id,
-  slug: post.slug,
-  title: post.title,
-  excerpt: post.summary,
-  category: post.label || "Insights",
-  authorName: post.author || "Catalance Editorial Team",
-  coverImageUrl: post.image || "",
-  coverImageAlt: post.title,
-  featured: false,
-  readTime: post.readTime || "5 min read",
-  publishedLabel: post.published || "Recent",
-  seoTitle: post.title,
-  seoDescription: post.summary
-});
-
-const STATIC_FALLBACK_POSTS = blogPosts.map(normalizeStaticPost);
-
 const Blog = () => {
   const { user } = useAuth();
-  const [posts, setPosts] = useState(STATIC_FALLBACK_POSTS);
-  const [loading, setLoading] = useState(false);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -62,6 +42,8 @@ const Blog = () => {
   }, [user]);
 
   const loadBlogs = async () => {
+    setLoading(true);
+    setError("");
     try {
       const response = await request("/blogs");
       const list = Array.isArray(response)
@@ -69,13 +51,11 @@ const Blog = () => {
         : Array.isArray(response?.data)
         ? response.data
         : [];
-      if (list.length > 0) {
-        setPosts(list);
-        setError("");
-      }
+      setPosts(list);
     } catch (err) {
-      console.warn("Using static blog fallback, live fetch failed:", err);
-      // Keep static posts available so Googlebot and users never see an empty page or status error box
+      console.error("Failed to load published blogs:", err);
+      setError(err?.message || "Failed to load published articles. Please try again.");
+      setPosts([]);
     } finally {
       setLoading(false);
     }
@@ -200,9 +180,13 @@ const Blog = () => {
             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground mb-4">
               <BookOpen className="h-7 w-7" />
             </div>
-            <h2 className="text-xl font-bold">No articles match your search</h2>
+            <h2 className="text-xl font-bold">
+              {posts.length === 0 ? "No published articles yet" : "No articles match your search"}
+            </h2>
             <p className="text-xs text-muted-foreground mt-1 max-w-md mx-auto">
-              Try adjusting your search terms or category filter to find published articles.
+              {posts.length === 0
+                ? "Check back soon for new articles and insights from our team."
+                : "Try adjusting your search terms or category filter to find published articles."}
             </p>
           </div>
         ) : (
