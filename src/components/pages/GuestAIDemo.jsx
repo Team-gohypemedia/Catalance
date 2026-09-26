@@ -4212,15 +4212,10 @@ const GuestAIDemo = () => {
         shouldDisableAutoRecommendationPopup,
     ]);
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return undefined;
-
+    const createSpeechRecognitionInstance = useCallback(() => {
+        if (typeof window === 'undefined') return null;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            setIsSpeechSupported(false);
-            recognitionRef.current = null;
-            return undefined;
-        }
+        if (!SpeechRecognition) return null;
 
         const recognition = new SpeechRecognition();
         recognition.continuous = true;
@@ -4283,10 +4278,10 @@ const GuestAIDemo = () => {
                 return;
             }
             if (error === 'no-speech') {
-                toast.info('No speech detected. Please try again.');
+                toast.info('No speech detected. Please try speaking into your microphone.');
                 return;
             }
-            if (error === 'aborted') {
+            if (error === 'aborted' || error === 'network') {
                 return;
             }
             toast.error('Unable to use voice input right now.');
@@ -4308,26 +4303,29 @@ const GuestAIDemo = () => {
             );
         };
 
-        recognitionRef.current = recognition;
-        setIsSpeechSupported(true);
-
-        return () => {
-            recognition.onstart = null;
-            recognition.onresult = null;
-            recognition.onerror = null;
-            recognition.onend = null;
-            try {
-                recognition.stop();
-            } catch {
-                // Ignore cleanup errors from browser speech API quirks.
-            }
-            recognitionRef.current = null;
-        };
+        return recognition;
     }, [clearSpeechDraftRefs]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        setIsSpeechSupported(Boolean(SpeechRecognition));
+
+        return () => {
+            if (recognitionRef.current) {
+                try {
+                    recognitionRef.current.stop();
+                } catch {
+                    // Ignore cleanup errors
+                }
+                recognitionRef.current = null;
+            }
+        };
+    }, []);
+
     const toggleVoiceInput = useCallback(() => {
-        const recognition = recognitionRef.current;
-        if (!recognition || !isSpeechSupported) {
+        if (!isSpeechSupported) {
             toast.error("Voice input isn't supported in this browser.");
             return;
         }
@@ -4335,14 +4333,32 @@ const GuestAIDemo = () => {
         if (isTyping) return;
 
         if (isListening) {
-            try {
-                recognition.stop();
-            } catch {
-                // Ignore stop errors; onend/onerror handlers reset UI state.
+            if (recognitionRef.current) {
+                try {
+                    recognitionRef.current.stop();
+                } catch {
+                    // Ignore stop error
+                }
             }
+            setIsListening(false);
             return;
         }
 
+        if (recognitionRef.current) {
+            try {
+                recognitionRef.current.stop();
+            } catch {
+                // Ignore stop error
+            }
+        }
+
+        const recognition = createSpeechRecognitionInstance();
+        if (!recognition) {
+            toast.error("Voice input isn't supported in this browser.");
+            return;
+        }
+
+        recognitionRef.current = recognition;
         suppressSpeechCommitRef.current = false;
         speechBaseInputRef.current = input;
         speechFinalRef.current = '';
@@ -4350,17 +4366,11 @@ const GuestAIDemo = () => {
         try {
             recognition.start();
         } catch (error) {
-            const isInvalidState = error?.name === 'InvalidStateError' || /already started/i.test(error?.message || '');
-            if (isInvalidState) {
-                try {
-                    recognition.stop();
-                } catch {
-                    // Ignore stop fallback errors.
-                }
-            }
+            console.error('[Voice] Start error:', error);
+            setIsListening(false);
             toast.error('Unable to start voice input.');
         }
-    }, [input, isListening, isSpeechSupported, isTyping]);
+    }, [createSpeechRecognitionInstance, input, isListening, isSpeechSupported, isTyping]);
 
     const handleAttachmentPick = (event) => {
         const files = Array.from(event.target.files || []);

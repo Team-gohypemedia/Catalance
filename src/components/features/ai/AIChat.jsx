@@ -2695,18 +2695,109 @@ function AIChat({
     try {
       voiceStartLockRef.current = true;
       setIsVoiceStarting(true);
+
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognition && (!recognitionRef.current || recognitionRef.current._ended)) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = navigator.language || "en-US";
+
+        recognition.onstart = () => {
+          setIsVoiceStarting(false);
+          setIsRecording(true);
+        };
+
+        recognition.onresult = (event) => {
+          let interimTranscript = "";
+          let finalTranscript = "";
+
+          for (let i = event.resultIndex; i < event.results.length; i += 1) {
+            const result = event.results[i];
+            const transcript = result[0]?.transcript || "";
+            if (result.isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          if (finalTranscript) {
+            speechFinalRef.current = [speechFinalRef.current, finalTranscript]
+              .filter(Boolean)
+              .join(" ")
+              .trim();
+          }
+
+          setInput(
+            appendSpeechTranscript(
+              speechBaseInputRef.current,
+              speechFinalRef.current,
+              interimTranscript,
+            ),
+          );
+        };
+
+        recognition.onerror = (event) => {
+          console.log("[Voice] Error event:", event?.error, event);
+          setIsRecording(false);
+          setIsVoiceStarting(false);
+          voiceStartLockRef.current = false;
+          if (recognitionRef.current) recognitionRef.current._ended = true;
+          const error = event?.error;
+          if (error === "not-allowed" || error === "service-not-allowed") {
+            toast.error("Microphone access is blocked. Please allow microphone access in your browser settings.");
+            return;
+          }
+          if (error === "audio-capture") {
+            toast.error("No microphone detected. Please connect a microphone and try again.");
+            return;
+          }
+          if (error === "no-speech") {
+            toast.info("No speech detected. Please try speaking into your microphone.");
+            return;
+          }
+          if (error === "aborted" || error === "network") {
+            return;
+          }
+          toast.error("Voice input error. Please try again.");
+        };
+
+        recognition.onend = () => {
+          if (voiceReleaseTimeoutRef.current) {
+            clearTimeout(voiceReleaseTimeoutRef.current);
+            voiceReleaseTimeoutRef.current = null;
+          }
+          if (recognitionRef.current) recognitionRef.current._ended = true;
+          voiceStartLockRef.current = false;
+          setIsRecording(false);
+          setIsVoiceStarting(false);
+          setInput(
+            appendSpeechTranscript(
+              speechBaseInputRef.current,
+              speechFinalRef.current,
+              "",
+            ),
+          );
+        };
+
+        recognitionRef.current = recognition;
+      }
+
       recognitionRef.current.start();
     } catch (error) {
       console.error("Voice input start error:", error);
       const isInvalidState =
         error?.name === "InvalidStateError" ||
         /already started/i.test(error?.message || "");
-      if (isInvalidState) {
+      if (isInvalidState && recognitionRef.current) {
         try {
           recognitionRef.current.abort();
         } catch {
-          // Ignore abort errors to avoid masking the original issue.
+          // Ignore abort error
         }
+        recognitionRef.current._ended = true;
       }
       toast.error("Unable to start voice input.");
       voiceStartLockRef.current = false;
@@ -2718,7 +2809,12 @@ function AIChat({
   const stopVoiceInput = () => {
     if (!recognitionRef.current) return;
     setIsVoiceStarting(false);
-    recognitionRef.current.stop();
+    try {
+      recognitionRef.current.stop();
+    } catch {
+      // Ignore stop error
+    }
+    recognitionRef.current._ended = true;
     setIsRecording(false);
   };
 
