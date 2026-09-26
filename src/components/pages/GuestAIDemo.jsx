@@ -3403,19 +3403,10 @@ const GuestAIDemo = () => {
     }), [briefingAnswers, briefingReferenceLinks.length, briefingFiles.length]);
 
     useEffect(() => {
-        if (!isAuthLoading && !isUserLoggedIn) {
-            const params = new URLSearchParams(location.search);
-            const hasChatParam = Boolean(
-                params.get('chat') || params.get('chatId') || params.get('sessionId')
-            );
-
-            if (hasChatParam) {
-                setShowLoginFirstModal(true);
-            }
-        } else if (isUserLoggedIn) {
+        if (isUserLoggedIn) {
             setShowLoginFirstModal(false);
         }
-    }, [isAuthLoading, isUserLoggedIn, location.search]);
+    }, [isUserLoggedIn]);
 
     useEffect(() => {
         messagesRef.current = messages;
@@ -4816,24 +4807,6 @@ const GuestAIDemo = () => {
             aiBulletPoints,
         });
 
-        if (!isUserLoggedIn) {
-            const pendingBriefData = {
-                content: summary,
-                serviceId: targetService.slug || targetService.id,
-                serviceName: targetService.name || targetService.title,
-                createdAt: Date.now(),
-            };
-            try {
-                localStorage.setItem('catalance_pending_brief', JSON.stringify(pendingBriefData));
-            } catch (err) {
-                console.warn('[GuestAIDemo] Failed to save pending brief:', err);
-            }
-            setBriefingSubmitting(false);
-            setScanProgress(0);
-            setShowLoginFirstModal(true);
-            return;
-        }
-
         setPendingBriefSubmission({
             content: summary,
             attachments: briefingFiles,
@@ -5604,23 +5577,6 @@ const GuestAIDemo = () => {
 
     const handleSendMessage = async (e, forcedContent = null, options = {}) => {
         if (e) e.preventDefault();
-        if (!isUserLoggedIn) {
-            const textToSave = forcedContent || input;
-            if (textToSave && textToSave.trim()) {
-                try {
-                    localStorage.setItem('catalance_pending_brief', JSON.stringify({
-                        content: textToSave,
-                        serviceId: selectedService?.slug || selectedService?.id,
-                        serviceName: selectedService?.name,
-                        createdAt: Date.now(),
-                    }));
-                } catch (err) {
-                    console.warn('[GuestAIDemo] Failed to save pending brief:', err);
-                }
-            }
-            setShowLoginFirstModal(true);
-            return;
-        }
         const ignorePendingOptionFollowup = Boolean(options?.ignorePendingOptionFollowup);
         const attachmentSource = Array.isArray(options?.pendingAttachmentsOverride)
             ? options.pendingAttachmentsOverride
@@ -6061,13 +6017,14 @@ const GuestAIDemo = () => {
                 );
                 setGeneratedProposals(nextProposals);
 
-                toast.success("Proposal saved! Please create an account to continue.");
-                const currentUrl = `${location.pathname}${location.search}`;
+                toast.success("Proposal saved! Please log in to view your proposal dashboard.");
+                const targetRedirect = CLIENT_DASHBOARD_SEND_PROPOSAL_PATH;
                 navigate(
-                    `/signin/phone?role=client&redirect=${encodeURIComponent(currentUrl)}`,
+                    `/signin/phone?role=client&redirect=${encodeURIComponent(targetRedirect)}`,
                     {
                         state: {
                             fromProposal: true,
+                            redirectTo: targetRedirect,
                         },
                     },
                 );
