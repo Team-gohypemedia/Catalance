@@ -31,6 +31,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
 import { useAuth } from "@/shared/context/AuthContext";
 import Activity from "lucide-react/dist/esm/icons/activity";
 import Bot from "lucide-react/dist/esm/icons/bot";
@@ -63,6 +66,7 @@ import Users from "lucide-react/dist/esm/icons/users";
 import Flame from "lucide-react/dist/esm/icons/flame";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import CalendarDays from "lucide-react/dist/esm/icons/calendar-days";
 import { toast } from "sonner";
 import cataLogo from "@/assets/logos/logo.svg";
 
@@ -107,8 +111,24 @@ const AdminServicesActivity = () => {
   const [serviceFilter, setServiceFilter] = useState("ALL");
   const [documentFilter, setDocumentFilter] = useState("ALL");
   const [stepFilter, setStepFilter] = useState("ALL");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [fromPopoverOpen, setFromPopoverOpen] = useState(false);
+  const [toPopoverOpen, setToPopoverOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [servicesList, setServicesList] = useState([]);
+
+  const fromDateObj = React.useMemo(() => {
+    if (!fromDate) return undefined;
+    const d = new Date(fromDate);
+    return isNaN(d.getTime()) ? undefined : d;
+  }, [fromDate]);
+
+  const toDateObj = React.useMemo(() => {
+    if (!toDate) return undefined;
+    const d = new Date(toDate);
+    return isNaN(d.getTime()) ? undefined : d;
+  }, [toDate]);
 
   useEffect(() => {
     const fetchServices = async () => {
@@ -127,12 +147,54 @@ const AdminServicesActivity = () => {
     fetchServices();
   }, [authFetch]);
 
+  const applyDatePreset = (presetKey) => {
+    const today = new Date();
+    const formatDateStr = (d) => {
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    if (presetKey === "today") {
+      const todayStr = formatDateStr(today);
+      setFromDate(todayStr);
+      setToDate(todayStr);
+    } else if (presetKey === "yesterday") {
+      const yest = new Date(today);
+      yest.setDate(yest.getDate() - 1);
+      const yestStr = formatDateStr(yest);
+      setFromDate(yestStr);
+      setToDate(yestStr);
+    } else if (presetKey === "7days") {
+      const past = new Date(today);
+      past.setDate(past.getDate() - 6);
+      setFromDate(formatDateStr(past));
+      setToDate(formatDateStr(today));
+    } else if (presetKey === "30days") {
+      const past = new Date(today);
+      past.setDate(past.getDate() - 29);
+      setFromDate(formatDateStr(past));
+      setToDate(formatDateStr(today));
+    } else if (presetKey === "thisMonth") {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      setFromDate(formatDateStr(firstDay));
+      setToDate(formatDateStr(today));
+    } else if (presetKey === "clear") {
+      setFromDate("");
+      setToDate("");
+    }
+    setPage(1);
+  };
+
   const clearAllFilters = () => {
     setSearch("");
     setStatusFilter("ALL");
     setServiceFilter("ALL");
     setDocumentFilter("ALL");
     setStepFilter("ALL");
+    setFromDate("");
+    setToDate("");
     setPage(1);
   };
 
@@ -141,7 +203,9 @@ const AdminServicesActivity = () => {
     statusFilter !== "ALL" ||
     serviceFilter !== "ALL" ||
     documentFilter !== "ALL" ||
-    stepFilter !== "ALL"
+    stepFilter !== "ALL" ||
+    fromDate ||
+    toDate
   );
 
   // Session Detail Modal State
@@ -162,6 +226,8 @@ const AdminServicesActivity = () => {
       if (documentFilter === "DOCUMENTS_ONLY") params.append("hasDocument", "true");
       if (documentFilter === "NO_DOCUMENTS") params.append("hasDocument", "false");
       if (stepFilter !== "ALL") params.append("step", stepFilter);
+      if (fromDate) params.append("fromDate", fromDate);
+      if (toDate) params.append("toDate", toDate);
 
       const response = await authFetch(`/admin/services-activity?${params.toString()}`);
       if (!response.ok) {
@@ -177,7 +243,7 @@ const AdminServicesActivity = () => {
     } finally {
       setLoading(false);
     }
-  }, [authFetch, page, search, statusFilter, serviceFilter, documentFilter, stepFilter]);
+  }, [authFetch, page, search, statusFilter, serviceFilter, documentFilter, stepFilter, fromDate, toDate]);
 
   useEffect(() => {
     fetchServicesActivity();
@@ -257,7 +323,7 @@ const AdminServicesActivity = () => {
     <AdminLayout>
       <div className="space-y-6 p-6">
         {/* Top Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between border-b border-slate-200/80 pb-5">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-orange-500/10 text-orange-600">
@@ -265,30 +331,167 @@ const AdminServicesActivity = () => {
               </div>
               Client Activity & Lead Analytics
             </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              Comprehensive tracking for client chats, contact details (Call, WhatsApp, Email), uploaded documents, and AI usage & cost analytics.
+            <p className="text-sm text-slate-500 mt-1 max-w-2xl">
+              Comprehensive tracking for client chats, contact details, documents, and AI usage analytics.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setActivityFeedOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border-slate-200 bg-white text-indigo-700 hover:bg-indigo-50 border-indigo-200 shadow-xs"
-            >
-              <Activity className="h-4 w-4 text-indigo-600" />
-              Live Visitor Clickstream ({recentActivityFeed.length})
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchServicesActivity}
-              disabled={loading}
-              className="flex items-center gap-1.5 self-start sm:self-auto rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-              Refresh Data
-            </Button>
+
+          {/* Top Calendar Filter & Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Calendar Date Picker Bar */}
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-1.5 px-3 shadow-2xs">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mr-1">
+                <CalendarDays className="h-4 w-4 text-orange-500 shrink-0" />
+                <span className="hidden sm:inline">Date:</span>
+              </div>
+              
+              <div className="flex items-center gap-1.5 text-xs">
+                <Popover open={fromPopoverOpen} onOpenChange={setFromPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg border-slate-200 bg-slate-50 hover:bg-white text-xs font-medium text-slate-800 shadow-2xs gap-1.5 px-2.5 cursor-pointer"
+                    >
+                      <span className="text-slate-400 font-normal">From:</span>
+                      <span>{fromDateObj ? format(fromDateObj, "dd MMM yyyy") : "Start"}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-xl z-50">
+                    <Calendar
+                      mode="single"
+                      selected={fromDateObj}
+                      onSelect={(selectedDate) => {
+                        if (selectedDate) {
+                          const year = selectedDate.getFullYear();
+                          const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                          const day = String(selectedDate.getDate()).padStart(2, "0");
+                          setFromDate(`${year}-${month}-${day}`);
+                        } else {
+                          setFromDate("");
+                        }
+                        setFromPopoverOpen(false);
+                        setPage(1);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                <span className="text-slate-400 font-medium text-xs">–</span>
+
+                <Popover open={toPopoverOpen} onOpenChange={setToPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 rounded-lg border-slate-200 bg-slate-50 hover:bg-white text-xs font-medium text-slate-800 shadow-2xs gap-1.5 px-2.5 cursor-pointer"
+                    >
+                      <span className="text-slate-400 font-normal">To:</span>
+                      <span>{toDateObj ? format(toDateObj, "dd MMM yyyy") : "End"}</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="start" className="w-auto p-2 bg-white rounded-2xl border border-slate-200 shadow-xl z-50">
+                    <Calendar
+                      mode="single"
+                      selected={toDateObj}
+                      onSelect={(selectedDate) => {
+                        if (selectedDate) {
+                          const year = selectedDate.getFullYear();
+                          const month = String(selectedDate.getMonth() + 1).padStart(2, "0");
+                          const day = String(selectedDate.getDate()).padStart(2, "0");
+                          setToDate(`${year}-${month}-${day}`);
+                        } else {
+                          setToDate("");
+                        }
+                        setToPopoverOpen(false);
+                        setPage(1);
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex items-center gap-0.5 border-l border-slate-200 pl-1.5 ml-0.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => applyDatePreset("today")}
+                  className={`h-7 px-2 text-[11px] rounded-md font-medium ${fromDate === format(new Date(), "yyyy-MM-dd") && toDate === format(new Date(), "yyyy-MM-dd") ? "bg-orange-50 text-orange-600 font-bold" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+                >
+                  Today
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => applyDatePreset("7days")}
+                  className="h-7 px-2 text-[11px] rounded-md font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  7D
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => applyDatePreset("30days")}
+                  className="h-7 px-2 text-[11px] rounded-md font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  30D
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => applyDatePreset("thisMonth")}
+                  className="h-7 px-2 text-[11px] rounded-md font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                >
+                  This Month
+                </Button>
+                {(fromDate || toDate) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => applyDatePreset("clear")}
+                    className="h-7 px-1.5 text-[11px] rounded-md font-semibold text-rose-600 hover:bg-rose-50 flex items-center"
+                    title="Clear date filter"
+                  >
+                    <X className="h-3.5 w-3.5 mr-0.5" /> Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActivityFeedOpen(true)}
+                className="h-9 gap-1.5 rounded-xl border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100/70 text-xs font-semibold shadow-2xs"
+              >
+                <Activity className="h-4 w-4 text-indigo-600" />
+                <span>Clickstream</span>
+                <span className="rounded-full bg-indigo-200/80 px-1.5 py-0.2 text-[10px] font-bold text-indigo-800">
+                  {recentActivityFeed.length}
+                </span>
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchServicesActivity}
+                disabled={loading}
+                className="h-9 gap-1.5 rounded-xl border-slate-200 bg-white text-slate-700 hover:bg-slate-50 text-xs font-medium shadow-2xs"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                <span>Refresh</span>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -886,6 +1089,76 @@ const AdminServicesActivity = () => {
                   </Select>
                 </div>
 
+                {/* Date Range Calendar Filter */}
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 p-1.5 px-3">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+                    <CalendarDays className="h-4 w-4 text-orange-500 shrink-0" />
+                    <span>Date Filter:</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-slate-500 font-medium">From</span>
+                    <input
+                      type="date"
+                      value={fromDate}
+                      onChange={(e) => {
+                        setFromDate(e.target.value);
+                        setPage(1);
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-800 shadow-2xs outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 cursor-pointer"
+                    />
+                    <span className="text-slate-500 font-medium">To</span>
+                    <input
+                      type="date"
+                      value={toDate}
+                      onChange={(e) => {
+                        setToDate(e.target.value);
+                        setPage(1);
+                      }}
+                      className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-800 shadow-2xs outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Quick Date Presets */}
+                  <div className="flex items-center gap-1 ml-1 border-l border-slate-200 pl-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyDatePreset("today")}
+                      className="h-7 px-2 text-[11px] rounded-lg font-medium hover:bg-orange-100 hover:text-orange-700"
+                    >
+                      Today
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyDatePreset("7days")}
+                      className="h-7 px-2 text-[11px] rounded-lg font-medium hover:bg-orange-100 hover:text-orange-700"
+                    >
+                      7 Days
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyDatePreset("30days")}
+                      className="h-7 px-2 text-[11px] rounded-lg font-medium hover:bg-orange-100 hover:text-orange-700"
+                    >
+                      30 Days
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => applyDatePreset("thisMonth")}
+                      className="h-7 px-2 text-[11px] rounded-lg font-medium hover:bg-orange-100 hover:text-orange-700"
+                    >
+                      This Month
+                    </Button>
+                  </div>
+                </div>
+
                 {/* Reset / Clear All Filters Button */}
                 {hasActiveFilters && (
                   <Button
@@ -906,6 +1179,12 @@ const AdminServicesActivity = () => {
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">
                   Active Filters:
                 </span>
+                {(fromDate || toDate) && (
+                  <Badge variant="secondary" className="bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 gap-1 rounded-lg text-xs font-medium">
+                    📅 Date: {fromDate || "Start"} → {toDate || "Present"}
+                    <X className="h-3 w-3 cursor-pointer ml-1" onClick={() => { setFromDate(""); setToDate(""); setPage(1); }} />
+                  </Badge>
+                )}
                 {search && (
                   <Badge variant="secondary" className="bg-slate-100 text-slate-700 hover:bg-slate-200 gap-1 rounded-lg text-xs font-normal">
                     Search: "{search}"

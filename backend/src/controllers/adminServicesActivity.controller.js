@@ -533,19 +533,46 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
     }
   }
 
-  const totalSessions = enrichedSessions.length;
-  const totalProposals = enrichedSessions.filter((s) => s.hasProposal).length;
-  const totalDocuments = enrichedSessions.filter((s) => s.documentData.hasDocument).length;
-  const totalDropOffs = enrichedSessions.filter((s) => s.status === "DROPPED_OFF").length;
-  const totalInProgress = enrichedSessions.filter((s) => s.status === "IN_PROGRESS").length;
+  const fromDateStr = String(req.query.fromDate || req.query.startDate || req.query.from || "").trim();
+  const toDateStr = String(req.query.toDate || req.query.endDate || req.query.to || "").trim();
 
-  const totalAiTokens = enrichedSessions.reduce((acc, s) => acc + (s.aiUsage?.totalTokens || 0), 0);
-  const totalAiCostUSD = enrichedSessions.reduce((acc, s) => acc + (s.aiUsage?.costUSD || 0), 0);
-  const totalAiCostINR = enrichedSessions.reduce((acc, s) => acc + (s.aiUsage?.costINR || 0), 0);
-  const totalAiCalls = enrichedSessions.reduce((acc, s) => acc + (s.aiUsage?.callCount || 0), 0);
+  if (fromDateStr) {
+    const fromDate = new Date(fromDateStr);
+    if (!isNaN(fromDate.getTime())) {
+      fromDate.setHours(0, 0, 0, 0);
+      filtered = filtered.filter((item) => {
+        const itemDate = new Date(item.createdAt || item.updatedAt);
+        return itemDate >= fromDate;
+      });
+    }
+  }
+
+  if (toDateStr) {
+    const toDate = new Date(toDateStr);
+    if (!isNaN(toDate.getTime())) {
+      if (toDateStr.length <= 10) {
+        toDate.setHours(23, 59, 59, 999);
+      }
+      filtered = filtered.filter((item) => {
+        const itemDate = new Date(item.createdAt || item.updatedAt);
+        return itemDate <= toDate;
+      });
+    }
+  }
+
+  const totalSessions = filtered.length;
+  const totalProposals = filtered.filter((s) => s.hasProposal).length;
+  const totalDocuments = filtered.filter((s) => s.documentData.hasDocument).length;
+  const totalDropOffs = filtered.filter((s) => s.status === "DROPPED_OFF").length;
+  const totalInProgress = filtered.filter((s) => s.status === "IN_PROGRESS").length;
+
+  const totalAiTokens = filtered.reduce((acc, s) => acc + (s.aiUsage?.totalTokens || 0), 0);
+  const totalAiCostUSD = filtered.reduce((acc, s) => acc + (s.aiUsage?.costUSD || 0), 0);
+  const totalAiCostINR = filtered.reduce((acc, s) => acc + (s.aiUsage?.costINR || 0), 0);
+  const totalAiCalls = filtered.reduce((acc, s) => acc + (s.aiUsage?.callCount || 0), 0);
 
   const serviceStatsMap = new Map();
-  for (const session of enrichedSessions) {
+  for (const session of filtered) {
     const label = session.serviceLabel;
     serviceStatsMap.set(label, (serviceStatsMap.get(label) || 0) + 1);
   }
@@ -556,9 +583,9 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
     .slice(0, 5);
 
   // Calculate step progression & milestone breakdown
-  const maxStepFound = Math.max(1, ...enrichedSessions.map((s) => (s.currentStep || 0) + 1));
+  const maxStepFound = Math.max(1, ...filtered.map((s) => (s.currentStep || 0) + 1));
   const stepCountMap = new Map();
-  for (const session of enrichedSessions) {
+  for (const session of filtered) {
     const stepNum = (session.currentStep || 0) + 1;
     stepCountMap.set(stepNum, (stepCountMap.get(stepNum) || 0) + 1);
   }
@@ -573,8 +600,8 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
   ];
 
   const milestoneFunnel = milestoneRanges.map((range) => {
-    const reachedCount = enrichedSessions.filter((s) => ((s.currentStep || 0) + 1) >= range.min).length;
-    const countAtRange = enrichedSessions.filter((s) => {
+    const reachedCount = filtered.filter((s) => ((s.currentStep || 0) + 1) >= range.min).length;
+    const countAtRange = filtered.filter((s) => {
       const step = (s.currentStep || 0) + 1;
       return step >= range.min && step <= range.max;
     }).length;
@@ -590,7 +617,7 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
   const limitStepToRender = Math.min(50, Math.max(maxStepFound, 10));
   for (let i = 1; i <= limitStepToRender; i++) {
     const countAtStep = stepCountMap.get(i) || 0;
-    const reachedCount = enrichedSessions.filter((s) => ((s.currentStep || 0) + 1) >= i).length;
+    const reachedCount = filtered.filter((s) => ((s.currentStep || 0) + 1) >= i).length;
     if (reachedCount > 0 || i <= 10) {
       stepBreakdown.push({
         step: i,
@@ -611,6 +638,22 @@ export const getServicesActivity = asyncHandler(async (req, res) => {
     });
   } catch (err) {
     activityEvents = [];
+  }
+
+  if (fromDateStr) {
+    const fromDate = new Date(fromDateStr);
+    if (!isNaN(fromDate.getTime())) {
+      fromDate.setHours(0, 0, 0, 0);
+      activityEvents = activityEvents.filter((ev) => new Date(ev.createdAt) >= fromDate);
+    }
+  }
+
+  if (toDateStr) {
+    const toDate = new Date(toDateStr);
+    if (!isNaN(toDate.getTime())) {
+      if (toDateStr.length <= 10) toDate.setHours(23, 59, 59, 999);
+      activityEvents = activityEvents.filter((ev) => new Date(ev.createdAt) <= toDate);
+    }
   }
 
   const uniqueVisitorsSet = new Set();
