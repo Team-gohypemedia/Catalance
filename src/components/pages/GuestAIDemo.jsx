@@ -3317,6 +3317,11 @@ const GuestAIDemo = () => {
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
     const suppressSpeechCommitRef = useRef(false);
+
+    const [isBriefingListening, setIsBriefingListening] = useState(false);
+    const briefingRecognitionRef = useRef(null);
+    const speechBaseBriefingGoalRef = useRef("");
+    const speechFinalBriefingGoalRef = useRef("");
     const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
     const isSidebarCompact = sidebarSize === 'small';
     const isAgencySelectionMode = serviceSelectionMode === SERVICE_SELECTION_MODES.AGENCY;
@@ -4471,6 +4476,127 @@ const GuestAIDemo = () => {
             [key]: value,
         }));
     }, []);
+
+    const toggleBriefingVoiceInput = useCallback(() => {
+        if (typeof window === 'undefined') return;
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            toast.error("Voice input isn't supported in this browser.");
+            return;
+        }
+
+        if (isBriefingListening) {
+            if (briefingRecognitionRef.current) {
+                try {
+                    briefingRecognitionRef.current.stop();
+                } catch {
+                    // Ignore stop error
+                }
+            }
+            setIsBriefingListening(false);
+            return;
+        }
+
+        try {
+            const recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+            recognition.lang = navigator.language || 'en-US';
+
+            speechBaseBriefingGoalRef.current = briefingAnswers.goal || '';
+            speechFinalBriefingGoalRef.current = '';
+
+            recognition.onstart = () => {
+                setIsBriefingListening(true);
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                let finalTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i += 1) {
+                    const result = event.results[i];
+                    const transcript = result?.[0]?.transcript || '';
+                    if (result.isFinal) {
+                        finalTranscript += transcript;
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                if (finalTranscript) {
+                    speechFinalBriefingGoalRef.current = [speechFinalBriefingGoalRef.current, finalTranscript]
+                        .filter(Boolean)
+                        .join(' ')
+                        .trim();
+                }
+
+                const combinedSpeechText = [speechFinalBriefingGoalRef.current, interimTranscript]
+                    .filter(Boolean)
+                    .join(' ');
+
+                const baseText = speechBaseBriefingGoalRef.current;
+                const updatedGoalText = baseText
+                    ? (combinedSpeechText ? `${baseText.trim()} ${combinedSpeechText.trim()}` : baseText)
+                    : combinedSpeechText;
+
+                updateBriefingAnswer('goal', updatedGoalText);
+            };
+
+            recognition.onerror = (event) => {
+                setIsBriefingListening(false);
+                const error = event?.error;
+                if (error === 'not-allowed' || error === 'service-not-allowed') {
+                    toast.error('Microphone access is blocked. Please allow microphone access in your browser settings.');
+                    return;
+                }
+                if (error === 'audio-capture') {
+                    toast.error('No microphone detected. Please connect a microphone and try again.');
+                    return;
+                }
+                if (error === 'no-speech') {
+                    toast.info('No speech detected. Please try again.');
+                    return;
+                }
+                if (error === 'aborted') {
+                    return;
+                }
+                toast.error('Unable to use voice input right now.');
+            };
+
+            recognition.onend = () => {
+                setIsBriefingListening(false);
+                const finalCombined = speechFinalBriefingGoalRef.current.trim();
+                const baseText = speechBaseBriefingGoalRef.current;
+                if (finalCombined) {
+                    const updatedGoalText = baseText
+                        ? `${baseText.trim()} ${finalCombined}`
+                        : finalCombined;
+                    updateBriefingAnswer('goal', updatedGoalText);
+                }
+            };
+
+            briefingRecognitionRef.current = recognition;
+            recognition.start();
+        } catch (error) {
+            setIsBriefingListening(false);
+            toast.error('Unable to start voice input.');
+        }
+    }, [briefingAnswers.goal, isBriefingListening, updateBriefingAnswer]);
+
+    useEffect(() => {
+        return () => {
+            if (briefingRecognitionRef.current) {
+                try {
+                    briefingRecognitionRef.current.stop();
+                } catch {
+                    // Ignore stop error
+                }
+            }
+        };
+    }, [briefingStepIndex, briefingInputTab]);
 
     const addBriefingReferenceLink = useCallback(() => {
         const normalizedLink = normalizeSharedUrl(briefingReferenceInput);
@@ -6258,10 +6384,39 @@ const GuestAIDemo = () => {
                                                         onChange={(event) => updateBriefingAnswer('goal', event.target.value)}
                                                         aria-label="Project requirements"
                                                         placeholder="What are you building? Share your goals, audience, and must-have features."
-                                                        className={`block min-h-40 w-full rounded-2xl border px-4 pt-3.5 pb-9 text-base leading-relaxed placeholder:text-xs placeholder:leading-relaxed sm:text-sm sm:placeholder:text-sm outline-none resize-y transition-colors duration-200 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 ${briefingBudgetFieldClasses} ${briefingFieldTextClasses}`}
+                                                        className={`block min-h-40 w-full rounded-2xl border px-4 pt-3.5 pb-12 text-base leading-relaxed placeholder:text-xs placeholder:leading-relaxed sm:text-sm sm:placeholder:text-sm outline-none resize-y transition-colors duration-200 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 ${briefingBudgetFieldClasses} ${briefingFieldTextClasses}`}
                                                     />
-                                                    <div className="pointer-events-none absolute bottom-3 right-4 text-[10px] tabular-nums text-muted-foreground">
-                                                        {briefingAnswers.goal?.trim()?.length || 0} chars
+                                                    <div className="absolute bottom-2.5 right-3.5 flex items-center gap-2.5 z-10 select-none">
+                                                        <button
+                                                            type="button"
+                                                            onClick={toggleBriefingVoiceInput}
+                                                            title={isBriefingListening ? "Stop voice input" : "Start voice input (Speech to text)"}
+                                                            aria-label={isBriefingListening ? "Stop voice input" : "Start voice input"}
+                                                            className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-all duration-200 ${
+                                                                isBriefingListening
+                                                                    ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 animate-pulse shadow-xs ring-2 ring-rose-500/20'
+                                                                    : 'bg-muted/70 hover:bg-muted text-muted-foreground hover:text-foreground border border-border/50 shadow-2xs hover:scale-[1.02] active:scale-[0.98]'
+                                                            }`}
+                                                        >
+                                                            {isBriefingListening ? (
+                                                                <>
+                                                                    <span className="relative flex h-2 w-2">
+                                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                                                                    </span>
+                                                                    <Mic className="h-3.5 w-3.5 text-rose-500 shrink-0 scale-110 transition-transform duration-200" />
+                                                                    <span className="text-[11px] font-semibold text-rose-500">Listening...</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <Mic className="h-3.5 w-3.5 shrink-0 text-primary" />
+                                                                    <span className="text-[11px]">Speak</span>
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                        <span className="text-[10px] tabular-nums text-muted-foreground">
+                                                            {briefingAnswers.goal?.trim()?.length || 0} chars
+                                                        </span>
                                                     </div>
                                                 </div>
 
