@@ -2200,6 +2200,7 @@ function AIChat({
   const voiceReleaseTimeoutRef = useRef(null);
   const speechBaseInputRef = useRef("");
   const speechFinalRef = useRef("");
+  const userDesiredListeningRef = useRef(false);
   const thinkingTimerRef = useRef(null);
   const thinkingStartRef = useRef(0);
   const proposalContextRef = useRef(proposalContext);
@@ -2703,6 +2704,7 @@ function AIChat({
       return;
     }
 
+    userDesiredListeningRef.current = true;
     speechBaseInputRef.current = input;
     speechFinalRef.current = "";
 
@@ -2740,27 +2742,27 @@ function AIChat({
 
         recognition.onerror = (event) => {
           console.log("[Voice] Error event:", event?.error, event);
-          setIsRecording(false);
-          setIsVoiceStarting(false);
-          voiceStartLockRef.current = false;
-          if (recognitionRef.current) recognitionRef.current._ended = true;
           const error = event?.error;
-          if (error === "not-allowed" || error === "service-not-allowed") {
-            toast.error("Microphone access is blocked. Please allow microphone access in your browser settings.");
-            return;
-          }
-          if (error === "audio-capture") {
-            toast.error("No microphone detected. Please connect a microphone and try again.");
+          if (error === "not-allowed" || error === "service-not-allowed" || error === "audio-capture") {
+            userDesiredListeningRef.current = false;
+            setIsRecording(false);
+            setIsVoiceStarting(false);
+            voiceStartLockRef.current = false;
+            if (recognitionRef.current) recognitionRef.current._ended = true;
+            if (error === "not-allowed" || error === "service-not-allowed") {
+              toast.error("Microphone access is blocked. Please allow microphone access in your browser settings.");
+            } else {
+              toast.error("No microphone detected. Please connect a microphone and try again.");
+            }
             return;
           }
           if (error === "no-speech") {
-            toast.info("No speech detected. Please try speaking into your microphone.");
+            // Ignore no-speech error during auto-keep-alive listening
             return;
           }
           if (error === "aborted" || error === "network") {
             return;
           }
-          toast.error("Voice input error. Please try again.");
         };
 
         recognition.onend = () => {
@@ -2769,16 +2771,28 @@ function AIChat({
             voiceReleaseTimeoutRef.current = null;
           }
           if (recognitionRef.current) recognitionRef.current._ended = true;
+
+          const currentCombined = appendSpeechTranscript(
+            speechBaseInputRef.current,
+            speechFinalRef.current,
+            "",
+          );
+          speechBaseInputRef.current = currentCombined;
+          speechFinalRef.current = "";
+          setInput(currentCombined);
+
+          if (userDesiredListeningRef.current) {
+            try {
+              recognition.start();
+              return;
+            } catch {
+              userDesiredListeningRef.current = false;
+            }
+          }
+
           voiceStartLockRef.current = false;
           setIsRecording(false);
           setIsVoiceStarting(false);
-          setInput(
-            appendSpeechTranscript(
-              speechBaseInputRef.current,
-              speechFinalRef.current,
-              "",
-            ),
-          );
         };
 
         recognitionRef.current = recognition;
@@ -2787,6 +2801,7 @@ function AIChat({
       recognitionRef.current.start();
     } catch (error) {
       console.error("Voice input start error:", error);
+      userDesiredListeningRef.current = false;
       const isInvalidState =
         error?.name === "InvalidStateError" ||
         /already started/i.test(error?.message || "");
@@ -2806,6 +2821,7 @@ function AIChat({
   };
 
   const stopVoiceInput = () => {
+    userDesiredListeningRef.current = false;
     if (!recognitionRef.current) return;
     setIsVoiceStarting(false);
     try {

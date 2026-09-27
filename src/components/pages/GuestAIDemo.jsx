@@ -3348,11 +3348,13 @@ const GuestAIDemo = () => {
     const speechBaseInputRef = useRef("");
     const speechFinalRef = useRef("");
     const suppressSpeechCommitRef = useRef(false);
+    const userDesiredListeningRef = useRef(false);
 
     const [isBriefingListening, setIsBriefingListening] = useState(false);
     const briefingRecognitionRef = useRef(null);
     const speechBaseBriefingGoalRef = useRef("");
     const speechFinalBriefingGoalRef = useRef("");
+    const userDesiredBriefingListeningRef = useRef(false);
     const normalizedInputType = (inputConfig.type || 'text').toLowerCase();
     const isSidebarCompact = sidebarSize === 'small';
     const isAgencySelectionMode = serviceSelectionMode === SERVICE_SELECTION_MODES.AGENCY;
@@ -4277,45 +4279,62 @@ const GuestAIDemo = () => {
         };
 
         recognition.onerror = (event) => {
-            setIsListening(false);
             const error = event?.error;
             if (suppressSpeechCommitRef.current) {
+                userDesiredListeningRef.current = false;
+                setIsListening(false);
                 suppressSpeechCommitRef.current = false;
                 clearSpeechDraftRefs();
                 return;
             }
-            if (error === 'not-allowed' || error === 'service-not-allowed') {
-                toast.error('Microphone access is blocked. Please allow microphone access in your browser settings.');
-                return;
-            }
-            if (error === 'audio-capture') {
-                toast.error('No microphone detected. Please connect a microphone and try again.');
+            if (error === 'not-allowed' || error === 'service-not-allowed' || error === 'audio-capture') {
+                userDesiredListeningRef.current = false;
+                setIsListening(false);
+                if (error === 'not-allowed' || error === 'service-not-allowed') {
+                    toast.error('Microphone access is blocked. Please allow microphone access in your browser settings.');
+                } else {
+                    toast.error('No microphone detected. Please connect a microphone and try again.');
+                }
                 return;
             }
             if (error === 'no-speech') {
-                toast.info('No speech detected. Please try speaking into your microphone.');
+                // Ignore no-speech error toast during auto-keep-alive listening
                 return;
             }
             if (error === 'aborted' || error === 'network') {
                 return;
             }
-            toast.error('Unable to use voice input right now.');
         };
 
         recognition.onend = () => {
-            setIsListening(false);
+            const currentCombined = appendSpeechTranscript(
+                speechBaseInputRef.current,
+                speechFinalRef.current,
+                ''
+            );
+            speechBaseInputRef.current = currentCombined;
+            speechFinalRef.current = '';
+            setInput(currentCombined);
+
             if (suppressSpeechCommitRef.current) {
+                userDesiredListeningRef.current = false;
+                setIsListening(false);
                 suppressSpeechCommitRef.current = false;
                 clearSpeechDraftRefs();
                 return;
             }
-            setInput(
-                appendSpeechTranscript(
-                    speechBaseInputRef.current,
-                    speechFinalRef.current,
-                    ''
-                )
-            );
+
+            // Mobile Auto-Keep-Alive: if user did not explicitly click Stop, auto-restart the mic session
+            if (userDesiredListeningRef.current) {
+                try {
+                    recognition.start();
+                    return;
+                } catch {
+                    userDesiredListeningRef.current = false;
+                }
+            }
+
+            setIsListening(false);
         };
 
         return recognition;
@@ -4348,6 +4367,7 @@ const GuestAIDemo = () => {
         if (isTyping) return;
 
         if (isListening) {
+            userDesiredListeningRef.current = false;
             if (recognitionRef.current) {
                 try {
                     recognitionRef.current.stop();
@@ -4359,6 +4379,7 @@ const GuestAIDemo = () => {
             return;
         }
 
+        userDesiredListeningRef.current = true;
         if (recognitionRef.current) {
             try {
                 recognitionRef.current.stop();
@@ -4382,6 +4403,7 @@ const GuestAIDemo = () => {
             recognition.start();
         } catch (error) {
             console.error('[Voice] Start error:', error);
+            userDesiredListeningRef.current = false;
             setIsListening(false);
             toast.error('Unable to start voice input.');
         }

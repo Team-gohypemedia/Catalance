@@ -881,6 +881,8 @@ export const PromptInputSpeechButton = ({
   const [recognition, setRecognition] = useState(null);
   const recognitionRef = useRef(null);
   const speechBaseTextRef = useRef("");
+  const speechFinalTextRef = useRef("");
+  const userDesiredListeningRef = useRef(false);
 
   useEffect(() => {
     if (
@@ -900,6 +902,24 @@ export const PromptInputSpeechButton = ({
       };
 
       speechRecognition.onend = () => {
+        if (textareaRef?.current) {
+          const currentCombined = [speechBaseTextRef.current, speechFinalTextRef.current]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+          speechBaseTextRef.current = currentCombined;
+          speechFinalTextRef.current = "";
+        }
+
+        if (userDesiredListeningRef.current) {
+          try {
+            speechRecognition.start();
+            return;
+          } catch {
+            userDesiredListeningRef.current = false;
+          }
+        }
+
         setIsListening(false);
       };
 
@@ -925,6 +945,8 @@ export const PromptInputSpeechButton = ({
           interimTranscript = "";
         }
 
+        speechFinalTextRef.current = finalTranscript;
+
         if (textareaRef?.current) {
           const textarea = textareaRef.current;
           const baseText = speechBaseTextRef.current;
@@ -945,7 +967,10 @@ export const PromptInputSpeechButton = ({
 
       speechRecognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
-        setIsListening(false);
+        if (event.error === "not-allowed" || event.error === "service-not-allowed" || event.error === "audio-capture") {
+          userDesiredListeningRef.current = false;
+          setIsListening(false);
+        }
       };
 
       recognitionRef.current = speechRecognition;
@@ -965,9 +990,13 @@ export const PromptInputSpeechButton = ({
     }
 
     if (isListening) {
+      userDesiredListeningRef.current = false;
       recognition.stop();
+      setIsListening(false);
     } else {
+      userDesiredListeningRef.current = true;
       speechBaseTextRef.current = textareaRef?.current?.value || "";
+      speechFinalTextRef.current = "";
       recognition.start();
     }
   }, [recognition, isListening, textareaRef]);
