@@ -274,14 +274,15 @@ export const getUsers = asyncHandler(async (req, res) => {
 
     // Build where clause for Prisma
     let where = {
-      role: { not: 'ADMIN' }, // Always exclude admins from general user list
-      ...(role && { role }),
-      ...(status && { status }),
+      ...(role && role !== "ALL" ? { role } : {}),
+      ...(status && status !== "ALL" ? { status } : {}),
       ...(isVerified !== undefined && { isVerified }),
       ...(search && {
         OR: [
           { fullName: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } }
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } },
+          { phoneNumber: { contains: search, mode: 'insensitive' } }
         ]
       })
     };
@@ -1242,17 +1243,41 @@ export const updateUserRole = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   const { role } = req.body;
 
-  if (!["CLIENT", "FREELANCER", "ADMIN", "PROJECT_MANAGER"].includes(role)) {
-    throw new Error("Invalid role");
+  const validRoles = ["CLIENT", "FREELANCER", "ADMIN", "SUBADMIN", "PROJECT_MANAGER", "SEO_TEAM"];
+  if (!validRoles.includes(role)) {
+    throw new Error(`Invalid role: ${role}. Valid options: ${validRoles.join(", ")}`);
   }
 
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: { role },
-    select: { id: true, role: true }
-  });
+  // Ensure Postgres enum contains the role value first
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS '${role}';`);
+  } catch (enumErr) {
+    // Ignore error if enum value already exists or not postgres enum
+  }
 
-  res.json({ data: updatedUser });
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { role },
+      select: { id: true, fullName: true, email: true, role: true }
+    });
+    return res.json({ data: updatedUser });
+  } catch (err) {
+    console.warn("[updateUserRole] Prisma client update failed, performing raw SQL update on User table:", err?.message);
+    try {
+      await prisma.$executeRawUnsafe(`UPDATE "User" SET "role" = '${role}'::"UserRole" WHERE "id" = '${userId}';`);
+    } catch (rawErr) {
+      console.warn("[updateUserRole] Typed update failed, trying direct update:", rawErr?.message);
+      await prisma.$executeRawUnsafe(`UPDATE "User" SET "role" = '${role}' WHERE "id" = '${userId}';`);
+    }
+
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, fullName: true, email: true, role: true }
+    }).catch(() => null);
+
+    return res.json({ data: updatedUser || { id: userId, role } });
+  }
 });
 
 

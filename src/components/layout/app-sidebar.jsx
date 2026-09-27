@@ -242,6 +242,12 @@ const navConfigs = {
       isActive: true,
     },
     {
+      title: "All Users & Roles",
+      url: "/admin/users",
+      icon: Users,
+      isActive: true,
+    },
+    {
       title: "Clients",
       url: "/admin/clients",
       icon: Users,

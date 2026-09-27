@@ -16,6 +16,7 @@ import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Check from "lucide-react/dist/esm/icons/check";
 import Filter from "lucide-react/dist/esm/icons/filter";
 import X from "lucide-react/dist/esm/icons/x";
+import Zap from "lucide-react/dist/esm/icons/zap";
 import ClientDashboardFooter from "@/components/features/client/ClientDashboardFooter";
 import ClientWorkspaceHeader from "@/components/features/client/ClientWorkspaceHeader";
 import { ProjectCarouselControls } from "@/components/client/client-dashboard/shared.jsx";
@@ -294,6 +295,34 @@ const ClientProjectsPage = () => {
       return hasDropdownFilterApplied ? visibleProjectCards : [...visibleProjectCards, ...projectRedirectCards];
     },
     [hasDropdownFilterApplied, projectRedirectCards, visibleProjectCards],
+  );
+
+  const subadminCards = useMemo(
+    () =>
+      carouselProjectCards.filter(
+        (item) =>
+          item.isSubAdminAssignment ||
+          item.isSubadminBypassed ||
+          item.paymentStatus === "BYPASSED_SUBADMIN" ||
+          String(item.title || "").toLowerCase().includes("subadmin") ||
+          String(item.description || "").toLowerCase().includes("subadmin") ||
+          String(item.sourceTitle || "").toLowerCase().includes("subadmin")
+      ),
+    [carouselProjectCards]
+  );
+
+  const clientCards = useMemo(
+    () =>
+      carouselProjectCards.filter(
+        (item) =>
+          !item.isSubAdminAssignment &&
+          !item.isSubadminBypassed &&
+          item.paymentStatus !== "BYPASSED_SUBADMIN" &&
+          !String(item.title || "").toLowerCase().includes("subadmin") &&
+          !String(item.description || "").toLowerCase().includes("subadmin") &&
+          !String(item.sourceTitle || "").toLowerCase().includes("subadmin")
+      ),
+    [carouselProjectCards]
   );
 
   const shouldUseProjectCarousel = isMobile
@@ -578,12 +607,104 @@ const ClientProjectsPage = () => {
                 </div>
               </section>
 
-              <section className="mt-8 sm:mt-10">
+              <section className="mt-8 sm:mt-10 space-y-10">
                 {isLoading ? (
                   <div className="grid items-stretch gap-5 sm:gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
                     {[1, 2, 3].map((item) => (
                       <ProjectCardSkeleton key={item} />
                     ))}
+                  </div>
+                ) : activeFilter === "ongoing" ? (
+                  <div className="space-y-10">
+                    {/* Row 1: Client Projects */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2.5 border-b border-slate-200">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                          <Users className="h-4 w-4" />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                          Client Projects
+                          <span className="rounded-full bg-slate-100 text-slate-700 text-xs px-2.5 py-0.5 font-semibold">
+                            {clientCards.filter((c) => c.id !== "start-project").length} Client Projects
+                          </span>
+                        </h2>
+                      </div>
+
+                      {clientCards.length > 0 ? (
+                        <div className="flex items-stretch gap-5 sm:gap-6 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+                          {clientCards.map((item) => {
+                            const isStaticCard =
+                              item.id === "start-project" || item.id === "browse-marketplace";
+
+                            return (
+                              <div
+                                key={item.id}
+                                className="w-[320px] sm:w-[380px] md:w-[410px] shrink-0 snap-start flex flex-col"
+                              >
+                                {isStaticCard ? (
+                                  <ProjectRedirectCard
+                                    item={item}
+                                    className={activeProjectRedirectCardClassName}
+                                  />
+                                ) : (
+                                  <ProjectProposalCard
+                                    project={item}
+                                    onPay={handleApproveAndPay}
+                                    isPaying={processingProjectId === item.id}
+                                    replaceSectionBadgeWithStatus
+                                    onViewFreelancer={handleViewFreelancer}
+                                    className={activeProjectCardClassName}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-slate-200 p-6 text-center text-xs text-slate-500">
+                          No direct client projects found.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Row 2: Subadmin Power Assigned Projects */}
+                    <div className="space-y-4 pt-2">
+                      <div className="flex items-center gap-2 pb-2.5 border-b border-amber-200/80">
+                        <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-xs">
+                          <Zap className="h-4 w-4 fill-current" />
+                        </div>
+                        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                          Subadmin Power Assigned Projects
+                          <span className="rounded-full bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 font-semibold">
+                            {subadminCards.length} Direct Projects (₹0 Bypass)
+                          </span>
+                        </h2>
+                      </div>
+
+                      {subadminCards.length > 0 ? (
+                        <div className="flex items-stretch gap-5 sm:gap-6 overflow-x-auto pb-4 pt-1 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [scrollbar-width:none] [-ms-overflow-style:none]">
+                          {subadminCards.map((item) => (
+                            <div
+                              key={item.id}
+                              className="w-[320px] sm:w-[380px] md:w-[410px] shrink-0 snap-start flex flex-col"
+                            >
+                              <ProjectProposalCard
+                                project={item}
+                                onPay={handleApproveAndPay}
+                                isPaying={processingProjectId === item.id}
+                                replaceSectionBadgeWithStatus
+                                onViewFreelancer={handleViewFreelancer}
+                                className={activeProjectCardClassName}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-dashed border-amber-200/60 bg-amber-50/40 p-6 text-center text-xs text-amber-800 font-medium">
+                          No Subadmin power assigned ($0 bypass) projects active currently.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : carouselProjectCards.length > 0 ? (
                   shouldUseProjectCarousel ? (

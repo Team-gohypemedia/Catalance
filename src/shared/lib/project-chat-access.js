@@ -5,18 +5,25 @@ export const getFirstProjectInstallment = (project = {}) =>
 
 export const hasUnlockedProjectChat = (project = {}) => {
   const normalizedStatus = String(project?.status || "").toUpperCase();
+  const paymentStatus = String(project?.paymentStatus || "").toUpperCase();
+  const isSubAdminAssignment = Boolean(project?.isSubAdminAssignment);
+  const isSubadminBypassed = Boolean(project?.paymentPlan?.isSubadminBypassed);
+
+  if (
+    normalizedStatus === "COMPLETED" ||
+    normalizedStatus === "IN_PROGRESS" ||
+    paymentStatus === "BYPASSED_SUBADMIN" ||
+    paymentStatus === "BYPASSED" ||
+    isSubAdminAssignment ||
+    isSubadminBypassed
+  ) {
+    return true;
+  }
+
   const paymentPlan =
     project?.paymentPlan && typeof project.paymentPlan === "object"
       ? project.paymentPlan
       : null;
-
-  if (normalizedStatus === "COMPLETED") {
-    return true;
-  }
-
-  if (!paymentPlan) {
-    return false;
-  }
 
   const installments = Array.isArray(paymentPlan?.installments)
     ? paymentPlan.installments

@@ -2060,7 +2060,6 @@ export const getMarketplace = asyncHandler(async (req, res) => {
       { roles: { has: "FREELANCER" } },
     ],
     status: { in: ["ACTIVE", "PENDING_APPROVAL"] },
-    freelancerProfile: { isNot: null },
   };
 
   const rawUsers = await prisma.user.findMany({

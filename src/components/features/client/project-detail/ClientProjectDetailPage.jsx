@@ -2873,6 +2873,8 @@ const ProjectDashboard = () => {
 
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <ClientProjectDetailMainColumn
+                  project={project}
+                  paymentPlan={verificationGatePaymentPlan}
                   projectDetailSnapshot={projectDetailSnapshot}
                   insetPanelClassName={projectInsetPanelClassName}
                   panelClassName={projectPanelClassName}

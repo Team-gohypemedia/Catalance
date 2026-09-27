@@ -19,6 +19,7 @@ import Layers from "lucide-react/dist/esm/icons/layers";
 import PenTool from "lucide-react/dist/esm/icons/pen-tool";
 import Image from "lucide-react/dist/esm/icons/image";
 import AIQualityAuditCard from "./AIQualityAuditCard";
+import Zap from "lucide-react/dist/esm/icons/zap";
 
 
 const getMetadataIcon = (label) => {
@@ -82,6 +83,8 @@ import {
 import { cn } from "@/shared/lib/utils";
 
 const ClientProjectDetailMainColumn = ({
+  project,
+  paymentPlan,
   projectDetailSnapshot,
   insetPanelClassName,
   panelClassName,
@@ -411,7 +414,21 @@ const ClientProjectDetailMainColumn = ({
           </div>
         ) : null}
 
-        {isInitialPaymentDue ? (
+        {paymentPlan?.isSubadminBypassed || project?.paymentStatus === "BYPASSED_SUBADMIN" || project?.isSubAdminAssignment ? (
+          <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50/80 px-4 py-3">
+            <div className="flex items-start gap-2.5">
+              <Zap className="mt-0.5 h-4 w-4 fill-amber-600 text-amber-600 shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-900">
+                  Subadmin Direct Project Bypass (₹0 Cost)
+                </p>
+                <p className="mt-0.5 text-xs text-amber-800">
+                  All payment gateway requirements have been bypassed by Subadmin. Project is fully active &amp; <strong className="text-emerald-700">IN_PROGRESS</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : isInitialPaymentDue ? (
           <div className="mb-4 rounded-xl border border-primary/20/30 bg-primary/10/10 px-4 py-3">
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div>

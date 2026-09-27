@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/shared/lib/utils";
 import BrainCircuit from "lucide-react/dist/esm/icons/brain-circuit";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Zap from "lucide-react/dist/esm/icons/zap";
 
 import FreelancerInfoCard from "./FreelancerInfoCard";
 import ProjectDocumentAvatar from "./ProjectDocumentAvatar";
@@ -507,7 +508,17 @@ const ClientProjectDetailSidebar = ({
           </p>
         )}
 
-        {dueInstallment ? (() => {
+        {paymentPlan?.isSubadminBypassed || project?.paymentStatus === "BYPASSED_SUBADMIN" || project?.isSubAdminAssignment ? (
+          <div className="rounded-xl border border-amber-300 bg-amber-50/80 p-3.5 space-y-1.5 text-xs text-amber-900">
+            <div className="flex items-center gap-2 font-bold text-amber-900 text-sm">
+              <Zap className="h-4 w-4 fill-amber-600 text-amber-600 shrink-0" />
+              <span>Subadmin Direct Assignment ($0)</span>
+            </div>
+            <p className="text-amber-800 leading-relaxed">
+              All payment gateways have been bypassed by Subadmin. Project status is active &amp; <strong className="text-emerald-700">IN_PROGRESS</strong>.
+            </p>
+          </div>
+        ) : dueInstallment ? (() => {
           const dueBase = Number(dueInstallment.baseAmount || dueInstallment.amount || 0);
           const dueGst = Number(
             dueInstallment.gstAmount !== undefined

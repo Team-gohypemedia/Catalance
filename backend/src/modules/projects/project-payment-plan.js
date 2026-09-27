@@ -199,7 +199,45 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
     return null;
   }
 
+  const isSubadminBypassed =
+    String(project?.paymentStatus || "").toUpperCase() === "BYPASSED_SUBADMIN" ||
+    String(project?.paymentStatus || "").toUpperCase() === "BYPASSED" ||
+    Boolean(project?.isSubAdminAssignment) ||
+    Boolean(acceptedProposal?.coverLetter?.includes("Subadmin"));
+
   const totalAmount = resolveProjectAmount(project, acceptedProposal);
+  const phaseSummary = getProjectPhaseCompletionSummary(project);
+
+  if (isSubadminBypassed) {
+    return {
+      totalAmount,
+      baseTotalAmount: totalAmount,
+      gstRate: GST_RATE,
+      gstTotalAmount: Math.round(totalAmount * GST_RATE),
+      totalAmountWithGst: totalAmount + Math.round(totalAmount * GST_RATE),
+      paidAmount: totalAmount,
+      paidBaseAmount: totalAmount,
+      paidGstAmount: Math.round(totalAmount * GST_RATE),
+      paidTotalWithGst: totalAmount + Math.round(totalAmount * GST_RATE),
+      remainingAmount: 0,
+      remainingBaseAmount: 0,
+      remainingGstAmount: 0,
+      remainingTotalWithGst: 0,
+      paidPercentage: 100,
+      completedPhaseCount: phaseSummary.completedPhaseCount,
+      completedPhaseIds: phaseSummary.completedPhaseIds,
+      phases: phaseSummary.phases,
+      installments: [],
+      nextDueInstallment: null,
+      nextUnpaidInstallment: null,
+      isInitialPaymentPending: false,
+      isFullyPaid: true,
+      isSubadminBypassed: true,
+      acceptedProposalId: acceptedProposal.id,
+      acceptedProposalAmount: totalAmount,
+    };
+  }
+
   if (totalAmount <= 0) {
     if (requireAcceptedProposal) {
       throw new AppError("Invalid project amount for payment", 400);
@@ -209,7 +247,6 @@ export const resolveProjectPaymentPlan = (project, options = {}) => {
 
   const paidAmount = Math.min(normalizeProjectAmount(project?.spent || 0), totalAmount);
   const remainingAmount = Math.max(0, totalAmount - paidAmount);
-  const phaseSummary = getProjectPhaseCompletionSummary(project);
   const paymentPlanVersion = project?.paymentPlanVersion || "v1";
   const INSTALLMENT_DEFINITIONS = paymentPlanVersion === "v2" ? INSTALLMENT_DEFINITIONS_V2 : INSTALLMENT_DEFINITIONS_V1;
 

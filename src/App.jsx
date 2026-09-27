@@ -833,6 +833,14 @@ const App = () => {
               }
             />
             <Route
+              path="/admin/users"
+              element={
+                <AdminRoute>
+                  <AdminUsers roleFilter="ALL" />
+                </AdminRoute>
+              }
+            />
+            <Route
               path="/admin/clients"
               element={
                 <AdminRoute>

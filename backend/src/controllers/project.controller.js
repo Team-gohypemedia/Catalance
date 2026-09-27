@@ -1117,10 +1117,17 @@ export const listProjects = asyncHandler(async (req, res) => {
 
     let where = {};
 
-    if (user?.role === "ADMIN") {
+    if (user?.role === "ADMIN" || user?.role === "SUBADMIN") {
       where = {};
     } else if (user?.role === "PROJECT_MANAGER") {
       where = { managerId: userId };
+    } else if (user?.role === "FREELANCER") {
+      where = {
+        OR: [
+          { ownerId: userId },
+          { proposals: { some: { freelancerId: userId } } }
+        ]
+      };
     } else {
       where = { ownerId: userId };
     }

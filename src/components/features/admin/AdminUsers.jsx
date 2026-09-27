@@ -181,7 +181,7 @@ const buildUsersQuery = ({
     params.set("search", search.trim());
   }
 
-  if (role) {
+  if (role && role !== "ALL") {
     params.set("role", role);
   }
 
@@ -408,10 +408,11 @@ const AdminUsers = ({ roleFilter }) => {
   const [sortFilter, setSortFilter] = useState("COMPLETION_DESC");
   const [showAnalyticsPanel, setShowAnalyticsPanel] = useState(true);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState("12");
+  const [pageSize, setPageSize] = useState("100");
+  const [currentRoleFilter, setCurrentRoleFilter] = useState(roleFilter || "ALL");
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 12,
+    limit: 100,
     total: 0,
     totalPages: 1,
   });
@@ -425,17 +426,42 @@ const AdminUsers = ({ roleFilter }) => {
 
   const isFreelancerView = roleFilter === "FREELANCER";
 
-  const pageTitle = roleFilter
+  const handleUpdateRole = async (userId, newRole) => {
+    setActionLoadingKey(`role-${userId}`);
+    try {
+      const response = await authFetch(`/admin/users/${userId}/role`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update role");
+      }
+
+      toast.success(`User role updated to ${newRole}!`);
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
+      );
+    } catch (err) {
+      console.error("Role update error:", err);
+      toast.error("Failed to update user role.");
+    } finally {
+      setActionLoadingKey("");
+    }
+  };
+
+  const pageTitle = roleFilter && roleFilter !== "ALL"
     ? roleFilter === "CLIENT"
       ? "Clients"
       : roleFilter === "PROJECT_MANAGER"
         ? "Project Managers"
         : "Freelancers"
-    : "Users";
+    : "All Users & Roles";
 
-  const pageDescription = roleFilter
+  const pageDescription = roleFilter && roleFilter !== "ALL"
     ? `Manage your platform's ${roleFilter === "PROJECT_MANAGER" ? "project managers" : roleFilter.toLowerCase() + "s"}.`
-    : "Manage your platform's users.";
+    : "View all registered users (Clients, Freelancers, Admins, Subadmins, PMs) and update user roles instantly.";
 
   const summaryCards = useMemo(
     () => buildSummaryCards(summary, roleFilter),
@@ -582,9 +608,9 @@ const AdminUsers = ({ roleFilter }) => {
       } else {
         const query = buildUsersQuery({
           page,
-          limit: pageSize === "ALL" ? 1000 : Number(pageSize) || 12,
+          limit: pageSize === "ALL" ? 1000 : Number(pageSize) || 100,
           search,
-          role: roleFilter,
+          role: currentRoleFilter,
           status: statusFilter,
         });
         const res = await authFetch(`/admin/users?${query}`);
@@ -592,7 +618,7 @@ const AdminUsers = ({ roleFilter }) => {
         const nextUsers = Array.isArray(data?.data?.users) ? data.data.users : [];
         const nextPagination = data?.data?.pagination ?? {
           page,
-          limit: Number(pageSize) || 12,
+          limit: Number(pageSize) || 100,
           total: nextUsers.length,
           totalPages: 1,
         };
@@ -605,7 +631,7 @@ const AdminUsers = ({ roleFilter }) => {
         setUsers(nextUsers);
         setPagination({
           page: nextPagination.page || page,
-          limit: nextPagination.limit || (Number(pageSize) || 12),
+          limit: nextPagination.limit || (Number(pageSize) || 100),
           total: nextPagination.total || 0,
           totalPages: Math.max(nextPagination.totalPages || 1, 1),
         });
@@ -616,7 +642,7 @@ const AdminUsers = ({ roleFilter }) => {
       setAllFreelancers([]);
       setPagination({
         page: 1,
-        limit: Number(pageSize) || 12,
+        limit: Number(pageSize) || 100,
         total: 0,
         totalPages: 1,
       });
@@ -624,7 +650,7 @@ const AdminUsers = ({ roleFilter }) => {
     } finally {
       setLoading(false);
     }
-  }, [authFetch, isFreelancerView, page, pageSize, roleFilter, search, statusFilter]);
+  }, [authFetch, currentRoleFilter, isFreelancerView, page, pageSize, roleFilter, search, statusFilter]);
 
   // Filter & Sort freelancers locally when in Freelancer view
   useEffect(() => {
@@ -1121,6 +1147,36 @@ const AdminUsers = ({ roleFilter }) => {
 
           {/* Advanced Multi-Param Control Bar */}
           <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
+            {/* Quick Role Filter Tabs */}
+            <div className="flex flex-wrap items-center gap-1.5 pb-2.5 border-b border-border/60">
+              <span className="text-xs font-bold text-muted-foreground uppercase mr-1">Filter Role:</span>
+              {[
+                { id: "ALL", label: "All Users" },
+                { id: "CLIENT", label: "Clients" },
+                { id: "FREELANCER", label: "Freelancers" },
+                { id: "SUBADMIN", label: "Subadmins ⚡" },
+                { id: "ADMIN", label: "Admins 🛡️" },
+                { id: "PROJECT_MANAGER", label: "Project Managers 👔" },
+              ].map((tab) => (
+                <Button
+                  key={tab.id}
+                  variant={currentRoleFilter === tab.id ? "default" : "outline"}
+                  size="sm"
+                  className={`h-8 text-xs font-semibold rounded-xl ${
+                    currentRoleFilter === tab.id
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                  onClick={() => {
+                    setCurrentRoleFilter(tab.id);
+                    setPage(1);
+                  }}
+                >
+                  {tab.label}
+                </Button>
+              ))}
+            </div>
+
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               {/* Row 1: Search & Quick Refresh */}
               <div className="relative flex-1 min-w-[260px]">
@@ -1371,21 +1427,26 @@ const AdminUsers = ({ roleFilter }) => {
               <TableHeader className="bg-muted/40">
                 <TableRow>
                   <TableHead>Freelancer Profile</TableHead>
-                  <TableHead>Specialization & Skills</TableHead>
                   {isFreelancerView ? (
-                    activeTab === "ALL_FREELANCERS" ? (
-                      <>
-                        <TableHead>Overall Profile Status</TableHead>
-                        <TableHead>No. of Active Projects</TableHead>
-                      </>
-                    ) : (
-                      <>
-                        <TableHead>Onboarding Phase & Drop-Off</TableHead>
-                        <TableHead>Primary Service & Skills</TableHead>
-                      </>
-                    )
+                    <>
+                      <TableHead>Specialization & Skills</TableHead>
+                      {activeTab === "ALL_FREELANCERS" ? (
+                        <>
+                          <TableHead>Overall Profile Status</TableHead>
+                          <TableHead>No. of Active Projects</TableHead>
+                        </>
+                      ) : (
+                        <>
+                          <TableHead>Onboarding Phase & Drop-Off</TableHead>
+                          <TableHead>Primary Service & Skills</TableHead>
+                        </>
+                      )}
+                    </>
                   ) : (
-                    <TableHead>Status</TableHead>
+                    <>
+                      <TableHead>Phone / Contact Number</TableHead>
+                      <TableHead>Assigned Role (Editable)</TableHead>
+                    </>
                   )}
                   <TableHead>Joined & Account Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -1445,8 +1506,23 @@ const AdminUsers = ({ roleFilter }) => {
                               )}
                             </div>
                             <div className="min-w-0 space-y-0.5">
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <p className="font-semibold text-sm truncate">{user.fullName}</p>
+                                <Badge
+                                  className={`text-[10px] font-bold px-1.5 py-0 border-0 ${
+                                    user.role === "CLIENT"
+                                      ? "bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                                      : user.role === "FREELANCER"
+                                        ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                                        : user.role === "SUBADMIN"
+                                          ? "bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-300"
+                                          : user.role === "ADMIN"
+                                            ? "bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300"
+                                            : "bg-indigo-100 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-300"
+                                  }`}
+                                >
+                                  {user.role || "CLIENT"}
+                                </Badge>
                                 <span
                                   className={`inline-block h-2 w-2 rounded-full shrink-0 ${
                                     availStatus === "OPEN_TO_WORK"
@@ -1605,19 +1681,42 @@ const AdminUsers = ({ roleFilter }) => {
                             </>
                           )
                         ) : (
-                          <TableCell>
-                            <Badge
-                              className={
-                                displayStatus === "SUSPENDED"
-                                  ? "bg-red-100 text-red-700 border-0"
-                                  : displayStatus === "PENDING"
-                                    ? "bg-amber-100 text-amber-700 border-0"
-                                    : "bg-green-100 text-green-700 border-0"
-                              }
-                            >
-                              {displayStatus}
-                            </Badge>
-                          </TableCell>
+                          <>
+                            {/* Phone / Contact Number Column */}
+                            <TableCell className="min-w-[160px]">
+                              <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-slate-800 dark:text-slate-200">
+                                <Phone className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                                <span>{user.phone || user.phoneNumber || user.contactNumber || fp.phoneNumber || "No number"}</span>
+                              </div>
+                            </TableCell>
+
+                            {/* User Role Change Selector */}
+                            <TableCell className="min-w-[180px]">
+                              <div className="flex items-center gap-2">
+                                <Select
+                                  value={user.role || "CLIENT"}
+                                  disabled={actionLoadingKey === `role-${user.id}`}
+                                  onValueChange={(newRole) => handleUpdateRole(user.id, newRole)}
+                                >
+                                  <SelectTrigger className="h-8 text-xs font-semibold w-[160px] border-slate-200 bg-white dark:bg-slate-900 shadow-2xs">
+                                    {actionLoadingKey === `role-${user.id}` ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                                    ) : (
+                                      <SelectValue />
+                                    )}
+                                  </SelectTrigger>
+                                  <SelectContent className="z-50 bg-white dark:bg-slate-900 border border-slate-200 shadow-xl">
+                                    <SelectItem value="CLIENT" className="text-xs font-medium">CLIENT (User)</SelectItem>
+                                    <SelectItem value="FREELANCER" className="text-xs font-medium">FREELANCER</SelectItem>
+                                    <SelectItem value="SUBADMIN" className="text-xs font-bold text-orange-600">⚡ SUBADMIN</SelectItem>
+                                    <SelectItem value="ADMIN" className="text-xs font-bold text-purple-600">🛡️ ADMIN</SelectItem>
+                                    <SelectItem value="PROJECT_MANAGER" className="text-xs font-semibold text-blue-600">👔 PROJECT MANAGER</SelectItem>
+                                    <SelectItem value="SEO_TEAM" className="text-xs font-medium text-emerald-600">📝 SEO TEAM</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </TableCell>
+                          </>
                         )}
 
                         {/* Joined & Account Status */}

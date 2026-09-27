@@ -2,6 +2,7 @@ import React, { startTransition, useState, useEffect, useMemo, useRef, useCallba
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { generateRandomString } from "@/components/ui/evervault-card";
 import GuestBriefDialog from './GuestBriefDialog';
+import SubadminFreelancerAssignModal from "@/components/features/admin/SubadminFreelancerAssignModal";
 import SeoMeta from "@/components/common/SeoMeta";
 import { SEO_DATA } from "@/shared/lib/seo-config";
 
@@ -3279,6 +3280,8 @@ const GuestAIDemo = () => {
     const [generatedProposals, setGeneratedProposals] = useState(() => readStoredGeneratedProposals(user?.id));
     const [selectedProposalPreview, setSelectedProposalPreview] = useState(null);
     const [isProceedingWithProposal, setIsProceedingWithProposal] = useState(false);
+    const [subadminAssignModalOpen, setSubadminAssignModalOpen] = useState(false);
+    const [subadminSelectedProposal, setSubadminSelectedProposal] = useState(null);
     const [loadingHistoryId, setLoadingHistoryId] = useState(null);
     const [pendingAttachments, setPendingAttachments] = useState([]);
     const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
@@ -5984,6 +5987,18 @@ const GuestAIDemo = () => {
         }
 
         setIsProceedingWithProposal(true);
+
+        const userRole = String(user?.role || "").toUpperCase();
+        const userRoles = Array.isArray(user?.roles) ? user.roles.map(r => String(r).toUpperCase()) : [];
+        const isSubadminUser = ["ADMIN", "SUBADMIN", "PROJECT_MANAGER"].includes(userRole) ||
+          userRoles.includes("ADMIN") || userRoles.includes("SUBADMIN") || userRoles.includes("PROJECT_MANAGER");
+
+        if (isSubadminUser) {
+            setIsProceedingWithProposal(false);
+            setSubadminSelectedProposal(proposalContent);
+            setSubadminAssignModalOpen(true);
+            return;
+        }
 
         if (user) {
             try {
@@ -8853,6 +8868,44 @@ const GuestAIDemo = () => {
             </AlertDialog>
 
 
+
+            {/* Subadmin Direct Freelancer Assignment Modal */}
+            <SubadminFreelancerAssignModal
+                isOpen={subadminAssignModalOpen}
+                onClose={() => setSubadminAssignModalOpen(false)}
+                proposalContent={subadminSelectedProposal}
+                serviceName={selectedService?.name || "Website UI/UX Design"}
+                onAssignAsClient={async () => {
+                    setSubadminAssignModalOpen(false);
+                    try {
+                        const payload = buildProjectDraftPayload({
+                            content: subadminSelectedProposal,
+                            summary: subadminSelectedProposal,
+                            ...(typeof subadminSelectedProposal === "object" ? subadminSelectedProposal : {}),
+                        });
+                        const response = await authFetch("/projects", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(payload),
+                            suppressToast: true,
+                        });
+                        const responseData = await response.json().catch(() => null);
+                        const projectId = responseData?.data?.project?.id || responseData?.data?.id || null;
+                        if (projectId) {
+                            navigate(`${CLIENT_DASHBOARD_SEND_PROPOSAL_PATH}&draftId=draft-project:${projectId}`);
+                        } else {
+                            navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
+                        }
+                    } catch (e) {
+                        navigate(CLIENT_DASHBOARD_SEND_PROPOSAL_PATH);
+                    }
+                }}
+                onAssignedSuccess={(projectId, freelancer) => {
+                    setSubadminAssignModalOpen(false);
+                    // Navigate directly to the unified project workspace so subadmin & freelancer can chat
+                    navigate(`/client/project/${projectId}`);
+                }}
+            />
 
             {briefDialog}
         </div>

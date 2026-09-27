@@ -732,12 +732,15 @@ export const normalizeClientProjects = (remote = []) =>
       const acceptedProposal = proposals.find(
         (proposal) => String(proposal?.status || "").toUpperCase() === "ACCEPTED",
       );
+      const rawStatus = String(project?.status || "").toUpperCase();
+      const isSubadminAssigned =
+        Boolean(project?.isSubAdminAssignment) ||
+        String(project?.paymentStatus || "").toUpperCase() === "BYPASSED_SUBADMIN" ||
+        Boolean(project?.assignedFreelancerId) ||
+        Boolean(project?.assignedFreelancerName);
 
-      if (!acceptedProposal) {
-        return null;
-      }
-
-      const spotlightFreelancer = acceptedProposal?.freelancer || project?.freelancer || null;
+      const firstProposalFreelancer = proposals.length > 0 ? proposals[0]?.freelancer : null;
+      const spotlightFreelancer = acceptedProposal?.freelancer || firstProposalFreelancer || project?.freelancer || null;
       const businessName = resolveProjectBusinessName(project, acceptedProposal);
       const serviceType = resolveProjectServiceType(project, acceptedProposal);
       const timelineMeta = resolveProjectTimelineMeta(project, acceptedProposal);
@@ -745,16 +748,33 @@ export const normalizeClientProjects = (remote = []) =>
         project?.paymentPlan && typeof project.paymentPlan === "object"
           ? project.paymentPlan
           : null;
-      const dueInstallment = paymentPlan?.nextDueInstallment || null;
+      const dueInstallment = isSubadminAssigned ? null : (paymentPlan?.nextDueInstallment || null);
       const budgetValue = Number(project?.budget) || 0;
-      const rawStatus = String(project?.status || "").toUpperCase();
       const freelancerId =
         spotlightFreelancer?.id ||
         spotlightFreelancer?.freelancerId ||
         acceptedProposal?.freelancerId ||
         project?.freelancerId ||
         project?.freelancer?.id ||
+        project?.assignedFreelancerId ||
+        project?.proposalJson?.assignedFreelancerId ||
         null;
+
+      const resolvedFreelancerName =
+        spotlightFreelancer?.fullName ||
+        spotlightFreelancer?.name ||
+        project?.assignedFreelancerName ||
+        project?.proposalJson?.assignedFreelancerName ||
+        (spotlightFreelancer?.email ? spotlightFreelancer.email.split("@")[0] : null) ||
+        (project?.clientName && project?.clientName !== "Client" ? project.clientName : null) ||
+        "Freelancer Candidate";
+
+      const resolvedFreelancerRole =
+        spotlightFreelancer?.jobTitle ||
+        spotlightFreelancer?.professionalTitle ||
+        spotlightFreelancer?.headline ||
+        spotlightFreelancer?.specialization ||
+        (spotlightFreelancer?.role === "FREELANCER" ? "Freelancer" : "Specialist");
 
       return {
         id: project?.id,
@@ -768,26 +788,14 @@ export const normalizeClientProjects = (remote = []) =>
         sectionLabel: "Active Project",
         freelancerId,
         freelancer: spotlightFreelancer ? { ...spotlightFreelancer, id: freelancerId, freelancerId } : project?.freelancer || null,
-        freelancerName:
-          spotlightFreelancer?.fullName ||
-          spotlightFreelancer?.name ||
-          "Assigned Freelancer",
+        freelancerName: resolvedFreelancerName,
         freelancerAvatar: resolveFreelancerAvatarSrc(
           spotlightFreelancer,
           acceptedProposal?.freelancer,
           acceptedProposal,
         ),
-        freelancerRole:
-          spotlightFreelancer?.jobTitle ||
-          spotlightFreelancer?.professionalTitle ||
-          spotlightFreelancer?.headline ||
-          "Assigned Freelancer",
-        freelancerInitial: getInitials(
-          spotlightFreelancer?.fullName ||
-            spotlightFreelancer?.name ||
-            project?.title ||
-            "Project",
-        ),
+        freelancerRole: resolvedFreelancerRole,
+        freelancerInitial: getInitials(resolvedFreelancerName),
         budgetValue,
         budgetLabel: budgetValue > 0 ? formatINR(budgetValue) : "TBD",
         timelineLabel: timelineMeta.value,
@@ -805,6 +813,9 @@ export const normalizeClientProjects = (remote = []) =>
         completedTasks: project?.completedTasks ?? null,
         verifiedTasks: project?.verifiedTasks ?? null,
         customSop: project?.customSop ?? null,
+        isSubAdminAssignment: Boolean(project?.isSubAdminAssignment) || isSubadminAssigned,
+        paymentStatus: project?.paymentStatus || (isSubadminAssigned ? "BYPASSED_SUBADMIN" : "PAID"),
+        isSubadminBypassed: isSubadminAssigned,
         sourceTitle: project?.title || serviceType || "",
         templateTitle: project?.title || serviceType || "",
       };

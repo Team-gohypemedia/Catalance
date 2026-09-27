@@ -2560,7 +2560,7 @@ export const listUsers = async (filters = {}) => {
     { max: 64 },
   );
   const where = {
-    status: filters.status || "ACTIVE"
+    ...(filters.status && filters.status !== "ALL" ? { status: filters.status } : filters.status === "ALL" ? {} : {})
   };
 
   if (normalizedRoleFilter) {
@@ -2572,9 +2572,7 @@ export const listUsers = async (filters = {}) => {
 
   const andConditions = Array.isArray(where.AND) ? [...where.AND] : [];
 
-  if (normalizedRoleFilter === "FREELANCER") {
-    andConditions.push({ freelancerProfile: { isNot: null } });
-  }
+  // Do not restrict to users with non-null freelancerProfile so all registered freelancers are returned
 
   if (normalizedServiceKeys.length > 0) {
     andConditions.push({
