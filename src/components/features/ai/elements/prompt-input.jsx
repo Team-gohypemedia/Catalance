@@ -880,6 +880,7 @@ export const PromptInputSpeechButton = ({
   const [isListening, setIsListening] = useState(false);
   const [recognition, setRecognition] = useState(null);
   const recognitionRef = useRef(null);
+  const speechBaseTextRef = useRef("");
 
   useEffect(() => {
     if (
@@ -904,19 +905,37 @@ export const PromptInputSpeechButton = ({
 
       speechRecognition.onresult = (event) => {
         let finalTranscript = "";
+        let interimTranscript = "";
 
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const result = event.results[i];
-          if (result.isFinal) {
-            finalTranscript += result[0]?.transcript ?? "";
+        if (event?.results) {
+          for (let i = 0; i < event.results.length; i++) {
+            const result = event.results[i];
+            const transcript = result?.[0]?.transcript ?? "";
+            if (result?.isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
           }
         }
 
-        if (finalTranscript && textareaRef?.current) {
+        finalTranscript = finalTranscript.trim();
+        interimTranscript = interimTranscript.trim();
+        if (interimTranscript && finalTranscript.endsWith(interimTranscript)) {
+          interimTranscript = "";
+        }
+
+        if (textareaRef?.current) {
           const textarea = textareaRef.current;
-          const currentValue = textarea.value;
-          const newValue =
-            currentValue + (currentValue ? " " : "") + finalTranscript;
+          const baseText = speechBaseTextRef.current;
+          const speechPart = [finalTranscript, interimTranscript]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+          const newValue = [baseText, speechPart]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
 
           textarea.value = newValue;
           textarea.dispatchEvent(new Event("input", { bubbles: true }));
@@ -948,9 +967,10 @@ export const PromptInputSpeechButton = ({
     if (isListening) {
       recognition.stop();
     } else {
+      speechBaseTextRef.current = textareaRef?.current?.value || "";
       recognition.start();
     }
-  }, [recognition, isListening]);
+  }, [recognition, isListening, textareaRef]);
 
   return (
     <PromptInputButton

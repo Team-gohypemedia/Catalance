@@ -1454,6 +1454,34 @@ const appendSpeechTranscript = (baseText, finalText, interimText) => {
   return `${base}${needsSpace ? "" : " "}${suffix}`;
 };
 
+const extractSpeechTranscripts = (results) => {
+  let finalTranscript = "";
+  let interimTranscript = "";
+
+  if (!results || typeof results.length !== "number") {
+    return { finalTranscript: "", interimTranscript: "" };
+  }
+
+  for (let i = 0; i < results.length; i += 1) {
+    const result = results[i];
+    const transcript = result?.[0]?.transcript || "";
+    if (result?.isFinal) {
+      finalTranscript += transcript;
+    } else {
+      interimTranscript += transcript;
+    }
+  }
+
+  finalTranscript = finalTranscript.trim();
+  interimTranscript = interimTranscript.trim();
+
+  if (interimTranscript && finalTranscript.endsWith(interimTranscript)) {
+    interimTranscript = "";
+  }
+
+  return { finalTranscript, interimTranscript };
+};
+
 const applyMissingFieldAnswer = (field, text) => {
   if (!field || typeof text !== "string") return {};
   const trimmed = text.trim();
@@ -2222,25 +2250,11 @@ function AIChat({
     };
 
     recognition.onresult = (event) => {
-      let interimTranscript = "";
-      let finalTranscript = "";
+      const { finalTranscript, interimTranscript } = extractSpeechTranscripts(
+        event.results,
+      );
 
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        const result = event.results[i];
-        const transcript = result[0]?.transcript || "";
-        if (result.isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      if (finalTranscript) {
-        speechFinalRef.current = [speechFinalRef.current, finalTranscript]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-      }
+      speechFinalRef.current = finalTranscript;
 
       setInput(
         appendSpeechTranscript(
@@ -2710,25 +2724,10 @@ function AIChat({
         };
 
         recognition.onresult = (event) => {
-          let interimTranscript = "";
-          let finalTranscript = "";
+          const { finalTranscript, interimTranscript } =
+            extractSpeechTranscripts(event.results);
 
-          for (let i = event.resultIndex; i < event.results.length; i += 1) {
-            const result = event.results[i];
-            const transcript = result[0]?.transcript || "";
-            if (result.isFinal) {
-              finalTranscript += transcript;
-            } else {
-              interimTranscript += transcript;
-            }
-          }
-
-          if (finalTranscript) {
-            speechFinalRef.current = [speechFinalRef.current, finalTranscript]
-              .filter(Boolean)
-              .join(" ")
-              .trim();
-          }
+          speechFinalRef.current = finalTranscript;
 
           setInput(
             appendSpeechTranscript(

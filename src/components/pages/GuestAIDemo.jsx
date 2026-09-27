@@ -1379,6 +1379,34 @@ const appendSpeechTranscript = (
         .join(' ')
         .trim();
 
+const extractSpeechTranscripts = (results) => {
+    let finalTranscript = '';
+    let interimTranscript = '';
+
+    if (!results || typeof results.length !== 'number') {
+        return { finalTranscript: '', interimTranscript: '' };
+    }
+
+    for (let i = 0; i < results.length; i += 1) {
+        const result = results[i];
+        const transcript = result?.[0]?.transcript || '';
+        if (result?.isFinal) {
+            finalTranscript += transcript;
+        } else {
+            interimTranscript += transcript;
+        }
+    }
+
+    finalTranscript = finalTranscript.trim();
+    interimTranscript = interimTranscript.trim();
+
+    if (interimTranscript && finalTranscript.endsWith(interimTranscript)) {
+        interimTranscript = '';
+    }
+
+    return { finalTranscript, interimTranscript };
+};
+
 const FREEFORM_FOLLOWUP_OPTION_REGEX = /\b(not sure|other|suggest|recommend|advice|help|guidance|decide for me|choose for me|open to recommendations?)\b/i;
 const AUTO_HELPER_QUESTION_REGEX = /\b(budget|price|pricing|cost|timeline|ready|launch|deadline|when would you like|when do you want|how soon)\b/i;
 const AUTO_RECOMMEND_OPTION_VALUE = 'Recommend best option';
@@ -4235,25 +4263,9 @@ const GuestAIDemo = () => {
                 return;
             }
 
-            let interimTranscript = '';
-            let finalTranscript = '';
+            const { finalTranscript, interimTranscript } = extractSpeechTranscripts(event.results);
 
-            for (let i = event.resultIndex; i < event.results.length; i += 1) {
-                const result = event.results[i];
-                const transcript = result?.[0]?.transcript || '';
-                if (result.isFinal) {
-                    finalTranscript += transcript;
-                } else {
-                    interimTranscript += transcript;
-                }
-            }
-
-            if (finalTranscript) {
-                speechFinalRef.current = [speechFinalRef.current, finalTranscript]
-                    .filter(Boolean)
-                    .join(' ')
-                    .trim();
-            }
+            speechFinalRef.current = finalTranscript;
 
             setInput(
                 appendSpeechTranscript(
@@ -4517,25 +4529,9 @@ const GuestAIDemo = () => {
             };
 
             recognition.onresult = (event) => {
-                let interimTranscript = '';
-                let finalTranscript = '';
+                const { finalTranscript, interimTranscript } = extractSpeechTranscripts(event.results);
 
-                for (let i = event.resultIndex; i < event.results.length; i += 1) {
-                    const result = event.results[i];
-                    const transcript = result?.[0]?.transcript || '';
-                    if (result.isFinal) {
-                        finalTranscript += transcript;
-                    } else {
-                        interimTranscript += transcript;
-                    }
-                }
-
-                if (finalTranscript) {
-                    speechFinalBriefingGoalRef.current = [speechFinalBriefingGoalRef.current, finalTranscript]
-                        .filter(Boolean)
-                        .join(' ')
-                        .trim();
-                }
+                speechFinalBriefingGoalRef.current = finalTranscript;
 
                 const combinedSpeechText = [speechFinalBriefingGoalRef.current, interimTranscript]
                     .filter(Boolean)
