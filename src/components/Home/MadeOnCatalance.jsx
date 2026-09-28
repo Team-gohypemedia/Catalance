@@ -3,37 +3,37 @@ import React from "react";
 import { Marquee } from "@/components/ui/marquee";
 
 const MADE_ON_CATALANCE_ASSET_BASE_URL =
-  "https://assets.catalance.in/home/made-on-catalance";
+  "https://assets.catalance.in/home/made-on-catalance-webp";
 
 const madeOnCatalanceImageUrl = (fileName) =>
-  `${MADE_ON_CATALANCE_ASSET_BASE_URL}/images/${fileName}`;
+  `${MADE_ON_CATALANCE_ASSET_BASE_URL}/${fileName}`;
 
 const madeOnCatalanceVideoUrl = (fileName) =>
   `${MADE_ON_CATALANCE_ASSET_BASE_URL}/videos/${fileName}`;
 
 const imageSources = [
-  { src: madeOnCatalanceImageUrl("project1.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project2.png"), width: 1842, height: 2304 },
-  { src: madeOnCatalanceImageUrl("project3.png"), width: 1842, height: 2304 },
-  { src: madeOnCatalanceImageUrl("project4.jpg"), width: 1080, height: 1080 },
-  { src: madeOnCatalanceImageUrl("project5.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project6.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project7.png"), width: 1254, height: 1254 },
-  { src: madeOnCatalanceImageUrl("project8.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project9.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project10.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project11.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project12.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project13.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project14.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project15.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project16.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project17.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project18.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project19.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project20.png"), width: 1122, height: 1402 },
-  { src: madeOnCatalanceImageUrl("project21.png"), width: 1092, height: 1440 },
-  { src: madeOnCatalanceImageUrl("project22.png"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project1.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project2.webp"), width: 1842, height: 2304 },
+  { src: madeOnCatalanceImageUrl("project3.webp"), width: 1842, height: 2304 },
+  { src: madeOnCatalanceImageUrl("project4.webp"), width: 1080, height: 1080 },
+  { src: madeOnCatalanceImageUrl("project5.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project6.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project7.webp"), width: 1254, height: 1254 },
+  { src: madeOnCatalanceImageUrl("project8.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project9.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project10.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project11.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project12.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project13.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project14.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project15.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project16.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project17.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project18.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project19.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project20.webp"), width: 1122, height: 1402 },
+  { src: madeOnCatalanceImageUrl("project21.webp"), width: 1092, height: 1440 },
+  { src: madeOnCatalanceImageUrl("project22.webp"), width: 1122, height: 1402 },
 ];
 
 /*
