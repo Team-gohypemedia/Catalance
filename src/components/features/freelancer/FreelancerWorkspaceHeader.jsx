@@ -20,12 +20,14 @@ import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import logo from "@/assets/logos/logo.svg";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
+import { campusNavItem } from "@/shared/lib/campus";
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Opportunity", key: "opportunity", to: "/opportunity" },
   { label: "Service", key: "service", to: "/service" },
   { label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" },
+  campusNavItem,
   { label: "Contact", key: "contact", to: "/contact" },
 ];
 

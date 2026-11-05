@@ -36,6 +36,7 @@ const workspaceNavItems = [
   { label: "Appointments", key: "appointments", to: "/project-manager/appointments" },
   { label: "Resolved History", key: "history", to: "/project-manager/projects?status=Completed" },
   { label: "Chat", key: "messages", to: "/project-manager/messages" },
+  { label: "Campus Talent", key: "campus-talent", to: "/project-manager/campus-talent" },
   { label: "Profile", key: "profile", to: "/project-manager/profile" },
 ];
 
@@ -275,6 +276,7 @@ export const ManagerWorkspaceHeader = memo(function ManagerWorkspaceHeader() {
     }
     if (path.startsWith("/project-manager/appointments") || path.startsWith("/project-manager/availability")) return "appointments";
     if (path.startsWith("/project-manager/messages")) return "messages";
+    if (path.startsWith("/project-manager/campus-talent")) return "campus-talent";
     if (path.startsWith("/project-manager/profile")) return "profile";
     return "overview";
   };

@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ───────────────────────── Catalance Campus design tokens ─────────────────────────
+   Catalance design language: warm cream + burnt orange (light), neutral black + Catalance yellow (dark).
+   Calm, simple, premium. Always use these semantic tokens, never hard-coded hex in components. */
+:root {
+  --bg: #faf6f0;
+  --surface: #ffffff;
+  --surface-2: #f4efe7;
+  --surface-3: #ebe5db;
+  --fg: #1c1b1f;
+  --muted: #5f5c66;
+  --subtle: #8e8a94;
+  --line: #ece6dc;
+  --line-strong: #ddd5c8;
+
+  --primary: #d9692a;
+  --primary-hover: #c45b1f;
+  --primary-soft: #fbeadf;
+  --primary-fg: #ffffff;
+
+  --accent: #f9d949;
+  --accent-soft: #fdf6d6;
+  --accent-fg: #1c1b1f;
+
+  --violet: #6e56cf;
+  --violet-soft: #efecfb;
+  --sky: #2e86de;
+  --sky-soft: #e6f1fc;
+  --success: #1f9d55;
+  --success-soft: #e3f5ea;
+  --warning: #c98a04;
+  --warning-soft: #fdf3d9;
+  --danger: #dc3c3c;
+  --danger-soft: #fde7e7;
+
+  /* "ink" = dark feature surface. Use sparingly (at most one per page). */
+  --ink: #1c1b1f;
+  --ink-2: #26252a;
+  --ink-fg: #faf6f0;
+  --ink-muted: #a8a4ad;
+  --ink-line: #34333a;
+
+  --shadow-sm: 0 1px 2px rgb(28 27 31 / 0.04);
+  --shadow-md: 0 1px 3px rgb(28 27 31 / 0.06), 0 8px 24px -12px rgb(28 27 31 / 0.1);
+  --shadow-lg: 0 2px 6px rgb(28 27 31 / 0.05), 0 24px 48px -24px rgb(28 27 31 / 0.18);
+  --ring: rgb(217 105 42 / 0.25);
+}
+
+.dark {
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --surface-3: #262626;
+  --fg: #fafafa;
+  --muted: #a3a3a3;
+  --subtle: #737373;
+  --line: #242424;
+  --line-strong: #333333;
+
+  --primary: #f9d949;
+  --primary-hover: #fbe27a;
+  --primary-soft: #2a2410;
+  --primary-fg: #1c1b1f;
+
+  --accent: #f9d949;
+  --accent-soft: #2a2410;
+  --accent-fg: #1c1b1f;
+
+  --violet: #9d8cf0;
+  --violet-soft: #1e1a33;
+  --sky: #5aa9f0;
+  --sky-soft: #0f1f2e;
+  --success: #3ccb7f;
+  --success-soft: #0f2419;
+  --warning: #f2b233;
+  --warning-soft: #2b220d;
+  --danger: #ff6b6b;
+  --danger-soft: #2e1414;
+
+  --ink: #171717;
+  --ink-2: #202020;
+  --ink-fg: #fafafa;
+  --ink-muted: #a3a3a3;
+  --ink-line: #2c2c2c;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 1px 3px rgb(0 0 0 / 0.5), 0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --shadow-lg: 0 24px 48px -24px rgb(0 0 0 / 0.8);
+  --ring: rgb(249 217 73 / 0.3);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-fg: var(--accent-fg);
+  --color-violet: var(--violet);
+  --color-violet-soft: var(--violet-soft);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-fg: var(--ink-fg);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-line: var(--ink-line);
+
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-pulse-ring: pulse-ring 1.6s ease-out infinite;
+}
+
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes shimmer { from { background-position: -200% 0; } to { background-position: 200% 0; } }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 var(--ring); } 100% { box-shadow: 0 0 0 14px transparent; } }
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: -0.025em; }
+  ::selection { background: var(--primary); color: var(--primary-fg); }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 6px; }
+  *, ::before, ::after { border-color: var(--line); }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  }
+}
+
+@layer components {
+  /* page width container: 16px gutter on phones */
+  .container-campus { width: 100%; max-width: 1200px; margin-inline: auto; padding-inline: 1rem; }
+  @media (min-width: 640px) { .container-campus { padding-inline: 1.5rem; } }
+
+  /* Catalance signature: one italic serif phrase in the brand colour inside a headline.
+     <h1>Learn skills that <em className="accent">pay</em></h1>  or  <span className="font-accent">…</span> */
+  .font-accent, em.accent { font-family: var(--font-serif); font-style: italic; font-weight: 400; letter-spacing: -0.01em; color: var(--primary); }
+
+  /* small uppercase label, Catalance "OUR PARTNERS" style */
+  .eyebrow { font-family: var(--font-sans); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); }
+
+  /* legacy texture helpers: intentionally disabled (Catalance style is texture-free) */
+  .bg-dots { background-image: none; }
+  .bg-grid-ink { background-image: none; }
+
+  .skeleton { background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%); background-size: 200% 100%; animation: var(--animate-shimmer); }
+
+  .scrollbar-none { scrollbar-width: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+
+  /* rendered markdown (lessons, threads) */
+  .prose-campus { line-height: 1.75; color: var(--fg); }
+  .prose-campus h1, .prose-campus h2, .prose-campus h3 { font-weight: 600; margin: 1.6em 0 0.6em; line-height: 1.25; }
+  .prose-campus h2 { font-size: 1.4rem; }
+  .prose-campus h3 { font-size: 1.15rem; }
+  .prose-campus p { margin: 0.9em 0; }
+  .prose-campus ul, .prose-campus ol { margin: 0.9em 0; padding-left: 1.4em; }
+  .prose-campus ul { list-style: disc; }
+  .prose-campus ol { list-style: decimal; }
+  .prose-campus li { margin: 0.35em 0; }
+  .prose-campus a { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+  .prose-campus code { font-family: var(--font-mono); font-size: 0.88em; background: var(--surface-2); padding: 0.15em 0.4em; border-radius: 6px; }
+  .prose-campus pre { background: var(--ink); color: var(--ink-fg); padding: 1rem 1.2rem; border-radius: 12px; overflow-x: auto; margin: 1.2em 0; }
+  .prose-campus pre code { background: transparent; padding: 0; color: inherit; }
+  .prose-campus blockquote { border-left: 3px solid var(--primary); background: var(--primary-soft); padding: 0.75rem 1rem; border-radius: 0 10px 10px 0; color: var(--fg); margin: 1.2em 0; }
+  .prose-campus blockquote p { margin: 0; }
+  .prose-campus strong { font-weight: 600; }
+}

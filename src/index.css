@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* campus/ is a separate app with its own Tailwind build */
+@source not "../campus";
+
 @custom-variant dark (&:is(.dark *));
 
 html[data-scroll-locked],

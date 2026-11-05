@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import CampusVerifiedSkills from "@/components/features/campus/CampusVerifiedSkills";
 import { getFreelancerAvailabilityMeta } from "@/shared/lib/freelancer-availability";
 import {
   normalizeServiceIdentity,
@@ -1190,6 +1191,11 @@ const FreelancerProfileDialog = ({ open, onOpenChange, viewingFreelancer }) => {
                     icon={Sparkles}
                     items={skills}
                     emptyLabel="No skills added yet."
+                  />
+
+                  <CampusVerifiedSkills
+                    userId={fetchedData?.id || targetId}
+                    variant="compact"
                   />
 
                   <TagListCard

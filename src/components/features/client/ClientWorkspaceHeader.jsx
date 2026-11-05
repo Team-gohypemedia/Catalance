@@ -21,11 +21,13 @@ import logo from "@/assets/logos/logo.svg";
 import { useNotifications } from "@/shared/context/NotificationContext";
 import { useAuth } from "@/shared/context/AuthContext";
 import { cn } from "@/shared/lib/utils";
+import { campusNavItem } from "@/shared/lib/campus";
 
 const marketingNavItems = [
   { label: "Home", key: "home", to: "/" },
   { label: "Marketplace", key: "marketplace", to: "/marketplace" },
   { label: "Service", mobileLabel: "Services", key: "service", to: "/service" },
+  campusNavItem,
   { label: "Contact", key: "contact", to: "/contact" },
 ];
 

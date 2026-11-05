@@ -27,6 +27,7 @@ import WorkspaceProfileDropdown from "@/components/layout/WorkspaceProfileDropdo
 import WorkspaceMobileSidebar from "@/components/layout/WorkspaceMobileSidebar";
 import { useAuth } from "@/shared/context/AuthContext";
 import { useDashboardSwitcher } from "@/shared/hooks/use-dashboard-switcher";
+import { campusNavItem } from "@/shared/lib/campus";
 import {
   resolveUserDisplayName,
   resolveUserSecondaryLabel,
@@ -43,6 +44,7 @@ const buildNavItems = ({
     link: isFreelancer ? "/opportunity" : "/marketplace",
   },
   ...(isFreelancer ? [{ name: "Growth Hub", link: "/freelancer/growth-quest" }] : []),
+  { name: campusNavItem.label, link: campusNavItem.to },
   { name: "Contact", link: "/contact" },
 ];
 
@@ -62,6 +64,7 @@ const buildMobileMarketingNavItems = ({
   ...(isFreelancer
     ? [{ label: "Growth Hub", key: "growth-quest", to: "/freelancer/growth-quest" }]
     : []),
+  campusNavItem,
   { label: "Contact", key: "contact", to: "/contact" },
 ];
 

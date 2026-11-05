@@ -25,6 +25,7 @@ import {
   setStoredDashboardPreference,
 } from "@/shared/lib/dashboard-preference";
 import { cn } from "@/shared/lib/utils";
+import { CAMPUS_BRIDGE_PATH } from "@/shared/lib/campus";
 import { ONBOARDING_FIELD_LABEL_CLASS } from "@/components/freelancer/Freelancer-Onboarding/typography";
 import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
@@ -201,9 +202,13 @@ function PhoneRoleOnboarding() {
       normalizeRole(onboardingState?.role) ||
       normalizeRole(user?.onboardingRole);
     const userRole = normalizeRole(user?.role);
+    // People who arrive from Catalance Campus are learners, i.e. future freelancers (see CampusBridge).
+    const campusRole = String(onboardingState?.redirectTo || "").startsWith(CAMPUS_BRIDGE_PATH)
+      ? FREELANCER_ROLE
+      : null;
 
-    return explicitRole || (userRole === FREELANCER_ROLE ? userRole : null);
-  }, [onboardingState?.role, searchParams, user?.onboardingRole, user?.role]);
+    return explicitRole || (userRole === FREELANCER_ROLE ? userRole : null) || campusRole;
+  }, [onboardingState?.redirectTo, onboardingState?.role, searchParams, user?.onboardingRole, user?.role]);
   const hasLockedRole = Boolean(initialRole);
   const [activeSlide, setActiveSlide] = useState(0);
   const [selectedRole, setSelectedRole] = useState(initialRole);

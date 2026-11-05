@@ -8,6 +8,7 @@ const siteRoutes = {
   home: "/",
   marketplace: "/marketplace",
   service: "/service",
+  campus: "/campus",
   contact: "/contact",
 };
 

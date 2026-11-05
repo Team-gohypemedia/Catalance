@@ -1,0 +1,48 @@
+{
+  "name": "catalance-campus-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Catalance Campus API: learn, earn, get ranked. Lives in the \"campus\" schema of the shared Catalance database.",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "build": "prisma generate",
+    "vercel-build": "prisma generate",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "node scripts/check-schema.mjs && prisma migrate dev",
+    "prisma:deploy": "node scripts/check-schema.mjs && prisma migrate deploy",
+    "prisma:push": "node scripts/check-schema.mjs && prisma db push",
+    "export-seed": "node scripts/export-demo-seed.mjs",
+    "seed": "node scripts/check-schema.mjs && node prisma/seed.js",
+    "seed:reset": "node scripts/check-schema.mjs && node prisma/seed.js --reset",
+    "check-schema": "node scripts/check-schema.mjs",
+    "seed:check": "node prisma/seed.js --dry-run",
+    "smoke:spec": "node scripts/smoke-spec.mjs",
+    "cron:tick": "node scripts/cron-tick.mjs",
+    "demo:remove-people": "node scripts/check-schema.mjs && node scripts/remove-demo-people.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1155.0",
+    "@aws-sdk/s3-request-presigner": "3.1155.0",
+    "@prisma/client": "6.19.0",
+    "bcryptjs": "2.4.3",
+    "compression": "1.8.0",
+    "cors": "2.8.5",
+    "dotenv": "16.4.7",
+    "express": "5.1.0",
+    "express-rate-limit": "7.5.0",
+    "helmet": "8.1.0",
+    "jsonwebtoken": "9.0.2",
+    "morgan": "1.10.0",
+    "zod": "3.24.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.2",
+    "prisma": "6.19.0"
+  }
+}

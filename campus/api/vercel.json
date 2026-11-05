@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "regions": [
+    "bom1"
+  ],
+  "buildCommand": "npm run vercel-build",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 60,
+      "excludeFiles": "{.env,.env.*,.tmp/**,prisma/seed-data.json,scripts/**,**/*.map}"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/:path((?!api/index).*)",
+      "destination": "/api/index"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/tick",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

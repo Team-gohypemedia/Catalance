@@ -1,0 +1,1288 @@
+// Catalance Campus — separate product, separate database.
+// Shapes mirror campus/API_CONTRACT.md. IDs are strings so demo seed ids are preserved.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("CAMPUS_DATABASE_URL")
+  directUrl = env("CAMPUS_DIRECT_URL")
+  // Campus lives in its own Postgres schema inside the shared Catalance database.
+  // The main app owns "public"; Prisma here only ever manages "campus".
+  schemas   = ["campus"]
+}
+
+// ───────────────────────────── enums ─────────────────────────────
+
+enum Role {
+  STUDENT
+  MENTOR // spec "Instructor": teaches assigned courses/cohorts
+  EVALUATOR
+  PROJECT_MANAGER
+  FINANCE
+  ADMIN
+
+  @@schema("campus")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+
+  @@schema("campus")
+}
+
+enum Goal {
+  FIRST_INCOME
+  JOB
+  FREELANCE_CAREER
+  SKILL_UP
+  GOVT_EXAM_BACKUP
+
+  @@schema("campus")
+}
+
+enum SkillLevel {
+  NEW
+  SOME
+  CONFIDENT
+
+  @@schema("campus")
+}
+
+enum Division {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+
+  @@schema("campus")
+}
+
+enum CollegeType {
+  ENGINEERING
+  ARTS_SCIENCE
+  COMMERCE
+  DESIGN
+  MANAGEMENT
+  POLYTECHNIC
+
+  @@schema("campus")
+}
+
+enum TrackCategory {
+  TECH
+  NON_TECH
+
+  @@schema("campus")
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  STANDARD // one focused, job-ready workflow (spec §6.1)
+
+  @@schema("campus")
+}
+
+enum LessonType {
+  VIDEO
+  ARTICLE
+  QUIZ
+  ASSIGNMENT
+
+  @@schema("campus")
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  REVIEWED
+
+  @@schema("campus")
+}
+
+enum GigDifficulty {
+  EASY
+  MEDIUM
+  HARD
+
+  @@schema("campus")
+}
+
+enum GigStatus {
+  OPEN
+  CLOSED
+
+  @@schema("campus")
+}
+
+enum ApplicationStatus {
+  APPLIED
+  ACCEPTED
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+
+  @@schema("campus")
+}
+
+enum WalletTxnType {
+  GIG_EARNING
+  BONUS
+  WITHDRAWAL
+  COURSE_FEE_DEDUCTION
+
+  @@schema("campus")
+}
+
+enum WalletTxnStatus {
+  COMPLETED
+  PENDING
+
+  @@schema("campus")
+}
+
+enum PointsSource {
+  LESSON
+  QUIZ
+  ASSIGNMENT
+  GIG
+  HELP
+  STREAK
+  BONUS
+
+  @@schema("campus")
+}
+
+enum PortfolioSource {
+  ASSIGNMENT
+  GIG
+  PERSONAL
+
+  @@schema("campus")
+}
+
+enum BookingStatus {
+  UPCOMING
+  COMPLETED
+  CANCELLED
+
+  @@schema("campus")
+}
+
+enum NotificationType {
+  COURSE
+  GIG
+  COMMUNITY
+  MENTOR
+  RANK
+  SYSTEM
+
+  @@schema("campus")
+}
+
+enum VoteTarget {
+  THREAD
+  REPLY
+
+  @@schema("campus")
+}
+
+// ───────────────────────────── people & places ─────────────────────────────
+
+model User {
+  id                String      @id @default(cuid())
+  /// The Catalance account (main app User.id) this Campus profile belongs to. Campus has no logins of its own:
+  /// users sign in with Catalance and get this profile on first visit. Null only for seeded demo people.
+  catalanceUserId   String?     @unique
+  email             String      @unique
+  /// Only set for seeded demo people (used by the in-browser demo); real users' passwords live in Catalance.
+  passwordHash      String?
+  passwordChangedAt DateTime?
+  name              String
+  username          String      @unique
+  avatarUrl         String?
+  role              Role        @default(STUDENT)
+  status            UserStatus  @default(ACTIVE)
+  headline          String?
+  bio               String?
+  phone             String?
+  city              String?
+  state             String?
+  collegeId         String?
+  year              Int?
+  stream            String?
+  goal              Goal?
+  language          String      @default("en")
+  interests         String[]    @default([])
+  skillLevel        SkillLevel?
+  skills            String[]    @default([])
+  links             Json        @default("{}")
+  onboarded         Boolean     @default(false)
+  xp                Int         @default(0)
+  coins             Int         @default(0)
+  streak            Int         @default(0)
+  longestStreak     Int         @default(0)
+  lastActiveAt      DateTime?
+  seasonPoints      Int         @default(0)
+  lifetimePoints    Int         @default(0)
+  division          Division    @default(BRONZE)
+  ladderStage       Int         @default(1)
+  walletBalanceINR  Int         @default(0)
+  lifetimeEarnedINR Int         @default(0)
+  notificationPrefs Json        @default("{\"email\":true,\"whatsapp\":true,\"push\":true}")
+  mentorProfile     Json?
+  /// Government-exam "Aspirant mode" profile (API_CONTRACT.md Aspirant). Private: never exposed publicly.
+  aspirant          Json?
+  /// { openToProjects, hoursPerWeek, days: string[], preferredTaskTypes: string[], tools: string[], communication } (spec §4.2)
+  availability      Json        @default("{}")
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  college               College?            @relation(fields: [collegeId], references: [id], onDelete: SetNull)
+  coursesTaught         Course[]            @relation("CourseMentor")
+  enrollments           Enrollment[]
+  lessonCompletions     LessonCompletion[]
+  quizAttempts          QuizAttempt[]
+  submissions           Submission[]        @relation("SubmissionUser")
+  reviewedSubmissions   Submission[]        @relation("SubmissionReviewer")
+  certificates          Certificate[]
+  gigsMentored          Gig[]               @relation("GigMentor")
+  gigApplications       GigApplication[]
+  walletTxns            WalletTxn[]
+  pointsEvents          PointsEvent[]
+  portfolioItems        PortfolioItem[]
+  badges                UserBadge[]
+  threads               Thread[]
+  replies               Reply[]
+  votes                 Vote[]
+  bookingsAsStudent     Booking[]           @relation("BookingStudent")
+  bookingsAsMentor      Booking[]           @relation("BookingMentor")
+  cohortsLed            Cohort[]            @relation("CohortLead")
+  cohortMemberships     CohortMember[]
+  cohortPosts           CohortPost[]
+  notifications         Notification[]
+  reviewsReceived       MentorReview[]      @relation("ReviewMentor")
+  reviewsWritten        MentorReview[]      @relation("ReviewAuthor")
+  tutorMessages         TutorMessage[]
+  assessmentAttempts    AssessmentAttempt[] @relation("AttemptStudent")
+  evaluatedAttempts     AssessmentAttempt[] @relation("AttemptEvaluator")
+  skillVerifications    SkillVerification[] @relation("VerificationStudent")
+  approvedVerifications SkillVerification[] @relation("VerificationApprover")
+  courseOrders          CourseOrder[]
+  consents              ConsentRecord[]
+  offersReceived        ProjectOffer[]      @relation("OfferStudent")
+  offersManaged         ProjectOffer[]      @relation("OfferPM")
+  supportTickets        SupportTicket[]     @relation("TicketUser")
+  auditLogs             AuditLog[]
+
+  @@index([role, status])
+  @@index([collegeId])
+  @@index([seasonPoints])
+  @@index([lifetimePoints])
+  @@schema("campus")
+}
+
+model College {
+  id            String      @id @default(cuid())
+  name          String
+  shortName     String
+  city          String      @default("")
+  state         String      @default("")
+  type          CollegeType @default(ENGINEERING)
+  studentsCount Int         @default(0)
+  totalPoints   Int         @default(0)
+  avgPoints     Int         @default(0)
+  rank          Int         @default(0)
+  rankChange    Int         @default(0)
+  topSkill      String?
+  verified      Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  users User[]
+
+  @@index([name])
+  @@index([verified])
+  @@schema("campus")
+}
+
+// ───────────────────────────── learning ─────────────────────────────
+
+model Track {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  title         String
+  tagline       String        @default("")
+  category      TrackCategory @default(TECH)
+  icon          String        @default("BookOpen")
+  color         String        @default("#F59E0B")
+  level         String        @default("Beginner friendly")
+  durationWeeks Int           @default(8)
+  coursesCount  Int           @default(0)
+  studentsCount Int           @default(0)
+  outcomes      String[]      @default([])
+  careers       Json          @default("[]")
+  /// "Bridge" track built on government-exam preparation (Aspirant mode).
+  forAspirants  Boolean       @default(false)
+  /// Exam subjects this track builds on (same vocabulary as Aspirant.strengths).
+  bridgeFrom    String[]      @default([])
+  order         Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  courses Course[]
+  cohorts Cohort[]
+  threads Thread[]
+
+  @@schema("campus")
+}
+
+model Course {
+  id                String      @id @default(cuid())
+  slug              String      @unique
+  trackId           String
+  title             String
+  subtitle          String      @default("")
+  description       String      @default("")
+  level             CourseLevel @default(BEGINNER)
+  languages         String[]    @default(["en"])
+  cover             Json        @default("{\"from\":\"#F59E0B\",\"to\":\"#8B74FF\",\"pattern\":\"dots\"}")
+  mentorId          String?
+  durationMinutes   Int         @default(0)
+  lessonsCount      Int         @default(0)
+  rating            Float       @default(0)
+  ratingsCount      Int         @default(0)
+  studentsCount     Int         @default(0)
+  skills            String[]    @default([])
+  whatYouBuild      String[]    @default([])
+  requirements      String[]    @default([])
+  /// Fee excluding GST (spec §6.2). GST is added at checkout from settings pricing.gstPercent.
+  priceINR          Int         @default(0)
+  /// Legacy "study now, pay later". Not used: the spec requires 100% advance payment (§6.2).
+  payLater          Boolean     @default(false)
+  isFree            Boolean     @default(false)
+  /// Controlled values (spec §6.2/§10.1): DRAFT | PUBLISHED | ENROLMENT_OPEN | FULL | PAUSED | ARCHIVED
+  /// (kept as text so existing rows migrate without data loss; validated in code, see lib/catalog.js COURSE_STATUSES)
+  status            String      @default("PUBLISHED")
+  skillId           String?
+  /// Course length in days (spec defaults 10/15/20 for beginner/intermediate/advanced)
+  durationDays      Int?
+  outcome           String      @default("") // one-line outcome for the course card (§7.3)
+  whoFor            String      @default("") // "Who this is for" (§7.4)
+  capacity          Int?
+  enrolmentOpensAt  DateTime?
+  enrolmentClosesAt DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  track         Track               @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  mentor        User?               @relation("CourseMentor", fields: [mentorId], references: [id], onDelete: SetNull)
+  modules       CourseModule[]
+  lessons       Lesson[]
+  enrollments   Enrollment[]
+  submissions   Submission[]
+  certificates  Certificate[]
+  skill         Skill?              @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  assessment    Assessment?
+  orders        CourseOrder[]
+  verifications SkillVerification[]
+
+  @@index([trackId])
+  @@index([skillId])
+  @@index([mentorId])
+  @@schema("campus")
+}
+
+model CourseModule {
+  id        String   @id @default(cuid())
+  courseId  String
+  title     String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons Lesson[]
+
+  @@index([courseId, order])
+  @@schema("campus")
+}
+
+model Lesson {
+  id              String     @id @default(cuid())
+  courseId        String
+  moduleId        String
+  title           String
+  type            LessonType @default(VIDEO)
+  durationMinutes Int        @default(10)
+  order           Int        @default(0)
+  isPreview       Boolean    @default(false)
+  content         String     @default("")
+  videoUrl        String?
+  quiz            Json?
+  assignment      Json?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  module      CourseModule       @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completions LessonCompletion[]
+  attempts    QuizAttempt[]
+  submissions Submission[]
+
+  @@index([courseId])
+  @@index([moduleId, order])
+  @@schema("campus")
+}
+
+model Enrollment {
+  id                 String    @id @default(cuid())
+  userId             String
+  courseId           String
+  progressPercent    Int       @default(0)
+  completedLessonIds String[]  @default([])
+  lastLessonId       String?
+  startedAt          DateTime  @default(now())
+  completedAt        DateTime?
+  updatedAt          DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@schema("campus")
+}
+
+/// One row per completed lesson; powers daily goal minutes and weekly activity.
+model LessonCompletion {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  courseId  String
+  minutes   Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@index([userId, createdAt])
+  @@schema("campus")
+}
+
+model QuizAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  score     Int
+  total     Int
+  passed    Boolean
+  answers   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lessonId])
+  @@schema("campus")
+}
+
+model Submission {
+  id           String           @id @default(cuid())
+  userId       String
+  courseId     String
+  lessonId     String
+  lessonTitle  String           @default("")
+  text         String?
+  link         String?
+  status       SubmissionStatus @default(SUBMITTED)
+  score        Int?
+  maxScore     Int              @default(100)
+  feedback     String?
+  reviewedById String?
+  createdAt    DateTime         @default(now())
+  reviewedAt   DateTime?
+
+  user       User   @relation("SubmissionUser", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?  @relation("SubmissionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  course     Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson     Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([courseId, status])
+  @@index([status, createdAt])
+  @@schema("campus")
+}
+
+model Certificate {
+  id          String   @id @default(cuid())
+  userId      String
+  courseId    String
+  courseTitle String
+  trackTitle  String   @default("")
+  mentorName  String   @default("")
+  /// Completion certificate only. Score = the passed assessment total, or null (never a default 100; spec §8)
+  score       Int?
+  verifyCode  String   @unique
+  issuedAt    DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@schema("campus")
+}
+
+// ───────────────────────────── earn ─────────────────────────────
+
+model Gig {
+  id              String        @id @default(cuid())
+  title           String
+  company         Json          @default("{\"name\":\"Campus partner\",\"logoColor\":\"#F59E0B\"}")
+  category        String        @default("General")
+  skills          String[]      @default([])
+  payoutINR       Int           @default(0)
+  durationDays    Int           @default(3)
+  difficulty      GigDifficulty @default(EASY)
+  minStage        Int           @default(3)
+  status          GigStatus     @default(OPEN)
+  applicantsCount Int           @default(0)
+  spots           Int           @default(1)
+  deadline        DateTime?
+  description     String        @default("")
+  deliverables    String[]      @default([])
+  mentorId        String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  mentor       User?            @relation("GigMentor", fields: [mentorId], references: [id], onDelete: SetNull)
+  applications GigApplication[]
+
+  @@index([status, createdAt])
+  @@schema("campus")
+}
+
+model GigApplication {
+  id             String            @id @default(cuid())
+  gigId          String
+  userId         String
+  status         ApplicationStatus @default(APPLIED)
+  pitch          String            @default("")
+  submissionLink String?
+  submissionNote String?
+  feedback       String?
+  approvedAt     DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  gig  Gig  @relation(fields: [gigId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([gigId, userId])
+  @@index([userId])
+  @@index([status])
+  @@schema("campus")
+}
+
+model WalletTxn {
+  id        String          @id @default(cuid())
+  userId    String
+  type      WalletTxnType
+  amountINR Int
+  note      String          @default("")
+  status    WalletTxnStatus @default(COMPLETED)
+  upiId     String?
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([type])
+  @@schema("campus")
+}
+
+model PointsEvent {
+  id        String       @id @default(cuid())
+  userId    String
+  source    PointsSource
+  points    Int
+  note      String       @default("")
+  createdAt DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@schema("campus")
+}
+
+model PortfolioItem {
+  id               String          @id @default(cuid())
+  userId           String
+  title            String
+  description      String          @default("")
+  link             String?
+  cover            Json            @default("{\"from\":\"#F59E0B\",\"to\":\"#8B74FF\"}")
+  skills           String[]        @default([])
+  verified         Boolean         @default(false)
+  source           PortfolioSource @default(PERSONAL)
+  gigApplicationId String?         @unique
+  submissionId     String?         @unique
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@schema("campus")
+}
+
+model UserBadge {
+  id          String   @id @default(cuid())
+  userId      String
+  key         String
+  title       String
+  description String   @default("")
+  icon        String   @default("Award")
+  earnedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@schema("campus")
+}
+
+model Season {
+  id              String   @id @default(cuid())
+  name            String
+  number          Int      @unique
+  status          String   @default("ACTIVE") // ACTIVE | ENDED | UPCOMING
+  winnerUserId    String?
+  winnerCollegeId String?
+  startsAt        DateTime
+  endsAt          DateTime
+  createdAt       DateTime @default(now())
+
+  @@schema("campus")
+}
+
+// ───────────────────────────── community ─────────────────────────────
+
+model Thread {
+  id              String   @id @default(cuid())
+  authorId        String
+  title           String
+  body            String
+  tags            String[] @default([])
+  trackId         String?
+  upvotes         Int      @default(0)
+  repliesCount    Int      @default(0)
+  solved          Boolean  @default(false)
+  acceptedReplyId String?
+  createdAt       DateTime @default(now())
+  lastActivityAt  DateTime @default(now())
+
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  track   Track?  @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  replies Reply[]
+
+  @@index([createdAt])
+  @@index([lastActivityAt])
+  @@index([authorId])
+  @@schema("campus")
+}
+
+model Reply {
+  id         String   @id @default(cuid())
+  threadId   String
+  authorId   String
+  body       String
+  upvotes    Int      @default(0)
+  isAccepted Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([authorId])
+  @@schema("campus")
+}
+
+/// Upvotes on threads and replies. One per user per target.
+model Vote {
+  id         String     @id @default(cuid())
+  userId     String
+  targetType VoteTarget
+  targetId   String
+  createdAt  DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetType, targetId])
+  @@index([targetType, targetId])
+  @@schema("campus")
+}
+
+model Booking {
+  id        String        @id @default(cuid())
+  mentorId  String
+  userId    String
+  date      String // YYYY-MM-DD
+  time      String // HH:mm
+  topic     String
+  note      String?
+  status    BookingStatus @default(UPCOMING)
+  meetLink  String        @default("")
+  createdAt DateTime      @default(now())
+
+  mentor User @relation("BookingMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  user   User @relation("BookingStudent", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId, date])
+  @@index([userId])
+  @@schema("campus")
+}
+
+model Cohort {
+  id           String   @id @default(cuid())
+  title        String
+  trackId      String
+  leadMentorId String?
+  description  String   @default("")
+  startDate    DateTime
+  schedule     String   @default("")
+  maxMembers   Int      @default(30)
+  createdAt    DateTime @default(now())
+
+  track      Track          @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  leadMentor User?          @relation("CohortLead", fields: [leadMentorId], references: [id], onDelete: SetNull)
+  members    CohortMember[]
+  posts      CohortPost[]
+
+  @@schema("campus")
+}
+
+model CohortMember {
+  id       String   @id @default(cuid())
+  cohortId String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  cohort Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortId, userId])
+  @@index([userId])
+  @@schema("campus")
+}
+
+model CohortPost {
+  id        String   @id @default(cuid())
+  cohortId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  cohort Cohort @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  author User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([cohortId, createdAt])
+  @@schema("campus")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType @default(SYSTEM)
+  title     String
+  body      String           @default("")
+  link      String?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+  @@schema("campus")
+}
+
+model MentorReview {
+  id        String   @id @default(cuid())
+  mentorId  String
+  userId    String?
+  userName  String   @default("")
+  rating    Int      @default(5)
+  comment   String   @default("")
+  createdAt DateTime @default(now())
+
+  mentor User  @relation("ReviewMentor", fields: [mentorId], references: [id], onDelete: Cascade)
+  user   User? @relation("ReviewAuthor", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([mentorId, createdAt])
+  @@schema("campus")
+}
+
+/// Optional log of AI tutor turns (for analytics / abuse review).
+model TutorMessage {
+  id        String   @id @default(cuid())
+  userId    String
+  role      String // "user" | "assistant"
+  content   String
+  language  String   @default("en")
+  lessonId  String?
+  courseId  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@schema("campus")
+}
+
+// ───────────────────────────── spec v1.0 (Developer Product Specification) ─────────────────────────────
+// See campus/SPEC_ALIGNMENT.md and API_CONTRACT.md "Spec v1.0" sections.
+
+enum AssessmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  PASSED
+  REASSESSMENT_REQUIRED
+  FAILED
+  APPEAL_PENDING
+  VERIFIED
+
+  @@schema("campus")
+}
+
+enum VerificationStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+
+  @@schema("campus")
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+
+  @@schema("campus")
+}
+
+enum PaymentProvider {
+  RAZORPAY
+  OFFLINE
+  DEMO
+  FREE
+
+  @@schema("campus")
+}
+
+enum ConsentPurpose {
+  TERMS
+  PRIVACY
+  REFUND
+  ASSESSMENT_POLICY
+  PROJECT_POLICY
+  MARKETING
+
+  @@schema("campus")
+}
+
+enum OfferStatus {
+  OFFERED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  WITHDRAWN
+  IN_PROGRESS
+  SUBMITTED
+  REVISION_REQUESTED
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+  DISPUTED
+
+  @@schema("campus")
+}
+
+enum PayoutStatus {
+  NOT_DUE
+  PENDING
+  ELIGIBLE
+  PAID
+  FAILED
+
+  @@schema("campus")
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+
+  @@schema("campus")
+}
+
+/// Spec §6: Design & Creative, Marketing, Website & Technology, Business Support, 3D & Automation
+model Category {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  order     Int      @default(0)
+  status    String   @default("PUBLISHED") // DRAFT | PUBLISHED | ARCHIVED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  skills Skill[]
+
+  @@schema("campus")
+}
+
+/// A verifiable skill (e.g. "UI/UX Design"). Courses are offered per skill and level; badges are per skill + level.
+model Skill {
+  id             String   @id @default(cuid())
+  categoryId     String
+  slug           String   @unique
+  name           String
+  description    String   @default("")
+  tags           String[] @default([])
+  /// Level formats offered, e.g. ["BEGINNER","INTERMEDIATE","ADVANCED"] or ["STANDARD","ADVANCED"]
+  formats        String[] @default([])
+  /// Future client services this skill supplies (spec §6 last column)
+  clientServices String   @default("")
+  status         String   @default("DRAFT") // DRAFT | PUBLISHED | PAUSED | ARCHIVED
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  courses       Course[]
+  verifications SkillVerification[]
+  offers        ProjectOffer[]
+
+  @@index([categoryId])
+  @@schema("campus")
+}
+
+/// Versioned rubric (spec §8.2). Editing creates a new row with the same `key` and version + 1;
+/// results keep the rubricId they were scored with, so old scores never change.
+model Rubric {
+  id          String   @id @default(cuid())
+  key         String // stable id across versions
+  version     Int      @default(1)
+  name        String
+  /// [{ id, label, weight, guide, critical: boolean, maxScore }]
+  criteria    Json     @default("[]")
+  status      String   @default("ACTIVE") // ACTIVE | ARCHIVED (superseded)
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  assessments Assessment[]
+  attempts    AssessmentAttempt[]
+
+  @@unique([key, version])
+  @@schema("campus")
+}
+
+/// The final practical assessment of a course (spec §8).
+model Assessment {
+  id                 String   @id @default(cuid())
+  courseId           String   @unique
+  title              String
+  brief              String   @default("") // markdown task brief
+  instructions       String   @default("")
+  allowedFormats     String[] @default(["link", "text"]) // link | text | file
+  rubricId           String
+  passScore          Int      @default(70) // out of 100
+  /// Total attempts allowed, first + reassessments (spec default: 1 included reassessment → 2)
+  maxAttempts        Int      @default(2)
+  reassessWindowDays Int      @default(14)
+  dueDays            Int? // days after enrolment
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  course   Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  rubric   Rubric              @relation(fields: [rubricId], references: [id])
+  attempts AssessmentAttempt[]
+
+  @@schema("campus")
+}
+
+/// One attempt at an assessment by a student: submission + result (spec §8.1 states, §10 Submission/AssessmentResult).
+model AssessmentAttempt {
+  id               String           @id @default(cuid())
+  assessmentId     String
+  userId           String
+  attemptNo        Int              @default(1)
+  status           AssessmentStatus @default(IN_PROGRESS)
+  /// Submission: { text, links: string[], files: [{ key, name, size, type }] } (key = private R2 object, never a URL); version increments on each submit
+  submission       Json             @default("{}")
+  version          Int              @default(0)
+  submittedAt      DateTime?
+  evaluatorId      String?
+  /// The exact rubric version used to score (spec §8.2)
+  rubricId         String?
+  /// [{ criterionId, score, note }]
+  scores           Json             @default("[]")
+  totalScore       Int?
+  passed           Boolean?
+  feedback         String? // published to the student
+  evaluatorNotes   String? // internal only
+  reviewedAt       DateTime?
+  reassessUntil    DateTime?
+  /// Verification onboarding (spec §5.1 step 12): { portfolioUrl, identityConfirmed, payoutReady, availabilityConfirmed, submittedAt }
+  onboarding       Json?
+  appealReason     String?
+  appealDecision   String?
+  appealReviewerId String?
+  /// [{ status, at, by, note }]
+  history          Json             @default("[]")
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  assessment   Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user         User               @relation("AttemptStudent", fields: [userId], references: [id], onDelete: Cascade)
+  evaluator    User?              @relation("AttemptEvaluator", fields: [evaluatorId], references: [id], onDelete: SetNull)
+  rubric       Rubric?            @relation(fields: [rubricId], references: [id])
+  verification SkillVerification?
+
+  @@unique([assessmentId, userId, attemptNo])
+  @@index([status])
+  @@index([userId])
+  @@index([evaluatorId, status])
+  @@schema("campus")
+}
+
+/// Skill-specific badge (spec §8.3). Separate from the course Certificate.
+model SkillVerification {
+  id            String             @id @default(cuid())
+  userId        String
+  skillId       String
+  courseId      String?
+  level         CourseLevel
+  status        VerificationStatus @default(ACTIVE)
+  awardedAt     DateTime           @default(now())
+  attemptId     String?            @unique
+  rubricId      String?
+  rubricVersion Int?
+  /// [{ label, url }] portfolio/evidence
+  evidence      Json               @default("[]")
+  expiresAt     DateTime?
+  approvedById  String?
+  revokedReason String?
+  /// [{ status, at, by, reason }]
+  history       Json               @default("[]")
+  verifyCode    String             @unique
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user       User               @relation("VerificationStudent", fields: [userId], references: [id], onDelete: Cascade)
+  skill      Skill              @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  course     Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  attempt    AssessmentAttempt? @relation(fields: [attemptId], references: [id], onDelete: SetNull)
+  approvedBy User?              @relation("VerificationApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+
+  @@unique([userId, skillId, level])
+  @@index([skillId, level, status])
+  @@schema("campus")
+}
+
+/// Course purchase (spec §5.1 steps 5–6, §6.2: 100% advance by default).
+model CourseOrder {
+  id                String          @id @default(cuid())
+  userId            String
+  courseId          String
+  amountINR         Int // fee excluding GST
+  gstPercent        Int             @default(18)
+  gstINR            Int             @default(0)
+  totalINR          Int
+  currency          String          @default("INR")
+  status            OrderStatus     @default(PENDING)
+  provider          PaymentProvider
+  providerOrderId   String?         @unique
+  providerPaymentId String?         @unique
+  offlineReference  String? // UTR / bank ref submitted by the student for offline payment
+  verifiedById      String? // admin/finance who verified an offline payment
+  receiptNo         String?         @unique
+  termsVersion      String?
+  failureReason     String?
+  refundINR         Int?
+  /// Every refund, partial or full: [{ amountINR, reason, at, byId, providerRefundId }]. refundINR is the running total.
+  refunds           Json            @default("[]")
+  refundReason      String?
+  refundedAt        DateTime?
+  refundedById      String?
+  paidAt            DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([userId, courseId])
+  @@index([status, createdAt])
+  @@schema("campus")
+}
+
+/// Processed provider webhooks, so a duplicate delivery is a no-op (spec §17).
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  eventId     String
+  type        String   @default("")
+  processedAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@schema("campus")
+}
+
+/// Timestamped consent (spec §5.1 step 4, §10 ConsentRecord). Marketing consent is separate (§15).
+model ConsentRecord {
+  id            String         @id @default(cuid())
+  userId        String
+  purpose       ConsentPurpose
+  policyVersion String
+  context       String         @default("") // e.g. "enrol:<courseId>", "onboarding"
+  ip            String?
+  userAgent     String?
+  acceptedAt    DateTime       @default(now())
+  withdrawnAt   DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@schema("campus")
+}
+
+/// A PM-created project offer to one verified student (spec §5.3, §9.1, §9.2, §9.3).
+/// Client briefs and client-side delivery live in Catalance; catalanceProjectId links the two.
+model ProjectOffer {
+  id                     String       @id @default(cuid())
+  catalanceProjectId     String?
+  title                  String
+  summary                String       @default("")
+  skillId                String?
+  level                  CourseLevel?
+  deliverables           String[]     @default([])
+  acceptanceCriteria     String[]     @default([])
+  expectedHours          Int?
+  deadline               DateTime?
+  /// [{ id, title, dueAt, status: PENDING|SUBMITTED|APPROVED }]
+  milestones             Json         @default("[]")
+  /// Exact amount the student receives (spec §9.1: shown and agreed before acceptance)
+  payoutINR              Int
+  revisionLimit          Int          @default(2)
+  revisionsUsed          Int          @default(0)
+  tools                  String[]     @default([])
+  confidentiality        String       @default("")
+  pmId                   String?
+  studentId              String
+  status                 OfferStatus  @default(OFFERED)
+  expiresAt              DateTime?
+  respondedAt            DateTime?
+  declineReason          String?
+  /// Why this student was shortlisted (spec §13.3: keep a log)
+  shortlistReason        String       @default("")
+  /// [{ version, text, links, submittedAt, review: { decision, note, at, by } }]
+  deliveries             Json         @default("[]")
+  /// Finance (spec §9.2) — visible to ADMIN/FINANCE only
+  clientPriceINR         Int?
+  splitBasis             String? // e.g. CLIENT_PRICE_EX_TAX
+  freelancerSharePercent Int?
+  platformShareINR       Int? // snapshot at approval
+  taxesINR               Int?
+  adjustments            Json         @default("[]") // [{ amountINR, reason, approvedBy, at }]
+  payoutStatus           PayoutStatus @default(NOT_DUE)
+  payoutRef              String?
+  paidAt                 DateTime?
+  clientAcceptedAt       DateTime?
+  feedback               String?
+  rating                 Int?
+  /// [{ status, at, by, note }]
+  history                Json         @default("[]")
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  skill   Skill? @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  pm      User?  @relation("OfferPM", fields: [pmId], references: [id], onDelete: SetNull)
+  student User   @relation("OfferStudent", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, status])
+  @@index([pmId, status])
+  @@schema("campus")
+}
+
+/// Help & Support tickets, complaints and disputes (spec §4.2, §10 SupportTicket / Dispute).
+model SupportTicket {
+  id          String       @id @default(cuid())
+  userId      String
+  category    String       @default("GENERAL") // GENERAL | PAYMENT | COURSE | ASSESSMENT | PROJECT | COMPLAINT | DISPUTE
+  subject     String
+  body        String
+  status      TicketStatus @default(OPEN)
+  priority    String       @default("NORMAL") // LOW | NORMAL | HIGH | URGENT
+  ownerId     String?
+  relatedType String? // e.g. "ORDER" | "ATTEMPT" | "OFFER"
+  relatedId   String?
+  /// [{ id, authorId, authorName, body, internal: boolean, at }]
+  messages    Json         @default("[]")
+  resolution  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user User @relation("TicketUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@schema("campus")
+}
+
+/// Privileged/financial/assessment/verification/permission changes (spec §3 Admin, §10 AuditLog, §15).
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorRole String?
+  action    String // e.g. "verification.revoke", "order.refund", "settings.update"
+  entity    String // e.g. "SkillVerification"
+  entityId  String?
+  before    Json?
+  after     Json?
+  reason    String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entity, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+  @@schema("campus")
+}
+
+/// Admin-editable settings and feature flags (spec §1.1 "editable from admin without code changes", §11).
+/// Keys and defaults: see src/lib/settings.js DEFAULT_SETTINGS.
+model PlatformSetting {
+  key         String   @id
+  value       Json
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+
+  @@schema("campus")
+}

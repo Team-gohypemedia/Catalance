@@ -80,6 +80,9 @@ const ManagerReports = lazy(
 const ManagerProjectSetup = lazy(
   () => import("@/modules/project-manager/pages/ProjectSetupPage"),
 );
+const ManagerCampusTalent = lazy(
+  () => import("@/modules/project-manager/pages/CampusTalentPage"),
+);
 const EmailAuthPage = lazy(() => import("@/components/Forms/EmailAuth"));
 const PhoneAuthPage = lazy(() => import("@/components/Forms/PhoneAuth"));
 const PhoneRoleOnboarding = lazy(
@@ -218,6 +221,7 @@ const Security = lazy(() => import("@/components/pages/Security"));
 import Loader from "@/components/common/Loader";
 
 const GuestAIDemo = lazy(() => import("@/components/pages/GuestAIDemo"));
+const CampusBridge = lazy(() => import("@/components/pages/CampusBridge"));
 const ServiceDetails = lazy(() => import("@/components/pages/ServiceDetails"));
 
 const RouteFallback = () => <Loader />;
@@ -334,6 +338,7 @@ const App = () => {
               }
             />
             <Route path="/get-started" element={<NoIndexRoute><GetStarted /></NoIndexRoute>} />
+            <Route path="/campus" element={<NoIndexRoute><CampusBridge /></NoIndexRoute>} />
             <Route path="/signup" element={<NoIndexRoute><PublicRoute><LegacyLoginRedirect /></PublicRoute></NoIndexRoute>} />
             <Route path="/signin/phone" element={<NoIndexRoute><PublicRoute><PhoneAuthPage /></PublicRoute></NoIndexRoute>} />
             <Route path="/signin/email" element={<NoIndexRoute><PublicRoute><EmailAuthPage /></PublicRoute></NoIndexRoute>} />
@@ -696,6 +701,17 @@ const App = () => {
                   allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
                 >
                   <ManagerProjectSetup />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/project-manager/campus-talent"
+              element={
+                <ProtectedRoute
+                  loginPath="/project-manager/login"
+                  allowedRoles={["PROJECT_MANAGER", "ADMIN"]}
+                >
+                  <ManagerCampusTalent />
                 </ProtectedRoute>
               }
             />

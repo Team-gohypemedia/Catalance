@@ -119,6 +119,7 @@ import {
   normalizeSkillLevel,
 } from "@/components/freelancer/Freelancer-Profile";
 import CaseStudyModalContent from "@/components/freelancer/Freelancer-Profile/modals/CaseStudyModalContent";
+import CampusVerifiedSkills from "@/components/features/campus/CampusVerifiedSkills";
 
 const AVATAR_UPLOAD_MAX_BYTES = 4.5 * 1024 * 1024;
 const PROFILE_PHOTO_PICK_MAX_BYTES = 20 * 1024 * 1024;
@@ -4430,6 +4431,8 @@ const FreelancerProfile = () => {
                 openAddServiceModal={openAddServiceModal}
                 deleteServiceProfile={deleteServiceProfile}
               />
+
+              <CampusVerifiedSkills userId={user?.id} variant="profile" />
 
               <ProfileSidebarCards
                 openCreateExperienceModal={openCreateExperienceModal}

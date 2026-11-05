@@ -37,6 +37,7 @@ import {
   FreelancerGrowthQuestWidget,
   RecommendedProjects,
 } from "@/components/freelancer/freelancer-dashboard";
+import CampusSummaryCard from "@/components/freelancer/freelancer-dashboard/CampusSummaryCard.jsx";
 
 const FreelancerDashboard = () => {
   const navigate = useNavigate();
@@ -336,6 +337,7 @@ const FreelancerDashboard = () => {
                         <FreelancerGrowthQuestWidget
                           engagementDetails={model.engagementDetails}
                         />
+                        <CampusSummaryCard />
                         <ActiveChats
                           previewMessages={model.previewMessages}
                           onOpenMessages={model.onOpenMessages}

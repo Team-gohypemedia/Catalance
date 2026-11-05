@@ -27,6 +27,7 @@ import { userRequestRouter } from "./userRequest.routes.js";
 import { payoutRequestRouter } from "./payoutRequest.routes.js";
 import { freelancerEngagementRouter } from "../modules/engagement/routes/freelancerEngagement.routes.js";
 import { githubRouter } from "./github.routes.js";
+import { campusRouter } from "./campus.routes.js";
 import { env } from "../config/env.js";
 import devRouter from "./dev.routes.js";
 
@@ -60,6 +61,7 @@ apiRouter.use("/webhooks/whatsapp", whatsappWebhookRouter);
 apiRouter.use("/user-requests", userRequestRouter);
 apiRouter.use("/engagement", freelancerEngagementRouter);
 apiRouter.use("/github", githubRouter);
+apiRouter.use("/campus", campusRouter);
 
 
 if (env.NODE_ENV !== "production") {

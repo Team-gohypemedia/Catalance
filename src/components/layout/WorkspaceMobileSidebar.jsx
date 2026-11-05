@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import React from "react";
 import BriefcaseBusiness from "lucide-react/dist/esm/icons/briefcase-business";
 import FileText from "lucide-react/dist/esm/icons/file-text";
+import GraduationCap from "lucide-react/dist/esm/icons/graduation-cap";
 import Layers from "lucide-react/dist/esm/icons/layers";
 import House from "lucide-react/dist/esm/icons/house";
 import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
@@ -37,6 +38,7 @@ import ThemeToggle from "@/components/common/ThemeToggle";
 const iconMap = {
   dashboard: LayoutDashboard,
   "growth-quest": Sparkles,
+  campus: GraduationCap,
   projects: BriefcaseBusiness,
   proposals: FileText,
   messages: Mail,
